@@ -1,62 +1,81 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { db } from "../db/index.js";
-import { reservations, guests, tables } from "../db/schema.js";
-import { eq, and, gte, lte } from "drizzle-orm";
+import {
+  availabilityQuerySchema,
+  createReservationSchema,
+} from "@sable/domain";
+import {
+  cancelReservation,
+  checkAvailability,
+  createReservation,
+  listReservations,
+  updateReservation,
+} from "../services/reservation.service.js";
 
-const createReservationSchema = z.object({
-  restaurantId: z.string().uuid(),
-  guestName: z.string().min(1),
-  guestPhone: z.string().min(5),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  timeStart: z.string().regex(/^\d{2}:\d{2}$/),
-  partySize: z.coerce.number().int().min(1).max(50),
+const updateReservationSchema = z.object({
+  date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/).optional(),
+  timeStart: z.string().regex(/^[0-9]{2}:[0-9]{2}$/).optional(),
+  partySize: z.coerce.number().int().min(1).max(50).optional(),
+  status: z
+    .enum(["pending", "confirmed", "seated", "completed", "cancelled", "no_show"])
+    .optional(),
   notes: z.string().optional(),
-  source: z.enum(["whatsapp", "web", "walk_in", "phone"]).default("web"),
-});
-
-const availabilityQuerySchema = z.object({
-  restaurantId: z.string().uuid(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  partySize: z.coerce.number().int().min(1).max(50),
+  tableIds: z.array(z.string().uuid()).optional(),
+  cancellationReason: z.string().nullable().optional(),
 });
 
 export async function reservationRoutes(app: FastifyInstance) {
   // GET /availability
-  app.get("/availability", async (request, reply) => {
+  app.get("/availability", async (request) => {
     const query = availabilityQuerySchema.parse(request.query);
-    // TODO: implement availability check against table map + existing reservations
-    return { slots: [], query };
+    const slots = await checkAvailability(query);
+    return { slots };
   });
 
   // POST / — create reservation
   app.post("/", async (request, reply) => {
     const body = createReservationSchema.parse(request.body);
-    // TODO: find or create guest, check availability, assign table, create reservation
-    return { message: "reservation created", body };
+    const reservation = await createReservation(body);
+    reply.code(201);
+    return { reservation };
   });
 
   // GET / — list reservations
-  app.get("/", async (request, reply) => {
+  app.get("/", async (request) => {
     const { restaurantId, date } = request.query as {
       restaurantId?: string;
       date?: string;
     };
-    // TODO: query reservations with filters
-    return { reservations: [], filters: { restaurantId, date } };
+
+    const reservations = await listReservations({ restaurantId, date });
+    return { reservations };
   });
 
   // PATCH /:id — update reservation
   app.patch("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    // TODO: validate changes, update reservation
-    return { message: "reservation updated", id };
+    const body = updateReservationSchema.parse(request.body);
+
+    const updated = await updateReservation(id, body);
+    if (!updated) {
+      reply.code(404);
+      return { error: "Reservation not found" };
+    }
+
+    return { reservation: updated };
   });
 
   // DELETE /:id — cancel reservation
   app.delete("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    // TODO: mark cancelled, free table, check waitlist
-    return { message: "reservation cancelled", id };
+    const { reason } = (request.query ?? {}) as { reason?: string };
+
+    const cancelled = await cancelReservation(id, reason);
+    if (!cancelled) {
+      reply.code(404);
+      return { error: "Reservation not found" };
+    }
+
+    return { reservation: cancelled };
   });
 }

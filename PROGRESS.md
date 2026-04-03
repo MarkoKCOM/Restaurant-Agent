@@ -20,13 +20,39 @@
 - Marketing site — complete static landing page
 
 ### Next (Sprint 1 Remaining)
-- [ ] `pnpm install` + verify builds
+- [x] `pnpm install` + verify builds
 - [ ] Drizzle migrations (generate + run against local PostgreSQL)
-- [ ] Seed script with BFF Raanana test data
-- [ ] Implement reservation service — availability check, auto table assignment, create/modify/cancel
-- [ ] Implement guest service — find-or-create, visit history
+- [x] Seed script with BFF Raanana test data
+- [x] Implement reservation service — availability check, auto table assignment, create/modify/cancel
+- [x] Implement guest service — find-or-create, visit history
 - [ ] Wire dashboard to API with React Query
 - [ ] Wire widget availability fetch to real API
+
+## 2026-04-03 (Afternoon — Sprint 1 API work)
+
+### Done
+- Ran `pnpm install` at repo root; workspace dependencies install cleanly.
+- Fixed initial TypeScript issues in the monorepo (`@sable/booking-widget` env handling, `@sable/domain` TS project references).
+- Implemented API service layer in `apps/api/src/services/`:
+  - `guest.service.ts` — find-or-create by phone, list/get helpers, and preference/tags/notes updater, with mapping to shared domain `Guest` type.
+  - `table.service.ts` — list helpers (with `includeInactive`), CRUD helpers for tables, and a smallest-fit table assignment helper.
+  - `reservation.service.ts` — availability calculation based on restaurant operating hours + existing reservations, smallest-fit table assignment, create/list/update/cancel reservation flows, and mapping to shared domain `Reservation` type.
+- Wired Fastify routes to use the new services and shared domain schemas:
+  - `routes/reservations.ts` now uses `@sable/domain` Zod schemas + reservation service for availability, create, list, update, and cancel.
+  - `routes/guests.ts` now uses `@sable/domain` Zod schema + guest service for list/get/create/update.
+  - `routes/tables.ts` now uses table service for list/create/update/deactivate.
+- Normalized Drizzle schema types for reservations/waitlist time & date columns to use string types in TypeScript, matching the shared domain model.
+- Confirmed `pnpm type-check` passes across all workspaces (api, dashboard, booking-widget, marketing-site, domain).
+- Added `apps/api/src/db/seed.ts` with BFF Ra'anana test data:
+  - Upserts a `restaurants` record for BFF Ra'anana (slug `bff-raanana`) with address, contact info, operating hours, and basic widget config.
+  - Seeds 10 tables with varying capacities for that restaurant.
+  - Seeds a few test guests for that restaurant (idempotent by phone number).
+
+### Next
+- Wire dashboard pages to the new API services via React Query (today snapshot, reservations list, guests).
+- Wire booking widget date step to `/api/v1/reservations/availability` and submit step to real reservation creation.
+- Add a couple of seed reservations for BFF Ra'anana to make the dashboard and availability views feel real.
+- Run Drizzle migrations against a local PostgreSQL instance and verify seed works end-to-end.
 
 ## 2026-04-03 (Initial)
 

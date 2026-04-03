@@ -16,7 +16,10 @@ export function BookingWidget({ restaurantId, apiUrl }: Props) {
   const [phone, setPhone] = useState("");
 
   const handleSubmit = async () => {
-    const baseUrl = apiUrl || process.env.WIDGET_API_URL;
+    const baseUrl =
+      apiUrl ||
+      import.meta.env.VITE_WIDGET_API_URL ||
+      window.location.origin;
     // TODO: POST to API, handle response
     setStep("confirm");
   };

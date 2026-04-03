@@ -1,5 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import {
+  createTable,
+  deactivateTable,
+  listTables,
+  updateTable,
+} from "../services/table.service.js";
 
 const createTableSchema = z.object({
   restaurantId: z.string().uuid(),
@@ -10,32 +16,56 @@ const createTableSchema = z.object({
   combinableWith: z.array(z.string().uuid()).optional(),
 });
 
+const updateTableSchema = createTableSchema
+  .omit({ restaurantId: true })
+  .extend({ isActive: z.boolean().optional() })
+  .partial();
+
 export async function tableRoutes(app: FastifyInstance) {
   // GET / — list tables for restaurant
   app.get("/", async (request) => {
-    const { restaurantId } = request.query as { restaurantId?: string };
-    // TODO: query tables
-    return { tables: [], filters: { restaurantId } };
+    const { restaurantId, includeInactive } = request.query as {
+      restaurantId?: string;
+      includeInactive?: string;
+    };
+
+    const includeInactiveBool = includeInactive === "true";
+    const tables = await listTables({
+      restaurantId,
+      includeInactive: includeInactiveBool,
+    });
+
+    return { tables };
   });
 
   // POST / — create table
-  app.post("/", async (request) => {
+  app.post("/", async (request, reply) => {
     const body = createTableSchema.parse(request.body);
-    // TODO: create table
-    return { message: "table created", body };
+    const table = await createTable(body);
+    reply.code(201);
+    return { table };
   });
 
   // PATCH /:id — update table
-  app.patch("/:id", async (request) => {
+  app.patch("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    // TODO: update table
-    return { message: "table updated", id };
+    const body = updateTableSchema.parse(request.body ?? {});
+
+    const updated = await updateTable(id, body);
+    if (!updated) {
+      reply.code(404);
+      return { error: "Table not found" };
+    }
+
+    return { table: updated };
   });
 
   // DELETE /:id — deactivate table
-  app.delete("/:id", async (request) => {
+  app.delete("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    // TODO: set is_active = false
-    return { message: "table deactivated", id };
+
+    await deactivateTable(id);
+    reply.code(204);
+    return null;
   });
 }

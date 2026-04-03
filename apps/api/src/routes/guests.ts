@@ -1,41 +1,61 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { createGuestSchema } from "@sable/domain";
+import {
+  findOrCreateGuest,
+  getGuestById,
+  listGuests,
+  toDomainGuest,
+  updateGuestPreferences,
+} from "../services/guest.service.js";
 
-const createGuestSchema = z.object({
-  restaurantId: z.string().uuid(),
-  name: z.string().min(1),
-  phone: z.string().min(5),
-  email: z.string().email().optional(),
-  language: z.enum(["he", "en", "ar", "ru"]).default("he"),
-  source: z.enum(["whatsapp", "web", "walk_in", "referral"]).default("web"),
+const updateGuestSchema = z.object({
+  preferences: z.record(z.unknown()).optional(),
+  tags: z.array(z.string()).optional(),
+  notes: z.string().optional(),
 });
 
 export async function guestRoutes(app: FastifyInstance) {
   // GET / — list guests
   app.get("/", async (request) => {
     const { restaurantId } = request.query as { restaurantId?: string };
-    // TODO: query guests with filters
-    return { guests: [], filters: { restaurantId } };
+    const rows = await listGuests({ restaurantId });
+    const guests = rows.map(toDomainGuest);
+    return { guests };
   });
 
   // GET /:id — guest profile
-  app.get("/:id", async (request) => {
+  app.get("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    // TODO: fetch guest with visit history
-    return { guest: null, id };
+    const row = await getGuestById(id);
+
+    if (!row) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    return { guest: toDomainGuest(row) };
   });
 
-  // POST / — create guest
-  app.post("/", async (request) => {
+  // POST / — create or find guest
+  app.post("/", async (request, reply) => {
     const body = createGuestSchema.parse(request.body);
-    // TODO: create guest, check for duplicates by phone
-    return { message: "guest created", body };
+    const row = await findOrCreateGuest(body);
+    reply.code(201);
+    return { guest: toDomainGuest(row) };
   });
 
-  // PATCH /:id — update guest
-  app.patch("/:id", async (request) => {
+  // PATCH /:id — update guest preferences
+  app.patch("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    // TODO: update guest preferences, notes, tags
-    return { message: "guest updated", id };
+    const body = updateGuestSchema.parse(request.body ?? {});
+
+    const updated = await updateGuestPreferences(id, body);
+    if (!updated) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    return { guest: toDomainGuest(updated) };
   });
 }

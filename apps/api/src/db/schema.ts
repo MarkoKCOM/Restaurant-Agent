@@ -123,9 +123,9 @@ export const reservations = pgTable("reservations", {
   guestId: uuid("guest_id")
     .notNull()
     .references(() => guests.id),
-  date: date("date").notNull(),
-  timeStart: time("time_start").notNull(),
-  timeEnd: time("time_end"),
+  date: date("date").notNull().$type<string>(),
+  timeStart: time("time_start").notNull().$type<string>(),
+  timeEnd: time("time_end").$type<string | null>(),
   partySize: integer("party_size").notNull(),
   tableIds: jsonb("table_ids").$type<string[]>(),
   status: reservationStatusEnum("status").notNull().default("pending"),
@@ -146,9 +146,9 @@ export const waitlist = pgTable("waitlist", {
   guestId: uuid("guest_id")
     .notNull()
     .references(() => guests.id),
-  date: date("date").notNull(),
-  preferredTimeStart: time("preferred_time_start").notNull(),
-  preferredTimeEnd: time("preferred_time_end").notNull(),
+  date: date("date").notNull().$type<string>(),
+  preferredTimeStart: time("preferred_time_start").notNull().$type<string>(),
+  preferredTimeEnd: time("preferred_time_end").notNull().$type<string>(),
   partySize: integer("party_size").notNull(),
   status: waitlistStatusEnum("status").notNull().default("waiting"),
   offeredAt: timestamp("offered_at"),

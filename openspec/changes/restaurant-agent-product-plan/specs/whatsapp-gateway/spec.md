@@ -47,9 +47,20 @@ The system SHALL send real-time WhatsApp notifications to the owner/manager for 
 - **WHEN** the restaurant's configured closing time arrives
 - **THEN** the system SHALL send the owner a summary: total covers, no-shows, cancellations, waitlist activity, and next day's preview
 
-### Requirement: WhatsApp Business API compliance
-The system SHALL comply with Meta's WhatsApp Business Platform policies — template messages for outbound initiation, 24-hour session window for free-form replies, opt-in requirements.
+### Requirement: Baileys connection management
+The system SHALL connect to WhatsApp via Baileys (WhatsApp Web multi-device protocol). Each restaurant SHALL have its own Baileys session with QR code pairing. The system SHALL handle reconnection, session persistence, and graceful degradation.
 
-#### Scenario: Outbound message outside session window
-- **WHEN** the system needs to contact a guest outside the 24-hour window
-- **THEN** the system SHALL use an approved template message, not a free-form message
+#### Scenario: Initial setup via QR code
+- **WHEN** a new restaurant is onboarded
+- **THEN** the system SHALL generate a QR code that the owner scans with the restaurant's WhatsApp to pair the bot
+
+#### Scenario: Session disconnected
+- **WHEN** the Baileys session drops (phone restart, network issue)
+- **THEN** the system SHALL auto-reconnect using the stored session credentials and alert the owner only if reconnection fails after 3 attempts
+
+### Requirement: Rate limiting and anti-ban
+The system SHALL enforce rate limits on outbound messages to avoid WhatsApp detection: max 30 messages/minute, randomized delays between messages, no bulk blasts. Campaign messages SHALL be sent in batches with natural spacing.
+
+#### Scenario: Campaign to 100 guests
+- **WHEN** a campaign targets 100 guests
+- **THEN** the system SHALL send messages in batches of 10-15 with 30-60 second random delays between batches

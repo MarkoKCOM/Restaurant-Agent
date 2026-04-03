@@ -43,7 +43,7 @@ Current state: greenfield — no existing codebase beyond market research.
 Backend:     Node.js + TypeScript + Fastify (lighter than NestJS for this scope)
 Database:    PostgreSQL 16 (via Drizzle ORM)
 Cache/Queue: Redis + BullMQ (job queue for async tasks)
-WhatsApp:    WhatsApp Cloud API (Meta Business Platform) — free tier: 1,000 service conversations/month
+WhatsApp:    Baileys (WhatsApp Web multi-device) — zero cost, no Meta approval needed
 Widget:      Preact (tiny bundle for embeddable widget)
 Dashboard:   React + Vite + TailwindCSS (owner-facing)
 Hosting:     Single VPS (pilot) → containerized (scale)
@@ -51,14 +51,19 @@ Hosting:     Single VPS (pilot) → containerized (scale)
 
 ### 2. WhatsApp Integration Approach
 
-**Decision:** WhatsApp Cloud API (Meta Business Platform) directly, not a third-party BSP
+**Decision:** Baileys (WhatsApp Web multi-device protocol) for MVP, migrate to WhatsApp Cloud API for scale
 
 **Rationale:**
-- Free tier includes 1,000 service-initiated conversations/month (enough for pilot)
-- Direct integration means no middleman fees (BSPs like Twilio charge $0.005-$0.05/message)
-- We control the full message flow and can optimize for our use case
-- Alternative considered: Twilio WhatsApp — simpler setup but adds $0.005-$0.05/message cost that kills our pricing model
-- Alternative considered: 360dialog — good BSP but unnecessary layer for our needs
+- **Zero cost** — no per-message fees, no Meta Business API subscription
+- **No approval process** — no Meta business verification, no template approvals, instant setup
+- **No restrictions** — send any message anytime, no 24-hour session window, no template-only outbound
+- **Simple setup** — scan QR code with the restaurant's WhatsApp, done
+- **Battle-tested** — Baileys is the most popular unofficial WhatsApp library (16k+ GitHub stars), used widely in Israel/LATAM for business bots
+- Alternative considered: WhatsApp Cloud API — official but requires business verification (2-4 weeks), template approvals, per-conversation costs, and complex onboarding. Better for scale (100+ restaurants) but overkill for MVP/pilot
+- Alternative considered: Twilio WhatsApp — $0.005-$0.05/message kills pricing model
+- **Migration path:** When we hit ~50+ restaurants or need official business features (verified badge, catalog), migrate to WhatsApp Cloud API. The agent layer abstracts the transport, so switching is a driver change, not a rewrite
+
+**Risk:** Meta can ban numbers using unofficial APIs. Mitigation: use a dedicated number per restaurant (not their personal number), implement rate limiting, avoid spam patterns. In practice, well-behaved bots on Baileys rarely get banned.
 
 ### 3. AI / LLM for Conversation
 
@@ -285,42 +290,61 @@ conversations
 └── escalated_to (nullable, owner phone)
 ```
 
-### 7. Pricing Validation
+### 7. Pricing — Tiered by Restaurant Size
 
-| | **Sable Starter** | **Sable Growth** |
-|--|--|--|
-| **Price (IL)** | ₪149/mo | ₪449/mo |
-| **Price (US)** | $39/mo | $119/mo |
-| **Annual discount** | ₪1,490/yr (save 2 months) | ₪4,490/yr (save 2 months) |
-| **Free trial** | 14 days | 14 days |
-| **Per-cover fees** | Never | Never |
-| **Seats (max)** | 80 | Unlimited |
-| **WhatsApp conversations** | 500/mo included | 2,000/mo included |
-| **Extra conversations** | ₪0.30 each | ₪0.20 each |
+Pricing scales by **seats** (total seating capacity) — simple, objective, easy to verify.
+
+#### Starter Package (Reservations + AI Bot)
+
+| Tier | Seats | Price (IL) | Price (US) |
+|------|-------|-----------|-----------|
+| **Starter S** | Up to 40 seats | ₪99/mo | $29/mo |
+| **Starter M** | Up to 80 seats | ₪149/mo | $39/mo |
+| **Starter L** | Up to 150 seats | ₪249/mo | $69/mo |
+| **Starter XL** | 150+ seats | ₪399/mo | $109/mo |
+
+#### Growth Package (Full Suite — CRM + Loyalty + Gamification + Campaigns)
+
+| Tier | Seats | Price (IL) | Price (US) |
+|------|-------|-----------|-----------|
+| **Growth S** | Up to 40 seats | ₪299/mo | $79/mo |
+| **Growth M** | Up to 80 seats | ₪449/mo | $119/mo |
+| **Growth L** | Up to 150 seats | ₪649/mo | $179/mo |
+| **Growth XL** | 150+ seats | ₪899/mo | $249/mo |
+
+#### Common Terms
+- **Annual discount:** 2 months free (pay 10, get 12)
+- **Per-cover fees:** Never
+- **Free trial:** 14 days on any tier
+- **Pilot:** Free for first restaurant (Sione's friend)
+
+#### Why seats as the limiter:
+- Easy to verify (count chairs)
+- Correlates with revenue — bigger restaurant = more value from the tool = can pay more
+- Not punitive like per-cover fees (you don't pay more for being busy)
+- Simple to understand and communicate
 
 **Cost structure per restaurant (estimated):**
-- WhatsApp Cloud API: ~$0-15/mo (1,000 free service conversations)
-- Claude API (Sonnet/Haiku): ~$5-20/mo depending on volume
+- WhatsApp (Baileys): $0/mo (zero cost)
+- Claude API (Sonnet/Haiku): ~$5-20/mo depending on conversation volume
 - Infrastructure (shared): ~$2-5/mo per restaurant at scale
-- **Total COGS: ~$10-40/mo per restaurant**
-- **Gross margin: ~65-80%**
+- **Total COGS: ~$7-25/mo per restaurant**
+- **Gross margin: ~75-90%** (significantly better with Baileys vs Cloud API)
 
 Compared to market:
 - Ontopo: Free (but no CRM/AI — not a real competitor)
 - Tabit reservations: Bundled with POS, estimated ₪300-600/mo
 - OpenTable Basic: $149/mo + $1.50/cover
 - SevenRooms: ~$499/mo+
-- **Sable Starter is the cheapest non-free option with AI capabilities**
+- **We're the cheapest AI-powered option at every tier**
 
 ## Risks / Trade-offs
 
-**[WhatsApp Business API approval] →** Meta requires business verification and can take 2-4 weeks. For pilot, we can use the test/sandbox mode first, then apply for production approval. Mitigation: start the verification process immediately.
+**[Baileys / WhatsApp ban risk] →** Meta can ban numbers using unofficial APIs. Mitigation: dedicated number per restaurant, rate limiting, no spam patterns. Well-behaved bots rarely get banned. If it becomes an issue at scale, migrate to WhatsApp Cloud API (the agent layer abstracts the transport).
 
 **[LLM cost at scale] →** If a restaurant gets 1,000+ conversations/month, Claude API costs could eat margin. Mitigation: use Haiku for classification (cheap), Sonnet only for response generation. Cache common Q&A responses. Consider fine-tuned smaller model later.
 
 **[Hebrew AI quality] →** Hebrew NLU is less mature than English in most models. Mitigation: Claude handles Hebrew well; build a test suite of common Hebrew reservation phrases to validate. Have the pilot restaurant owner test extensively.
-
-**[WhatsApp template approval] →** Template messages need Meta approval, which can be slow. Mitigation: prepare all templates early, start with generic approved templates, iterate.
 
 **[Pilot restaurant dependency] →** If the pilot restaurant isn't actively engaged, we can't validate. Mitigation: set clear expectations, provide hands-on onboarding, check in weekly.
 
@@ -329,11 +353,11 @@ Compared to market:
 ## MVP Pilot Plan
 
 ### What we need from the pilot restaurant:
-1. Restaurant name, address, hours, menu (even a photo of the physical menu)
-2. Table layout — how many tables, how many seats each
-3. Current reservation volume (how many per day/week)
-4. WhatsApp Business number (or willingness to set one up)
-5. Owner's WhatsApp for notifications
+1. Restaurant name, address, hours
+2. Menu — photo, PDF, or just tell us. Agent will learn it.
+3. Table layout — how many tables, how many seats each
+4. A phone number with WhatsApp for the bot (can be a spare SIM, ₪10/mo)
+5. Owner's personal WhatsApp for notifications
 6. Any special policies (cancellation, dress code, etc.)
 7. 30 minutes for onboarding call
 
@@ -357,9 +381,7 @@ Compared to market:
 
 ## Open Questions
 
-1. **WhatsApp Business number** — Does the pilot restaurant have one, or do we register a new one?
-2. **Menu format** — Will they provide a structured menu (spreadsheet) or do we need to OCR a physical menu?
-3. **Table layout** — Do they have a floor plan or do we create one from scratch?
-4. **Brand name validation** — Is "Sable" the final name? Need to check domain availability and trademark.
-5. **Billing for pilot** — Free during pilot? How long is the pilot period?
-6. **POS integration priority** — If the pilot restaurant uses Tabit, should we consider basic POS integration earlier?
+1. **Brand name** — "Sable" is placeholder. Need to brainstorm and pick final name, then secure domain.
+2. **Pilot restaurant details** — Need the info listed above from Sione's friend.
+3. **POS integration priority** — If the pilot restaurant uses Tabit, should we consider basic POS integration earlier?
+4. **Dedicated phone number** — Does the friend have a spare SIM for the bot, or do we get one?

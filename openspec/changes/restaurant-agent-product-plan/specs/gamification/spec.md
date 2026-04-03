@@ -39,3 +39,57 @@ The system SHALL prompt guests to share achievements, tier promotions, and compl
 #### Scenario: Guest promoted to Gold tier
 - **WHEN** a guest reaches Gold tier
 - **THEN** the system SHALL offer a shareable branded image/story template celebrating their VIP status
+
+### Requirement: Lucky spin / surprise rewards
+The system SHALL support a configurable "lucky spin" mechanic — after every Nth visit (configurable, default: every 5th), the guest gets a random reward from a prize pool defined by the owner. Creates excitement and unpredictability.
+
+#### Scenario: Guest triggers lucky spin on 5th visit
+- **WHEN** a guest completes their 5th visit (or 10th, 15th, etc.)
+- **THEN** the system SHALL randomly select a reward from the prize pool and send a WhatsApp message: "You won a surprise! 🎰 [reward name] — show this to your server next time"
+
+#### Scenario: Owner configures prize pool
+- **WHEN** the owner defines prizes: "Free dessert (40%), Free drink (30%), 20% off next visit (20%), Free meal for 2 (10%)"
+- **THEN** the system SHALL weight random selection according to the configured probabilities
+
+### Requirement: Group dining rewards
+The system SHALL award bonus points or rewards when a guest brings a large party (configurable threshold, default: 6+). Incentivizes group bookings which are higher revenue.
+
+#### Scenario: Guest books party of 8
+- **WHEN** a guest makes and completes a reservation for 8 people
+- **THEN** the system SHALL award bonus "host" points (e.g., 3x normal) and send a thank-you message acknowledging them as a great host
+
+### Requirement: Menu exploration badges
+The system SHALL track which menu categories a guest has tried and award badges for exploring the menu. Encourages guests to try new items.
+
+#### Scenario: Guest tries all appetizers
+- **WHEN** a guest's visit history (via manual staff input or POS data) shows they've ordered from every appetizer category
+- **THEN** the system SHALL award the "Appetizer Explorer" badge and bonus points
+
+#### Scenario: Guest checks their badges
+- **WHEN** a guest asks "what badges do I have?" via WhatsApp
+- **THEN** the system SHALL list all earned badges and show progress toward incomplete ones
+
+### Requirement: Happy hour / off-peak gamification
+The system SHALL support time-based bonus multipliers — extra points for visits during slow periods (e.g., Tuesday lunch, early dinner). Helps fill empty tables.
+
+#### Scenario: Guest visits during off-peak
+- **WHEN** a guest completes a visit during a configured off-peak window (e.g., Tuesday 12:00-15:00)
+- **THEN** the system SHALL award double points and notify the guest: "Off-peak bonus! You earned 2x points today 🔥"
+
+### Requirement: Birthday week challenge
+The system SHALL automatically create a special birthday challenge for each guest — visit during your birthday week and earn a special reward + bonus points.
+
+#### Scenario: Guest's birthday week starts
+- **WHEN** it is 7 days before a guest's birthday
+- **THEN** the system SHALL send a WhatsApp message: "Your birthday week challenge is live! Visit us this week for [special reward] + 3x points"
+
+### Requirement: Leaderboard (opt-in)
+The system SHALL support an optional monthly leaderboard showing top guests by points earned. Guests SHALL opt-in to appear on the leaderboard. Top 3 guests each month SHALL earn bonus rewards.
+
+#### Scenario: Guest opts into leaderboard
+- **WHEN** a guest asks to join the leaderboard
+- **THEN** the system SHALL add them and show their current ranking
+
+#### Scenario: Monthly leaderboard winner
+- **WHEN** the month ends and the top 3 guests are determined
+- **THEN** the system SHALL notify winners with their rewards and send a monthly leaderboard summary to all opted-in guests

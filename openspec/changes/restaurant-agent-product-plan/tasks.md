@@ -8,15 +8,16 @@
 - [ ] 1.6 Configure environment variables (.env) — database URL, Redis, WhatsApp credentials, Claude API key
 - [ ] 1.7 Set up project linting (ESLint + Prettier) and basic CI
 
-## 2. WhatsApp Gateway
+## 2. WhatsApp Gateway (Baileys)
 
-- [ ] 2.1 Register WhatsApp Cloud API app on Meta Business Platform and configure webhook
-- [ ] 2.2 Implement webhook endpoint to receive and verify inbound WhatsApp messages
-- [ ] 2.3 Implement outbound message sender — template messages and session replies
+- [ ] 2.1 Set up Baileys multi-device connection — QR code pairing flow, session persistence to file/Redis
+- [ ] 2.2 Implement inbound message handler — receive text, images, documents, voice notes
+- [ ] 2.3 Implement outbound message sender — text, images, buttons, lists
 - [ ] 2.4 Implement language detection from inbound messages (Hebrew, English, Arabic, Russian)
-- [ ] 2.5 Create WhatsApp message templates and submit for Meta approval: reservation confirmation, reminder, cancellation, daily summary, thank-you, review prompt, loyalty update, campaign
+- [ ] 2.5 Implement auto-reconnection logic — retry on disconnect, alert owner after 3 failed attempts
 - [ ] 2.6 Implement conversation context store in Redis (24-hour TTL per guest thread)
 - [ ] 2.7 Implement media handling — receive and store images/documents attached to guest profiles
+- [ ] 2.8 Implement rate limiting — max 30 msgs/min, randomized delays, batch sending for campaigns
 
 ## 3. Restaurant Agent Core
 
@@ -80,6 +81,12 @@
 - [ ] 8.2 Implement challenges — owner creates time-limited challenges, track progress per guest, award on completion
 - [ ] 8.3 Implement achievements — permanent badges (first visit, 10th visit, tried tasting menu, etc.)
 - [ ] 8.4 Implement social sharing templates — branded images for tier promotions, challenge completions, streak milestones
+- [ ] 8.5 Implement lucky spin — configurable prize pool with weighted probabilities, trigger every Nth visit, WhatsApp reward delivery
+- [ ] 8.6 Implement group dining rewards — bonus "host" points for parties above threshold (default: 6+)
+- [ ] 8.7 Implement menu exploration badges — track categories tried, award badges for exploration milestones
+- [ ] 8.8 Implement off-peak bonus multipliers — configurable time windows with 2x/3x point multipliers
+- [ ] 8.9 Implement birthday week challenge — auto-created 7 days before birthday, special reward + bonus points
+- [ ] 8.10 Implement opt-in leaderboard — monthly rankings, top 3 rewards, WhatsApp summary to participants
 
 ## 9. Engagement Automation (Growth)
 
@@ -116,8 +123,9 @@
 - [ ] 12.1 Implement row-level security (RLS) policies on all tables for tenant isolation
 - [ ] 12.2 Implement package enforcement middleware — check restaurant package before allowing Growth-only endpoints
 - [ ] 12.3 Implement restaurant onboarding wizard — step-by-step config: details, tables, hours, menu upload, agent personality, WhatsApp setup
-- [ ] 12.4 Implement billing integration — PayPlus (Israel) and Stripe (international), monthly subscription, package upgrade/downgrade
-- [ ] 12.5 Build central admin console — restaurant list, status, usage, billing, support
+- [ ] 12.4 Implement seat-based tier enforcement — S/M/L/XL tiers, validate seat count against package limits
+- [ ] 12.5 Implement billing integration — PayPlus (Israel) and Stripe (international), monthly subscription, tier upgrade/downgrade
+- [ ] 12.6 Build central admin console — restaurant list, status, usage, billing, support
 
 ## 13. Pilot Deployment
 

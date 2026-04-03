@@ -14,9 +14,8 @@ The name combines "table" with a nod to hospitality — works in English, sounds
 
 ### Two Packages
 
-**Sable Starter — ₪149/month ($39/month)**
-- For small restaurants up to 80 seats
-- WhatsApp reservation bot (Hebrew, English, Arabic)
+**Sable Starter** (Reservations + AI Bot)
+- WhatsApp reservation bot via Baileys (Hebrew, English, Arabic)
 - Embeddable web booking widget
 - Table map and capacity management
 - Automated confirmations, reminders, modifications
@@ -25,18 +24,34 @@ The name combines "table" with a nod to hospitality — works in English, sounds
 - Daily summary to owner via WhatsApp
 - 14-day free trial, no per-cover fees ever
 
-**Sable Growth — ₪449/month ($119/month)**
+| Tier | Seats | IL Price | US Price |
+|------|-------|----------|----------|
+| S | Up to 40 | ₪99/mo | $29/mo |
+| M | Up to 80 | ₪149/mo | $39/mo |
+| L | Up to 150 | ₪249/mo | $69/mo |
+| XL | 150+ | ₪399/mo | $109/mo |
+
+**Sable Growth** (Full Suite — CRM + Loyalty + Gamification + Campaigns)
 - Everything in Starter
 - Full guest CRM — profiles, visit history, preferences, spend
 - Post-visit engagement — automated thank-you, review requests, personalized offers
 - Loyalty program — digital stamp cards, points, rewards
-- Gamification — visit streaks, referral rewards, VIP tiers (Bronze → Silver → Gold)
+- Gamification — visit streaks, referral rewards, VIP tiers, lucky spin, group rewards, menu badges, off-peak bonuses, birthday challenges, leaderboard
 - Customer segmentation and targeted WhatsApp campaigns
 - Birthday/anniversary auto-messages
 - Review interception — prompt happy guests for Google reviews, route complaints to owner
 - Analytics dashboard — retention rate, CLV, visit frequency, campaign ROI
-- Multi-channel intake (WhatsApp + web + Instagram DM + phone)
+- Multi-channel intake (WhatsApp + web + phone)
 - 14-day free trial
+
+| Tier | Seats | IL Price | US Price |
+|------|-------|----------|----------|
+| S | Up to 40 | ₪299/mo | $79/mo |
+| M | Up to 80 | ₪449/mo | $119/mo |
+| L | Up to 150 | ₪649/mo | $179/mo |
+| XL | 150+ | ₪899/mo | $249/mo |
+
+**Pilot restaurant: FREE** (Sione's friend — used to build and validate the MVP)
 
 ### Main Restaurant Agent
 Each restaurant gets its own AI agent instance powered by the Sable platform. The agent:
@@ -51,7 +66,7 @@ Each restaurant gets its own AI agent instance powered by the Sable platform. Th
 
 ### New Capabilities
 - `reservation-engine`: Core reservation management — booking, modification, cancellation, table assignment, capacity management, waitlist, no-show tracking
-- `whatsapp-gateway`: WhatsApp Business API integration — inbound/outbound messaging, bot conversations, media handling, template messages, multilingual support
+- `whatsapp-gateway`: WhatsApp integration via Baileys — inbound/outbound messaging, bot conversations, media handling, multilingual support, QR pairing, anti-ban rate limiting
 - `web-booking-widget`: Embeddable web widget for restaurant websites — real-time availability, booking form, confirmation flow
 - `guest-crm`: Guest database and profiles — contact info, visit history, preferences, spend tracking, notes, segmentation, tagging
 - `loyalty-engine`: Points/stamps system, reward tiers (Bronze/Silver/Gold), streak tracking, referral codes, reward redemption

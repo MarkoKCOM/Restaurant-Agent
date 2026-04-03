@@ -1,0 +1,21 @@
+{
+  "name": "sable",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "type-check": "turbo type-check",
+    "db:generate": "pnpm --filter @sable/api db:generate",
+    "db:migrate": "pnpm --filter @sable/api db:migrate",
+    "db:seed": "pnpm --filter @sable/api db:seed"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.0"
+  },
+  "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": ">=22"
+  }
+}

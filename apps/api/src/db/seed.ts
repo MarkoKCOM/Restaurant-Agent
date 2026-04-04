@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { and, eq } from "drizzle-orm";
 import { db } from "./index.js";
-import { guests, restaurants, tables } from "./schema.js";
+import { guests, reservations, restaurants, tables } from "./schema.js";
 
 async function seedBffRaanana() {
   // 1) Restaurant
@@ -126,6 +126,120 @@ async function seedBffRaanana() {
         source: "web",
       });
     }
+  }
+
+  // 4) Seed reservations for today and tomorrow
+  const today = new Date();
+  const tomorrow = new Date();
+  tomorrow.setDate(today.getDate() + 1);
+  const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
+
+  const allGuests = await db
+    .select()
+    .from(guests)
+    .where(eq(guests.restaurantId, restaurantId));
+
+  const allTables = await db
+    .select()
+    .from(tables)
+    .where(eq(tables.restaurantId, restaurantId));
+
+  const existingReservations = await db
+    .select()
+    .from(reservations)
+    .where(eq(reservations.restaurantId, restaurantId));
+
+  if (existingReservations.length === 0 && allGuests.length > 0 && allTables.length > 0) {
+    const reservationSeeds = [
+      // Today
+      {
+        guestIdx: 0,
+        tableIdx: 0,
+        date: toDateStr(today),
+        timeStart: "18:00",
+        timeEnd: "20:00",
+        partySize: 2,
+        status: "confirmed" as const,
+      },
+      {
+        guestIdx: 1,
+        tableIdx: 2,
+        date: toDateStr(today),
+        timeStart: "19:00",
+        timeEnd: "21:00",
+        partySize: 4,
+        status: "confirmed" as const,
+      },
+      {
+        guestIdx: 2,
+        tableIdx: 5,
+        date: toDateStr(today),
+        timeStart: "20:00",
+        timeEnd: "22:00",
+        partySize: 6,
+        status: "pending" as const,
+      },
+      {
+        guestIdx: 0,
+        tableIdx: 4,
+        date: toDateStr(today),
+        timeStart: "20:30",
+        timeEnd: "22:30",
+        partySize: 4,
+        status: "seated" as const,
+      },
+      {
+        guestIdx: 1,
+        tableIdx: 1,
+        date: toDateStr(today),
+        timeStart: "21:00",
+        timeEnd: "23:00",
+        partySize: 2,
+        status: "confirmed" as const,
+      },
+      // Tomorrow
+      {
+        guestIdx: 2,
+        tableIdx: 7,
+        date: toDateStr(tomorrow),
+        timeStart: "18:30",
+        timeEnd: "20:30",
+        partySize: 8,
+        status: "confirmed" as const,
+      },
+      {
+        guestIdx: 0,
+        tableIdx: 3,
+        date: toDateStr(tomorrow),
+        timeStart: "19:30",
+        timeEnd: "21:30",
+        partySize: 3,
+        status: "pending" as const,
+      },
+      {
+        guestIdx: 1,
+        tableIdx: 6,
+        date: toDateStr(tomorrow),
+        timeStart: "20:00",
+        timeEnd: "22:00",
+        partySize: 5,
+        status: "confirmed" as const,
+      },
+    ];
+
+    await db.insert(reservations).values(
+      reservationSeeds.map((r) => ({
+        restaurantId,
+        guestId: allGuests[r.guestIdx].id,
+        date: r.date,
+        timeStart: r.timeStart,
+        timeEnd: r.timeEnd,
+        partySize: r.partySize,
+        tableIds: [allTables[r.tableIdx].id],
+        status: r.status,
+        source: "web" as const,
+      })),
+    );
   }
 
   return restaurantId;

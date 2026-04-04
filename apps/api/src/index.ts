@@ -12,6 +12,7 @@ await app.register(cors, { origin: env.CORS_ORIGIN });
 
 // Health check
 app.get("/health", async () => ({ status: "ok", timestamp: new Date().toISOString() }));
+app.get("/api/v1/health", async () => ({ status: "ok", timestamp: new Date().toISOString() }));
 
 // API routes
 await app.register(reservationRoutes, { prefix: "/api/v1/reservations" });

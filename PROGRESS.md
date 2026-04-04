@@ -33,11 +33,33 @@
 - [x] Guest profiles — detail page with visit history (last 20 reservations), clickable rows
 - [x] No-show button on reservation actions (confirmed/seated)
 
-### Next (Sprint 3 / Phase 1b)
-- [ ] End-to-end test — widget booking → API → shows in dashboard
-- [ ] Waitlist auto-match
-- [ ] Baileys WhatsApp integration — session manager, message router
-- [ ] AI agent loop — classify intent → tool call → respond
+### Sprint 3a — Completed (Claude Code)
+- [x] JWT authentication on all API routes (fastify-plugin, global hook)
+- [x] Login endpoint POST /api/v1/auth/login + admin user seeded
+- [x] Settings hours editor — editable per-day time inputs with save
+- [x] Settings table editor — add/edit/delete tables inline
+- [x] Reservation detail panel — slide-over with full edit form
+- [x] Widget branding — fetches widgetConfig, applies primaryColor/logo/welcomeText
+- [x] Widget phone validation — Israeli format (0xx / +972)
+- [x] Past-date rejection on createReservation (Asia/Jerusalem)
+- [x] Marketing site rebuilt — bilingual HE/EN, launch offer, updated pricing
+- [x] PACKAGES.md — full pricing/features/add-ons reference
+- [x] ROADMAP.md updated to reflect actual state
+- [x] OpenSpec sprint-3-pilot-ready change with 6 specs
+
+### Sprint 3b — In Progress (Jake / OpenClaw)
+- [ ] Waitlist service + routes + auto-match on cancellation
+- [ ] Guest preference editor in dashboard
+- [ ] Guest auto-tagging by visit count
+- [ ] WhatsApp session manager skeleton (Baileys)
+- [ ] WhatsApp handler stub + sender + admin routes
+- [ ] End-to-end test flow
+
+### Still Needed for Pilot Launch
+- [ ] Dashboard login page + auth wrapper (redirect to /login if no JWT)
+- [ ] SSL/HTTPS (needs domain pointed to VPS)
+- [ ] Real BFF Ra'anana data (actual hours, table layout, menu)
+- [ ] 1-week soft launch test with owner
 
 ## 2026-04-03 (Evening)
 

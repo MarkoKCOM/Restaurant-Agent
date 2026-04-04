@@ -155,6 +155,25 @@ export function useMarkNoShow() {
   });
 }
 
+// --- Reservations: Cancel ---
+
+export function useCancelReservation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${API}/reservations/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reservations"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
 // --- Tables ---
 
 export function useTables(restaurantId: string | undefined) {
@@ -163,5 +182,69 @@ export function useTables(restaurantId: string | undefined) {
     queryFn: () =>
       fetchJSON(`${API}/restaurants/${restaurantId}/tables`),
     enabled: !!restaurantId,
+  });
+}
+
+export function useCreateTable() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      restaurantId: string;
+      name: string;
+      minSeats: number;
+      maxSeats: number;
+      zone?: string;
+    }) => {
+      const res = await fetch(`${API}/tables`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["tables", variables.restaurantId] });
+    },
+  });
+}
+
+export function useUpdateTable() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<Table>;
+    }) => {
+      const res = await fetch(`${API}/tables/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tables"] });
+    },
+  });
+}
+
+export function useDeleteTable() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${API}/tables/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tables"] });
+    },
   });
 }

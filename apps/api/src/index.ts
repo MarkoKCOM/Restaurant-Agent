@@ -1,6 +1,8 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { env } from "./env.js";
+import { authMiddleware } from "./middleware/auth.js";
+import { authRoutes } from "./routes/auth.js";
 import { reservationRoutes } from "./routes/reservations.js";
 import { guestRoutes } from "./routes/guests.js";
 import { tableRoutes } from "./routes/tables.js";
@@ -10,11 +12,15 @@ const app = Fastify({ logger: true });
 
 await app.register(cors, { origin: env.CORS_ORIGIN });
 
+// Auth middleware (runs before all routes)
+await app.register(authMiddleware);
+
 // Health check
 app.get("/health", async () => ({ status: "ok", timestamp: new Date().toISOString() }));
 app.get("/api/v1/health", async () => ({ status: "ok", timestamp: new Date().toISOString() }));
 
 // API routes
+await app.register(authRoutes, { prefix: "/api/v1/auth" });
 await app.register(reservationRoutes, { prefix: "/api/v1/reservations" });
 await app.register(guestRoutes, { prefix: "/api/v1/guests" });
 await app.register(tableRoutes, { prefix: "/api/v1/tables" });

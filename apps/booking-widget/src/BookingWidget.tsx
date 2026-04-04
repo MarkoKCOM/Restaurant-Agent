@@ -11,7 +11,24 @@ interface AvailabilitySlot {
   maxPartySize: number;
 }
 
+interface WidgetConfig {
+  primaryColor?: string;
+  logo?: string;
+  welcomeText?: string;
+}
+
 type Step = "date" | "time" | "details" | "confirm";
+
+function isValidIsraeliPhone(phone: string): boolean {
+  const digits = phone.replace(/[\s\-()]/g, "");
+  if (digits.startsWith("+972")) {
+    return /^\+972\d{8,9}$/.test(digits);
+  }
+  if (digits.startsWith("0")) {
+    return /^0\d{9}$/.test(digits);
+  }
+  return false;
+}
 
 export function BookingWidget({ restaurantId, apiUrl }: Props) {
   const [step, setStep] = useState<Step>("date");
@@ -20,16 +37,36 @@ export function BookingWidget({ restaurantId, apiUrl }: Props) {
   const [partySize, setPartySize] = useState(2);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
 
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  const [widgetConfig, setWidgetConfig] = useState<WidgetConfig>({});
+
   const baseUrl =
     apiUrl ||
     (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_WIDGET_API_URL) ||
     window.location.origin;
+
+  const accentColor = widgetConfig.primaryColor || "#d97706";
+  const headerText = widgetConfig.welcomeText || "הזמנת שולחן";
+
+  // Fetch restaurant branding on mount
+  useEffect(() => {
+    fetch(`${baseUrl}/api/v1/restaurants/${restaurantId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.widgetConfig) {
+          setWidgetConfig(data.widgetConfig as WidgetConfig);
+        }
+      })
+      .catch(() => {
+        // Silently fall back to defaults
+      });
+  }, [restaurantId, baseUrl]);
 
   // Fetch availability when entering the time step
   useEffect(() => {
@@ -89,7 +126,12 @@ export function BookingWidget({ restaurantId, apiUrl }: Props) {
 
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", maxWidth: 400, margin: "0 auto", padding: 24 }}>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>הזמנת שולחן</h2>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+        {widgetConfig.logo && (
+          <img src={widgetConfig.logo} alt="" style={{ height: 32, width: 32, objectFit: "contain", borderRadius: 4 }} />
+        )}
+        <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{headerText}</h2>
+      </div>
 
       {error && (
         <div style={{ padding: 8, marginBottom: 12, borderRadius: 8, background: "#fef2f2", color: "#b91c1c", fontSize: 13 }}>
@@ -119,7 +161,7 @@ export function BookingWidget({ restaurantId, apiUrl }: Props) {
           </select>
           <button
             onClick={() => date && setStep("time")}
-            style={{ marginTop: 16, width: "100%", padding: 12, background: "#d97706", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}
+            style={{ marginTop: 16, width: "100%", padding: 12, background: accentColor, color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}
           >
             המשך
           </button>
@@ -146,7 +188,7 @@ export function BookingWidget({ restaurantId, apiUrl }: Props) {
                     padding: "10px 4px",
                     borderRadius: 8,
                     border: "1px solid #e5e7eb",
-                    background: time === slot.time ? "#d97706" : "#fff",
+                    background: time === slot.time ? accentColor : "#fff",
                     color: time === slot.time ? "#fff" : "#374151",
                     fontWeight: 600,
                     cursor: "pointer",
@@ -183,17 +225,35 @@ export function BookingWidget({ restaurantId, apiUrl }: Props) {
           <input
             type="tel"
             value={phone}
-            onInput={(e) => setPhone((e.target as HTMLInputElement).value)}
-            style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #ccc" }}
+            onInput={(e) => {
+              const val = (e.target as HTMLInputElement).value;
+              setPhone(val);
+              if (phoneError) setPhoneError("");
+            }}
+            onBlur={() => {
+              if (phone && !isValidIsraeliPhone(phone)) {
+                setPhoneError("מספר טלפון לא תקין (נא להזין מספר ישראלי)");
+              }
+            }}
+            style={{ width: "100%", padding: 8, borderRadius: 8, border: `1px solid ${phoneError ? "#b91c1c" : "#ccc"}` }}
           />
+          {phoneError && (
+            <p style={{ color: "#b91c1c", fontSize: 12, margin: "4px 0 0" }}>{phoneError}</p>
+          )}
           <button
-            onClick={handleSubmit}
+            onClick={() => {
+              if (!isValidIsraeliPhone(phone)) {
+                setPhoneError("מספר טלפון לא תקין (נא להזין מספר ישראלי)");
+                return;
+              }
+              handleSubmit();
+            }}
             disabled={!name || !phone || submitting}
             style={{
               marginTop: 16,
               width: "100%",
               padding: 12,
-              background: submitting ? "#9ca3af" : "#d97706",
+              background: submitting ? "#9ca3af" : accentColor,
               color: "#fff",
               border: "none",
               borderRadius: 8,

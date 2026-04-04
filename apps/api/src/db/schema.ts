@@ -76,6 +76,17 @@ export const restaurants = pgTable("restaurants", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const adminUsers = pgTable("admin_users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  restaurantId: uuid("restaurant_id")
+    .notNull()
+    .references(() => restaurants.id),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const tables = pgTable("tables", {
   id: uuid("id").primaryKey().defaultRandom(),
   restaurantId: uuid("restaurant_id")

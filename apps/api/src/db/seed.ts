@@ -1,7 +1,9 @@
 import "dotenv/config";
 import { and, eq } from "drizzle-orm";
+import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import { db } from "./index.js";
-import { guests, reservations, restaurants, tables } from "./schema.js";
+import { adminUsers, guests, reservations, restaurants, tables } from "./schema.js";
 
 async function seedBffRaanana() {
   // 1) Restaurant
@@ -240,6 +242,34 @@ async function seedBffRaanana() {
         source: "web" as const,
       })),
     );
+  }
+
+  // 5) Admin user
+  const adminEmail = "admin@bff.co.il";
+  const [existingAdmin] = await db
+    .select()
+    .from(adminUsers)
+    .where(eq(adminUsers.email, adminEmail))
+    .limit(1);
+
+  if (!existingAdmin) {
+    const randomPassword = crypto.randomBytes(16).toString("hex");
+    const passwordHash = await bcrypt.hash(randomPassword, 10);
+
+    await db.insert(adminUsers).values({
+      restaurantId,
+      email: adminEmail,
+      passwordHash,
+      name: "BFF Admin",
+    });
+
+    console.log("=".repeat(50));
+    console.log("Admin user created:");
+    console.log(`  Email:    ${adminEmail}`);
+    console.log(`  Password: ${randomPassword}`);
+    console.log("=".repeat(50));
+  } else {
+    console.log("Admin user already exists:", adminEmail);
   }
 
   return restaurantId;

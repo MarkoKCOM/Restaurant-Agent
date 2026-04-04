@@ -182,6 +182,20 @@ export async function checkAvailability(
 export async function createReservation(
   input: CreateReservationInput,
 ): Promise<DomainReservation> {
+  // Reject dates in the past (Asia/Jerusalem timezone)
+  const nowInJerusalem = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }),
+  );
+  const todayStr = [
+    nowInJerusalem.getFullYear(),
+    String(nowInJerusalem.getMonth() + 1).padStart(2, "0"),
+    String(nowInJerusalem.getDate()).padStart(2, "0"),
+  ].join("-");
+
+  if (input.date < todayStr) {
+    throw new Error("Cannot create a reservation for a date in the past");
+  }
+
   // Operating hours enforcement
   const [restaurant] = await db
     .select()

@@ -258,6 +258,44 @@ export const challenges = pgTable("challenges", {
   isActive: boolean("is_active").notNull().default(true),
 });
 
+export const feedbackChannelEnum = pgEnum("feedback_channel", [
+  "whatsapp",
+  "web",
+  "sms",
+]);
+
+export const visitLogs = pgTable("visit_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  restaurantId: uuid("restaurant_id")
+    .notNull()
+    .references(() => restaurants.id),
+  guestId: uuid("guest_id")
+    .notNull()
+    .references(() => guests.id),
+  reservationId: uuid("reservation_id").references(() => reservations.id),
+  date: date("date").notNull().$type<string>(),
+  partySize: integer("party_size"),
+  items: jsonb("items").$type<
+    Array<{ name: string; category: string; price?: number; rating?: number }>
+  >(),
+  totalSpend: integer("total_spend"),
+  feedback: text("feedback"),
+  rating: integer("rating"),
+  sentiment: text("sentiment"),
+  staffNotes: text("staff_notes"),
+  occasion: text("occasion"),
+  dietaryNotes: jsonb("dietary_notes").$type<{
+    vegetarian?: boolean;
+    vegan?: boolean;
+    glutenFree?: boolean;
+    allergies?: string[];
+    kosher?: string;
+    other?: string;
+  }>(),
+  channel: feedbackChannelEnum("channel"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const challengeProgress = pgTable("challenge_progress", {
   id: uuid("id").primaryKey().defaultRandom(),
   challengeId: uuid("challenge_id")

@@ -8,7 +8,10 @@ import {
   listGuests,
   toDomainGuest,
   updateGuestPreferences,
+  getFullGuestProfile,
+  autoTagGuest,
 } from "../services/guest.service.js";
+import { getGuestSentimentHistory } from "../services/feedback.service.js";
 import { db } from "../db/index.js";
 import { reservations } from "../db/schema.js";
 
@@ -60,6 +63,39 @@ export async function guestRoutes(app: FastifyInstance) {
     const row = await findOrCreateGuest(body);
     reply.code(201);
     return { guest: toDomainGuest(row) };
+  });
+
+  // GET /:id/full-profile — mega profile for WhatsApp bot
+  app.get("/:id/full-profile", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const profile = await getFullGuestProfile(id);
+
+    if (!profile) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    return { profile };
+  });
+
+  // GET /:id/sentiment — sentiment history
+  app.get("/:id/sentiment", async (request) => {
+    const { id } = request.params as { id: string };
+    const history = await getGuestSentimentHistory(id);
+    return { history };
+  });
+
+  // POST /:id/auto-tag — recalculate and apply auto tags
+  app.post("/:id/auto-tag", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const tags = await autoTagGuest(id);
+
+    if (!tags) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    return { tags };
   });
 
   // PATCH /:id — update guest preferences

@@ -1,0 +1,165 @@
+import type { FastifyInstance } from "fastify";
+import {
+  generateReferralCode,
+  applyReferral,
+  getReferralStats,
+} from "../services/referral.service.js";
+import {
+  createChallenge,
+  listActiveChallenges,
+  getGuestActiveChallenges,
+  incrementChallengeProgress,
+  getStreak,
+} from "../services/challenge.service.js";
+
+export async function gamificationRoutes(app: FastifyInstance) {
+  // ── Referrals ─────────────────────────────────────────
+
+  // POST /:guestId/referral-code — generate referral code
+  app.post("/:guestId/referral-code", async (request, reply) => {
+    const { guestId } = request.params as { guestId: string };
+
+    try {
+      const code = await generateReferralCode(guestId);
+      return { referralCode: code };
+    } catch (err: any) {
+      reply.code(400);
+      return { error: err.message };
+    }
+  });
+
+  // POST /apply-referral — apply a referral code
+  app.post("/apply-referral", async (request, reply) => {
+    const { guestId, referralCode } = request.body as {
+      guestId: string;
+      referralCode: string;
+    };
+
+    if (!guestId || !referralCode) {
+      reply.code(400);
+      return { error: "guestId and referralCode are required" };
+    }
+
+    try {
+      const result = await applyReferral(guestId, referralCode);
+      return {
+        success: true,
+        referrerId: result.referrerId,
+        referrerName: result.referrerName,
+        pointsAwarded: { referrer: 50, newGuest: 25 },
+      };
+    } catch (err: any) {
+      reply.code(400);
+      return { error: err.message };
+    }
+  });
+
+  // GET /:guestId/referral-stats — referral stats
+  app.get("/:guestId/referral-stats", async (request, reply) => {
+    const { guestId } = request.params as { guestId: string };
+
+    try {
+      const stats = await getReferralStats(guestId);
+      return stats;
+    } catch (err: any) {
+      reply.code(400);
+      return { error: err.message };
+    }
+  });
+
+  // ── Challenges ────────────────────────────────────────
+
+  // GET /challenges?restaurantId=X — list active challenges
+  app.get("/challenges", async (request, reply) => {
+    const { restaurantId } = request.query as { restaurantId?: string };
+
+    if (!restaurantId) {
+      reply.code(400);
+      return { error: "restaurantId query parameter is required" };
+    }
+
+    const activeChallenges = await listActiveChallenges(restaurantId);
+    return { challenges: activeChallenges };
+  });
+
+  // POST /challenges — create a challenge
+  app.post("/challenges", async (request, reply) => {
+    const body = request.body as {
+      restaurantId: string;
+      name: string;
+      description?: string;
+      type: string;
+      target: number;
+      reward: number;
+      startDate?: string;
+      endDate?: string;
+    };
+
+    if (!body.restaurantId || !body.name || !body.type || !body.target || !body.reward) {
+      reply.code(400);
+      return { error: "restaurantId, name, type, target, and reward are required" };
+    }
+
+    try {
+      const challenge = await createChallenge(body);
+      reply.code(201);
+      return { challenge };
+    } catch (err: any) {
+      reply.code(400);
+      return { error: err.message };
+    }
+  });
+
+  // GET /:guestId/challenges — guest's challenges with progress
+  app.get("/:guestId/challenges", async (request, reply) => {
+    const { guestId } = request.params as { guestId: string };
+    const { restaurantId } = request.query as { restaurantId?: string };
+
+    if (!restaurantId) {
+      reply.code(400);
+      return { error: "restaurantId query parameter is required" };
+    }
+
+    try {
+      const challengesWithProgress = await getGuestActiveChallenges(
+        guestId,
+        restaurantId,
+      );
+      return { challenges: challengesWithProgress };
+    } catch (err: any) {
+      reply.code(400);
+      return { error: err.message };
+    }
+  });
+
+  // POST /:guestId/challenges/:challengeId/increment — increment progress
+  app.post("/:guestId/challenges/:challengeId/increment", async (request, reply) => {
+    const { guestId, challengeId } = request.params as {
+      guestId: string;
+      challengeId: string;
+    };
+
+    try {
+      const result = await incrementChallengeProgress(guestId, challengeId);
+      return result;
+    } catch (err: any) {
+      reply.code(400);
+      return { error: err.message };
+    }
+  });
+
+  // ── Streak ────────────────────────────────────────────
+
+  // GET /:guestId/streak — streak info
+  app.get("/:guestId/streak", async (request, reply) => {
+    const { guestId } = request.params as { guestId: string };
+
+    try {
+      const streak = await getStreak(guestId);
+      return streak;
+    } catch (err: any) {
+      reply.code(400);
+      return { error: err.message };
+    }
+  });
+}

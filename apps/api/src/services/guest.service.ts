@@ -1,8 +1,10 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, desc } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { guests } from "../db/schema.js";
+import { guests, visitLogs, reservations, challengeProgress, challenges } from "../db/schema.js";
 import type { CreateGuestInput, Guest as DomainGuest } from "@sable/domain";
+import { getVisitHistory, getGuestInsights, getGuestDietaryProfile } from "./visit.service.js";
+import { getGuestSentimentHistory } from "./feedback.service.js";
 
 export type GuestRow = InferSelectModel<typeof guests>;
 
@@ -120,4 +122,139 @@ export async function updateGuestPreferences(
 
   const [updated] = await db.update(guests).set(update).where(eq(guests.id, id)).returning();
   return updated ?? null;
+}
+
+// ── Full Guest Profile (for WhatsApp bot context) ─────
+
+export async function getFullGuestProfile(guestId: string) {
+  const guest = await getGuestById(guestId);
+  if (!guest) return null;
+
+  const [visitHistory, insights, dietaryProfile, sentimentHistory] = await Promise.all([
+    getVisitHistory(guestId, 20),
+    getGuestInsights(guestId),
+    getGuestDietaryProfile(guestId),
+    getGuestSentimentHistory(guestId),
+  ]);
+
+  // Get active challenges progress
+  const guestChallenges = await db
+    .select({
+      challengeName: challenges.name,
+      challengeType: challenges.type,
+      targetValue: challenges.targetValue,
+      currentValue: challengeProgress.currentValue,
+      status: challengeProgress.status,
+      completedAt: challengeProgress.completedAt,
+    })
+    .from(challengeProgress)
+    .innerJoin(challenges, eq(challengeProgress.challengeId, challenges.id))
+    .where(eq(challengeProgress.guestId, guestId));
+
+  // Compute loyalty status
+  const loyaltyStatus = {
+    tier: guest.tier ?? "bronze",
+    pointsBalance: guest.pointsBalance,
+    visitCount: guest.visitCount,
+    noShowCount: guest.noShowCount,
+  };
+
+  // Compute visit streak (consecutive weeks with visits)
+  let streak = 0;
+  if (visitHistory.length > 0) {
+    const now = new Date();
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    let weekStart = new Date(now.getTime() - weekMs);
+    for (let i = 0; i < 52; i++) {
+      const weekEnd = new Date(weekStart.getTime() + weekMs);
+      const hasVisit = visitHistory.some((v) => {
+        const vDate = new Date(v.date);
+        return vDate >= weekStart && vDate < weekEnd;
+      });
+      if (hasVisit) {
+        streak++;
+        weekStart = new Date(weekStart.getTime() - weekMs);
+      } else {
+        break;
+      }
+    }
+  }
+
+  return {
+    guest: toDomainGuest(guest),
+    visitHistory,
+    insights,
+    dietaryProfile,
+    sentimentHistory,
+    loyaltyStatus,
+    challenges: guestChallenges,
+    streak,
+  };
+}
+
+// ── Auto-Tag Guest ────────────────────────────────────
+
+export async function autoTagGuest(guestId: string) {
+  const guest = await getGuestById(guestId);
+  if (!guest) return null;
+
+  const insights = await getGuestInsights(guestId);
+  const currentTags = (guest.tags as string[] | null) ?? [];
+
+  // Keep manual tags (anything not auto-generated)
+  const autoTags = new Set([
+    "vip",
+    "regular",
+    "returning",
+    "new",
+    "lapsed",
+    "happy",
+    "at_risk",
+    "big_spender",
+  ]);
+  const manualTags = currentTags.filter((t) => !autoTags.has(t));
+  const newTags = new Set(manualTags);
+
+  // Visit count based tags
+  if (guest.visitCount >= 15) {
+    newTags.add("vip");
+  } else if (guest.visitCount >= 5) {
+    newTags.add("regular");
+  } else if (guest.visitCount >= 1) {
+    newTags.add("returning");
+  } else {
+    newTags.add("new");
+  }
+
+  // Lapsed check
+  if (guest.lastVisitDate) {
+    const daysSinceVisit =
+      (Date.now() - new Date(guest.lastVisitDate).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceVisit > 30) {
+      newTags.add("lapsed");
+    }
+  }
+
+  // Rating based tags
+  if (insights.averageRating != null) {
+    if (insights.averageRating >= 4) {
+      newTags.add("happy");
+    } else if (insights.averageRating <= 2) {
+      newTags.add("at_risk");
+    }
+  }
+
+  // Spend based tags (totalSpend is in agorot/cents, 500 NIS = 50000 agorot)
+  if (insights.totalSpend > 50000) {
+    newTags.add("big_spender");
+  }
+
+  const tagsArray = Array.from(newTags);
+
+  await db
+    .update(guests)
+    .set({ tags: tagsArray, updatedAt: new Date() })
+    .where(eq(guests.id, guestId));
+
+  return tagsArray;
 }

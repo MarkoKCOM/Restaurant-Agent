@@ -32,3 +32,13 @@ export const summaryQueue = new Queue("daily-summary", {
     removeOnFail: 100,
   },
 });
+
+export const engagementQueue = new Queue("engagement", {
+  connection: redisConnection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: { type: "exponential", delay: 5000 },
+    removeOnComplete: 100,
+    removeOnFail: 200,
+  },
+});

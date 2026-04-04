@@ -3,6 +3,7 @@ import type { InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { reservations, restaurants, guests as guestsTable } from "../db/schema.js";
 import { reminderQueue } from "../queue/index.js";
+import { scheduleThankYou, scheduleReviewRequest } from "./engagement.service.js";
 import type {
   AvailabilityQuery,
   AvailabilitySlot,
@@ -15,6 +16,7 @@ import {
   pickBestTablesForParty,
   type TableRow,
 } from "./table.service.js";
+import { onVisitCompleted } from "./loyalty.service.js";
 
 export type ReservationRow = InferSelectModel<typeof reservations>;
 
@@ -441,6 +443,21 @@ export async function updateReservation(
         updatedAt: new Date(),
       })
       .where(eq(guestsTable.id, updated.guestId));
+
+    // Loyalty: award points, check stamp card, evaluate tier
+    try {
+      await onVisitCompleted(updated.guestId, updated.restaurantId, updated.id);
+    } catch {
+      // Non-critical — don't fail reservation update if loyalty processing fails
+    }
+
+    // Engagement: schedule post-visit thank-you and review request
+    try {
+      await scheduleThankYou(updated.guestId, updated.restaurantId, updated.id);
+      await scheduleReviewRequest(updated.guestId, updated.restaurantId, updated.id);
+    } catch {
+      // Non-critical — don't fail reservation update if engagement scheduling fails
+    }
   }
 
   const [guestRow] = await db

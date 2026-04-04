@@ -7,9 +7,15 @@ import { reservationRoutes } from "./routes/reservations.js";
 import { guestRoutes } from "./routes/guests.js";
 import { tableRoutes } from "./routes/tables.js";
 import { restaurantRoutes } from "./routes/restaurants.js";
+import { gamificationRoutes } from "./routes/gamification.js";
+import { loyaltyRoutes } from "./routes/loyalty.js";
+import { engagementRoutes } from "./routes/engagement.js";
+import { visitRoutes, feedbackRoutes } from "./routes/visits.js";
 import { createReminderWorker } from "./queue/reminder.worker.js";
 import { createSummaryWorker } from "./queue/summary.worker.js";
-import { summaryQueue } from "./queue/index.js";
+import { createEngagementWorker } from "./queue/engagement.worker.js";
+import { summaryQueue, engagementQueue } from "./queue/index.js";
+import { checkWinBack } from "./services/engagement.service.js";
 import { db } from "./db/index.js";
 import { restaurants } from "./db/schema.js";
 import { eq } from "drizzle-orm";
@@ -31,6 +37,11 @@ await app.register(reservationRoutes, { prefix: "/api/v1/reservations" });
 await app.register(guestRoutes, { prefix: "/api/v1/guests" });
 await app.register(tableRoutes, { prefix: "/api/v1/tables" });
 await app.register(restaurantRoutes, { prefix: "/api/v1/restaurants" });
+await app.register(gamificationRoutes, { prefix: "/api/v1/gamification" });
+await app.register(loyaltyRoutes, { prefix: "/api/v1/loyalty" });
+await app.register(engagementRoutes, { prefix: "/api/v1/engagement" });
+await app.register(visitRoutes, { prefix: "/api/v1/visits" });
+await app.register(feedbackRoutes, { prefix: "/api/v1/feedback" });
 
 try {
   await app.listen({ port: env.API_PORT, host: env.API_HOST });
@@ -39,7 +50,8 @@ try {
   // Start BullMQ workers
   const reminderWorker = createReminderWorker();
   const summaryWorker = createSummaryWorker();
-  console.log("BullMQ workers started: reminder, summary");
+  const engagementWorker = createEngagementWorker();
+  console.log("BullMQ workers started: reminder, summary, engagement");
 
   // Schedule daily summary for BFF Ra'anana (repeating cron job)
   const [bffRestaurant] = await db
@@ -61,6 +73,20 @@ try {
       },
     );
     console.log(`Scheduled daily summary for BFF Ra'anana (${bffRestaurant.id}) at 23:00 Asia/Jerusalem`);
+
+    // Schedule daily win-back check at 10:00 Asia/Jerusalem
+    await engagementQueue.add(
+      "win-back-check",
+      { type: "win_back_cron", restaurantId: bffRestaurant.id },
+      {
+        repeat: {
+          pattern: "0 10 * * *",
+          tz: "Asia/Jerusalem",
+        },
+        jobId: `win-back-cron-${bffRestaurant.id}`,
+      },
+    );
+    console.log(`Scheduled daily win-back check for BFF Ra'anana (${bffRestaurant.id}) at 10:00 Asia/Jerusalem`);
   }
 
   // Graceful shutdown
@@ -68,6 +94,7 @@ try {
     console.log(`Received ${signal}, shutting down gracefully...`);
     await reminderWorker.close();
     await summaryWorker.close();
+    await engagementWorker.close();
     await app.close();
     process.exit(0);
   };

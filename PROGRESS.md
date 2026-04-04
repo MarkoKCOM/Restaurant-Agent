@@ -1,5 +1,36 @@
 # Progress Log
 
+## 2026-04-04 (VPS Bootstrap + Sprint 1 Completion)
+
+### Infrastructure
+- Fresh VPS bootstrapped: Node v22.22.2, pnpm 10.30.3, PostgreSQL 16, Redis 7, Nginx
+- Drizzle migrations generated and applied to production DB
+- Seed data loaded: BFF Ra'anana restaurant, 10 tables, 3 test guests, 8 reservations (today + tomorrow)
+- Sable API running as systemd service on port 3001
+- Nginx reverse proxy: `/api/*` → API, `/` → dashboard static files
+- GitHub SSH (MarkoKCOM) + CLI (marciano147) verified
+
+### Sprint 1 — Completed
+- [x] Drizzle migrations (generate + run against PostgreSQL)
+- [x] Seed script with BFF Raanana test data + reservations
+- [x] Restaurant routes implemented (list, get, update, dashboard snapshot, tables)
+- [x] Dashboard wired to API via React Query hooks:
+  - Today page: live stats (reservations, covers, cancellations, no-shows) + reservation list
+  - Reservations page: date/status filtering, status change actions (seat, complete, cancel)
+  - Guests page: list with search, shows tier and tags
+  - Settings page: editable restaurant details, operating hours display, table grid
+- [x] Booking widget wired to real API:
+  - Fetches available time slots from `/api/v1/reservations/availability`
+  - Submits real reservations via POST
+  - Error handling, loading states, back navigation
+- [x] Added `/api/v1/health` route alias
+
+### Next (Sprint 2)
+- [ ] Reservation engine polish — waitlist auto-match, no-show tracking, operating hours enforcement
+- [ ] Dashboard Today view — real-time occupancy, time slot heatmap
+- [ ] Guest profiles — visit history, preferences, notes in dashboard
+- [ ] End-to-end test — widget booking → API → shows in dashboard
+
 ## 2026-04-03 (Evening)
 
 ### Done

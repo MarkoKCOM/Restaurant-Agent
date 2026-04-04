@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useReservations, useUpdateReservation } from "../hooks/api.js";
+import { useReservations, useUpdateReservation, useMarkNoShow } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import type { Reservation } from "@sable/domain";
 
@@ -36,6 +36,7 @@ export function ReservationsPage() {
   });
 
   const updateMutation = useUpdateReservation();
+  const noShowMutation = useMarkNoShow();
 
   const filtered = statusFilter
     ? reservations?.filter((r) => r.status === statusFilter)
@@ -137,6 +138,14 @@ export function ReservationsPage() {
                         className="text-xs text-red-600 hover:underline ml-2"
                       >
                         בטל
+                      </button>
+                    )}
+                    {(r.status === "confirmed" || r.status === "seated") && (
+                      <button
+                        onClick={() => noShowMutation.mutate(r.id)}
+                        className="text-xs text-orange-600 hover:underline ml-2"
+                      >
+                        לא הגיע
                       </button>
                     )}
                   </td>

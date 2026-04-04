@@ -9,6 +9,7 @@ import {
   checkAvailability,
   createReservation,
   listReservations,
+  markNoShow,
   updateReservation,
 } from "../services/reservation.service.js";
 
@@ -63,6 +64,19 @@ export async function reservationRoutes(app: FastifyInstance) {
     }
 
     return { reservation: updated };
+  });
+
+  // POST /:id/no-show — mark reservation as no-show
+  app.post("/:id/no-show", async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const reservation = await markNoShow(id);
+    if (!reservation) {
+      reply.code(404);
+      return { error: "Reservation not found" };
+    }
+
+    return { reservation };
   });
 
   // DELETE /:id — cancel reservation

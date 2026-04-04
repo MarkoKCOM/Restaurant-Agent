@@ -4,6 +4,7 @@ import { TodayPage } from "./pages/TodayPage.js";
 import { ReservationsPage } from "./pages/ReservationsPage.js";
 import { GuestsPage } from "./pages/GuestsPage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
+import { GuestDetailPage } from "./pages/GuestDetailPage.js";
 
 export function App() {
   return (
@@ -13,6 +14,7 @@ export function App() {
         <Route path="/today" element={<TodayPage />} />
         <Route path="/reservations" element={<ReservationsPage />} />
         <Route path="/guests" element={<GuestsPage />} />
+        <Route path="/guests/:id" element={<GuestDetailPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
     </Routes>

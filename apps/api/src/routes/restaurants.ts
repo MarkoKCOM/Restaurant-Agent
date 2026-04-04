@@ -142,6 +142,62 @@ export async function restaurantRoutes(app: FastifyInstance) {
       (r) => r.status === "no_show",
     ).length;
 
+    // Build occupancyByHour from operating hours and today's reservations
+    const operatingHours = (restaurant.operatingHours as unknown as Record<
+      string,
+      { open: string; close: string } | null
+    >) ?? {};
+    const todayDate = new Date(`${today}T12:00:00`);
+    const dayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+    const dayKey = dayNames[todayDate.getDay()];
+    const dayHours = operatingHours[dayKey];
+
+    const occupancyByHour: Record<string, number> = {};
+
+    if (dayHours) {
+      const [openH, openM] = dayHours.open.split(":").map(Number);
+      const [closeH, closeM] = dayHours.close.split(":").map(Number);
+      const openMinutes = openH * 60 + openM;
+      const closeMinutes = closeH * 60 + closeM;
+
+      // Generate 30-minute slots
+      for (let t = openMinutes; t < closeMinutes; t += 30) {
+        const h = Math.floor(t / 60);
+        const m = t % 60;
+        const slotKey = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+        occupancyByHour[slotKey] = 0;
+      }
+
+      // Count covers per slot based on reservation overlap
+      const activeToday = todayReservations.filter((r) =>
+        ["pending", "confirmed", "seated", "completed"].includes(r.status),
+      );
+
+      for (const res of activeToday) {
+        const [rStartH, rStartM] = res.timeStart.split(":").map(Number);
+        const resStart = rStartH * 60 + rStartM;
+        const resEndStr = res.timeEnd ?? null;
+        let resEnd: number;
+        if (resEndStr) {
+          const [rEndH, rEndM] = resEndStr.split(":").map(Number);
+          resEnd = rEndH * 60 + rEndM;
+        } else {
+          resEnd = resStart + 120; // default 2 hours
+        }
+
+        for (let t = openMinutes; t < closeMinutes; t += 30) {
+          const slotEnd = t + 30;
+          // Check if reservation overlaps with this slot
+          if (resStart < slotEnd && resEnd > t) {
+            const h = Math.floor(t / 60);
+            const m = t % 60;
+            const slotKey = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+            occupancyByHour[slotKey] = (occupancyByHour[slotKey] ?? 0) + res.partySize;
+          }
+        }
+      }
+    }
+
     return {
       today: {
         reservations: totalReservations,
@@ -149,6 +205,7 @@ export async function restaurantRoutes(app: FastifyInstance) {
         cancellations,
         noShows,
       },
+      occupancyByHour,
       reservationIds: todayReservations.map((r) => r.id),
     };
   });

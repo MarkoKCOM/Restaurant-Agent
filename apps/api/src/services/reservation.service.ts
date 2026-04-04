@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { reservations, restaurants, guests as guestsTable } from "../db/schema.js";
@@ -182,6 +182,39 @@ export async function checkAvailability(
 export async function createReservation(
   input: CreateReservationInput,
 ): Promise<DomainReservation> {
+  // Operating hours enforcement
+  const [restaurant] = await db
+    .select()
+    .from(restaurants)
+    .where(eq(restaurants.id, input.restaurantId))
+    .limit(1);
+
+  if (!restaurant) {
+    throw new Error("Restaurant not found");
+  }
+
+  const dayKey = getDayKey(input.date);
+  const operatingHours = (restaurant.operatingHours as unknown as Record<
+    string,
+    { open: string; close: string } | null
+  >) ?? {};
+  const dayHours = operatingHours[dayKey];
+
+  if (!dayHours) {
+    throw new Error(`Restaurant is closed on ${dayKey}. No operating hours defined for this day.`);
+  }
+
+  const requestedStartMinutes = timeStringToMinutes(input.timeStart);
+  const requestedEndMinutes = requestedStartMinutes + DEFAULT_RESERVATION_DURATION_MINUTES;
+  const openMinutes = timeStringToMinutes(dayHours.open);
+  const closeMinutes = timeStringToMinutes(dayHours.close);
+
+  if (requestedStartMinutes < openMinutes || requestedEndMinutes > closeMinutes) {
+    throw new Error(
+      `Requested time ${input.timeStart} is outside operating hours (${dayHours.open}–${dayHours.close}) for ${dayKey}.`,
+    );
+  }
+
   const guestSource: GuestRow["source"] =
     input.source === "phone" || !input.source ? "web" : input.source;
 
@@ -335,6 +368,8 @@ export async function updateReservation(
 
   const timeEnd = computeReservationEnd(newTimeStart);
 
+  const newStatus = input.status ?? existing.status;
+
   const [updated] = await db
     .update(reservations)
     .set({
@@ -343,7 +378,7 @@ export async function updateReservation(
       timeEnd,
       partySize: newPartySize,
       tableIds: newTableIds,
-      status: input.status ?? existing.status,
+      status: newStatus,
       notes: input.notes ?? existing.notes,
       cancellationReason:
         input.cancellationReason !== undefined
@@ -355,6 +390,19 @@ export async function updateReservation(
     .returning();
 
   if (!updated) return null;
+
+  // Track visit completion: increment visitCount and update lastVisitDate
+  if (newStatus === "completed" && existing.status !== "completed") {
+    const today = new Date().toISOString().slice(0, 10);
+    await db
+      .update(guestsTable)
+      .set({
+        visitCount: sql`${guestsTable.visitCount} + 1`,
+        lastVisitDate: today,
+        updatedAt: new Date(),
+      })
+      .where(eq(guestsTable.id, updated.guestId));
+  }
 
   const [guestRow] = await db
     .select()
@@ -380,6 +428,39 @@ export async function cancelReservation(
     .returning();
 
   if (!updated) return null;
+
+  const [guestRow] = await db
+    .select()
+    .from(guestsTable)
+    .where(eq(guestsTable.id, updated.guestId))
+    .limit(1);
+
+  return toDomainReservation(updated, guestRow);
+}
+
+export async function markNoShow(id: string): Promise<DomainReservation | null> {
+  const existing = await getReservationRowById(id);
+  if (!existing) return null;
+
+  const [updated] = await db
+    .update(reservations)
+    .set({
+      status: "no_show",
+      updatedAt: new Date(),
+    })
+    .where(eq(reservations.id, id))
+    .returning();
+
+  if (!updated) return null;
+
+  // Increment guest noShowCount
+  await db
+    .update(guestsTable)
+    .set({
+      noShowCount: sql`${guestsTable.noShowCount} + 1`,
+      updatedAt: new Date(),
+    })
+    .where(eq(guestsTable.id, updated.guestId));
 
   const [guestRow] = await db
     .select()

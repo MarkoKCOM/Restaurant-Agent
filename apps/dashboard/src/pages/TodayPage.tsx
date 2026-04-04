@@ -24,13 +24,105 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Generate 30-min slots between open and close times (HH:MM format). */
+function generateSlots(open: string, close: string): string[] {
+  const slots: string[] = [];
+  const [openH, openM] = open.split(":").map(Number);
+  const [closeH, closeM] = close.split(":").map(Number);
+  let minutes = openH * 60 + openM;
+  const end = closeH * 60 + closeM;
+  while (minutes < end) {
+    const h = String(Math.floor(minutes / 60)).padStart(2, "0");
+    const m = String(minutes % 60).padStart(2, "0");
+    slots.push(`${h}:${m}`);
+    minutes += 30;
+  }
+  return slots;
+}
+
+function heatmapColor(covers: number, max: number): string {
+  if (covers === 0 || max === 0) return "bg-gray-100";
+  const ratio = covers / max;
+  if (ratio < 0.25) return "bg-amber-100";
+  if (ratio < 0.5) return "bg-amber-300";
+  if (ratio < 0.75) return "bg-amber-500 text-white";
+  return "bg-amber-700 text-white";
+}
+
+function OccupancyHeatmap({
+  occupancyByHour,
+  operatingHours,
+}: {
+  occupancyByHour: Record<string, number>;
+  operatingHours?: Record<string, { open: string; close: string } | null>;
+}) {
+  // Determine today's operating hours
+  const dayNames = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+  ];
+  const todayDay = dayNames[new Date().getDay()];
+  const todayHours = operatingHours?.[todayDay];
+
+  // Default hours if not set
+  const open = todayHours?.open ?? "11:00";
+  const close = todayHours?.close ?? "23:00";
+
+  const slots = generateSlots(open, close);
+
+  const maxCovers = Math.max(
+    1,
+    ...Object.values(occupancyByHour).filter((v) => v > 0),
+  );
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+      <h3 className="text-lg font-semibold mb-4">תפוסה לפי שעה</h3>
+      <div className="flex gap-1 overflow-x-auto">
+        {slots.map((slot) => {
+          const covers = occupancyByHour[slot] ?? 0;
+          return (
+            <div
+              key={slot}
+              className={`flex flex-col items-center min-w-[48px] rounded-lg px-1 py-2 ${heatmapColor(covers, maxCovers)}`}
+              title={`${slot} — ${covers} סועדים`}
+            >
+              <span className="text-xs font-mono">{slot}</span>
+              <span className="text-sm font-bold mt-1">{covers}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-2 mt-3 text-xs text-gray-500">
+        <span>ריק</span>
+        <div className="flex gap-0.5">
+          <div className="w-4 h-3 rounded bg-gray-100" />
+          <div className="w-4 h-3 rounded bg-amber-100" />
+          <div className="w-4 h-3 rounded bg-amber-300" />
+          <div className="w-4 h-3 rounded bg-amber-500" />
+          <div className="w-4 h-3 rounded bg-amber-700" />
+        </div>
+        <span>מלא</span>
+      </div>
+    </div>
+  );
+}
+
 export function TodayPage() {
   const { restaurant } = useCurrentRestaurant();
-  const { data: stats } = useDashboard(restaurant?.id);
+  const { data: dashboard } = useDashboard(restaurant?.id);
   const { data: reservations } = useReservations({
     restaurantId: restaurant?.id,
     date: todayStr(),
   });
+
+  const stats = dashboard?.today;
+  const occupancyByHour = dashboard?.occupancyByHour;
 
   const statCards = [
     { label: "הזמנות", value: stats?.reservations ?? 0, color: "bg-blue-50 text-blue-700" },
@@ -53,6 +145,14 @@ export function TodayPage() {
         ))}
       </div>
 
+      {/* Occupancy heatmap */}
+      {occupancyByHour && (
+        <OccupancyHeatmap
+          occupancyByHour={occupancyByHour}
+          operatingHours={restaurant?.operatingHours}
+        />
+      )}
+
       {/* Reservations list */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h3 className="text-lg font-semibold mb-4">הזמנות להיום</h3>
@@ -74,7 +174,7 @@ export function TodayPage() {
               {reservations.map((r: Reservation) => (
                 <tr key={r.id} className="border-b border-gray-100">
                   <td className="px-4 py-3 font-mono">{r.timeStart?.slice(0, 5)}</td>
-                  <td className="px-4 py-3">{r.guest?.name ?? "—"}</td>
+                  <td className="px-4 py-3">{r.guest?.name ?? "---"}</td>
                   <td className="px-4 py-3">{r.partySize}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-gray-100"}`}>

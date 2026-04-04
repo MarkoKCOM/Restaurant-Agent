@@ -53,13 +53,13 @@ export function useUpdateRestaurant() {
 // --- Dashboard ---
 
 export function useDashboard(restaurantId: string | undefined) {
-  return useQuery<DashboardSnapshot["today"]>({
+  return useQuery<DashboardSnapshot>({
     queryKey: ["dashboard", restaurantId],
     queryFn: async () => {
-      const data = await fetchJSON<{ today: DashboardSnapshot["today"] }>(
+      const data = await fetchJSON<DashboardSnapshot>(
         `${API}/restaurants/${restaurantId}/dashboard`,
       );
-      return data.today;
+      return data;
     },
     enabled: !!restaurantId,
     refetchInterval: 30_000,
@@ -126,6 +126,32 @@ export function useGuests(restaurantId: string | undefined) {
       return data.guests;
     },
     enabled: !!restaurantId,
+  });
+}
+
+export function useGuest(id: string | undefined) {
+  return useQuery<{ guest: Guest; reservations?: Reservation[] }>({
+    queryKey: ["guest", id],
+    queryFn: () =>
+      fetchJSON(`${API}/guests/${id}?includeHistory=true`),
+    enabled: !!id,
+  });
+}
+
+export function useMarkNoShow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${API}/reservations/${id}/no-show`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reservations"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 }
 

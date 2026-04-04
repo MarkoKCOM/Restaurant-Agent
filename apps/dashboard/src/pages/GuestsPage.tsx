@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useGuests } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import type { Guest } from "@sable/domain";
@@ -7,6 +8,7 @@ export function GuestsPage() {
   const { restaurant } = useCurrentRestaurant();
   const { data: guests, isLoading } = useGuests(restaurant?.id);
   const [search, setSearch] = useState("");
+  const navigate = useNavigate();
 
   const filtered = search
     ? guests?.filter(
@@ -55,7 +57,11 @@ export function GuestsPage() {
               </tr>
             ) : (
               filtered.map((g: Guest) => (
-                <tr key={g.id} className="border-b border-gray-100">
+                <tr
+                  key={g.id}
+                  className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                  onClick={() => navigate(`/guests/${g.id}`)}
+                >
                   <td className="px-4 py-3 font-medium">{g.name}</td>
                   <td className="px-4 py-3 font-mono text-gray-500">{g.phone}</td>
                   <td className="px-4 py-3">{g.visitCount}</td>

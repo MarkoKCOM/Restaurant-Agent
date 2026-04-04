@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { createGuestSchema } from "@sable/domain";
 import {
@@ -8,6 +9,8 @@ import {
   toDomainGuest,
   updateGuestPreferences,
 } from "../services/guest.service.js";
+import { db } from "../db/index.js";
+import { reservations } from "../db/schema.js";
 
 const updateGuestSchema = z.object({
   preferences: z.record(z.unknown()).optional(),
@@ -24,9 +27,10 @@ export async function guestRoutes(app: FastifyInstance) {
     return { guests };
   });
 
-  // GET /:id — guest profile
+  // GET /:id — guest profile (with optional reservation history)
   app.get("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
+    const { includeHistory } = request.query as { includeHistory?: string };
     const row = await getGuestById(id);
 
     if (!row) {
@@ -34,7 +38,20 @@ export async function guestRoutes(app: FastifyInstance) {
       return { error: "Guest not found" };
     }
 
-    return { guest: toDomainGuest(row) };
+    const guest = toDomainGuest(row);
+
+    if (includeHistory === "true") {
+      const guestReservations = await db
+        .select()
+        .from(reservations)
+        .where(eq(reservations.guestId, id))
+        .orderBy(desc(reservations.date), desc(reservations.timeStart))
+        .limit(20);
+
+      return { guest, reservations: guestReservations };
+    }
+
+    return { guest };
   });
 
   // POST / — create or find guest

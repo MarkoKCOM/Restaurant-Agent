@@ -25,11 +25,19 @@
   - Error handling, loading states, back navigation
 - [x] Added `/api/v1/health` route alias
 
-### Next (Sprint 2)
-- [ ] Reservation engine polish — waitlist auto-match, no-show tracking, operating hours enforcement
-- [ ] Dashboard Today view — real-time occupancy, time slot heatmap
-- [ ] Guest profiles — visit history, preferences, notes in dashboard
+### Sprint 2 — Completed
+- [x] No-show tracking — `POST /reservations/:id/no-show`, increments guest noShowCount
+- [x] Visit tracking — auto-increments visitCount + lastVisitDate on reservation completion
+- [x] Operating hours enforcement — createReservation validates against restaurant hours
+- [x] Dashboard occupancy heatmap — 30-min slot heatmap with amber color gradient
+- [x] Guest profiles — detail page with visit history (last 20 reservations), clickable rows
+- [x] No-show button on reservation actions (confirmed/seated)
+
+### Next (Sprint 3 / Phase 1b)
 - [ ] End-to-end test — widget booking → API → shows in dashboard
+- [ ] Waitlist auto-match
+- [ ] Baileys WhatsApp integration — session manager, message router
+- [ ] AI agent loop — classify intent → tool call → respond
 
 ## 2026-04-03 (Evening)
 

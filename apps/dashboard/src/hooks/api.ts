@@ -324,3 +324,213 @@ export function useDeleteTable() {
     },
   });
 }
+
+// --- Guest Update ---
+
+export function useUpdateGuest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Guest> }) => {
+      const res = await fetchWithAuth(`${API}/guests/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: ["guest", id] });
+      qc.invalidateQueries({ queryKey: ["guests"] });
+    },
+  });
+}
+
+// --- Loyalty ---
+
+export interface LoyaltyBalance {
+  points: number;
+  tier: string;
+  stampCard: {
+    visits: number;
+    stampsNeeded: number;
+    stampsUntilReward: number;
+    earned: number;
+  };
+}
+
+export interface LoyaltyTransaction {
+  id: string;
+  type: string;
+  points: number;
+  description: string;
+  createdAt: string;
+}
+
+export function useLoyaltyBalance(guestId: string | undefined) {
+  return useQuery<LoyaltyBalance>({
+    queryKey: ["loyalty-balance", guestId],
+    queryFn: () => fetchJSON(`${API}/loyalty/${guestId}/balance`),
+    enabled: !!guestId,
+    retry: false,
+  });
+}
+
+export function useLoyaltyHistory(guestId: string | undefined) {
+  return useQuery<{ transactions: LoyaltyTransaction[] }>({
+    queryKey: ["loyalty-history", guestId],
+    queryFn: () => fetchJSON(`${API}/loyalty/${guestId}/history`),
+    enabled: !!guestId,
+    retry: false,
+  });
+}
+
+// --- Visit Insights ---
+
+export interface VisitInsights {
+  favoriteItems?: string[];
+  dietaryProfile?: string[];
+  visitFrequency?: string;
+}
+
+export function useVisitInsights(guestId: string | undefined) {
+  return useQuery<VisitInsights>({
+    queryKey: ["visit-insights", guestId],
+    queryFn: () => fetchJSON(`${API}/visits/${guestId}/insights`),
+    enabled: !!guestId,
+    retry: false,
+  });
+}
+
+// --- Waitlist ---
+
+export interface WaitlistEntry {
+  id: string;
+  restaurantId: string;
+  guestId: string;
+  guestName: string;
+  guestPhone: string;
+  date: string;
+  preferredTimeStart: string;
+  preferredTimeEnd: string;
+  partySize: number;
+  status: "waiting" | "offered" | "accepted" | "expired";
+  offeredAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export function useWaitlist(restaurantId: string | undefined, date?: string) {
+  const searchParams = new URLSearchParams();
+  if (restaurantId) searchParams.set("restaurantId", restaurantId);
+  if (date) searchParams.set("date", date);
+
+  return useQuery<WaitlistEntry[]>({
+    queryKey: ["waitlist", restaurantId, date],
+    queryFn: async () => {
+      const data = await fetchJSON<{ waitlist: WaitlistEntry[] }>(
+        `${API}/waitlist?${searchParams}`,
+      );
+      return data.waitlist;
+    },
+    enabled: !!restaurantId,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useAddToWaitlist() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      restaurantId: string;
+      guestName: string;
+      guestPhone: string;
+      date: string;
+      preferredTimeStart: string;
+      preferredTimeEnd: string;
+      partySize: number;
+    }) => {
+      const res = await fetchWithAuth(`${API}/waitlist`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `API error: ${res.status}` }));
+        throw new Error(err.error ?? err.message ?? `API error: ${res.status}`);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["waitlist"] });
+    },
+  });
+}
+
+export function useOfferSlot() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetchWithAuth(`${API}/waitlist/${id}/offer`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["waitlist"] });
+    },
+  });
+}
+
+export function useAcceptOffer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetchWithAuth(`${API}/waitlist/${id}/accept`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["waitlist"] });
+      qc.invalidateQueries({ queryKey: ["reservations"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useCancelWaitlist() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetchWithAuth(`${API}/waitlist/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["waitlist"] });
+    },
+  });
+}
+
+// --- Testing ---
+
+export function useResetReservations() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (restaurantId: string) => {
+      const res = await fetchWithAuth(`${API}/restaurants/${restaurantId}/reset-reservations`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reservations"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["tableStatus"] });
+    },
+  });
+}

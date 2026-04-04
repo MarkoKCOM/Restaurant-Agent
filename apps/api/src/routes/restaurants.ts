@@ -322,6 +322,28 @@ export async function restaurantRoutes(app: FastifyInstance) {
     return result;
   });
 
+  // DELETE /:id/reset-reservations — delete all reservations for this restaurant (testing/pilot)
+  app.delete("/:id/reset-reservations", async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const [restaurant] = await db
+      .select()
+      .from(restaurants)
+      .where(eq(restaurants.id, id))
+      .limit(1);
+
+    if (!restaurant) {
+      return reply.status(404).send({ error: "Restaurant not found" });
+    }
+
+    const result = await db
+      .delete(reservations)
+      .where(eq(reservations.restaurantId, id))
+      .returning({ id: reservations.id });
+
+    return { deleted: result.length };
+  });
+
   // GET /:id/tables — tables for restaurant
   app.get("/:id/tables", async (request) => {
     const { id } = request.params as { id: string };

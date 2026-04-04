@@ -472,7 +472,14 @@ export async function updateReservation(
 export async function cancelReservation(
   id: string,
   reason?: string,
-): Promise<DomainReservation | null> {
+): Promise<{
+  reservation: DomainReservation;
+  waitlistMatch?: { id: string; guestName: string; guestPhone: string };
+} | null> {
+  // Get the reservation before cancelling so we have slot details
+  const existing = await getReservationRowById(id);
+  if (!existing) return null;
+
   const [updated] = await db
     .update(reservations)
     .set({
@@ -494,7 +501,35 @@ export async function cancelReservation(
     .where(eq(guestsTable.id, updated.guestId))
     .limit(1);
 
-  return toDomainReservation(updated, guestRow);
+  const reservation = toDomainReservation(updated, guestRow);
+
+  // Auto-match waitlist: find guests waiting for this slot
+  let waitlistMatch: { id: string; guestName: string; guestPhone: string } | undefined;
+  try {
+    const { matchWaitlist, offerSlot } = await import("./waitlist.service.js");
+    const freedTimeEnd = updated.timeEnd ?? computeReservationEnd(updated.timeStart);
+    const matches = await matchWaitlist(
+      updated.restaurantId,
+      updated.date,
+      updated.timeStart,
+      freedTimeEnd,
+      updated.partySize,
+    );
+    if (matches.length > 0) {
+      const firstMatch = matches[0]!;
+      // Auto-offer to the first match
+      await offerSlot(firstMatch.id);
+      waitlistMatch = {
+        id: firstMatch.id,
+        guestName: firstMatch.guestName,
+        guestPhone: firstMatch.guestPhone,
+      };
+    }
+  } catch {
+    // Non-critical — don't fail cancellation if waitlist matching fails
+  }
+
+  return { reservation, waitlistMatch };
 }
 
 export async function markNoShow(id: string): Promise<DomainReservation | null> {

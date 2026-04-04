@@ -84,12 +84,15 @@ export async function reservationRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const { reason } = (request.query ?? {}) as { reason?: string };
 
-    const cancelled = await cancelReservation(id, reason);
-    if (!cancelled) {
+    const result = await cancelReservation(id, reason);
+    if (!result) {
       reply.code(404);
       return { error: "Reservation not found" };
     }
 
-    return { reservation: cancelled };
+    return {
+      reservation: result.reservation,
+      waitlistMatch: result.waitlistMatch,
+    };
   });
 }

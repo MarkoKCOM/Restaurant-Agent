@@ -7,6 +7,7 @@ import {
   useCreateReservation,
 } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
+import { useToast } from "../components/Toast.js";
 import type { Reservation } from "@sable/domain";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -102,6 +103,7 @@ export function ReservationsPage() {
   const updateMutation = useUpdateReservation();
   const noShowMutation = useMarkNoShow();
   const cancelMutation = useCancelReservation();
+  const { showToast } = useToast();
 
   // Debounce search input
   useEffect(() => {
@@ -176,7 +178,19 @@ export function ReservationsPage() {
   }, [reservations, statusFilter, debouncedSearch, sortBy]);
 
   function handleStatusChange(id: string, status: string) {
-    updateMutation.mutate({ id, data: { status } });
+    const labels: Record<string, string> = {
+      confirmed: "ההזמנה אושרה",
+      seated: "האורח הושב",
+      completed: "ההזמנה הושלמה",
+      cancelled: "ההזמנה בוטלה",
+    };
+    updateMutation.mutate(
+      { id, data: { status } },
+      {
+        onSuccess: () => showToast(labels[status] ?? "הסטטוס עודכן"),
+        onError: () => showToast("שגיאה בעדכון הסטטוס", "error"),
+      },
+    );
   }
 
   function openPanel(r: Reservation) {
@@ -478,6 +492,7 @@ function ReservationDetailPanel({
   updateMutation: ReturnType<typeof useUpdateReservation>;
   cancelMutation: ReturnType<typeof useCancelReservation>;
 }) {
+  const { showToast } = useToast();
   const [editDate, setEditDate] = useState(reservation.date);
   const [editTime, setEditTime] = useState(reservation.timeStart?.slice(0, 5) ?? "");
   const [editPartySize, setEditPartySize] = useState(reservation.partySize);
@@ -516,7 +531,9 @@ function ReservationDetailPanel({
         onSuccess: () => {
           setSaved(true);
           setTimeout(() => setSaved(false), 2000);
+          showToast("ההזמנה עודכנה בהצלחה");
         },
+        onError: () => showToast("שגיאה בעדכון ההזמנה", "error"),
       },
     );
   }
@@ -524,7 +541,15 @@ function ReservationDetailPanel({
   function handleCancel() {
     if (!confirm("האם לבטל את ההזמנה?")) return;
     cancelMutation.mutate(reservation.id, {
-      onSuccess: () => onClose(),
+      onSuccess: (data: any) => {
+        if (data?.waitlistMatch) {
+          const match = data.waitlistMatch;
+          showToast(
+            `נמצא אורח ברשימת המתנה: ${match.guestName} (${match.guestPhone}). הוצעה הזמנה.`,
+          );
+        }
+        onClose();
+      },
     });
   }
 
@@ -693,6 +718,7 @@ function CreateReservationModal({
   onClose: () => void;
 }) {
   const createMutation = useCreateReservation();
+  const { showToast } = useToast();
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [date, setDate] = useState(defaultDate);
@@ -716,7 +742,7 @@ function CreateReservationModal({
         source: "phone",
       },
       {
-        onSuccess: () => onClose(),
+        onSuccess: () => { showToast("ההזמנה נוצרה בהצלחה"); onClose(); },
         onError: (err) => setError(err.message || "שגיאה ביצירת ההזמנה"),
       },
     );

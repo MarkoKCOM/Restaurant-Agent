@@ -6,7 +6,9 @@ import {
   useCreateTable,
   useUpdateTable,
   useDeleteTable,
+  useResetReservations,
 } from "../hooks/api.js";
+import { useToast } from "../components/Toast.js";
 import type { Table } from "@sable/domain";
 
 const DAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
@@ -33,6 +35,9 @@ export function SettingsPage() {
   const createTableMutation = useCreateTable();
   const updateTableMutation = useUpdateTable();
   const deleteTableMutation = useDeleteTable();
+  const resetMutation = useResetReservations();
+  const { showToast } = useToast();
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -65,10 +70,13 @@ export function SettingsPage() {
 
   function handleSave() {
     if (!restaurant) return;
-    updateMutation.mutate({
-      id: restaurant.id,
-      data: { name, phone, address },
-    });
+    updateMutation.mutate(
+      { id: restaurant.id, data: { name, phone, address } },
+      {
+        onSuccess: () => showToast("פרטי המסעדה נשמרו"),
+        onError: () => showToast("שגיאה בשמירת פרטי המסעדה", "error"),
+      },
+    );
   }
 
   function handleHoursSave() {
@@ -80,9 +88,25 @@ export function SettingsPage() {
           setHoursDirty(false);
           setHoursSaved(true);
           setTimeout(() => setHoursSaved(false), 2000);
+          showToast("שעות הפעילות נשמרו");
         },
+        onError: () => showToast("שגיאה בשמירת שעות הפעילות", "error"),
       },
     );
+  }
+
+  function handleResetReservations() {
+    if (!restaurant) return;
+    resetMutation.mutate(restaurant.id, {
+      onSuccess: (data) => {
+        setShowResetConfirm(false);
+        showToast(`${(data as { deleted: number }).deleted} הזמנות נמחקו`);
+      },
+      onError: () => {
+        setShowResetConfirm(false);
+        showToast("שגיאה במחיקת הזמנות", "error");
+      },
+    });
   }
 
   function toggleDay(day: string) {
@@ -197,9 +221,6 @@ export function SettingsPage() {
           >
             {updateMutation.isPending ? "שומר..." : "שמור שינויים"}
           </button>
-          {updateMutation.isSuccess && (
-            <span className="mr-3 text-sm text-green-600">נשמר!</span>
-          )}
         </section>
 
         {/* Operating hours editor */}
@@ -414,6 +435,60 @@ export function SettingsPage() {
                 ),
               )}
             </div>
+          )}
+        </section>
+
+        {/* Danger Zone */}
+        <section className="bg-white rounded-xl border-2 border-red-300 p-6">
+          <h3 className="text-lg font-semibold text-red-700 mb-2">אזור מסוכן</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            פעולות אלו הן בלתי הפיכות. נא להפעיל זהירות.
+          </p>
+
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+            >
+              מחק את כל ההזמנות
+            </button>
+            <span className="text-xs text-gray-400">מחיקת כל ההזמנות של המסעדה (לצורכי בדיקה)</span>
+          </div>
+
+          {/* Confirmation dialog */}
+          {showResetConfirm && (
+            <>
+              <div
+                className="fixed inset-0 z-40 bg-black bg-opacity-30"
+                onClick={() => setShowResetConfirm(false)}
+              />
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div
+                  className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm border-2 border-red-300"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h4 className="text-lg font-semibold text-red-700 mb-2">אישור מחיקה</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    האם למחוק את כל ההזמנות של המסעדה? פעולה זו בלתי הפיכה.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handleResetReservations}
+                      disabled={resetMutation.isPending}
+                      className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                    >
+                      {resetMutation.isPending ? "מוחק..." : "כן, מחק הכל"}
+                    </button>
+                    <button
+                      onClick={() => setShowResetConfirm(false)}
+                      className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                    >
+                      ביטול
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </section>
       </div>

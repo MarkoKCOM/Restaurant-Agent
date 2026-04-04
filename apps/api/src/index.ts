@@ -11,6 +11,7 @@ import { gamificationRoutes } from "./routes/gamification.js";
 import { loyaltyRoutes } from "./routes/loyalty.js";
 import { engagementRoutes } from "./routes/engagement.js";
 import { visitRoutes, feedbackRoutes } from "./routes/visits.js";
+import { waitlistRoutes } from "./routes/waitlist.js";
 import { createReminderWorker } from "./queue/reminder.worker.js";
 import { createSummaryWorker } from "./queue/summary.worker.js";
 import { createEngagementWorker } from "./queue/engagement.worker.js";
@@ -42,6 +43,7 @@ await app.register(loyaltyRoutes, { prefix: "/api/v1/loyalty" });
 await app.register(engagementRoutes, { prefix: "/api/v1/engagement" });
 await app.register(visitRoutes, { prefix: "/api/v1/visits" });
 await app.register(feedbackRoutes, { prefix: "/api/v1/feedback" });
+await app.register(waitlistRoutes, { prefix: "/api/v1/waitlist" });
 
 try {
   await app.listen({ port: env.API_PORT, host: env.API_HOST });

@@ -5,11 +5,28 @@ import { ReservationsPage } from "./pages/ReservationsPage.js";
 import { GuestsPage } from "./pages/GuestsPage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
 import { GuestDetailPage } from "./pages/GuestDetailPage.js";
+import { LoginPage } from "./pages/LoginPage.js";
+import { AuthProvider, useAuth } from "./hooks/useAuth.js";
 
-export function App() {
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
+}
+
+function AppRoutes() {
   return (
     <Routes>
-      <Route element={<Layout />}>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
         <Route path="/" element={<Navigate to="/today" replace />} />
         <Route path="/today" element={<TodayPage />} />
         <Route path="/reservations" element={<ReservationsPage />} />
@@ -18,5 +35,13 @@ export function App() {
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
     </Routes>
+  );
+}
+
+export function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   );
 }

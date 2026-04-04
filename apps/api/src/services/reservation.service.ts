@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { reservations, restaurants, guests as guestsTable } from "../db/schema.js";
+import { reminderQueue } from "../queue/index.js";
 import type {
   AvailabilityQuery,
   AvailabilitySlot,
@@ -285,6 +286,30 @@ export async function createReservation(
     throw new Error("Failed to create reservation");
   }
 
+  // Schedule reminder 3 hours before reservation
+  try {
+    const resDateTime = new Date(`${input.date}T${input.timeStart}:00`);
+    const reminderTime = new Date(resDateTime.getTime() - 3 * 60 * 60 * 1000);
+    const delay = reminderTime.getTime() - Date.now();
+    if (delay > 0) {
+      await reminderQueue.add(
+        "reminder",
+        {
+          reservationId: inserted.id,
+          restaurantId: input.restaurantId,
+          guestId: guestRow.id,
+          guestPhone: guestRow.phone,
+          date: input.date,
+          timeStart: input.timeStart,
+          partySize: input.partySize,
+        },
+        { delay, jobId: `reminder-${inserted.id}` },
+      );
+    }
+  } catch {
+    // Non-critical — don't fail reservation if reminder scheduling fails
+  }
+
   return toDomainReservation(inserted, guestRow);
 }
 
@@ -442,6 +467,9 @@ export async function cancelReservation(
     .returning();
 
   if (!updated) return null;
+
+  // Remove scheduled reminder
+  try { await reminderQueue.remove(`reminder-${id}`); } catch { /* ignore */ }
 
   const [guestRow] = await db
     .select()

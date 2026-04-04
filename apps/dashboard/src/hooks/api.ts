@@ -9,10 +9,31 @@ import type {
 
 const API = "/api/v1";
 
+function authHeaders(): Record<string, string> {
+  const token = localStorage.getItem("sable_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function handle401() {
+  localStorage.removeItem("sable_token");
+  localStorage.removeItem("sable_restaurant");
+  window.location.href = "/login";
+}
+
 async function fetchJSON<T>(url: string): Promise<T> {
-  const res = await fetch(url);
+  const res = await fetch(url, { headers: authHeaders() });
+  if (res.status === 401) { handle401(); throw new Error("Unauthorized"); }
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
+}
+
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  const res = await fetch(url, {
+    ...options,
+    headers: { ...authHeaders(), "Content-Type": "application/json", ...options.headers },
+  });
+  if (res.status === 401) { handle401(); throw new Error("Unauthorized"); }
+  return res;
 }
 
 // --- Restaurant ---
@@ -36,9 +57,8 @@ export function useUpdateRestaurant() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Restaurant> }) => {
-      const res = await fetch(`${API}/restaurants/${id}`, {
+      const res = await fetchWithAuth(`${API}/restaurants/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
       if (!res.ok) throw new Error(`API error: ${res.status}`);
@@ -99,9 +119,8 @@ export function useUpdateReservation() {
       id: string;
       data: Record<string, unknown>;
     }) => {
-      const res = await fetch(`${API}/reservations/${id}`, {
+      const res = await fetchWithAuth(`${API}/reservations/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
       if (!res.ok) throw new Error(`API error: ${res.status}`);
@@ -142,7 +161,7 @@ export function useMarkNoShow() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`${API}/reservations/${id}/no-show`, {
+      const res = await fetchWithAuth(`${API}/reservations/${id}/no-show`, {
         method: "POST",
       });
       if (!res.ok) throw new Error(`API error: ${res.status}`);
@@ -161,7 +180,7 @@ export function useCancelReservation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`${API}/reservations/${id}`, {
+      const res = await fetchWithAuth(`${API}/reservations/${id}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error(`API error: ${res.status}`);
@@ -195,7 +214,7 @@ export function useCreateTable() {
       maxSeats: number;
       zone?: string;
     }) => {
-      const res = await fetch(`${API}/tables`, {
+      const res = await fetchWithAuth(`${API}/tables`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -219,7 +238,7 @@ export function useUpdateTable() {
       id: string;
       data: Partial<Table>;
     }) => {
-      const res = await fetch(`${API}/tables/${id}`, {
+      const res = await fetchWithAuth(`${API}/tables/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -237,7 +256,7 @@ export function useDeleteTable() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`${API}/tables/${id}`, {
+      const res = await fetchWithAuth(`${API}/tables/${id}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error(`API error: ${res.status}`);

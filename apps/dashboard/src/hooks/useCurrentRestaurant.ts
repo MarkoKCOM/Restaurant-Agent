@@ -1,13 +1,25 @@
-import { useRestaurants } from "./api.js";
+import { useAuth } from "./useAuth.js";
+import { useRestaurant } from "./api.js";
+import type { Restaurant } from "@sable/domain";
 
 /**
- * Returns the current restaurant (first one for now — single-tenant MVP).
+ * Returns the current restaurant.
+ * Uses auth context for the restaurant ID, then fetches full restaurant
+ * data from the API so all fields (phone, address, hours, etc.) are available.
  */
 export function useCurrentRestaurant() {
-  const { data: restaurants, isLoading, error } = useRestaurants();
+  const { restaurant: authRestaurant } = useAuth();
+  const restaurantId = authRestaurant?.id;
+
+  const { data: fullRestaurant, isLoading, error } = useRestaurant(restaurantId);
+
+  // Always return the full Restaurant from API when available.
+  // While loading, return undefined (pages should handle isLoading).
+  const restaurant: Restaurant | undefined = fullRestaurant ?? undefined;
+
   return {
-    restaurant: restaurants?.[0],
-    isLoading,
+    restaurant,
+    isLoading: restaurantId ? isLoading : false,
     error,
   };
 }

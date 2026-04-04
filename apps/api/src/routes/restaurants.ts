@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { eq, and, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { restaurants, reservations, tables } from "../db/schema.js";
+import { getDailySummary } from "../services/summary.service.js";
 
 export async function restaurantRoutes(app: FastifyInstance) {
   // GET / — list all restaurants
@@ -208,6 +209,26 @@ export async function restaurantRoutes(app: FastifyInstance) {
       occupancyByHour,
       reservationIds: todayReservations.map((r) => r.id),
     };
+  });
+
+  // GET /:id/summary — daily summary for restaurant owner
+  app.get("/:id/summary", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { date } = request.query as { date?: string };
+
+    const [restaurant] = await db
+      .select()
+      .from(restaurants)
+      .where(eq(restaurants.id, id))
+      .limit(1);
+
+    if (!restaurant) {
+      return reply.status(404).send({ error: "Restaurant not found" });
+    }
+
+    const targetDate = date || new Date().toISOString().slice(0, 10);
+    const summary = await getDailySummary(id, targetDate);
+    return summary;
   });
 
   // GET /:id/tables — tables for restaurant

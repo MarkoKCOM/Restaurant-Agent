@@ -8,12 +8,12 @@ No WhatsApp, no AI agent yet. Get the web flow rock solid.
 |-------------|--------|
 | Monorepo scaffold (Turborepo) | Done |
 | Architecture + MVP scope docs | Done |
-| DB schema (Drizzle) + migrations | To Do |
-| Fastify API — reservations, guests, tables, availability | To Do |
-| Dashboard — Today, Reservations, Guests, Settings | To Do |
-| Booking Widget — embeddable Preact bundle | To Do |
-| Marketing Site — landing page | To Do |
-| BFF Raanana pilot data loaded | Blocked (need owner info) |
+| DB schema (Drizzle) + migrations | In Progress (schema + services done, migrations pending) |
+| Fastify API — reservations, guests, tables, availability | In Progress (route handlers + services wired) |
+| Dashboard — Today, Reservations, Guests, Settings | In Progress (UI shells, needs API wiring) |
+| Booking Widget — embeddable Preact bundle | In Progress (UI flow, needs real API wiring) |
+| Marketing Site — landing page | Done |
+| BFF Raanana pilot data loaded | In Progress (seed script added, waiting on real menu/layout details) |
 
 ## Phase 1b: WhatsApp + AI Agent
 Add Baileys WhatsApp gateway and Claude-powered conversation agent on top of the working web product.

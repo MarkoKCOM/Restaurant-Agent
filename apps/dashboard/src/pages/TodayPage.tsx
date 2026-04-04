@@ -1,4 +1,5 @@
-import { useDashboard, useReservations } from "../hooks/api.js";
+import { useDashboard, useReservations, useTableStatus } from "../hooks/api.js";
+import type { TableStatusItem } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import type { Reservation } from "@sable/domain";
 
@@ -113,6 +114,77 @@ function OccupancyHeatmap({
   );
 }
 
+const TABLE_STATUS_CONFIG: Record<
+  string,
+  { label: string; bg: string; border: string; dot: string }
+> = {
+  available: {
+    label: "פנוי",
+    bg: "bg-green-50",
+    border: "border-green-300",
+    dot: "bg-green-500",
+  },
+  reserved: {
+    label: "מוזמן",
+    bg: "bg-amber-50",
+    border: "border-amber-300",
+    dot: "bg-amber-500",
+  },
+  occupied: {
+    label: "תפוס",
+    bg: "bg-red-50",
+    border: "border-red-300",
+    dot: "bg-red-500",
+  },
+};
+
+function TableMap({ tables }: { tables: TableStatusItem[] }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+      <h3 className="text-lg font-semibold mb-4">מפת שולחנות</h3>
+      {tables.length === 0 ? (
+        <p className="text-gray-500 text-sm">אין שולחנות מוגדרים.</p>
+      ) : (
+        <div className="grid grid-cols-5 gap-3">
+          {tables.map((t) => {
+            const cfg = TABLE_STATUS_CONFIG[t.status];
+            return (
+              <div
+                key={t.tableId}
+                className={`rounded-xl border ${cfg.border} ${cfg.bg} p-3 transition-colors`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-bold text-gray-900">{t.tableName}</span>
+                  <span className={`w-2.5 h-2.5 rounded-full ${cfg.dot}`} />
+                </div>
+                <p className="text-xs text-gray-500 mb-1">{t.seats} מקומות</p>
+                <p className="text-xs font-medium text-gray-700">{cfg.label}</p>
+                {t.reservation && (
+                  <div className="mt-2 pt-2 border-t border-gray-200">
+                    <p className="text-xs font-medium text-gray-800 truncate">{t.reservation.guestName}</p>
+                    <p className="text-xs text-gray-500">
+                      {t.reservation.partySize} סועדים &middot; {t.reservation.timeStart}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {/* Legend */}
+      <div className="flex items-center gap-4 mt-4 text-xs text-gray-500">
+        {Object.entries(TABLE_STATUS_CONFIG).map(([key, cfg]) => (
+          <div key={key} className="flex items-center gap-1">
+            <span className={`w-2.5 h-2.5 rounded-full ${cfg.dot}`} />
+            <span>{cfg.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function TodayPage() {
   const { restaurant } = useCurrentRestaurant();
   const { data: dashboard } = useDashboard(restaurant?.id);
@@ -120,6 +192,7 @@ export function TodayPage() {
     restaurantId: restaurant?.id,
     date: todayStr(),
   });
+  const { data: tableStatus } = useTableStatus(restaurant?.id);
 
   const stats = dashboard?.today;
   const occupancyByHour = dashboard?.occupancyByHour;
@@ -152,6 +225,9 @@ export function TodayPage() {
           operatingHours={restaurant?.operatingHours}
         />
       )}
+
+      {/* Table Map */}
+      {tableStatus && <TableMap tables={tableStatus} />}
 
       {/* Reservations list */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">

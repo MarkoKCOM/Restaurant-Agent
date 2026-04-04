@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { eq, and, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { restaurants, reservations, tables } from "../db/schema.js";
+import { restaurants, reservations, tables, guests } from "../db/schema.js";
 import { getDailySummary } from "../services/summary.service.js";
 
 export async function restaurantRoutes(app: FastifyInstance) {
@@ -229,6 +229,97 @@ export async function restaurantRoutes(app: FastifyInstance) {
     const targetDate = date || new Date().toISOString().slice(0, 10);
     const summary = await getDailySummary(id, targetDate);
     return summary;
+  });
+
+  // GET /:id/table-status — live table status for today
+  app.get("/:id/table-status", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const today = new Date().toISOString().slice(0, 10);
+    const nowTime = new Date().toTimeString().slice(0, 5); // HH:MM
+
+    // Get all active tables
+    const allTables = await db
+      .select()
+      .from(tables)
+      .where(and(eq(tables.restaurantId, id), eq(tables.isActive, true)));
+
+    // Get today's reservations that aren't cancelled/no_show/completed
+    const todayReservations = await db
+      .select({
+        id: reservations.id,
+        guestId: reservations.guestId,
+        date: reservations.date,
+        timeStart: reservations.timeStart,
+        timeEnd: reservations.timeEnd,
+        partySize: reservations.partySize,
+        tableIds: reservations.tableIds,
+        status: reservations.status,
+        guestName: guests.name,
+      })
+      .from(reservations)
+      .leftJoin(guests, eq(reservations.guestId, guests.id))
+      .where(
+        and(
+          eq(reservations.restaurantId, id),
+          eq(reservations.date, today),
+        ),
+      );
+
+    const activeReservations = todayReservations.filter(
+      (r) => ["pending", "confirmed", "seated"].includes(r.status),
+    );
+
+    const result = allTables.map((table) => {
+      // Find reservations that reference this table
+      const matching = activeReservations.filter((r) => {
+        const tIds = (r.tableIds as string[] | null) ?? [];
+        return tIds.includes(table.id);
+      });
+
+      // Check for seated (occupied) first, then confirmed/pending (reserved)
+      const seated = matching.find((r) => r.status === "seated");
+      if (seated) {
+        return {
+          tableId: table.id,
+          tableName: table.name,
+          seats: table.maxSeats,
+          status: "occupied" as const,
+          reservation: {
+            id: seated.id,
+            guestName: seated.guestName ?? "---",
+            partySize: seated.partySize,
+            timeStart: seated.timeStart.slice(0, 5),
+          },
+        };
+      }
+
+      const reserved = matching.find(
+        (r) => r.status === "confirmed" || r.status === "pending",
+      );
+      if (reserved) {
+        return {
+          tableId: table.id,
+          tableName: table.name,
+          seats: table.maxSeats,
+          status: "reserved" as const,
+          reservation: {
+            id: reserved.id,
+            guestName: reserved.guestName ?? "---",
+            partySize: reserved.partySize,
+            timeStart: reserved.timeStart.slice(0, 5),
+          },
+        };
+      }
+
+      return {
+        tableId: table.id,
+        tableName: table.name,
+        seats: table.maxSeats,
+        status: "available" as const,
+      };
+    });
+
+    return result;
   });
 
   // GET /:id/tables — tables for restaurant

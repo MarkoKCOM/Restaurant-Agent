@@ -193,6 +193,63 @@ export function useCancelReservation() {
   });
 }
 
+// --- Create Reservation ---
+
+export function useCreateReservation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      restaurantId: string;
+      guestName: string;
+      guestPhone: string;
+      date: string;
+      timeStart: string;
+      partySize: number;
+      notes?: string;
+      source: "phone";
+    }) => {
+      const res = await fetchWithAuth(`${API}/reservations`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `API error: ${res.status}` }));
+        throw new Error(err.error ?? err.message ?? `API error: ${res.status}`);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reservations"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+// --- Table Status ---
+
+export interface TableStatusItem {
+  tableId: string;
+  tableName: string;
+  seats: number;
+  status: "available" | "reserved" | "occupied";
+  reservation?: {
+    id: string;
+    guestName: string;
+    partySize: number;
+    timeStart: string;
+  };
+}
+
+export function useTableStatus(restaurantId: string | undefined) {
+  return useQuery<TableStatusItem[]>({
+    queryKey: ["tableStatus", restaurantId],
+    queryFn: () =>
+      fetchJSON(`${API}/restaurants/${restaurantId}/table-status`),
+    enabled: !!restaurantId,
+    refetchInterval: 30_000,
+  });
+}
+
 // --- Tables ---
 
 export function useTables(restaurantId: string | undefined) {

@@ -1,49 +1,64 @@
 # Sable — Product Roadmap
 
-## Phase 1: Starter MVP (Web-First) ← **NOW**
+## Phase 1: Starter MVP (Web-First) — ✅ DONE
 Core reservation product — API, dashboard, booking widget, marketing site.
-No WhatsApp, no AI agent yet. Get the web flow rock solid.
 
 | Deliverable | Status |
 |-------------|--------|
 | Monorepo scaffold (Turborepo) | Done |
 | Architecture + MVP scope docs | Done |
-| DB schema (Drizzle) + migrations | In Progress (schema + services done, migrations pending) |
-| Fastify API — reservations, guests, tables, availability | In Progress (route handlers + services wired) |
-| Dashboard — Today, Reservations, Guests, Settings | In Progress (UI shells, needs API wiring) |
-| Booking Widget — embeddable Preact bundle | In Progress (UI flow, needs real API wiring) |
-| Marketing Site — landing page | Done |
-| BFF Raanana pilot data loaded | In Progress (seed script added, waiting on real menu/layout details) |
+| DB schema (Drizzle) + migrations | Done |
+| Fastify API — reservations, guests, tables, availability | Done |
+| Dashboard — Today, Reservations, Guests, Settings | Done |
+| Booking Widget — embeddable Preact bundle | Done |
+| Marketing Site — bilingual landing page | Done |
+| BFF Raanana pilot data loaded | Done |
+
+## Phase 1.5: Pilot-Ready Polish — 🔨 IN PROGRESS (Sprint 3)
+
+| Deliverable | Status |
+|-------------|--------|
+| JWT authentication on all API routes | Done |
+| Settings hours editor (editable per day) | Done |
+| Settings table editor (add/edit/delete) | Done |
+| Reservation detail panel (slide-over edit) | Done |
+| Widget branding (dynamic colors/logo) | Done |
+| Widget phone validation (Israeli format) | Done |
+| Past-date rejection on reservations | Done |
+| Waitlist auto-match on cancellation | In Progress (Jake) |
+| Guest preference editor | In Progress (Jake) |
+| WhatsApp session manager skeleton | In Progress (Jake) |
+| SSL/HTTPS | Blocked (needs domain) |
+| Dashboard login page + auth wrapper | Todo |
 
 ## Phase 1b: WhatsApp + AI Agent
-Add Baileys WhatsApp gateway and Claude-powered conversation agent on top of the working web product.
+Add Baileys WhatsApp gateway and AI conversation agent.
 
 - Baileys connection + session management
-- Agent loop: message → Haiku classify → tool call → Sonnet response → send
+- Agent loop: message → intent classify → tool call → respond
 - Reservation tools wired to existing API
-- Language detection (Hebrew/English)
+- Language detection (Hebrew/English/Arabic)
 - Owner alerts + daily summary via WhatsApp
 - Conversation context in Redis (24h TTL)
 
-## Phase 2: Growth Package
-CRM, loyalty, gamification, campaigns, engagement automation, analytics.
+## Phase 2: Standard Package (CRM + Loyalty + Automation)
+Full guest relationship management.
 
 - Guest CRM — full profiles, history, preferences, segmentation
 - Loyalty engine — stamps, points, tiers (Bronze/Silver/Gold), rewards
-- Gamification — streaks, challenges, badges, referrals, lucky spin, leaderboard
-- Campaign manager — audience segments, template builder, scheduling, stats
+- Gamification — streaks, challenges, referrals, VIP progression
 - Engagement automation — thank-you, review solicitation, birthday, win-back
-- Analytics dashboard — retention, CLV, campaign ROI, reservation heatmap
+- Campaign manager — audience segments, templates, scheduling, stats
+- Analytics dashboard — retention, CLV, campaign ROI
 
 ## Phase 3: Scale + Monetize
-Multi-restaurant, billing, onboarding, admin console.
+Multi-restaurant, billing, onboarding.
 
 - Row-level security for tenant isolation
-- Package enforcement middleware (Starter vs Growth)
+- Package enforcement middleware (Starter vs Standard)
 - Restaurant onboarding wizard
 - Billing — PayPlus (Israel) + Stripe (international)
 - Central admin console
-- Seat-based tier enforcement
 
 ## Future
 - Voice/phone reservation handling
@@ -52,4 +67,3 @@ Multi-restaurant, billing, onboarding, admin console.
 - Mobile app for owners
 - AI table yield optimization
 - Arabic + Russian language support
-- Fine-tuned local LLM for cost reduction at scale

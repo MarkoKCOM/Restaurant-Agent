@@ -15,6 +15,7 @@ export interface Restaurant {
   operatingHours?: OperatingHours;
   package: "starter" | "growth";
   widgetConfig?: WidgetConfig;
+  dashboardConfig?: DashboardConfig;
 }
 
 export interface OperatingHours {
@@ -25,6 +26,20 @@ export interface WidgetConfig {
   primaryColor?: string;
   logo?: string;
   welcomeText?: string;
+}
+
+export interface DashboardConfig {
+  accentColor?: string;
+  logo?: string;
+  language?: "he" | "en";
+  visiblePages?: string[];
+  features?: {
+    waitlist?: boolean;
+    loyalty?: boolean;
+    guestNotes?: boolean;
+    occupancyHeatmap?: boolean;
+    tableMap?: boolean;
+  };
 }
 
 export interface Table {

@@ -72,6 +72,7 @@ export const restaurants = pgTable("restaurants", {
   ownerWhatsapp: varchar("owner_whatsapp", { length: 20 }),
   googlePlaceId: varchar("google_place_id", { length: 255 }),
   widgetConfig: jsonb("widget_config"),
+  dashboardConfig: jsonb("dashboard_config"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

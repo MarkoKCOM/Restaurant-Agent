@@ -22,6 +22,13 @@
       "when": 1775339091404,
       "tag": "0002_fine_venus",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1775378252817,
+      "tag": "0003_flimsy_wolf_cub",
+      "breakpoints": true
     }
   ]
 }

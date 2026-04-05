@@ -3,6 +3,7 @@ import { useDashboard, useReservations, useGuests, useWaitlist } from "../hooks/
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useLang } from "../i18n.js";
 import { useAuth } from "../hooks/useAuth.js";
+import type { DashboardConfig } from "@sable/domain";
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -17,6 +18,8 @@ function CountBadge({ count }: { count: number }) {
   );
 }
 
+const DEFAULT_PAGES = ["today", "reservations", "waitlist", "guests", "settings", "help"];
+
 export function Layout() {
   const { restaurant } = useCurrentRestaurant();
   const { lang, setLang, t } = useLang();
@@ -29,6 +32,11 @@ export function Layout() {
   const { data: guests } = useGuests(restaurant?.id);
   const { data: waitlistEntries } = useWaitlist(restaurant?.id, todayStr());
 
+  const config: DashboardConfig = (restaurant as any)?.dashboardConfig ?? {};
+  const visiblePages = config.visiblePages ?? DEFAULT_PAGES;
+  const accentColor = config.accentColor;
+  const logo = config.logo;
+
   const pendingCount = reservations?.filter((r) => r.status === "pending").length ?? 0;
   const todayCount = dashboard?.today?.reservations ?? 0;
   const guestCount = guests?.length ?? 0;
@@ -39,22 +47,35 @@ export function Layout() {
   const mainMargin = lang === "he" ? "mr-64" : "ml-64";
   const textAlign = lang === "he" ? "text-right" : "text-left";
 
-  const navItems = [
-    { to: "/today", label: t.nav.today, icon: "📅", count: todayCount },
-    { to: "/reservations", label: t.nav.reservations, icon: "📋", count: pendingCount },
-    { to: "/waitlist", label: t.nav.waitlist, icon: "⏳", count: waitingCount },
-    { to: "/guests", label: t.nav.guests, icon: "👤", count: guestCount },
-    { to: "/settings", label: t.nav.settings, icon: "⚙️", count: 0 },
-    { to: "/help", label: t.nav.help, icon: "❓", count: 0 },
+  const allNavItems = [
+    { to: "/today", key: "today", label: t.nav.today, icon: "📅", count: todayCount },
+    { to: "/reservations", key: "reservations", label: t.nav.reservations, icon: "📋", count: pendingCount },
+    { to: "/waitlist", key: "waitlist", label: t.nav.waitlist, icon: "⏳", count: waitingCount },
+    { to: "/guests", key: "guests", label: t.nav.guests, icon: "👤", count: guestCount },
+    { to: "/settings", key: "settings", label: t.nav.settings, icon: "⚙️", count: 0 },
+    { to: "/help", key: "help", label: t.nav.help, icon: "❓", count: 0 },
   ];
 
+  const navItems = allNavItems.filter((item) => visiblePages.includes(item.key));
+
+  // Dynamic accent color style
+  const accentStyle = accentColor ? { "--accent": accentColor } as React.CSSProperties : undefined;
+  const activeClass = accentColor
+    ? `bg-opacity-10 text-[var(--accent)]`
+    : "bg-amber-50 text-amber-700";
+
   return (
-    <div className="min-h-screen bg-gray-50" dir={dir}>
+    <div className="min-h-screen bg-gray-50" dir={dir} style={accentStyle}>
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 ${sidebarSide} w-64 bg-white border-gray-200 p-4 flex flex-col`}>
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Sable</h1>
-          <p className="text-sm text-gray-500">{t.nav.subtitle}</p>
+        <div className="mb-8 flex items-center gap-3">
+          {logo ? (
+            <img src={logo} alt="" className="w-8 h-8 rounded object-contain" />
+          ) : null}
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{restaurant?.name ?? "Sable"}</h1>
+            <p className="text-sm text-gray-500">{t.nav.subtitle}</p>
+          </div>
         </div>
         <nav className="space-y-1 flex-1">
           {navItems.map((item) => (
@@ -63,9 +84,7 @@ export function Layout() {
               to={item.to}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-amber-50 text-amber-700"
-                    : "text-gray-600 hover:bg-gray-100"
+                  isActive ? activeClass : "text-gray-600 hover:bg-gray-100"
                 }`
               }
             >

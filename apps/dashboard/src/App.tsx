@@ -9,6 +9,8 @@ import { WaitlistPage } from "./pages/WaitlistPage.js";
 import { GuestDetailPage } from "./pages/GuestDetailPage.js";
 import { LoginPage } from "./pages/LoginPage.js";
 import { AuthProvider, useAuth } from "./hooks/useAuth.js";
+import { LangProvider } from "./i18n.js";
+import { HelpPage } from "./pages/HelpPage.js";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -36,6 +38,7 @@ function AppRoutes() {
         <Route path="/guests" element={<GuestsPage />} />
         <Route path="/guests/:id" element={<GuestDetailPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/help" element={<HelpPage />} />
       </Route>
     </Routes>
   );
@@ -44,9 +47,11 @@ function AppRoutes() {
 export function App() {
   return (
     <AuthProvider>
-      <ToastProvider>
-        <AppRoutes />
-      </ToastProvider>
+      <LangProvider>
+        <ToastProvider>
+          <AppRoutes />
+        </ToastProvider>
+      </LangProvider>
     </AuthProvider>
   );
 }

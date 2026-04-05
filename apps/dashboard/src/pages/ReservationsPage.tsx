@@ -8,16 +8,8 @@ import {
 } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useToast } from "../components/Toast.js";
+import { useLang } from "../i18n.js";
 import type { Reservation } from "@sable/domain";
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: "ממתין",
-  confirmed: "מאושר",
-  seated: "יושב",
-  completed: "הושלם",
-  cancelled: "בוטל",
-  no_show: "לא הגיע",
-};
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800",
@@ -36,17 +28,6 @@ const STATUS_BADGE_COLORS: Record<string, string> = {
   cancelled: "bg-red-100 text-red-800 hover:bg-red-200",
   no_show: "bg-red-100 text-red-800 hover:bg-red-200",
 };
-
-const HEBREW_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
-
-const SORT_OPTIONS = [
-  { value: "time", label: "לפי שעה" },
-  { value: "name", label: "לפי שם" },
-  { value: "partySize", label: "לפי סועדים" },
-  { value: "status", label: "לפי סטטוס" },
-] as const;
-
-type SortKey = (typeof SORT_OPTIONS)[number]["value"];
 
 const STATUS_ORDER: Record<string, number> = {
   pending: 0,
@@ -69,19 +50,15 @@ function shiftDate(dateStr: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-function hebrewDayName(dateStr: string): string {
+function getDayName(dateStr: string, t: any): string {
   const d = new Date(dateStr + "T12:00:00");
-  return HEBREW_DAYS[d.getDay()] ?? "";
+  const dayKeys = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
+  return t.settings.days[dayKeys[d.getDay()]] ?? "";
 }
 
-function formatHebrewDate(dateStr: string): string {
+function formatDate(dateStr: string, lang: string): string {
   const d = new Date(dateStr + "T12:00:00");
-  const day = d.getDate();
-  const months = [
-    "בינואר", "בפברואר", "במרץ", "באפריל", "במאי", "ביוני",
-    "ביולי", "באוגוסט", "בספטמבר", "באוקטובר", "בנובמבר", "בדצמבר",
-  ];
-  return `${day} ${months[d.getMonth()]}`;
+  return d.toLocaleDateString(lang === "he" ? "he-IL" : "en-US", { day: "numeric", month: "long" });
 }
 
 export function ReservationsPage() {
@@ -90,10 +67,20 @@ export function ReservationsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [sortBy, setSortBy] = useState<SortKey>("time");
+  const [sortBy, setSortBy] = useState<string>("time");
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { t, lang } = useLang();
+
+  const dir = lang === "he" ? "text-right" : "text-left";
+
+  const SORT_OPTIONS = [
+    { value: "time", label: t.res.sortByTime },
+    { value: "name", label: t.res.sortByName },
+    { value: "partySize", label: t.res.sortByPartySize },
+    { value: "status", label: t.res.sortByStatus },
+  ] as const;
 
   const { data: reservations, isLoading } = useReservations({
     restaurantId: restaurant?.id,
@@ -161,7 +148,7 @@ export function ReservationsPage() {
         break;
       case "name":
         sorted.sort((a, b) =>
-          (a.guest?.name ?? "").localeCompare(b.guest?.name ?? "", "he"),
+          (a.guest?.name ?? "").localeCompare(b.guest?.name ?? "", lang === "he" ? "he" : "en"),
         );
         break;
       case "partySize":
@@ -175,20 +162,20 @@ export function ReservationsPage() {
     }
 
     return sorted;
-  }, [reservations, statusFilter, debouncedSearch, sortBy]);
+  }, [reservations, statusFilter, debouncedSearch, sortBy, lang]);
 
   function handleStatusChange(id: string, status: string) {
-    const labels: Record<string, string> = {
-      confirmed: "ההזמנה אושרה",
-      seated: "האורח הושב",
-      completed: "ההזמנה הושלמה",
-      cancelled: "ההזמנה בוטלה",
+    const toastKeys: Record<string, string> = {
+      confirmed: t.res.toastConfirmed,
+      seated: t.res.toastSeated,
+      completed: t.res.toastCompleted,
+      cancelled: t.res.toastCancelled,
     };
     updateMutation.mutate(
       { id, data: { status } },
       {
-        onSuccess: () => showToast(labels[status] ?? "הסטטוס עודכן"),
-        onError: () => showToast("שגיאה בעדכון הסטטוס", "error"),
+        onSuccess: () => showToast(toastKeys[status] ?? t.res.toastStatusUpdated),
+        onError: () => showToast(t.res.toastStatusError, "error"),
       },
     );
   }
@@ -201,7 +188,7 @@ export function ReservationsPage() {
     setSelectedReservation(null);
   }
 
-  const dayName = hebrewDayName(date);
+  const currentDayName = getDayName(date, t);
   const isToday = date === todayStr();
 
   return (
@@ -209,21 +196,21 @@ export function ReservationsPage() {
       {/* Page Title with count and date context */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-gray-900">
-          {"הזמנות"}
+          {t.res.title}
           {reservations && reservations.length > 0 && (
             <span className="text-gray-400 font-normal mr-2">
               ({reservations.length})
             </span>
           )}
           <span className="text-base font-normal text-gray-500 mr-3">
-            {"יום "}{dayName}{", "}{formatHebrewDate(date)}
+            {t.res.dayPrefix}{currentDayName}{", "}{formatDate(date, lang)}
           </span>
         </h2>
         <button
           onClick={() => setShowCreateModal(true)}
           className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
         >
-          + הזמנה חדשה
+          {t.res.create}
         </button>
       </div>
 
@@ -237,7 +224,7 @@ export function ReservationsPage() {
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
         >
-          {"הכל"}
+          {t.res.all}
           <span className="font-bold">{statusCounts.total}</span>
         </button>
         {ALL_STATUSES.map((s) => (
@@ -250,7 +237,7 @@ export function ReservationsPage() {
                 : STATUS_BADGE_COLORS[s] ?? ""
             }`}
           >
-            {STATUS_LABELS[s]}
+            {t.status[s as keyof typeof t.status]}
             <span className="font-bold">{statusCounts[s] ?? 0}</span>
           </button>
         ))}
@@ -263,7 +250,6 @@ export function ReservationsPage() {
           <button
             onClick={() => setDate(shiftDate(date, -1))}
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
-            title="יום קודם"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -277,7 +263,7 @@ export function ReservationsPage() {
                 : "border-gray-300 hover:bg-gray-50 text-gray-700"
             }`}
           >
-            {"היום"}
+            {t.res.today}
           </button>
           <input
             type="date"
@@ -288,7 +274,6 @@ export function ReservationsPage() {
           <button
             onClick={() => setDate(shiftDate(date, 1))}
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
-            title="יום הבא"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -302,13 +287,10 @@ export function ReservationsPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
         >
-          <option value="">כל הסטטוסים</option>
-          <option value="pending">ממתין</option>
-          <option value="confirmed">מאושר</option>
-          <option value="seated">יושב</option>
-          <option value="completed">הושלם</option>
-          <option value="cancelled">בוטל</option>
-          <option value="no_show">לא הגיע</option>
+          <option value="">{t.res.allStatuses}</option>
+          {ALL_STATUSES.map((s) => (
+            <option key={s} value={s}>{t.status[s as keyof typeof t.status]}</option>
+          ))}
         </select>
 
         {/* Guest Search */}
@@ -317,7 +299,7 @@ export function ReservationsPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="חיפוש לפי שם או טלפון..."
+            placeholder={t.res.search}
             className="px-3 py-2 pr-3 pl-8 border border-gray-300 rounded-lg text-sm w-56"
           />
           {searchQuery && (
@@ -338,7 +320,7 @@ export function ReservationsPage() {
         {/* Sort Dropdown */}
         <select
           value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as SortKey)}
+          onChange={(e) => setSortBy(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
         >
           {SORT_OPTIONS.map((opt) => (
@@ -354,19 +336,19 @@ export function ReservationsPage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">שעה</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">אורח</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">טלפון</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">סועדים</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">סטטוס</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">פעולות</th>
+              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.res.time}</th>
+              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.res.guest}</th>
+              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.res.phone}</th>
+              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.res.partySize}</th>
+              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.res.statusCol}</th>
+              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.res.actions}</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                  טוען...
+                  {t.res.loading}
                 </td>
               </tr>
             ) : !displayed || displayed.length === 0 ? (
@@ -387,13 +369,13 @@ export function ReservationsPage() {
                       />
                     </svg>
                     <p className="text-gray-500 text-sm">
-                      {"אין הזמנות ל-"}{formatHebrewDate(date)}{" (יום "}{dayName}{")"}
+                      {t.res.noResults}
                     </p>
                     <button
                       onClick={() => setShowCreateModal(true)}
                       className="mt-1 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
                     >
-                      {"+ הזמנה חדשה"}
+                      {t.res.create}
                     </button>
                   </div>
                 </td>
@@ -413,7 +395,7 @@ export function ReservationsPage() {
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-gray-100"}`}
                     >
-                      {STATUS_LABELS[r.status] ?? r.status}
+                      {t.status[r.status as keyof typeof t.status] ?? r.status}
                     </span>
                   </td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -422,7 +404,7 @@ export function ReservationsPage() {
                         onClick={() => handleStatusChange(r.id, "seated")}
                         className="text-xs text-green-600 hover:underline ml-2"
                       >
-                        הושב
+                        {t.res.seat}
                       </button>
                     )}
                     {r.status === "seated" && (
@@ -430,7 +412,7 @@ export function ReservationsPage() {
                         onClick={() => handleStatusChange(r.id, "completed")}
                         className="text-xs text-blue-600 hover:underline ml-2"
                       >
-                        סיים
+                        {t.res.complete}
                       </button>
                     )}
                     {(r.status === "pending" || r.status === "confirmed") && (
@@ -438,7 +420,7 @@ export function ReservationsPage() {
                         onClick={() => handleStatusChange(r.id, "cancelled")}
                         className="text-xs text-red-600 hover:underline ml-2"
                       >
-                        בטל
+                        {t.res.cancel}
                       </button>
                     )}
                     {(r.status === "confirmed" || r.status === "seated") && (
@@ -446,7 +428,7 @@ export function ReservationsPage() {
                         onClick={() => noShowMutation.mutate(r.id)}
                         className="text-xs text-orange-600 hover:underline ml-2"
                       >
-                        לא הגיע
+                        {t.res.markNoShow}
                       </button>
                     )}
                   </td>
@@ -493,6 +475,7 @@ function ReservationDetailPanel({
   cancelMutation: ReturnType<typeof useCancelReservation>;
 }) {
   const { showToast } = useToast();
+  const { t } = useLang();
   const [editDate, setEditDate] = useState(reservation.date);
   const [editTime, setEditTime] = useState(reservation.timeStart?.slice(0, 5) ?? "");
   const [editPartySize, setEditPartySize] = useState(reservation.partySize);
@@ -531,21 +514,21 @@ function ReservationDetailPanel({
         onSuccess: () => {
           setSaved(true);
           setTimeout(() => setSaved(false), 2000);
-          showToast("ההזמנה עודכנה בהצלחה");
+          showToast(t.res.toastUpdated);
         },
-        onError: () => showToast("שגיאה בעדכון ההזמנה", "error"),
+        onError: () => showToast(t.res.toastUpdateError, "error"),
       },
     );
   }
 
   function handleCancel() {
-    if (!confirm("האם לבטל את ההזמנה?")) return;
+    if (!confirm(t.res.confirmCancel)) return;
     cancelMutation.mutate(reservation.id, {
       onSuccess: (data: any) => {
         if (data?.waitlistMatch) {
           const match = data.waitlistMatch;
           showToast(
-            `נמצא אורח ברשימת המתנה: ${match.guestName} (${match.guestPhone}). הוצעה הזמנה.`,
+            `${t.res.waitlistMatch}: ${match.guestName} (${match.guestPhone})`,
           );
         }
         onClose();
@@ -577,7 +560,7 @@ function ReservationDetailPanel({
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">פרטי הזמנה</h3>
+            <h3 className="text-lg font-semibold text-gray-900">{t.res.details}</h3>
             <button
               onClick={handleClose}
               className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
@@ -599,14 +582,14 @@ function ReservationDetailPanel({
                   href={`/guests/${reservation.guestId}`}
                   className="text-xs text-amber-600 hover:underline mt-2 inline-block"
                 >
-                  צפה בפרופיל אורח
+                  {t.res.viewGuestProfile}
                 </a>
               )}
             </div>
 
             {/* Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">תאריך</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.date}</label>
               <input
                 type="date"
                 value={editDate}
@@ -617,7 +600,7 @@ function ReservationDetailPanel({
 
             {/* Time */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">שעה</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.timeStart}</label>
               <input
                 type="time"
                 value={editTime}
@@ -628,7 +611,7 @@ function ReservationDetailPanel({
 
             {/* Party size */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">מספר סועדים</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.partySize}</label>
               <select
                 value={editPartySize}
                 onChange={(e) => setEditPartySize(Number(e.target.value))}
@@ -644,38 +627,35 @@ function ReservationDetailPanel({
 
             {/* Status */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">סטטוס</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.statusCol}</label>
               <select
                 value={editStatus}
                 onChange={(e) => setEditStatus(e.target.value as Reservation["status"])}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
               >
-                <option value="pending">ממתין</option>
-                <option value="confirmed">מאושר</option>
-                <option value="seated">יושב</option>
-                <option value="completed">הושלם</option>
-                <option value="cancelled">בוטל</option>
-                <option value="no_show">לא הגיע</option>
+                {ALL_STATUSES.map((s) => (
+                  <option key={s} value={s}>{t.status[s as keyof typeof t.status]}</option>
+                ))}
               </select>
             </div>
 
             {/* Tables */}
             {reservation.tableIds && reservation.tableIds.length > 0 && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">שולחנות</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.tables}</label>
                 <p className="text-sm text-gray-600">{reservation.tableIds.join(", ")}</p>
               </div>
             )}
 
             {/* Notes */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">הערות</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.notes}</label>
               <textarea
                 value={editNotes}
                 onChange={(e) => setEditNotes(e.target.value)}
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none"
-                placeholder="הערות להזמנה..."
+                placeholder={t.res.notesPlaceholder}
               />
             </div>
           </div>
@@ -688,16 +668,16 @@ function ReservationDetailPanel({
                 disabled={updateMutation.isPending}
                 className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
               >
-                {updateMutation.isPending ? "שומר..." : "שמור שינויים"}
+                {updateMutation.isPending ? t.res.saving : t.res.save}
               </button>
-              {saved && <span className="text-sm text-green-600">נשמר!</span>}
+              {saved && <span className="text-sm text-green-600">{t.res.saved}</span>}
             </div>
             <button
               onClick={handleCancel}
               disabled={cancelMutation.isPending || reservation.status === "cancelled"}
               className="w-full px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors disabled:opacity-50"
             >
-              {cancelMutation.isPending ? "מבטל..." : "בטל הזמנה"}
+              {cancelMutation.isPending ? t.res.cancelling : t.res.cancelReservation}
             </button>
           </div>
         </div>
@@ -719,6 +699,7 @@ function CreateReservationModal({
 }) {
   const createMutation = useCreateReservation();
   const { showToast } = useToast();
+  const { t } = useLang();
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [date, setDate] = useState(defaultDate);
@@ -742,8 +723,8 @@ function CreateReservationModal({
         source: "phone",
       },
       {
-        onSuccess: () => { showToast("ההזמנה נוצרה בהצלחה"); onClose(); },
-        onError: (err) => setError(err.message || "שגיאה ביצירת ההזמנה"),
+        onSuccess: () => { showToast(t.res.toastCreated); onClose(); },
+        onError: (err) => setError(err.message || t.res.toastCreateError),
       },
     );
   }
@@ -763,7 +744,7 @@ function CreateReservationModal({
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between mb-5">
-            <h3 className="text-lg font-semibold text-gray-900">הזמנה חדשה</h3>
+            <h3 className="text-lg font-semibold text-gray-900">{t.res.newReservation}</h3>
             <button
               onClick={onClose}
               className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
@@ -777,20 +758,20 @@ function CreateReservationModal({
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Guest Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">שם אורח</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.guestName}</label>
               <input
                 type="text"
                 required
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="שם מלא"
+                placeholder={t.res.fullName}
               />
             </div>
 
             {/* Phone */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">טלפון</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.guestPhone}</label>
               <input
                 type="tel"
                 required
@@ -803,7 +784,7 @@ function CreateReservationModal({
 
             {/* Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">תאריך</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.date}</label>
               <input
                 type="date"
                 required
@@ -815,7 +796,7 @@ function CreateReservationModal({
 
             {/* Time */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">שעה</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.timeStart}</label>
               <input
                 type="time"
                 required
@@ -827,7 +808,7 @@ function CreateReservationModal({
 
             {/* Party Size */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">מספר סועדים</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.partySize}</label>
               <select
                 value={partySize}
                 onChange={(e) => setPartySize(Number(e.target.value))}
@@ -841,13 +822,13 @@ function CreateReservationModal({
 
             {/* Notes */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">הערות</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.notes}</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none"
-                placeholder="הערות להזמנה (אופציונלי)"
+                placeholder={t.res.notesOptional}
               />
             </div>
 
@@ -862,7 +843,7 @@ function CreateReservationModal({
               disabled={createMutation.isPending}
               className="w-full px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
             >
-              {createMutation.isPending ? "שומר..." : "צור הזמנה"}
+              {createMutation.isPending ? t.res.creating : t.res.createBtn}
             </button>
           </form>
         </div>

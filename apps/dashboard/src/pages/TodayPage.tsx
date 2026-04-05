@@ -3,16 +3,8 @@ import { useDashboard, useReservations, useTableStatus, useUpdateReservation, us
 import type { TableStatusItem } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useToast } from "../components/Toast.js";
+import { useLang } from "../i18n.js";
 import type { Reservation, Table } from "@sable/domain";
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: "ממתין",
-  confirmed: "מאושר",
-  seated: "יושב",
-  completed: "הושלם",
-  cancelled: "בוטל",
-  no_show: "לא הגיע",
-};
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800",
@@ -30,6 +22,27 @@ const STATUS_ROW_TINT: Record<string, string> = {
   completed: "bg-gray-50/50",
   cancelled: "bg-red-50/30",
   no_show: "bg-red-50/30",
+};
+
+const TABLE_STATUS_STYLES: Record<
+  string,
+  { bg: string; border: string; dot: string }
+> = {
+  available: {
+    bg: "bg-green-50",
+    border: "border-green-300",
+    dot: "bg-green-500",
+  },
+  reserved: {
+    bg: "bg-amber-50",
+    border: "border-amber-300",
+    dot: "bg-amber-500",
+  },
+  occupied: {
+    bg: "bg-red-50",
+    border: "border-red-300",
+    dot: "bg-red-500",
+  },
 };
 
 function todayStr() {
@@ -61,13 +74,19 @@ function heatmapColor(covers: number, max: number): string {
   return "bg-amber-700 text-white";
 }
 
-function formatCountdown(minutesUntil: number): string {
-  if (minutesUntil <= 0) return "עכשיו";
-  if (minutesUntil < 60) return `בעוד ${minutesUntil} דקות`;
+function formatCountdown(minutesUntil: number, t: ReturnType<typeof useLang>["t"]): string {
+  if (minutesUntil <= 0) return t.today.now;
+  if (minutesUntil < 60) return t.today.inMinutes.replace("{n}", String(minutesUntil));
   const hours = Math.floor(minutesUntil / 60);
   const mins = minutesUntil % 60;
-  if (mins === 0) return `בעוד ${hours === 1 ? "שעה" : `${hours} שעות`}`;
-  return `בעוד ${hours === 1 ? "שעה" : `${hours} שעות`} ו-${mins} דקות`;
+  if (mins === 0) {
+    return hours === 1
+      ? t.today.inHour
+      : t.today.inHours.replace("{n}", String(hours));
+  }
+  return hours === 1
+    ? t.today.inHourAndMinutes.replace("{n}", String(mins))
+    : t.today.inHoursAndMinutes.replace("{h}", String(hours)).replace("{m}", String(mins));
 }
 
 function OccupancyHeatmap({
@@ -77,6 +96,7 @@ function OccupancyHeatmap({
   occupancyByHour: Record<string, number>;
   operatingHours?: Record<string, { open: string; close: string } | null>;
 }) {
+  const { t } = useLang();
   const dayNames = [
     "sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday",
   ];
@@ -89,7 +109,7 @@ function OccupancyHeatmap({
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-      <h3 className="text-lg font-semibold mb-4">תפוסה לפי שעה</h3>
+      <h3 className="text-lg font-semibold mb-4">{t.today.occupancyByHour}</h3>
       <div className="flex gap-1 overflow-x-auto">
         {slots.map((slot) => {
           const covers = occupancyByHour[slot] ?? 0;
@@ -97,7 +117,7 @@ function OccupancyHeatmap({
             <div
               key={slot}
               className={`flex flex-col items-center min-w-[48px] rounded-lg px-1 py-2 ${heatmapColor(covers, maxCovers)}`}
-              title={`${slot} — ${covers} סועדים`}
+              title={`${slot} — ${covers} ${t.today.covers}`}
             >
               <span className="text-xs font-mono">{slot}</span>
               <span className="text-sm font-bold mt-1">{covers}</span>
@@ -106,7 +126,7 @@ function OccupancyHeatmap({
         })}
       </div>
       <div className="flex items-center gap-2 mt-3 text-xs text-gray-500">
-        <span>ריק</span>
+        <span>{t.today.empty}</span>
         <div className="flex gap-0.5">
           <div className="w-4 h-3 rounded bg-gray-100" />
           <div className="w-4 h-3 rounded bg-amber-100" />
@@ -114,62 +134,46 @@ function OccupancyHeatmap({
           <div className="w-4 h-3 rounded bg-amber-500" />
           <div className="w-4 h-3 rounded bg-amber-700" />
         </div>
-        <span>מלא</span>
+        <span>{t.today.full}</span>
       </div>
     </div>
   );
 }
 
-const TABLE_STATUS_CONFIG: Record<
-  string,
-  { label: string; bg: string; border: string; dot: string }
-> = {
-  available: {
-    label: "פנוי",
-    bg: "bg-green-50",
-    border: "border-green-300",
-    dot: "bg-green-500",
-  },
-  reserved: {
-    label: "מוזמן",
-    bg: "bg-amber-50",
-    border: "border-amber-300",
-    dot: "bg-amber-500",
-  },
-  occupied: {
-    label: "תפוס",
-    bg: "bg-red-50",
-    border: "border-red-300",
-    dot: "bg-red-500",
-  },
-};
-
 function TableMap({ tables }: { tables: TableStatusItem[] }) {
+  const { t } = useLang();
+
+  const tableStatusLabels: Record<string, string> = {
+    available: t.today.available,
+    reserved: t.today.reserved,
+    occupied: t.today.occupied,
+  };
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-      <h3 className="text-lg font-semibold mb-4">מפת שולחנות</h3>
+      <h3 className="text-lg font-semibold mb-4">{t.today.tableMap}</h3>
       {tables.length === 0 ? (
-        <p className="text-gray-500 text-sm">אין שולחנות מוגדרים.</p>
+        <p className="text-gray-500 text-sm">{t.today.noTables}</p>
       ) : (
         <div className="grid grid-cols-5 gap-3">
-          {tables.map((t) => {
-            const cfg = TABLE_STATUS_CONFIG[t.status];
+          {tables.map((tbl) => {
+            const cfg = TABLE_STATUS_STYLES[tbl.status];
             return (
               <div
-                key={t.tableId}
+                key={tbl.tableId}
                 className={`rounded-xl border ${cfg.border} ${cfg.bg} p-3 transition-colors`}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-bold text-gray-900">{t.tableName}</span>
+                  <span className="text-sm font-bold text-gray-900">{tbl.tableName}</span>
                   <span className={`w-2.5 h-2.5 rounded-full ${cfg.dot}`} />
                 </div>
-                <p className="text-xs text-gray-500 mb-1">{t.seats} מקומות</p>
-                <p className="text-xs font-medium text-gray-700">{cfg.label}</p>
-                {t.reservation && (
+                <p className="text-xs text-gray-500 mb-1">{tbl.seats} {t.today.seats}</p>
+                <p className="text-xs font-medium text-gray-700">{tableStatusLabels[tbl.status] ?? tbl.status}</p>
+                {tbl.reservation && (
                   <div className="mt-2 pt-2 border-t border-gray-200">
-                    <p className="text-xs font-medium text-gray-800 truncate">{t.reservation.guestName}</p>
+                    <p className="text-xs font-medium text-gray-800 truncate">{tbl.reservation.guestName}</p>
                     <p className="text-xs text-gray-500">
-                      {t.reservation.partySize} סועדים &middot; {t.reservation.timeStart}
+                      {tbl.reservation.partySize} {t.today.covers} &middot; {tbl.reservation.timeStart}
                     </p>
                   </div>
                 )}
@@ -179,10 +183,10 @@ function TableMap({ tables }: { tables: TableStatusItem[] }) {
         </div>
       )}
       <div className="flex items-center gap-4 mt-4 text-xs text-gray-500">
-        {Object.entries(TABLE_STATUS_CONFIG).map(([key, cfg]) => (
+        {Object.entries(TABLE_STATUS_STYLES).map(([key, cfg]) => (
           <div key={key} className="flex items-center gap-1">
             <span className={`w-2.5 h-2.5 rounded-full ${cfg.dot}`} />
-            <span>{cfg.label}</span>
+            <span>{tableStatusLabels[key] ?? key}</span>
           </div>
         ))}
       </div>
@@ -202,6 +206,9 @@ export function TodayPage() {
   const updateMutation = useUpdateReservation();
   const noShowMutation = useMarkNoShow();
   const { showToast } = useToast();
+  const { t, lang } = useLang();
+
+  const textAlign = lang === "he" ? "text-right" : "text-left";
 
   const stats = dashboard?.today;
   const occupancyByHour = dashboard?.occupancyByHour;
@@ -210,8 +217,8 @@ export function TodayPage() {
   const tableNameMap = useMemo(() => {
     const map: Record<string, string> = {};
     if (tablesList) {
-      for (const t of tablesList) {
-        map[t.id] = t.name;
+      for (const tbl of tablesList) {
+        map[tbl.id] = tbl.name;
       }
     }
     return map;
@@ -242,24 +249,24 @@ export function TodayPage() {
 
   function handleStatusChange(id: string, status: string) {
     const labels: Record<string, string> = {
-      confirmed: "ההזמנה אושרה",
-      seated: "האורח הושב",
-      completed: "ההזמנה הושלמה",
-      cancelled: "ההזמנה בוטלה",
+      confirmed: t.today.toastConfirmed,
+      seated: t.today.toastSeated,
+      completed: t.today.toastCompleted,
+      cancelled: t.today.toastCancelled,
     };
     updateMutation.mutate(
       { id, data: { status } },
       {
-        onSuccess: () => showToast(labels[status] ?? "הסטטוס עודכן"),
-        onError: () => showToast("שגיאה בעדכון הסטטוס", "error"),
+        onSuccess: () => showToast(labels[status] ?? t.today.toastStatusUpdated),
+        onError: () => showToast(t.today.toastStatusError, "error"),
       },
     );
   }
 
   function handleNoShow(id: string) {
     noShowMutation.mutate(id, {
-      onSuccess: () => showToast("סומן כלא הגיע"),
-      onError: () => showToast("שגיאה בסימון לא הגיע", "error"),
+      onSuccess: () => showToast(t.today.toastNoShow),
+      onError: () => showToast(t.today.toastNoShowError, "error"),
     });
   }
 
@@ -269,15 +276,15 @@ export function TodayPage() {
   }
 
   const statCards = [
-    { label: "הזמנות", value: stats?.reservations ?? 0, color: "bg-blue-50 text-blue-700" },
-    { label: "סועדים", value: stats?.covers ?? 0, color: "bg-green-50 text-green-700" },
-    { label: "ביטולים", value: stats?.cancellations ?? 0, color: "bg-amber-50 text-amber-700" },
-    { label: "לא הגיעו", value: stats?.noShows ?? 0, color: "bg-red-50 text-red-700" },
+    { label: t.today.reservations, value: stats?.reservations ?? 0, color: "bg-blue-50 text-blue-700" },
+    { label: t.today.covers, value: stats?.covers ?? 0, color: "bg-green-50 text-green-700" },
+    { label: t.today.cancellations, value: stats?.cancellations ?? 0, color: "bg-amber-50 text-amber-700" },
+    { label: t.today.noShows, value: stats?.noShows ?? 0, color: "bg-red-50 text-red-700" },
   ];
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">היום</h2>
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">{t.today.title}</h2>
 
       {/* Stats cards */}
       <div className="grid grid-cols-4 gap-4 mb-8">
@@ -305,28 +312,28 @@ export function TodayPage() {
         <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3">
           <span className="text-amber-600 font-bold text-lg">&#9201;</span>
           <span className="text-sm font-medium text-amber-800">
-            ההזמנה הבאה: {formatCountdown(minutesUntilNext)}
+            {t.today.nextUp} {formatCountdown(minutesUntilNext, t)}
           </span>
         </div>
       )}
 
       {/* Reservations list */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold mb-4">הזמנות להיום</h3>
+        <h3 className="text-lg font-semibold mb-4">{t.today.todayReservations}</h3>
         {!reservations || reservations.length === 0 ? (
           <p className="text-gray-500 text-sm">
-            אין הזמנות להיום. הזמנות חדשות יופיעו כאן.
+            {t.today.noReservations}
           </p>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-right px-4 py-3 font-medium text-gray-500">שעה</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-500">אורח</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-500">סועדים</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-500">שולחן</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-500">סטטוס</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-500">פעולות</th>
+                <th className={`${textAlign} px-4 py-3 font-medium text-gray-500`}>{t.today.time}</th>
+                <th className={`${textAlign} px-4 py-3 font-medium text-gray-500`}>{t.today.guest}</th>
+                <th className={`${textAlign} px-4 py-3 font-medium text-gray-500`}>{t.today.partySize}</th>
+                <th className={`${textAlign} px-4 py-3 font-medium text-gray-500`}>{t.today.table}</th>
+                <th className={`${textAlign} px-4 py-3 font-medium text-gray-500`}>{t.today.statusCol}</th>
+                <th className={`${textAlign} px-4 py-3 font-medium text-gray-500`}>{t.today.actions}</th>
               </tr>
             </thead>
             <tbody>
@@ -341,7 +348,7 @@ export function TodayPage() {
                     <td className="px-4 py-3 font-mono">
                       {r.timeStart?.slice(0, 5)}
                       {isNextUp && (
-                        <span className="mr-2 text-xs text-amber-600 font-medium">&#8592; הבא</span>
+                        <span className="mr-2 text-xs text-amber-600 font-medium">&#8592; {t.today.next}</span>
                       )}
                     </td>
                     <td className="px-4 py-3">{r.guest?.name ?? "---"}</td>
@@ -349,7 +356,7 @@ export function TodayPage() {
                     <td className="px-4 py-3 text-gray-500 text-xs">{getTableNames(r.tableIds)}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-gray-100"}`}>
-                        {STATUS_LABELS[r.status] ?? r.status}
+                        {t.status[r.status as keyof typeof t.status] ?? r.status}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -359,7 +366,7 @@ export function TodayPage() {
                             onClick={() => handleStatusChange(r.id, "confirmed")}
                             className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                           >
-                            אשר
+                            {t.today.confirm}
                           </button>
                         )}
                         {r.status === "confirmed" && (
@@ -367,7 +374,7 @@ export function TodayPage() {
                             onClick={() => handleStatusChange(r.id, "seated")}
                             className="text-xs px-2 py-1 rounded bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
                           >
-                            הושב
+                            {t.today.seat}
                           </button>
                         )}
                         {r.status === "seated" && (
@@ -375,7 +382,7 @@ export function TodayPage() {
                             onClick={() => handleStatusChange(r.id, "completed")}
                             className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
                           >
-                            סיים
+                            {t.today.complete}
                           </button>
                         )}
                         {(r.status === "pending" || r.status === "confirmed") && (
@@ -383,7 +390,7 @@ export function TodayPage() {
                             onClick={() => handleStatusChange(r.id, "cancelled")}
                             className="text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
                           >
-                            בטל
+                            {t.today.cancel}
                           </button>
                         )}
                         {(r.status === "confirmed" || r.status === "seated") && (
@@ -391,7 +398,7 @@ export function TodayPage() {
                             onClick={() => handleNoShow(r.id)}
                             className="text-xs px-2 py-1 rounded bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
                           >
-                            לא הגיע
+                            {t.today.markNoShow}
                           </button>
                         )}
                       </div>

@@ -9,18 +9,19 @@ import {
   useResetReservations,
 } from "../hooks/api.js";
 import { useToast } from "../components/Toast.js";
+import { useLang } from "../i18n.js";
 import type { Table } from "@sable/domain";
 
 const DAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
-const DAY_LABELS: Record<string, string> = {
-  sun: "ראשון",
-  mon: "שני",
-  tue: "שלישי",
-  wed: "רביעי",
-  thu: "חמישי",
-  fri: "שישי",
-  sat: "שבת",
+const DAY_KEYS: Record<string, string> = {
+  sun: "sunday",
+  mon: "monday",
+  tue: "tuesday",
+  wed: "wednesday",
+  thu: "thursday",
+  fri: "friday",
+  sat: "saturday",
 };
 
 type HoursEntry = { open: string; close: string } | null;
@@ -37,6 +38,7 @@ export function SettingsPage() {
   const deleteTableMutation = useDeleteTable();
   const resetMutation = useResetReservations();
   const { showToast } = useToast();
+  const { t, lang } = useLang();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const [name, setName] = useState("");
@@ -73,8 +75,8 @@ export function SettingsPage() {
     updateMutation.mutate(
       { id: restaurant.id, data: { name, phone, address } },
       {
-        onSuccess: () => showToast("פרטי המסעדה נשמרו"),
-        onError: () => showToast("שגיאה בשמירת פרטי המסעדה", "error"),
+        onSuccess: () => showToast(t.settings.toastDetailsSaved),
+        onError: () => showToast(t.settings.toastDetailsError, "error"),
       },
     );
   }
@@ -88,9 +90,9 @@ export function SettingsPage() {
           setHoursDirty(false);
           setHoursSaved(true);
           setTimeout(() => setHoursSaved(false), 2000);
-          showToast("שעות הפעילות נשמרו");
+          showToast(t.settings.toastHoursSaved);
         },
-        onError: () => showToast("שגיאה בשמירת שעות הפעילות", "error"),
+        onError: () => showToast(t.settings.toastHoursError, "error"),
       },
     );
   }
@@ -100,11 +102,11 @@ export function SettingsPage() {
     resetMutation.mutate(restaurant.id, {
       onSuccess: (data) => {
         setShowResetConfirm(false);
-        showToast(`${(data as { deleted: number }).deleted} הזמנות נמחקו`);
+        showToast(`${(data as { deleted: number }).deleted} ${t.settings.resetReservations}`);
       },
       onError: () => {
         setShowResetConfirm(false);
-        showToast("שגיאה במחיקת הזמנות", "error");
+        showToast(t.settings.toastResetError, "error");
       },
     });
   }
@@ -145,13 +147,13 @@ export function SettingsPage() {
     );
   }
 
-  function startEditTable(t: Table) {
-    setEditingTableId(t.id);
+  function startEditTable(tbl: Table) {
+    setEditingTableId(tbl.id);
     setEditTableForm({
-      name: t.name,
-      minSeats: t.minSeats,
-      maxSeats: t.maxSeats,
-      zone: t.zone ?? "",
+      name: tbl.name,
+      minSeats: tbl.minSeats,
+      maxSeats: tbl.maxSeats,
+      zone: tbl.zone ?? "",
     });
   }
 
@@ -175,19 +177,19 @@ export function SettingsPage() {
     deleteTableMutation.mutate(id);
   }
 
-  if (isLoading) return <p className="text-gray-500">טוען...</p>;
+  if (isLoading) return <p className="text-gray-500">{t.settings.loading}</p>;
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">הגדרות</h2>
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">{t.settings.title}</h2>
 
       <div className="space-y-6">
         {/* Restaurant details */}
         <section className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">פרטי המסעדה</h3>
+          <h3 className="text-lg font-semibold mb-4">{t.settings.restaurantDetails}</h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">שם</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.name}</label>
               <input
                 type="text"
                 value={name}
@@ -196,7 +198,7 @@ export function SettingsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">טלפון</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.phone}</label>
               <input
                 type="tel"
                 value={phone}
@@ -205,7 +207,7 @@ export function SettingsPage() {
               />
             </div>
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">כתובת</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.address}</label>
               <input
                 type="text"
                 value={address}
@@ -219,20 +221,21 @@ export function SettingsPage() {
             disabled={updateMutation.isPending}
             className="mt-4 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
           >
-            {updateMutation.isPending ? "שומר..." : "שמור שינויים"}
+            {updateMutation.isPending ? t.settings.saving : t.settings.save}
           </button>
         </section>
 
         {/* Operating hours editor */}
         <section className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">שעות פעילות</h3>
+          <h3 className="text-lg font-semibold mb-4">{t.settings.operatingHours}</h3>
           <div className="space-y-3">
             {DAYS.map((day) => {
               const h = hours[day];
               const isOpen = h !== null && h !== undefined;
+              const dayKey = DAY_KEYS[day] as keyof typeof t.settings.days;
               return (
                 <div key={day} className="flex items-center gap-4 text-sm">
-                  <span className="w-16 font-medium text-gray-700">{DAY_LABELS[day]}</span>
+                  <span className="w-16 font-medium text-gray-700">{t.settings.days[dayKey]}</span>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -241,7 +244,7 @@ export function SettingsPage() {
                       className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
                     />
                     <span className={isOpen ? "text-gray-700" : "text-gray-400"}>
-                      {isOpen ? "פתוח" : "סגור"}
+                      {isOpen ? t.settings.open : t.settings.closed}
                     </span>
                   </label>
                   {isOpen && h && (
@@ -252,7 +255,7 @@ export function SettingsPage() {
                         onChange={(e) => setDayTime(day, "open", e.target.value)}
                         className="px-2 py-1 border border-gray-300 rounded-lg text-sm"
                       />
-                      <span className="text-gray-400">—</span>
+                      <span className="text-gray-400">&mdash;</span>
                       <input
                         type="time"
                         value={h.close}
@@ -271,21 +274,21 @@ export function SettingsPage() {
               disabled={!hoursDirty || updateMutation.isPending}
               className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
             >
-              {updateMutation.isPending ? "שומר..." : "שמור שעות"}
+              {updateMutation.isPending ? t.settings.saving : t.settings.saveHours}
             </button>
-            {hoursSaved && <span className="text-sm text-green-600">נשמר!</span>}
+            {hoursSaved && <span className="text-sm text-green-600">{t.settings.saved}</span>}
           </div>
         </section>
 
         {/* Tables editor */}
         <section className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">שולחנות</h3>
+            <h3 className="text-lg font-semibold">{t.settings.tables}</h3>
             <button
               onClick={() => setShowAddTable(!showAddTable)}
               className="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
             >
-              {showAddTable ? "ביטול" : "+ הוסף שולחן"}
+              {showAddTable ? t.settings.cancel : t.settings.addTable}
             </button>
           </div>
 
@@ -294,7 +297,7 @@ export function SettingsPage() {
             <div className="mb-4 p-4 border border-amber-200 bg-amber-50 rounded-lg">
               <div className="grid grid-cols-4 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">שם</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">{t.settings.tableName}</label>
                   <input
                     type="text"
                     value={tableForm.name}
@@ -304,7 +307,7 @@ export function SettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">מינ׳ מושבים</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">{t.settings.minSeats}</label>
                   <input
                     type="number"
                     min={1}
@@ -314,7 +317,7 @@ export function SettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">מקס׳ מושבים</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">{t.settings.maxSeats}</label>
                   <input
                     type="number"
                     min={1}
@@ -324,12 +327,12 @@ export function SettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">אזור</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">{t.settings.zone}</label>
                   <input
                     type="text"
                     value={tableForm.zone}
                     onChange={(e) => setTableForm({ ...tableForm, zone: e.target.value })}
-                    placeholder="פנים / חוץ"
+                    placeholder={t.settings.zonePlaceholder}
                     className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
                   />
                 </div>
@@ -339,19 +342,19 @@ export function SettingsPage() {
                 disabled={createTableMutation.isPending || !tableForm.name.trim()}
                 className="mt-3 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
               >
-                {createTableMutation.isPending ? "שומר..." : "הוסף"}
+                {createTableMutation.isPending ? t.settings.saving : t.guestDetail.add}
               </button>
             </div>
           )}
 
           {!tablesList || tablesList.length === 0 ? (
-            <p className="text-gray-500 text-sm">אין שולחנות</p>
+            <p className="text-gray-500 text-sm">{t.settings.noTables}</p>
           ) : (
             <div className="grid grid-cols-4 gap-3">
-              {tablesList.map((t: Table) =>
-                editingTableId === t.id ? (
+              {tablesList.map((tbl: Table) =>
+                editingTableId === tbl.id ? (
                   <div
-                    key={t.id}
+                    key={tbl.id}
                     className="border-2 border-amber-400 rounded-lg p-3 bg-amber-50"
                   >
                     <input
@@ -369,7 +372,7 @@ export function SettingsPage() {
                           setEditTableForm({ ...editTableForm, minSeats: Number(e.target.value) })
                         }
                         className="w-1/2 px-2 py-1 border border-gray-300 rounded text-sm"
-                        title="מינ׳"
+                        title={t.settings.minSeats}
                       />
                       <input
                         type="number"
@@ -379,14 +382,14 @@ export function SettingsPage() {
                           setEditTableForm({ ...editTableForm, maxSeats: Number(e.target.value) })
                         }
                         className="w-1/2 px-2 py-1 border border-gray-300 rounded text-sm"
-                        title="מקס׳"
+                        title={t.settings.maxSeats}
                       />
                     </div>
                     <input
                       type="text"
                       value={editTableForm.zone}
                       onChange={(e) => setEditTableForm({ ...editTableForm, zone: e.target.value })}
-                      placeholder="אזור"
+                      placeholder={t.settings.zone}
                       className="w-full px-2 py-1 border border-gray-300 rounded text-sm mb-2"
                     />
                     <div className="flex gap-2">
@@ -395,40 +398,40 @@ export function SettingsPage() {
                         disabled={updateTableMutation.isPending}
                         className="text-xs px-2 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50"
                       >
-                        שמור
+                        {t.settings.save}
                       </button>
                       <button
                         onClick={() => setEditingTableId(null)}
                         className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
                       >
-                        ביטול
+                        {t.settings.cancel}
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div
-                    key={t.id}
+                    key={tbl.id}
                     className="border border-gray-200 rounded-lg p-3 text-center group relative"
                   >
-                    <p className="font-medium text-sm">{t.name}</p>
+                    <p className="font-medium text-sm">{tbl.name}</p>
                     <p className="text-xs text-gray-500">
-                      {t.minSeats}–{t.maxSeats} מושבים
+                      {tbl.minSeats}–{tbl.maxSeats} {t.settings.seats}
                     </p>
-                    {t.zone && (
-                      <p className="text-xs text-gray-400 mt-1">{t.zone}</p>
+                    {tbl.zone && (
+                      <p className="text-xs text-gray-400 mt-1">{tbl.zone}</p>
                     )}
                     <div className="mt-2 flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={() => startEditTable(t)}
+                        onClick={() => startEditTable(tbl)}
                         className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
                       >
-                        ערוך
+                        {t.settings.edit}
                       </button>
                       <button
-                        onClick={() => handleDeleteTable(t.id)}
+                        onClick={() => handleDeleteTable(tbl.id)}
                         className="text-xs px-2 py-1 bg-red-50 text-red-600 rounded hover:bg-red-100"
                       >
-                        מחק
+                        {t.settings.delete}
                       </button>
                     </div>
                   </div>
@@ -440,9 +443,9 @@ export function SettingsPage() {
 
         {/* Danger Zone */}
         <section className="bg-white rounded-xl border-2 border-red-300 p-6">
-          <h3 className="text-lg font-semibold text-red-700 mb-2">אזור מסוכן</h3>
+          <h3 className="text-lg font-semibold text-red-700 mb-2">{t.settings.dangerZone}</h3>
           <p className="text-sm text-gray-600 mb-4">
-            פעולות אלו הן בלתי הפיכות. נא להפעיל זהירות.
+            {t.settings.dangerDesc}
           </p>
 
           <div className="flex items-center gap-4">
@@ -450,9 +453,9 @@ export function SettingsPage() {
               onClick={() => setShowResetConfirm(true)}
               className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
             >
-              מחק את כל ההזמנות
+              {t.settings.resetReservations}
             </button>
-            <span className="text-xs text-gray-400">מחיקת כל ההזמנות של המסעדה (לצורכי בדיקה)</span>
+            <span className="text-xs text-gray-400">{t.settings.resetDesc}</span>
           </div>
 
           {/* Confirmation dialog */}
@@ -467,9 +470,9 @@ export function SettingsPage() {
                   className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm border-2 border-red-300"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <h4 className="text-lg font-semibold text-red-700 mb-2">אישור מחיקה</h4>
+                  <h4 className="text-lg font-semibold text-red-700 mb-2">{t.settings.resetConfirm}</h4>
                   <p className="text-sm text-gray-600 mb-4">
-                    האם למחוק את כל ההזמנות של המסעדה? פעולה זו בלתי הפיכה.
+                    {t.settings.resetConfirmDesc}
                   </p>
                   <div className="flex items-center gap-3">
                     <button
@@ -477,13 +480,13 @@ export function SettingsPage() {
                       disabled={resetMutation.isPending}
                       className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
                     >
-                      {resetMutation.isPending ? "מוחק..." : "כן, מחק הכל"}
+                      {resetMutation.isPending ? t.settings.resetting : t.settings.resetConfirmBtn}
                     </button>
                     <button
                       onClick={() => setShowResetConfirm(false)}
                       className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
                     >
-                      ביטול
+                      {t.settings.cancel}
                     </button>
                   </div>
                 </div>

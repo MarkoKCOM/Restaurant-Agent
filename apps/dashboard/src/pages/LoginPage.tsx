@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
+import { useLang } from "../i18n.js";
 
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { lang, setLang, t } = useLang();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,9 +23,9 @@ export function LoginPage() {
       navigate("/today", { replace: true });
     } catch (err) {
       if (err instanceof Error && err.message === "INVALID_CREDENTIALS") {
-        setError("אימייל או סיסמה שגויים");
+        setError(t.login.errorInvalid);
       } else {
-        setError("שגיאה בהתחברות, נסו שוב");
+        setError(t.login.errorGeneral);
       }
     } finally {
       setLoading(false);
@@ -31,17 +33,29 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div
+      dir={lang === "he" ? "rtl" : "ltr"}
+      className="min-h-screen bg-gray-50 flex items-center justify-center p-4 relative"
+    >
+      {/* Language toggle */}
+      <button
+        type="button"
+        onClick={() => setLang(lang === "he" ? "en" : "he")}
+        className="absolute top-4 right-4 px-3 py-1 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+      >
+        {lang === "he" ? "EN" : "עב"}
+      </button>
+
       <div className="w-full max-w-sm">
         <div className="bg-white rounded-xl shadow-lg p-8">
           {/* Branding */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900">Sable</h1>
-            <p className="text-sm text-gray-500 mt-1">ניהול מסעדה חכם</p>
+            <p className="text-sm text-gray-500 mt-1">{t.nav.subtitle}</p>
           </div>
 
           <h2 className="text-xl font-semibold text-gray-800 text-center mb-6">
-            כניסה למערכת
+            {t.login.title}
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -50,7 +64,7 @@ export function LoginPage() {
                 htmlFor="email"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                אימייל
+                {t.login.email}
               </label>
               <input
                 id="email"
@@ -68,7 +82,7 @@ export function LoginPage() {
                 htmlFor="password"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                סיסמה
+                {t.login.password}
               </label>
               <input
                 id="password"
@@ -90,7 +104,7 @@ export function LoginPage() {
               disabled={loading}
               className="w-full bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg transition-colors"
             >
-              {loading ? "..." : "כניסה"}
+              {loading ? "..." : t.login.submit}
             </button>
           </form>
         </div>

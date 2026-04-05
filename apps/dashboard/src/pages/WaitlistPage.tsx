@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import {
   useWaitlist,
   useAddToWaitlist,
@@ -8,13 +8,7 @@ import {
   type WaitlistEntry,
 } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
-
-const STATUS_LABELS: Record<string, string> = {
-  waiting: "ממתין",
-  offered: "הוצע",
-  accepted: "התקבל",
-  expired: "פג תוקף",
-};
+import { useLang } from "../i18n.js";
 
 const STATUS_COLORS: Record<string, string> = {
   waiting: "bg-yellow-100 text-yellow-800",
@@ -22,8 +16,6 @@ const STATUS_COLORS: Record<string, string> = {
   accepted: "bg-green-100 text-green-800",
   expired: "bg-gray-100 text-gray-500",
 };
-
-const HEBREW_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -35,22 +27,18 @@ function shiftDate(dateStr: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-function hebrewDayName(dateStr: string): string {
+function dayName(dateStr: string, lang: string, t: any): string {
   const d = new Date(dateStr + "T12:00:00");
-  return HEBREW_DAYS[d.getDay()] ?? "";
+  const dayKeys = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
+  return t.settings.days[dayKeys[d.getDay()]] ?? "";
 }
 
-function formatHebrewDate(dateStr: string): string {
+function formatDate(dateStr: string, lang: string): string {
   const d = new Date(dateStr + "T12:00:00");
-  const day = d.getDate();
-  const months = [
-    "בינואר", "בפברואר", "במרץ", "באפריל", "במאי", "ביוני",
-    "ביולי", "באוגוסט", "בספטמבר", "באוקטובר", "בנובמבר", "בדצמבר",
-  ];
-  return `${day} ${months[d.getMonth()]}`;
+  return d.toLocaleDateString(lang === "he" ? "he-IL" : "en-US", { day: "numeric", month: "long" });
 }
 
-function CountdownTimer({ expiresAt }: { expiresAt: string }) {
+function CountdownTimer({ expiresAt, t }: { expiresAt: string; t: any }) {
   const [remaining, setRemaining] = useState("");
 
   useEffect(() => {
@@ -75,7 +63,7 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
 
   return (
     <span className="text-sm font-mono text-blue-700">
-      {remaining} {"נותר"}
+      {remaining} {t.waitlist.timeLeft}
     </span>
   );
 }
@@ -84,35 +72,43 @@ export function WaitlistPage() {
   const { restaurant } = useCurrentRestaurant();
   const [date, setDate] = useState(todayStr());
   const [showAddModal, setShowAddModal] = useState(false);
+  const { t, lang } = useLang();
+
+  const dir = lang === "he" ? "text-right" : "text-left";
 
   const { data: waitlistEntries, isLoading } = useWaitlist(restaurant?.id, date);
   const offerMutation = useOfferSlot();
   const acceptMutation = useAcceptOffer();
   const cancelMutation = useCancelWaitlist();
 
-  const dayName = hebrewDayName(date);
+  const currentDayName = dayName(date, lang, t);
   const isToday = date === todayStr();
+
+  const statusLabel = (status: string) => {
+    const key = status as keyof typeof t.waitlist;
+    return t.waitlist[key] ?? status;
+  };
 
   return (
     <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-gray-900">
-          {"רשימת המתנה"}
+          {t.waitlist.title}
           {waitlistEntries && waitlistEntries.length > 0 && (
             <span className="text-gray-400 font-normal mr-2">
               ({waitlistEntries.length})
             </span>
           )}
           <span className="text-base font-normal text-gray-500 mr-3">
-            {"יום "}{dayName}{", "}{formatHebrewDate(date)}
+            {t.waitlist.dayPrefix}{currentDayName}{", "}{formatDate(date, lang)}
           </span>
         </h2>
         <button
           onClick={() => setShowAddModal(true)}
           className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
         >
-          + {"הוסף לרשימת המתנה"}
+          {t.waitlist.addToWaitlist}
         </button>
       </div>
 
@@ -122,7 +118,6 @@ export function WaitlistPage() {
           <button
             onClick={() => setDate(shiftDate(date, -1))}
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
-            title="יום קודם"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -136,7 +131,7 @@ export function WaitlistPage() {
                 : "border-gray-300 hover:bg-gray-50 text-gray-700"
             }`}
           >
-            {"היום"}
+            {t.waitlist.today}
           </button>
           <input
             type="date"
@@ -147,7 +142,6 @@ export function WaitlistPage() {
           <button
             onClick={() => setDate(shiftDate(date, 1))}
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
-            title="יום הבא"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -161,20 +155,20 @@ export function WaitlistPage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">{"אורח"}</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">{"טלפון"}</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">{"תאריך"}</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">{"טווח שעות"}</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">{"סועדים"}</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">{"סטטוס"}</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">{"פעולות"}</th>
+              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.waitlist.guest}</th>
+              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.waitlist.phone}</th>
+              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.waitlist.date}</th>
+              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.waitlist.timeRange}</th>
+              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.waitlist.partySize}</th>
+              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.waitlist.statusCol}</th>
+              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.waitlist.actions}</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                  {"טוען..."}
+                  {t.waitlist.loading}
                 </td>
               </tr>
             ) : !waitlistEntries || waitlistEntries.length === 0 ? (
@@ -183,13 +177,13 @@ export function WaitlistPage() {
                   <div className="flex flex-col items-center gap-3">
                     <span className="text-4xl">{"⏳"}</span>
                     <p className="text-gray-500 text-sm">
-                      {"אין ממתינים ל-"}{formatHebrewDate(date)}{" (יום "}{dayName}{")"}
+                      {t.waitlist.noEntries}
                     </p>
                     <button
                       onClick={() => setShowAddModal(true)}
                       className="mt-1 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
                     >
-                      {"+ הוסף לרשימת המתנה"}
+                      {t.waitlist.addToWaitlist}
                     </button>
                   </div>
                 </td>
@@ -210,7 +204,7 @@ export function WaitlistPage() {
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[entry.status] ?? "bg-gray-100"}`}
                     >
-                      {STATUS_LABELS[entry.status] ?? entry.status}
+                      {statusLabel(entry.status)}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -222,33 +216,33 @@ export function WaitlistPage() {
                             disabled={offerMutation.isPending}
                             className="text-xs text-blue-600 hover:underline"
                           >
-                            {"הצע מקום"}
+                            {t.waitlist.offerTable}
                           </button>
                           <button
                             onClick={() => cancelMutation.mutate(entry.id)}
                             disabled={cancelMutation.isPending}
                             className="text-xs text-red-600 hover:underline"
                           >
-                            {"בטל"}
+                            {t.waitlist.cancelEntry}
                           </button>
                         </>
                       )}
                       {entry.status === "offered" && (
                         <>
-                          {entry.expiresAt && <CountdownTimer expiresAt={entry.expiresAt} />}
+                          {entry.expiresAt && <CountdownTimer expiresAt={entry.expiresAt} t={t} />}
                           <button
                             onClick={() => acceptMutation.mutate(entry.id)}
                             disabled={acceptMutation.isPending}
                             className="text-xs text-green-600 hover:underline"
                           >
-                            {"אשר"}
+                            {t.waitlist.accept}
                           </button>
                           <button
                             onClick={() => cancelMutation.mutate(entry.id)}
                             disabled={cancelMutation.isPending}
                             className="text-xs text-red-600 hover:underline"
                           >
-                            {"בטל"}
+                            {t.waitlist.cancelEntry}
                           </button>
                         </>
                       )}
@@ -257,7 +251,7 @@ export function WaitlistPage() {
                           href="/reservations"
                           className="text-xs text-amber-600 hover:underline"
                         >
-                          {"צפה בהזמנה"}
+                          {t.waitlist.viewReservation}
                         </a>
                       )}
                     </div>
@@ -293,6 +287,7 @@ function AddToWaitlistModal({
   onClose: () => void;
 }) {
   const addMutation = useAddToWaitlist();
+  const { t } = useLang();
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [date, setDate] = useState(defaultDate);
@@ -316,7 +311,7 @@ function AddToWaitlistModal({
       },
       {
         onSuccess: () => onClose(),
-        onError: (err) => setError(err.message || "שגיאה בהוספה לרשימת המתנה"),
+        onError: (err) => setError(err.message || t.waitlist.addError),
       },
     );
   }
@@ -336,7 +331,7 @@ function AddToWaitlistModal({
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between mb-5">
-            <h3 className="text-lg font-semibold text-gray-900">{"הוסף לרשימת המתנה"}</h3>
+            <h3 className="text-lg font-semibold text-gray-900">{t.waitlist.newEntry}</h3>
             <button
               onClick={onClose}
               className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
@@ -350,20 +345,20 @@ function AddToWaitlistModal({
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Guest Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{"שם אורח"}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.waitlist.guestName}</label>
               <input
                 type="text"
                 required
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="שם מלא"
+                placeholder={t.waitlist.fullName}
               />
             </div>
 
             {/* Phone */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{"טלפון"}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.waitlist.guestPhone}</label>
               <input
                 type="tel"
                 required
@@ -376,7 +371,7 @@ function AddToWaitlistModal({
 
             {/* Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{"תאריך"}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.waitlist.preferredDate}</label>
               <input
                 type="date"
                 required
@@ -389,7 +384,7 @@ function AddToWaitlistModal({
             {/* Time Range */}
             <div className="flex gap-3">
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">{"משעה"}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.waitlist.preferredTimeStart}</label>
                 <input
                   type="time"
                   required
@@ -399,7 +394,7 @@ function AddToWaitlistModal({
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">{"עד שעה"}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.waitlist.preferredTimeEnd}</label>
                 <input
                   type="time"
                   required
@@ -412,7 +407,7 @@ function AddToWaitlistModal({
 
             {/* Party Size */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{"מספר סועדים"}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.waitlist.partySizeLabel}</label>
               <select
                 value={partySize}
                 onChange={(e) => setPartySize(Number(e.target.value))}
@@ -435,7 +430,7 @@ function AddToWaitlistModal({
               disabled={addMutation.isPending}
               className="w-full px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
             >
-              {addMutation.isPending ? "שומר..." : "הוסף לרשימת המתנה"}
+              {addMutation.isPending ? t.waitlist.creating : t.waitlist.addBtn}
             </button>
           </form>
         </div>

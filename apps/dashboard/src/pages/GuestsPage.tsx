@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGuests } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
+import { useLang } from "../i18n.js";
 import type { Guest } from "@sable/domain";
 
 export function GuestsPage() {
@@ -9,6 +10,9 @@ export function GuestsPage() {
   const { data: guests, isLoading } = useGuests(restaurant?.id);
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
+  const { t, lang } = useLang();
+
+  const dir = lang === "he" ? "text-right" : "text-left";
 
   const filtered = search
     ? guests?.filter(
@@ -21,12 +25,12 @@ export function GuestsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">אורחים</h2>
+        <h2 className="text-2xl font-bold text-gray-900">{t.guests.title}</h2>
         <input
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="חיפוש לפי שם או טלפון..."
+          placeholder={t.guests.search}
           className="px-4 py-2 border border-gray-300 rounded-lg text-sm w-64"
         />
       </div>
@@ -35,24 +39,24 @@ export function GuestsPage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">שם</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">טלפון</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">ביקורים</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">דרג</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">תגיות</th>
+              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.guests.name}</th>
+              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.guests.phone}</th>
+              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.guests.visits}</th>
+              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.guests.tier}</th>
+              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.guests.tags}</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                  טוען...
+                  {t.res.loading}
                 </td>
               </tr>
             ) : !filtered || filtered.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                  אין אורחים רשומים עדיין
+                  {t.guests.noResults}
                 </td>
               </tr>
             ) : (

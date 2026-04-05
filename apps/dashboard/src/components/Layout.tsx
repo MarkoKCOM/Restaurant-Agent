@@ -4,6 +4,7 @@ import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useLang } from "../i18n.js";
 import { useAuth } from "../hooks/useAuth.js";
 import type { DashboardConfig } from "@sable/domain";
+import { ChatWidget } from "./ChatWidget.js";
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -118,6 +119,8 @@ export function Layout() {
       <main className={`${mainMargin} p-8 ${textAlign}`}>
         <Outlet />
       </main>
+
+      <ChatWidget />
     </div>
   );
 }

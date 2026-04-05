@@ -18,23 +18,24 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
   app.post("/", async (request, reply) => {
     const { messages } = request.body as { messages: { role: string; content: string }[] };
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      return reply.status(503).send({ error: "Chat not configured. ANTHROPIC_API_KEY is missing." });
+      return reply.status(503).send({ error: "Chat not configured. OPENROUTER_API_KEY is missing." });
     }
 
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: "qwen/qwen3-coder:free",
         max_tokens: 1024,
-        system: SYSTEM_PROMPT,
-        messages: messages.slice(-10),
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          ...messages.slice(-10),
+        ],
       }),
     });
 
@@ -44,7 +45,7 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const data = await res.json() as any;
-    const text = data.content?.[0]?.text ?? "Sorry, I couldn't generate a response.";
+    const text = data.choices?.[0]?.message?.content ?? "Sorry, I couldn't generate a response.";
     return reply.send({ message: text });
   });
 };

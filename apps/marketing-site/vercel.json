@@ -1,5 +1,5 @@
 {
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
-  "buildCommand": "cd ../.. && pnpm --filter @sable/marketing-site build",
+  "buildCommand": "cd ../.. && pnpm --filter @sable/marketing build",
   "outputDirectory": "dist"
 }

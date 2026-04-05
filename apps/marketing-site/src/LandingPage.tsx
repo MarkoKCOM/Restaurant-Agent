@@ -834,6 +834,105 @@ function DemoWidget() {
   );
 }
 
+/* ── Accessibility Widget ── */
+const a11yStorageKey = "sable-accessibility-settings";
+const a11yDefaults = { fontScale: 1, contrast: false, links: false, readableFont: false, reducedMotion: false };
+
+function AccessibilityWidget({ lang }: { lang: Lang }) {
+  const [open, setOpen] = useState(false);
+  const [settings, setSettings] = useState(a11yDefaults);
+
+  const copy = {
+    he: { button: "נגישות", title: "כלי נגישות", close: "סגירה", textSize: "גודל טקסט", decrease: "A-", resetSize: "איפוס", increase: "A+", contrast: "ניגודיות גבוהה", linksLabel: "קו תחתון לקישורים", readable: "פונט קריא", motion: "הפחתת תנועה", resetAll: "איפוס הכל" },
+    en: { button: "Accessibility", title: "Accessibility Tools", close: "Close", textSize: "Text size", decrease: "A-", resetSize: "Reset", increase: "A+", contrast: "High contrast", linksLabel: "Underline links", readable: "Readable font", motion: "Reduce motion", resetAll: "Reset all" },
+    ar: { button: "إمكانية الوصول", title: "أدوات إمكانية الوصول", close: "إغلاق", textSize: "حجم النص", decrease: "A-", resetSize: "إعادة", increase: "A+", contrast: "تباين عالي", linksLabel: "خط تحت الروابط", readable: "خط مقروء", motion: "تقليل الحركة", resetAll: "إعادة تعيين الكل" },
+  }[lang];
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(a11yStorageKey);
+      if (raw) {
+        const p = JSON.parse(raw);
+        const s = { fontScale: Math.min(1.3, Math.max(0.9, Number(p.fontScale ?? 1))), contrast: !!p.contrast, links: !!p.links, readableFont: !!p.readableFont, reducedMotion: !!p.reducedMotion };
+        setSettings(s);
+        applyA11y(s);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  const applyA11y = (s: typeof a11yDefaults) => {
+    const root = document.documentElement;
+    root.style.fontSize = s.fontScale === 1 ? "" : `${s.fontScale * 100}%`;
+    root.toggleAttribute("data-a11y-contrast", s.contrast);
+    root.toggleAttribute("data-a11y-links", s.links);
+    root.toggleAttribute("data-a11y-readable-font", s.readableFont);
+    root.toggleAttribute("data-a11y-reduced-motion", s.reducedMotion);
+  };
+
+  const update = (next: typeof a11yDefaults) => {
+    setSettings(next);
+    applyA11y(next);
+    try {
+      const isDefault = next.fontScale === 1 && !next.contrast && !next.links && !next.readableFont && !next.reducedMotion;
+      if (isDefault) localStorage.removeItem(a11yStorageKey);
+      else localStorage.setItem(a11yStorageKey, JSON.stringify(next));
+    } catch { /* ignore */ }
+  };
+
+  const isRtl = lang !== "en";
+  const posClass = isRtl ? "left-4" : "right-4";
+  const panelAlign = isRtl ? "left-0" : "right-0";
+
+  return (
+    <div className={`fixed bottom-4 ${posClass} z-[100] flex flex-col ${isRtl ? "items-start" : "items-end"}`}>
+      {open && (
+        <div className={`absolute bottom-full ${panelAlign} mb-3 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-gray-200 bg-white/95 p-4 shadow-2xl backdrop-blur`}
+          role="dialog" onKeyDown={(e) => e.key === "Escape" && setOpen(false)}>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">{copy.title}</h2>
+            <button onClick={() => setOpen(false)} className="text-sm text-gray-500 hover:text-gray-900">{copy.close}</button>
+          </div>
+          <div className="space-y-3">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <p className="mb-3 text-sm font-semibold">{copy.textSize}</p>
+              <div className="flex flex-wrap gap-2">
+                {[{ label: copy.decrease, fn: () => update({ ...settings, fontScale: Math.max(0.9, settings.fontScale - 0.1) }) },
+                  { label: copy.resetSize, fn: () => update({ ...settings, fontScale: 1 }) },
+                  { label: copy.increase, fn: () => update({ ...settings, fontScale: Math.min(1.3, settings.fontScale + 0.1) }) },
+                ].map((b) => (
+                  <button key={b.label} onClick={b.fn} className="min-w-[4.5rem] rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium hover:border-amber-400">{b.label}</button>
+                ))}
+              </div>
+            </div>
+            {([
+              ["contrast", copy.contrast],
+              ["links", copy.linksLabel],
+              ["readableFont", copy.readable],
+              ["reducedMotion", copy.motion],
+            ] as const).map(([key, label]) => (
+              <label key={key} className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium cursor-pointer">
+                <span>{label}</span>
+                <input type="checkbox" checked={settings[key] as boolean} onChange={(e) => update({ ...settings, [key]: e.target.checked })}
+                  className="h-5 w-5 shrink-0 accent-amber-600" />
+              </label>
+            ))}
+            <button onClick={() => update(a11yDefaults)}
+              className="w-full rounded-lg bg-amber-600 px-4 py-3 text-sm font-semibold text-white hover:bg-amber-700 transition">{copy.resetAll}</button>
+          </div>
+        </div>
+      )}
+      <button onClick={() => setOpen(!open)} aria-expanded={open} aria-label={copy.button}
+        className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-600 px-3 py-3 text-white shadow-lg shadow-amber-600/20 transition hover:bg-amber-700 hover:-translate-y-0.5">
+        <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5v4.5m0 0l-4.5 1.5m4.5-1.5l4.5 1.5M10 22l2-6 2 6m-6-3h8" />
+        </svg>
+        <span className="hidden text-sm font-semibold sm:inline">{copy.button}</span>
+      </button>
+    </div>
+  );
+}
+
 const FORMSPREE_URL = "https://formspree.io/f/milhemsione@gmail.com";
 const CAL_LINK = "https://cal.com/sable/intro";
 
@@ -921,7 +1020,7 @@ function ContactForm({ lang }: { lang: Lang }) {
           <label htmlFor="restaurant" className="block text-sm font-medium text-gray-700 mb-1">{l.restaurant}</label>
           <input type="text" id="restaurant" name="restaurant" required className={inputCls} />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">{l.phone}</label>
             <input type="tel" id="phone" name="phone" className={inputCls} />
@@ -984,30 +1083,59 @@ export function LandingPage() {
   const dir = lang === "en" ? "ltr" : "rtl";
   const su = lang === "he" ? "מושבים" : lang === "ar" ? "مقعد" : "seats";
   const pm = lang === "he" ? "/חודש" : lang === "ar" ? "/شهر" : "/mo";
-  const nextLang = (): Lang => lang === "he" ? "en" : lang === "en" ? "ar" : "he";
-  const langLabel = lang === "he" ? "EN" : lang === "en" ? "عر" : "עב";
+  const [mobileMenu, setMobileMenu] = useState(false);
 
   return (
     <div dir={dir} className="min-h-screen bg-white text-gray-900" style={{ direction: dir }}>
       {/* Nav */}
-      <nav className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-100 px-6 py-3 flex items-center justify-between">
-        <span className="text-xl font-bold">Sable</span>
-        <div className="flex items-center gap-6 text-sm">
-          <a href="#tools" className="text-gray-600 hover:text-gray-900 hidden md:inline">{c.nav.tools}</a>
-          <a href="#pricing" className="text-gray-600 hover:text-gray-900 hidden md:inline">{c.nav.pricing}</a>
-          <a href="#demo" className="text-gray-600 hover:text-gray-900 hidden md:inline">{c.nav.demo}</a>
-          <a href="#contact" className="text-gray-600 hover:text-gray-900 hidden md:inline">{lang === "he" ? "צור קשר" : lang === "ar" ? "تواصل" : "Contact"}</a>
-          <button onClick={() => setLang(nextLang())} className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-            {langLabel}
-          </button>
+      <nav className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-100 px-4 sm:px-6 py-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xl font-bold">Sable</span>
+          <div className="hidden md:flex items-center gap-6 text-sm">
+            <a href="#demo" className="text-gray-600 hover:text-gray-900">{c.nav.demo}</a>
+            <a href="#tools" className="text-gray-600 hover:text-gray-900">{c.nav.tools}</a>
+            <a href="#pricing" className="text-gray-600 hover:text-gray-900">{c.nav.pricing}</a>
+            <a href="#contact" className="text-gray-600 hover:text-gray-900">{lang === "he" ? "צור קשר" : lang === "ar" ? "تواصل" : "Contact"}</a>
+            <select value={lang} onChange={(e) => setLang(e.target.value as Lang)}
+              className="px-3 py-1 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition text-sm cursor-pointer">
+              <option value="he">עברית</option>
+              <option value="en">English</option>
+              <option value="ar">العربية</option>
+            </select>
+          </div>
+          {/* Mobile menu button */}
+          <div className="flex items-center gap-3 md:hidden">
+            <select value={lang} onChange={(e) => setLang(e.target.value as Lang)}
+              className="px-2 py-1 border border-gray-300 rounded-lg bg-white text-sm cursor-pointer">
+              <option value="he">עב</option>
+              <option value="en">EN</option>
+              <option value="ar">عر</option>
+            </select>
+            <button onClick={() => setMobileMenu(!mobileMenu)} className="p-2 text-gray-600" aria-label="Menu">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                {mobileMenu
+                  ? <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  : <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />}
+              </svg>
+            </button>
+          </div>
         </div>
+        {/* Mobile dropdown */}
+        {mobileMenu && (
+          <div className="md:hidden mt-3 pb-2 border-t border-gray-100 pt-3 flex flex-col gap-3 text-sm">
+            <a href="#demo" onClick={() => setMobileMenu(false)} className="text-gray-600 hover:text-gray-900">{c.nav.demo}</a>
+            <a href="#tools" onClick={() => setMobileMenu(false)} className="text-gray-600 hover:text-gray-900">{c.nav.tools}</a>
+            <a href="#pricing" onClick={() => setMobileMenu(false)} className="text-gray-600 hover:text-gray-900">{c.nav.pricing}</a>
+            <a href="#contact" onClick={() => setMobileMenu(false)} className="text-gray-600 hover:text-gray-900">{lang === "he" ? "צור קשר" : lang === "ar" ? "تواصل" : "Contact"}</a>
+          </div>
+        )}
       </nav>
 
       {/* Hero */}
-      <header className="bg-gradient-to-b from-amber-50 to-white px-6 py-20 text-center">
-        <h1 className="text-5xl md:text-6xl font-bold tracking-tight">{c.hero.title}</h1>
-        <p className="text-2xl md:text-3xl text-gray-700 mt-3 font-medium">{c.hero.subtitle}</p>
-        <p className="text-lg text-gray-500 mt-4 max-w-2xl mx-auto">{c.hero.desc}</p>
+      <header className="bg-gradient-to-b from-amber-50 to-white px-4 sm:px-6 py-12 sm:py-20 text-center">
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight">{c.hero.title}</h1>
+        <p className="text-xl sm:text-2xl md:text-3xl text-gray-700 mt-3 font-medium">{c.hero.subtitle}</p>
+        <p className="text-base sm:text-lg text-gray-500 mt-4 max-w-2xl mx-auto">{c.hero.desc}</p>
         <div className="mt-8 flex gap-4 justify-center flex-wrap">
           <a href="#pricing" className="px-6 py-3 bg-amber-600 text-white rounded-xl font-semibold hover:bg-amber-700 transition">{c.hero.cta1}</a>
           <a href="#demo" className="px-6 py-3 border-2 border-amber-600 text-amber-700 rounded-xl font-semibold hover:bg-amber-50 transition">{c.hero.cta2}</a>
@@ -1057,15 +1185,22 @@ export function LandingPage() {
       {/* How it works */}
       <section className="px-6 py-16 bg-gray-50">
         <h2 className="text-3xl font-bold text-center mb-12">{c.howTitle}</h2>
-        <div className="max-w-4xl mx-auto grid md:grid-cols-4 gap-8">
+        <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
           {c.howSteps.map((step) => (
             <div key={step.num} className="text-center">
-              <div className="w-12 h-12 bg-amber-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-3">{step.num}</div>
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-amber-600 text-white rounded-full flex items-center justify-center text-lg md:text-xl font-bold mx-auto mb-3">{step.num}</div>
               <h3 className="font-bold mb-1">{step.title}</h3>
               <p className="text-sm text-gray-600">{step.desc}</p>
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Live Demo Widget */}
+      <section id="demo" className="px-6 py-20 bg-gradient-to-b from-white to-amber-50">
+        <h2 className="text-3xl font-bold text-center mb-2">{lang === "he" ? "נסה עכשיו" : lang === "ar" ? "جرّب الآن" : "Try it now"}</h2>
+        <p className="text-center text-gray-500 mb-10">{lang === "he" ? "ככה נראית הזמנה מהאתר שלך - ווידג'ט שנטען בשורת קוד אחת" : lang === "ar" ? "هكذا يبدو الحجز من موقعك - ودجة تُحمّل بسطر كود واحد" : "This is how booking looks on your website - a widget loaded with one line of code"}</p>
+        <DemoWidget />
       </section>
 
       {/* Comparison */}
@@ -1185,13 +1320,6 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Live Demo Widget */}
-      <section id="demo" className="px-6 py-20 bg-gradient-to-b from-white to-amber-50">
-        <h2 className="text-3xl font-bold text-center mb-2">{lang === "he" ? "נסה עכשיו" : "Try it now"}</h2>
-        <p className="text-center text-gray-500 mb-10">{lang === "he" ? "ככה נראית הזמנה מהאתר שלך - ווידג'ט שנטען בשורת קוד אחת" : "This is how booking looks on your website - a widget loaded with one line of code"}</p>
-        <DemoWidget />
-      </section>
-
       {/* Contact */}
       <section id="contact" className="px-6 py-20 bg-gradient-to-b from-amber-50 to-white">
         <ContactForm lang={lang} />
@@ -1201,6 +1329,9 @@ export function LandingPage() {
       <footer className="border-t border-gray-200 px-6 py-8 text-center text-sm text-gray-400">
         Sable &copy; 2026 KaspaCom
       </footer>
+
+      {/* Accessibility Widget */}
+      <AccessibilityWidget lang={lang} />
     </div>
   );
 }

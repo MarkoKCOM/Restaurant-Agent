@@ -1,1 +1,89 @@
 @import "tailwindcss";
+
+/* Accessibility overrides */
+html[data-a11y-links] a {
+  text-decoration-line: underline !important;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.18em;
+}
+
+html[data-a11y-readable-font] body,
+html[data-a11y-readable-font] button,
+html[data-a11y-readable-font] input,
+html[data-a11y-readable-font] select,
+html[data-a11y-readable-font] textarea,
+html[data-a11y-readable-font] h1,
+html[data-a11y-readable-font] h2,
+html[data-a11y-readable-font] h3,
+html[data-a11y-readable-font] h4,
+html[data-a11y-readable-font] h5,
+html[data-a11y-readable-font] h6 {
+  font-family: Arial, Helvetica, sans-serif !important;
+  letter-spacing: normal !important;
+}
+
+html[data-a11y-contrast] {
+  color-scheme: dark;
+}
+
+html[data-a11y-contrast] body,
+html[data-a11y-contrast] main,
+html[data-a11y-contrast] header,
+html[data-a11y-contrast] footer,
+html[data-a11y-contrast] nav,
+html[data-a11y-contrast] section,
+html[data-a11y-contrast] article,
+html[data-a11y-contrast] aside {
+  background: #000 !important;
+  background-image: none !important;
+  color: #fff !important;
+  border-color: #fff !important;
+  box-shadow: none !important;
+}
+
+html[data-a11y-contrast] a,
+html[data-a11y-contrast] button,
+html[data-a11y-contrast] label,
+html[data-a11y-contrast] p,
+html[data-a11y-contrast] li,
+html[data-a11y-contrast] span,
+html[data-a11y-contrast] h1,
+html[data-a11y-contrast] h2,
+html[data-a11y-contrast] h3,
+html[data-a11y-contrast] h4,
+html[data-a11y-contrast] h5,
+html[data-a11y-contrast] h6 {
+  color: #fff !important;
+}
+
+html[data-a11y-contrast] a {
+  color: #ffe24a !important;
+}
+
+html[data-a11y-contrast] input,
+html[data-a11y-contrast] select,
+html[data-a11y-contrast] textarea {
+  background: #000 !important;
+  color: #fff !important;
+  border: 1px solid #fff !important;
+}
+
+html[data-a11y-reduced-motion],
+html[data-a11y-reduced-motion] *,
+html[data-a11y-reduced-motion] *::before,
+html[data-a11y-reduced-motion] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

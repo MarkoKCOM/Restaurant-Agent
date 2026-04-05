@@ -463,7 +463,7 @@ const t = {
   },
 };
 
-const API_URL = "http://204.168.227.45:3001";
+const API_URL = "http://204.168.227.45";
 const RESTAURANT_ID = "c3c22e37-a309-4fde-aa6c-6e714212a3bc";
 
 interface AvailabilitySlot {

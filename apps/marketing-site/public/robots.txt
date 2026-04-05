@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://marketing-site-nine-chi.vercel.app/sitemap.xml

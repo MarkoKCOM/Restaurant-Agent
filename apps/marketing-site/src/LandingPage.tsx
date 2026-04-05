@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 
-type Lang = "he" | "en";
+type Lang = "he" | "en" | "ar";
 
 const t = {
   he: {
@@ -461,6 +461,235 @@ const t = {
       ],
     },
   },
+  ar: {
+    nav: { product: "المنتج", tools: "الأدوات", pricing: "الأسعار", demo: "تجربة" },
+    hero: {
+      title: "Sable",
+      subtitle: "أذكى عضو في فريق مطعمك",
+      desc: "نظام إدارة مطاعم متكامل - حجوزات، CRM ضيوف، ولاء، تلعيب، حملات وأتمتة. كل شيء بالذكاء الاصطناعي، عبر واتساب وموقعك.",
+      cta1: "شاهد الأسعار",
+      cta2: "اطلب عرض",
+      trusted: "مدعوم بالذكاء الاصطناعي - يعمل 24/7 بدون توقف",
+    },
+    stats: [
+      { value: "24/7", label: "بوت AI نشط" },
+      { value: "30 دق", label: "توفير يومي" },
+      { value: "0", label: "عمولة للزبون" },
+      { value: "3×", label: "معدل عودة الضيوف" },
+    ],
+    toolsTitle: "كل الأدوات التي تحتاجها",
+    toolsSubtitle: "كل أداة مصممة لتوفير وقتك وزيادة إيراداتك",
+    tools: [
+      {
+        icon: "📅",
+        title: "محرك الحجوزات",
+        desc: "نظام حجوزات كامل مع تعيين طاولات تلقائي",
+        features: [
+          "تعيين طاولات ذكي - مطابقة تلقائية حسب حجم المجموعة",
+          "توفر فوري حسب ساعات العمل",
+          "إدارة ساعات العمل والتواريخ الخاصة",
+          "تذكيرات تلقائية قبل 3 ساعات",
+          "تتبع عدم الحضور والإبلاغ",
+          "تأكيد، إجلاس، إنهاء، إلغاء - بنقرة واحدة",
+        ],
+      },
+      {
+        icon: "⏳",
+        title: "قائمة الانتظار",
+        desc: "إدارة تلقائية لقائمة الانتظار مع مطابقة ذكية",
+        features: [
+          "إضافة لقائمة الانتظار عند الامتلاء",
+          "مطابقة تلقائية عند توفر طاولة (إلغاء → عرض)",
+          "عد تنازلي 15 دقيقة لقبول العرض",
+          "قبول → تحويل تلقائي لحجز",
+          "أولوية حسب ترتيب الوصول",
+        ],
+      },
+      {
+        icon: "🖥️",
+        title: "لوحة تحكم المالك",
+        desc: "مركز تحكم فوري لكل ما يحدث في مطعمك",
+        features: [
+          "عرض اليوم - حجوزات، ضيوف، إلغاءات، عدم حضور",
+          "خريطة إشغال بالساعة",
+          "خريطة طاولات حية - متاح / محجوز / مشغول",
+          "إنشاء حجز من لوحة التحكم (مكالمات هاتفية)",
+          "تصفية حسب التاريخ، الحالة، بحث ضيف",
+          "تنقل سريع مع أسهم + عدادات جانبية",
+          "لوحة تعديل الحجز (منزلقة)",
+          "تعديل ساعات العمل + إدارة الطاولات",
+        ],
+      },
+      {
+        icon: "🔗",
+        title: "ودجة حجز للموقع",
+        desc: "ودجة حجز قابلة للتضمين - سطر كود واحد في موقعك",
+        features: [
+          "توفر فوري - تاريخ → وقت → تفاصيل → تأكيد",
+          "تصميم مخصص - لون أساسي، شعار، نص ترحيب",
+          "التحقق من رقم الهاتف الإسرائيلي",
+          "تصميم موبايل أولاً مع دعم RTL كامل",
+          "حزمة صغيرة (<20KB) - لا تبطئ موقعك",
+          'تضمين بسطر واحد: <script src="...">',
+        ],
+      },
+      {
+        icon: "👤",
+        title: "CRM الضيوف",
+        desc: "ملف كامل لكل ضيف - كل شيء في مكان واحد",
+        features: [
+          "إنشاء تلقائي في الحجز الأول",
+          "تاريخ زيارات كامل (تواريخ، أطباق، تقييمات)",
+          "تفضيلات غذائية (نباتي، فيغان، حساسيات، كشروت)",
+          "علامات تلقائية: VIP، عائد، جديد، معرض للخطر، منفق كبير",
+          "ملاحظات الطاقم + حقل المناسبة (عيد ميلاد، عمل، موعد)",
+          "رؤى: أطباق مفضلة، تكرار الزيارة، تفضيل يوم/ساعة",
+          "بحث بالاسم أو الهاتف",
+        ],
+      },
+      {
+        icon: "📝",
+        title: "تتبع الزيارات والتقييم",
+        desc: "اعرف ماذا أكل كل ضيف، ما رأيه، وما يحب",
+        features: [
+          "سجل زيارة: أطباق، إنفاق، تقييم، ملاحظات، مناسبة",
+          "ملف غذائي متراكم من كل الزيارات",
+          "تحليل المشاعر (إيجابي / محايد / سلبي)",
+          "تقييم >= 4 → علامة 'راضي' + طلب مراجعة Google",
+          "تقييم <= 2 → علامة 'معرض للخطر' + تنبيه المالك",
+          "ملخص تقييم المطعم: متوسط، توزيع، شكاوى حديثة",
+        ],
+      },
+      {
+        icon: "⭐",
+        title: "محرك الولاء",
+        desc: "نقاط، طوابع، درجات VIP - كل شيء تلقائي",
+        features: [
+          "10 نقاط لكل زيارة × مضاعف الدرجة (برونز ×1، فضي ×1.5، ذهبي ×2)",
+          "بطاقة طوابع: كل 10 زيارات = 50 نقطة إضافية",
+          "درجات VIP تلقائية: برونز → فضي (5+ زيارات) → ذهبي (15+)",
+          "كتالوج مكافآت - إنشاء واستبدال بكود فريد",
+          "تاريخ معاملات النقاط",
+          "الضيف يسأل في واتساب: 'ما رصيدي؟' - البوت يجيب",
+        ],
+      },
+      {
+        icon: "🎮",
+        title: "التلعيب",
+        desc: "حوّل الزيارات إلى لعبة - أعطِ الضيوف سبباً للعودة",
+        features: [
+          "نظام إحالة - كود فريد، 50 نقطة للمُحيل + 25 للجديد",
+          "تحديات - 'زر 3 مرات هذا الأسبوع' مع مكافأة",
+          "سلاسل زيارات - مكافأة على زيارات أسبوعية متتالية (3، 5، 10، 20)",
+          "تتبع تقدم تلقائي",
+          "مكافآت إنجاز (نقاط × طول السلسلة)",
+        ],
+      },
+      {
+        icon: "🤖",
+        title: "أتمتة التسويق",
+        desc: "رسائل تلقائية تُرسل في الوقت المناسب",
+        features: [
+          "شكراً بعد الزيارة - يُرسل بعد ساعتين من الانتهاء",
+          "طلب مراجعة - 24 ساعة بعد، فقط للضيوف بـ 3+ زيارات",
+          "تهنئة عيد ميلاد - تهنئة تلقائية + 100 نقطة إضافية",
+          "استعادة - 30/60/90 يوم بعد آخر زيارة مع عروض متصاعدة",
+          "كل الرسائل تحترم ساعات الهدوء (22:00-08:00)",
+        ],
+      },
+      {
+        icon: "💬",
+        title: "بوت واتساب AI",
+        desc: "حجوزات، أسئلة، ولاء - كل شيء عبر واتساب",
+        features: [
+          "حجز طاولة في محادثة طبيعية (قريباً)",
+          "كشف لغة تلقائي - عبري، إنجليزي، عربي",
+          "البوت يعرف الضيف - يحمّل الملف الكامل في كل محادثة",
+          "فحص رصيد النقاط، استبدال المكافآت",
+          "تحويل لإنسان عند الحاجة",
+          "ملخص يومي للمالك عبر واتساب",
+        ],
+      },
+      {
+        icon: "🔐",
+        title: "الأمان والوصول",
+        desc: "بياناتك محمية - الوصول فقط بتصريح",
+        features: [
+          "مصادقة JWT على كل المسارات",
+          "تسجيل دخول بالبريد وكلمة المرور",
+          "عزل البيانات لكل مطعم",
+          "مسارات عامة: التوفر + الحجز (للودجة)",
+          "مسارات محمية: لوحة التحكم، الضيوف، الإعدادات",
+        ],
+      },
+    ],
+    howTitle: "كيف يعمل",
+    howSteps: [
+      { num: "1", title: "الضيف يحجز", desc: "عبر واتساب، موقعك، أو الهاتف - الحجز يدخل النظام" },
+      { num: "2", title: "AI يدير", desc: "طاولة تُعيّن تلقائياً، تأكيد يُرسل، تذكير مجدول" },
+      { num: "3", title: "الضيف يصل", desc: "الطاقم يرى كل شيء في لوحة التحكم - ملف، تفضيلات، تاريخ" },
+      { num: "4", title: "بعد الزيارة", desc: "نقاط تُكسب، شكراً يُرسل، مراجعة تُطلب، والضيف يعود" },
+    ],
+    comparisonTitle: "لماذا Sable وليس المنافسين",
+    comparison: {
+      headers: ["", "Sable", "Ontopo", "Tabit", "SevenRooms"],
+      rows: [
+        ["حجوزات أونلاين", "v", "v", "v", "v"],
+        ["بوت واتساب AI", "v", "x", "x", "x"],
+        ["CRM ضيوف", "v", "x", "~", "v"],
+        ["ولاء + تلعيب", "v", "x", "x", "v"],
+        ["أتمتة تسويق", "v", "x", "x", "v"],
+        ["ودجة للموقع", "v", "x", "v", "v"],
+        ["بدون عمولة للزبون", "v", "v", "x", "x"],
+        ["السعر", "من ₪499", "مجاني", "₪800+", "$500+"],
+      ],
+    },
+    launch: {
+      title: "عرض الإطلاق - أول 5 مطاعم",
+      desc: "نظام حجوزات كامل بـ ₪299 مرة واحدة. بدون اشتراك شهري. 5 أماكن فقط.",
+      cta: "تريد مكان؟ تحدث معنا",
+      note: "بعد الإطلاق: اشتراكات شهرية من ₪499/شهر",
+    },
+    pricing: {
+      title: "الأسعار",
+      subtitle: "حسب عدد المقاعد. بدون عمولة للزبون. 14 يوم تجربة مجانية.",
+      starter: {
+        name: "Starter",
+        desc: "حجوزات + ودجة + لوحة تحكم",
+        includes: ["محرك حجوزات كامل", "ودجة حجز للموقع", "لوحة تحكم المالك", "قائمة انتظار", "تذكيرات تلقائية", "إدارة ساعات + طاولات", "تتبع عدم الحضور"],
+      },
+      standard: {
+        name: "Standard",
+        desc: "كل شيء في Starter + ولاء + CRM + أتمتة",
+        includes: ["كل شيء في Starter", "CRM ضيوف كامل", "محرك ولاء (نقاط + طوابع + VIP)", "تتبع زيارات + تقييم + تحليل مشاعر", "تلعيب (إحالات + تحديات + سلاسل)", "أتمتة تسويق (شكراً، عيد ميلاد، استعادة)", "تعليم ضيوف تلقائي"],
+      },
+      annual: "خصم سنوي: ادفع 10 أشهر، احصل على 12.",
+    },
+    addons: {
+      title: "إضافات",
+      items: [
+        { name: "بوت واتساب AI", price: "₪149/شهر", desc: "بوت AI لمحادثات + حجوزات واتساب" },
+        { name: "حملات وتسويق", price: "₪99/شهر", desc: "تقسيم، قوالب، إرسال مجدول" },
+        { name: "تلعيب متقدم", price: "₪79/شهر", desc: "تحديات، عجلة حظ، لوحة متصدرين، مكافآت" },
+        { name: "تحليلات وتقارير", price: "₪59/شهر", desc: "استبقاء، CLV، ROI حملات، خرائط حرارة" },
+      ],
+    },
+    cta: {
+      title: "مستعد للتجربة؟",
+      desc: "14 يوم تجربة مجانية. بدون بطاقة ائتمان. بدون التزام.",
+      button: "تحدث معنا",
+    },
+    faq: {
+      title: "أسئلة شائعة",
+      items: [
+        { q: "هل أحتاج معرفة تقنية؟", a: "لا. الودجة تُضمّن بسطر واحد، لوحة التحكم تعمل من المتصفح، وواتساب يعمل وحده." },
+        { q: "ماذا يحدث بعد التجربة؟", a: "اختر خطة وابدأ بالدفع. بدون مفاجآت، بدون رسوم مخفية." },
+        { q: "هل هناك عمولة للزبون؟", a: "لا. أبداً. اشتراك شهري ثابت حسب عدد المقاعد." },
+        { q: "ما اللغات التي يدعمها البوت؟", a: "عبري، إنجليزي، وعربي. كشف لغة تلقائي." },
+        { q: "هل يمكنني التجربة قبل الدفع؟", a: "نعم! 14 يوم تجربة مجانية، بدون بطاقة ائتمان." },
+      ],
+    },
+  },
 };
 
 const API_URL = "http://204.168.227.45";
@@ -605,6 +834,125 @@ function DemoWidget() {
   );
 }
 
+const FORMSPREE_URL = "https://formspree.io/f/milhemsione@gmail.com";
+const CAL_LINK = "https://cal.com/sable/intro";
+
+function ContactForm({ lang }: { lang: Lang }) {
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  const labels = {
+    he: { title: "דבר איתנו", name: "שם מלא", email: "אימייל", restaurant: "שם המסעדה", phone: "טלפון", seats: "מספר מושבים", message: "הודעה (אופציונלי)", send: "שלח הודעה", sending: "שולח...", sent: "ההודעה נשלחה! נחזור אליך בהקדם.", error: "משהו השתבש. נסה שוב או שלח מייל ל-milhemsione@gmail.com", schedule: "או קבע שיחה", scheduleBtn: "קבע שיחת 15 דקות" },
+    en: { title: "Get in touch", name: "Full name", email: "Email", restaurant: "Restaurant name", phone: "Phone", seats: "Number of seats", message: "Message (optional)", send: "Send message", sending: "Sending...", sent: "Message sent! We'll get back to you shortly.", error: "Something went wrong. Try again or email milhemsione@gmail.com", schedule: "Or schedule a call", scheduleBtn: "Schedule a 15-min call" },
+    ar: { title: "تواصل معنا", name: "الاسم الكامل", email: "البريد الإلكتروني", restaurant: "اسم المطعم", phone: "الهاتف", seats: "عدد المقاعد", message: "رسالة (اختياري)", send: "أرسل رسالة", sending: "جارٍ الإرسال...", sent: "تم إرسال الرسالة! سنعود إليك قريباً.", error: "حدث خطأ. حاول مرة أخرى أو أرسل بريد إلى milhemsione@gmail.com", schedule: "أو حدد موعد مكالمة", scheduleBtn: "حدد مكالمة 15 دقيقة" },
+  };
+  const l = labels[lang];
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setStatus("sending");
+    try {
+      const res = await fetch(FORMSPREE_URL, {
+        method: "POST",
+        body: new FormData(e.currentTarget),
+        headers: { Accept: "application/json" },
+      });
+      setStatus(res.ok ? "sent" : "error");
+      if (res.ok) (e.target as HTMLFormElement).reset();
+    } catch {
+      setStatus("error");
+    }
+  };
+
+  const inputCls = "w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition";
+
+  return (
+    <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-start">
+      <div>
+        <h2 className="text-3xl font-bold mb-4">{l.title}</h2>
+        <div className="space-y-5">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+              <span className="text-xl">&#128337;</span>
+            </div>
+            <div>
+              <p className="font-semibold">{lang === "he" ? "15 דקות, בלי בלבולים" : lang === "ar" ? "15 دقيقة، بدون تعقيد" : "15 minutes, no fluff"}</p>
+              <p className="text-sm text-gray-500">{lang === "he" ? "שיחה קצרה, תשובות אמיתיות." : lang === "ar" ? "مكالمة قصيرة، إجابات حقيقية." : "Quick call, real answers."}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+              <span className="text-xl">&#9989;</span>
+            </div>
+            <div>
+              <p className="font-semibold">{lang === "he" ? "התסריטים שלך, לא שלנו" : lang === "ar" ? "سيناريوهاتك، ليس سيناريوهاتنا" : "Your scenarios, not ours"}</p>
+              <p className="text-sm text-gray-500">{lang === "he" ? "ספר לנו על המסעדה ונראה לך תוצאות רלוונטיות." : lang === "ar" ? "أخبرنا عن مطعمك وسنعرض لك نتائج ذات صلة." : "Tell us about your restaurant and we'll show relevant results."}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
+              <span className="text-xl">&#128172;</span>
+            </div>
+            <div>
+              <p className="font-semibold">{lang === "he" ? "הדגמה חיה בוואטסאפ" : lang === "ar" ? "عرض مباشر على واتساب" : "Live WhatsApp walkthrough"}</p>
+              <p className="text-sm text-gray-500">{lang === "he" ? "ראה בדיוק מה האורחים שלך יחוו." : lang === "ar" ? "شاهد بالضبط ما سيختبره ضيوفك." : "See exactly what your guests will experience."}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <p className="text-sm text-gray-500 mb-3">{l.schedule}</p>
+          <a href={CAL_LINK} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-6 py-3 border-2 border-amber-600 text-amber-700 rounded-xl font-semibold hover:bg-amber-50 transition">
+            <span>&#128197;</span> {l.scheduleBtn}
+          </a>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-2xl shadow-lg p-6 space-y-4">
+        <div>
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">{l.name}</label>
+          <input type="text" id="name" name="name" required className={inputCls} />
+        </div>
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">{l.email}</label>
+          <input type="email" id="email" name="email" required className={inputCls} />
+        </div>
+        <div>
+          <label htmlFor="restaurant" className="block text-sm font-medium text-gray-700 mb-1">{l.restaurant}</label>
+          <input type="text" id="restaurant" name="restaurant" required className={inputCls} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">{l.phone}</label>
+            <input type="tel" id="phone" name="phone" className={inputCls} />
+          </div>
+          <div>
+            <label htmlFor="seats" className="block text-sm font-medium text-gray-700 mb-1">{l.seats}</label>
+            <select id="seats" name="seats" className={inputCls}>
+              <option value="">-</option>
+              <option value="1-30">1-30</option>
+              <option value="31-60">31-60</option>
+              <option value="61-100">61-100</option>
+              <option value="101-150">101-150</option>
+              <option value="150+">150+</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">{l.message}</label>
+          <textarea id="message" name="message" rows={3} className={inputCls} />
+        </div>
+        <button type="submit" disabled={status === "sending"}
+          className="w-full py-3 bg-amber-600 text-white rounded-xl font-semibold text-lg hover:bg-amber-700 transition disabled:bg-gray-400">
+          {status === "sending" ? l.sending : l.send}
+        </button>
+        {status === "sent" && <p className="text-green-600 text-sm text-center">{l.sent}</p>}
+        {status === "error" && <p className="text-red-600 text-sm text-center">{l.error}</p>}
+      </form>
+    </div>
+  );
+}
+
 const starterTiers = [
   { tier: "S", seats: 40, price: 499 },
   { tier: "M", seats: 80, price: 699 },
@@ -633,9 +981,11 @@ function ComparisonCell({ v }: { v: string }) {
 export function LandingPage() {
   const [lang, setLang] = useState<Lang>("he");
   const c = t[lang];
-  const dir = lang === "he" ? "rtl" : "ltr";
-  const su = lang === "he" ? "מושבים" : "seats";
-  const pm = lang === "he" ? "/חודש" : "/mo";
+  const dir = lang === "en" ? "ltr" : "rtl";
+  const su = lang === "he" ? "מושבים" : lang === "ar" ? "مقعد" : "seats";
+  const pm = lang === "he" ? "/חודש" : lang === "ar" ? "/شهر" : "/mo";
+  const nextLang = (): Lang => lang === "he" ? "en" : lang === "en" ? "ar" : "he";
+  const langLabel = lang === "he" ? "EN" : lang === "en" ? "عر" : "עב";
 
   return (
     <div dir={dir} className="min-h-screen bg-white text-gray-900" style={{ direction: dir }}>
@@ -646,8 +996,9 @@ export function LandingPage() {
           <a href="#tools" className="text-gray-600 hover:text-gray-900 hidden md:inline">{c.nav.tools}</a>
           <a href="#pricing" className="text-gray-600 hover:text-gray-900 hidden md:inline">{c.nav.pricing}</a>
           <a href="#demo" className="text-gray-600 hover:text-gray-900 hidden md:inline">{c.nav.demo}</a>
-          <button onClick={() => setLang(lang === "he" ? "en" : "he")} className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-            {lang === "he" ? "EN" : "עב"}
+          <a href="#contact" className="text-gray-600 hover:text-gray-900 hidden md:inline">{lang === "he" ? "צור קשר" : lang === "ar" ? "تواصل" : "Contact"}</a>
+          <button onClick={() => setLang(nextLang())} className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+            {langLabel}
           </button>
         </div>
       </nav>
@@ -749,7 +1100,7 @@ export function LandingPage() {
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl font-bold mb-4">{c.launch.title}</h2>
           <p className="text-xl text-gray-700 mb-6">{c.launch.desc}</p>
-          <a href="mailto:sione@kaspa.com" className="inline-block px-8 py-4 bg-red-600 text-white rounded-xl font-semibold text-lg hover:bg-red-700 transition">{c.launch.cta}</a>
+          <a href="mailto:milhemsione@gmail.com" className="inline-block px-8 py-4 bg-red-600 text-white rounded-xl font-semibold text-lg hover:bg-red-700 transition">{c.launch.cta}</a>
           <p className="text-sm text-gray-500 mt-4">{c.launch.note}</p>
         </div>
       </section>
@@ -841,11 +1192,9 @@ export function LandingPage() {
         <DemoWidget />
       </section>
 
-      {/* CTA */}
-      <section className="px-6 py-20 text-center bg-gradient-to-b from-amber-50 to-white">
-        <h2 className="text-3xl font-bold mb-4">{c.cta.title}</h2>
-        <p className="text-gray-600 mb-8">{c.cta.desc}</p>
-        <a href="mailto:sione@kaspa.com" className="px-8 py-4 bg-amber-600 text-white rounded-xl font-semibold text-lg hover:bg-amber-700 transition">{c.cta.button}</a>
+      {/* Contact */}
+      <section id="contact" className="px-6 py-20 bg-gradient-to-b from-amber-50 to-white">
+        <ContactForm lang={lang} />
       </section>
 
       {/* Footer */}

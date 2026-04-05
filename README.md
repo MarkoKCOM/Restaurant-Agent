@@ -1,37 +1,43 @@
-# Restaurant Agent
+# Sable
 
-AI-powered restaurant assistant — smarter customer support, better retention, cheaper reservations.
+AI-powered restaurant management platform - reservations, guest CRM, loyalty, gamification, campaigns, and automation. All via WhatsApp and web.
 
-## Vision
+## Quick Links
 
-Replace expensive reservation systems (Ontopo, Tabit, OpenTable) with an AI agent that handles:
-- **Reservation management** — WhatsApp/phone/web booking intake, modifications, cancellations
-- **Customer support** — 24/7 automated responses to inquiries, complaints, menu questions
-- **Customer retention** — post-visit follow-ups, personalized offers, loyalty tracking
-- **CRM** — unified guest profiles across all touchpoints
+- **[PRODUCT-BRIEF.md](PRODUCT-BRIEF.md)** - Complete product reference (features, pricing, tech, roadmap, marketing copy)
+- **[ROADMAP.md](ROADMAP.md)** - Phase timeline and current status
+- **[PROGRESS.md](PROGRESS.md)** - Development log
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Tech stack and data flow
 
-## Target Price
+## Live
 
-$50–150/month — 5-10x cheaper than SevenRooms/Resy while offering AI-native features they charge premium for.
+| App | URL |
+|-----|-----|
+| Marketing Site | https://marketing-site-nine-chi.vercel.app |
+| Dashboard | https://dashboard-one-delta-38.vercel.app |
+| API | VPS port 3001 (behind Nginx) |
 
-## Status
+## Monorepo
 
-**Phase: Research & Discovery**
+```
+apps/
+  api/              # Fastify + Drizzle + PostgreSQL + BullMQ
+  dashboard/        # React + Vite + Tailwind + shadcn/ui
+  booking-widget/   # Preact embeddable (under 20KB)
+  marketing-site/   # React bilingual landing page
+packages/
+  domain/           # Shared TypeScript types + Zod schemas
+```
 
-- [x] Needs-discovery questionnaire (Hebrew) — see `research/questionnaire-restaurants.md`
-- [x] Google Forms script — see `research/google-forms-restaurants.gs`
-- [x] Market research: reservation systems (Israel + US) — see `research/market-research.md`
-- [ ] MVP product spec
-- [ ] Pilot with first restaurant
+## Dev
 
-## Market Gap
-
-**Israel:** Ontopo (free, booking-only) + Tabit (POS-focused) = no unified CRM+AI+reservations.
-**US:** AI features locked behind $500+/month platforms. Nothing affordable for independents.
+```bash
+pnpm install        # Install all dependencies
+pnpm dev            # Run all apps in dev mode
+pnpm build          # Build everything
+pnpm type-check     # TypeScript check across monorepo
+```
 
 ## Pilot
 
-Testing with a friend's restaurant. MVP focus:
-1. WhatsApp reservation bot (Hebrew + English)
-2. Basic guest CRM
-3. Automated post-visit engagement
+BFF Ra'anana, Israel (free). First paying customers targeted at ₪499/mo (Starter) or ₪799/mo (Standard).

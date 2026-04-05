@@ -1,0 +1,111 @@
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+
+jobs:
+  deploy-dashboard:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_DASHBOARD_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Vercel CLI
+        run: npm i -g vercel
+
+      - name: Pull Vercel config
+        run: vercel pull --yes --token=$VERCEL_TOKEN --cwd apps/dashboard
+
+      - name: Build with Vercel
+        run: vercel build --token=$VERCEL_TOKEN --cwd apps/dashboard ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '--prod' || '' }}
+
+      - name: Deploy Preview
+        if: github.event_name == 'pull_request'
+        run: vercel deploy --prebuilt --token=$VERCEL_TOKEN --cwd apps/dashboard
+
+      - name: Deploy Production
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN --cwd apps/dashboard
+
+  deploy-marketing:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_MARKETING_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Vercel CLI
+        run: npm i -g vercel
+
+      - name: Pull Vercel config
+        run: vercel pull --yes --token=$VERCEL_TOKEN --cwd apps/marketing-site
+
+      - name: Build with Vercel
+        run: vercel build --token=$VERCEL_TOKEN --cwd apps/marketing-site ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '--prod' || '' }}
+
+      - name: Deploy Preview
+        if: github.event_name == 'pull_request'
+        run: vercel deploy --prebuilt --token=$VERCEL_TOKEN --cwd apps/marketing-site
+
+      - name: Deploy Production
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN --cwd apps/marketing-site
+
+  deploy-widget:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_WIDGET_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Vercel CLI
+        run: npm i -g vercel
+
+      - name: Pull Vercel config
+        run: vercel pull --yes --token=$VERCEL_TOKEN --cwd apps/booking-widget
+
+      - name: Build with Vercel
+        run: vercel build --token=$VERCEL_TOKEN --cwd apps/booking-widget ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '--prod' || '' }}
+
+      - name: Deploy Preview
+        if: github.event_name == 'pull_request'
+        run: vercel deploy --prebuilt --token=$VERCEL_TOKEN --cwd apps/booking-widget
+
+      - name: Deploy Production
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN --cwd apps/booking-widget

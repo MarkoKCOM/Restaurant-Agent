@@ -1,5 +1,5 @@
 {
-  "installCommand": "echo skip",
-  "buildCommand": "echo skip",
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "buildCommand": "cd ../.. && pnpm --filter @sable/marketing-site build",
   "outputDirectory": "dist"
 }

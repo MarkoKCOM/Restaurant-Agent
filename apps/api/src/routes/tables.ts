@@ -41,7 +41,14 @@ export async function tableRoutes(app: FastifyInstance) {
   // POST / — create table
   app.post("/", async (request, reply) => {
     const body = createTableSchema.parse(request.body);
-    const table = await createTable(body);
+    const table = await createTable({
+      restaurantId: body.restaurantId,
+      name: body.name,
+      minSeats: body.minSeats,
+      maxSeats: body.maxSeats,
+      zone: body.zone,
+      combinableWith: body.combinableWith,
+    });
     reply.code(201);
     return { table };
   });

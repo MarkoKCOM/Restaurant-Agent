@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type Lang = "he" | "en";
 
@@ -463,6 +463,148 @@ const t = {
   },
 };
 
+const API_URL = "http://204.168.227.45:3001";
+const RESTAURANT_ID = "c3c22e37-a309-4fde-aa6c-6e714212a3bc";
+
+interface AvailabilitySlot {
+  time: string;
+  availableTables: number;
+  maxPartySize: number;
+}
+
+type WidgetStep = "date" | "time" | "details" | "confirm";
+
+function isValidIsraeliPhone(phone: string): boolean {
+  const digits = phone.replace(/[\s\-()]/g, "");
+  if (digits.startsWith("+972")) return /^\+972\d{8,9}$/.test(digits);
+  if (digits.startsWith("0")) return /^0\d{9}$/.test(digits);
+  return false;
+}
+
+function DemoWidget() {
+  const [step, setStep] = useState<WidgetStep>("date");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [partySize, setPartySize] = useState(2);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (step !== "time" || !date) return;
+    setLoadingSlots(true);
+    setError("");
+    const params = new URLSearchParams({ restaurantId: RESTAURANT_ID, date, partySize: String(partySize) });
+    fetch(`${API_URL}/api/v1/reservations/availability?${params}`)
+      .then((res) => res.json())
+      .then((data) => { setSlots(data.slots || []); setLoadingSlots(false); })
+      .catch(() => { setError("Error loading slots"); setLoadingSlots(false); });
+  }, [step, date, partySize]);
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    setError("");
+    try {
+      const res = await fetch(`${API_URL}/api/v1/reservations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ restaurantId: RESTAURANT_ID, guestName: name, guestPhone: phone, date, timeStart: time, partySize, source: "web" }),
+      });
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || "Booking failed"); }
+      setStep("confirm");
+    } catch (e: any) { setError(e.message || "Booking failed"); }
+    finally { setSubmitting(false); }
+  };
+
+  const accent = "#d97706";
+  const btnStyle = "w-full py-3 rounded-xl font-semibold text-white transition";
+
+  return (
+    <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 max-w-sm mx-auto" dir="rtl">
+      <h3 className="text-lg font-bold mb-4 text-center">הזמנת שולחן - BFF Ra'anana</h3>
+
+      {error && <div className="p-2 mb-3 rounded-lg bg-red-50 text-red-700 text-sm">{error}</div>}
+
+      {step === "date" && (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm mb-1">תאריך</label>
+            <input type="date" value={date} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setDate(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg" />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">מספר סועדים</label>
+            <select value={partySize} onChange={(e) => setPartySize(Number(e.target.value))} className="w-full p-2 border border-gray-300 rounded-lg">
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+          <button onClick={() => date && setStep("time")} className={btnStyle} style={{ background: accent }}>המשך</button>
+        </div>
+      )}
+
+      {step === "time" && (
+        <div>
+          <p className="text-sm text-gray-500 mb-3">שעות פנויות ל-{date} ({partySize} סועדים)</p>
+          {loadingSlots ? (
+            <p className="text-gray-400 text-sm">טוען שעות פנויות...</p>
+          ) : slots.length === 0 ? (
+            <p className="text-gray-400 text-sm">אין שעות פנויות לתאריך זה</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {slots.map((slot) => (
+                <button key={slot.time} onClick={() => { setTime(slot.time); setStep("details"); }}
+                  className={`py-2 rounded-lg border text-sm font-semibold transition ${time === slot.time ? "text-white" : "border-gray-200 hover:border-amber-300"}`}
+                  style={time === slot.time ? { background: accent, borderColor: accent, color: "#fff" } : {}}>
+                  {slot.time}
+                </button>
+              ))}
+            </div>
+          )}
+          <button onClick={() => setStep("date")} className="mt-4 text-sm text-gray-500 hover:text-gray-700">&larr; חזרה</button>
+        </div>
+      )}
+
+      {step === "details" && (
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500">{date} | {time} | {partySize} סועדים</p>
+          <div>
+            <label className="block text-sm mb-1">שם</label>
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg" />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">טלפון</label>
+            <input type="tel" value={phone}
+              onChange={(e) => { setPhone(e.target.value); if (phoneError) setPhoneError(""); }}
+              onBlur={() => { if (phone && !isValidIsraeliPhone(phone)) setPhoneError("מספר טלפון לא תקין"); }}
+              className={`w-full p-2 border rounded-lg ${phoneError ? "border-red-500" : "border-gray-300"}`} />
+            {phoneError && <p className="text-red-600 text-xs mt-1">{phoneError}</p>}
+          </div>
+          <button
+            onClick={() => { if (!isValidIsraeliPhone(phone)) { setPhoneError("מספר טלפון לא תקין"); return; } handleSubmit(); }}
+            disabled={!name || !phone || submitting}
+            className={btnStyle}
+            style={{ background: submitting ? "#9ca3af" : accent }}>
+            {submitting ? "שולח..." : "אישור הזמנה"}
+          </button>
+          <button onClick={() => setStep("time")} className="text-sm text-gray-500 hover:text-gray-700 block">&larr; חזרה</button>
+        </div>
+      )}
+
+      {step === "confirm" && (
+        <div className="text-center py-6">
+          <p className="text-4xl mb-2">&#x2705;</p>
+          <p className="text-lg font-bold">ההזמנה התקבלה!</p>
+          <p className="text-sm text-gray-500 mt-1">{date} בשעה {time} | {partySize} סועדים</p>
+          <p className="text-xs text-gray-400 mt-2">אישור יישלח אליך בוואטסאפ</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const starterTiers = [
   { tier: "S", seats: 40, price: 499 },
   { tier: "M", seats: 80, price: 699 },
@@ -692,8 +834,15 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* Live Demo Widget */}
+      <section id="demo" className="px-6 py-20 bg-gradient-to-b from-white to-amber-50">
+        <h2 className="text-3xl font-bold text-center mb-2">{lang === "he" ? "נסה עכשיו" : "Try it now"}</h2>
+        <p className="text-center text-gray-500 mb-10">{lang === "he" ? "ככה נראית הזמנה מהאתר שלך - ווידג'ט שנטען בשורת קוד אחת" : "This is how booking looks on your website - a widget loaded with one line of code"}</p>
+        <DemoWidget />
+      </section>
+
       {/* CTA */}
-      <section id="demo" className="px-6 py-20 text-center bg-gradient-to-b from-white to-amber-50">
+      <section className="px-6 py-20 text-center bg-gradient-to-b from-amber-50 to-white">
         <h2 className="text-3xl font-bold mb-4">{c.cta.title}</h2>
         <p className="text-gray-600 mb-8">{c.cta.desc}</p>
         <a href="mailto:sione@kaspa.com" className="px-8 py-4 bg-amber-600 text-white rounded-xl font-semibold text-lg hover:bg-amber-700 transition">{c.cta.button}</a>

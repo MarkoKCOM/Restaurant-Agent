@@ -56,7 +56,7 @@ export async function tableRoutes(app: FastifyInstance) {
   // PATCH /:id — update table
   app.patch("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const body = updateTableSchema.parse(request.body ?? {});
+    const body = updateTableSchema.parse(request.body ?? {}) as Parameters<typeof updateTable>[1];
 
     const updated = await updateTable(id, body);
     if (!updated) {

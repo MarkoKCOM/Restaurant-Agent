@@ -22,7 +22,7 @@ const addToWaitlistSchema = z.object({
 export async function waitlistRoutes(app: FastifyInstance) {
   // POST / — add to waitlist
   app.post("/", async (request, reply) => {
-    const body = addToWaitlistSchema.parse(request.body);
+    const body = addToWaitlistSchema.parse(request.body) as Parameters<typeof addToWaitlist>[0];
     const entry = await addToWaitlist(body);
     reply.code(201);
     return { waitlistEntry: entry };

@@ -3,7 +3,7 @@ import { z } from "zod";
 import {
   availabilityQuerySchema,
   createReservationSchema,
-} from "@sable/domain";
+} from "@openseat/domain";
 import {
   cancelReservation,
   checkAvailability,
@@ -28,14 +28,14 @@ const updateReservationSchema = z.object({
 export async function reservationRoutes(app: FastifyInstance) {
   // GET /availability
   app.get("/availability", async (request) => {
-    const query = availabilityQuerySchema.parse(request.query);
+    const query = availabilityQuerySchema.parse(request.query) as Parameters<typeof checkAvailability>[0];
     const slots = await checkAvailability(query);
     return { slots };
   });
 
   // POST / — create reservation
   app.post("/", async (request, reply) => {
-    const body = createReservationSchema.parse(request.body);
+    const body = createReservationSchema.parse(request.body) as Parameters<typeof createReservation>[0];
     const reservation = await createReservation(body);
     reply.code(201);
     return { reservation };
@@ -55,7 +55,7 @@ export async function reservationRoutes(app: FastifyInstance) {
   // PATCH /:id — update reservation
   app.patch("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const body = updateReservationSchema.parse(request.body);
+    const body = updateReservationSchema.parse(request.body) as Parameters<typeof updateReservation>[1];
 
     const updated = await updateReservation(id, body);
     if (!updated) {

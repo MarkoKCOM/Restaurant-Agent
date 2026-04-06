@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
-import { createGuestSchema } from "@sable/domain";
+import { createGuestSchema } from "@openseat/domain";
 import {
   findOrCreateGuest,
   getGuestById,
@@ -59,7 +59,7 @@ export async function guestRoutes(app: FastifyInstance) {
 
   // POST / — create or find guest
   app.post("/", async (request, reply) => {
-    const body = createGuestSchema.parse(request.body);
+    const body = createGuestSchema.parse(request.body) as Parameters<typeof findOrCreateGuest>[0];
     const row = await findOrCreateGuest(body);
     reply.code(201);
     return { guest: toDomainGuest(row) };
@@ -101,7 +101,7 @@ export async function guestRoutes(app: FastifyInstance) {
   // PATCH /:id — update guest preferences
   app.patch("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const body = updateGuestSchema.parse(request.body ?? {});
+    const body = updateGuestSchema.parse(request.body ?? {}) as Parameters<typeof updateGuestPreferences>[1];
 
     const updated = await updateGuestPreferences(id, body);
     if (!updated) {

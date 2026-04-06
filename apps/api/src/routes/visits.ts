@@ -60,7 +60,7 @@ const submitFeedbackSchema = z.object({
 export async function visitRoutes(app: FastifyInstance) {
   // POST /api/v1/visits — log a visit
   app.post("/", async (request, reply) => {
-    const body = logVisitSchema.parse(request.body);
+    const body = logVisitSchema.parse(request.body) as Parameters<typeof logVisit>[0];
     const visit = await logVisit(body);
 
     // Auto-tag guest after visit
@@ -89,7 +89,7 @@ export async function visitRoutes(app: FastifyInstance) {
 export async function feedbackRoutes(app: FastifyInstance) {
   // POST /api/v1/feedback — submit feedback
   app.post("/", async (request, reply) => {
-    const body = submitFeedbackSchema.parse(request.body);
+    const body = submitFeedbackSchema.parse(request.body) as Parameters<typeof submitFeedback>[0];
     const result = await submitFeedback(body);
 
     // Auto-tag guest after feedback

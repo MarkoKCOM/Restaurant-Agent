@@ -15,12 +15,13 @@ declare module "fastify" {
   }
 }
 
-const PUBLIC_ROUTES: Array<{ method?: string; path: string }> = [
+const PUBLIC_ROUTES: Array<{ method?: string; path: string; prefix?: boolean }> = [
   { path: "/health" },
   { path: "/api/v1/health" },
   { path: "/api/v1/auth/login" },
   { method: "GET", path: "/api/v1/reservations/availability" },
-  { method: "GET", path: "/api/v1/restaurants" },
+  { method: "GET", path: "/api/v1/restaurants", prefix: true },
+  { method: "POST", path: "/api/v1/reservations" },
 ];
 
 function isPublicRoute(method: string, url: string): boolean {
@@ -29,7 +30,11 @@ function isPublicRoute(method: string, url: string): boolean {
 
   for (const route of PUBLIC_ROUTES) {
     if (route.method && route.method !== method.toUpperCase()) continue;
-    if (path === route.path) return true;
+    if (route.prefix) {
+      if (path === route.path || path.startsWith(route.path + "/")) return true;
+    } else {
+      if (path === route.path) return true;
+    }
   }
 
   return false;

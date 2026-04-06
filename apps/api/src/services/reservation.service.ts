@@ -9,7 +9,7 @@ import type {
   AvailabilitySlot,
   CreateReservationInput,
   Reservation as DomainReservation,
-} from "@sable/domain";
+} from "@openseat/domain";
 import { findOrCreateGuest, toDomainGuest, type GuestRow } from "./guest.service.js";
 import {
   getActiveTablesForRestaurant,
@@ -140,7 +140,11 @@ export async function checkAvailability(
   }
 
   const openMinutes = timeStringToMinutes(dayHours.open);
-  const closeMinutes = timeStringToMinutes(dayHours.close);
+  let closeMinutes = timeStringToMinutes(dayHours.close);
+  // Handle overnight hours (e.g. open 17:30, close 01:00)
+  if (closeMinutes <= openMinutes) {
+    closeMinutes += 24 * 60;
+  }
 
   const allTables = await getActiveTablesForRestaurant(input.restaurantId);
   if (allTables.length === 0) {
@@ -221,10 +225,18 @@ export async function createReservation(
     throw new Error(`Restaurant is closed on ${dayKey}. No operating hours defined for this day.`);
   }
 
-  const requestedStartMinutes = timeStringToMinutes(input.timeStart);
-  const requestedEndMinutes = requestedStartMinutes + DEFAULT_RESERVATION_DURATION_MINUTES;
+  let requestedStartMinutes = timeStringToMinutes(input.timeStart);
   const openMinutes = timeStringToMinutes(dayHours.open);
-  const closeMinutes = timeStringToMinutes(dayHours.close);
+  let closeMinutes = timeStringToMinutes(dayHours.close);
+  // Handle overnight hours (e.g. open 17:30, close 01:00)
+  if (closeMinutes <= openMinutes) {
+    closeMinutes += 24 * 60;
+  }
+  // Handle late-night bookings (e.g. 00:30 when open is 17:30)
+  if (requestedStartMinutes < openMinutes) {
+    requestedStartMinutes += 24 * 60;
+  }
+  const requestedEndMinutes = requestedStartMinutes + DEFAULT_RESERVATION_DURATION_MINUTES;
 
   if (requestedStartMinutes < openMinutes || requestedEndMinutes > closeMinutes) {
     throw new Error(

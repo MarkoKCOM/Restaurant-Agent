@@ -24,7 +24,7 @@ import { eq } from "drizzle-orm";
 
 const app = Fastify({ logger: true });
 
-await app.register(cors, { origin: env.CORS_ORIGIN });
+await app.register(cors, { origin: true });
 
 // Auth middleware (runs before all routes)
 await app.register(authMiddleware);

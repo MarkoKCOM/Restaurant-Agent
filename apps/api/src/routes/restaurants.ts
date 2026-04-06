@@ -257,7 +257,7 @@ export async function restaurantRoutes(app: FastifyInstance) {
         guestName: guests.name,
       })
       .from(reservations)
-      .leftJoin(guests, eq(reservations.guestId, guests.id))
+      .leftJoin(guests as any, eq(reservations.guestId, guests.id))
       .where(
         and(
           eq(reservations.restaurantId, id),
@@ -288,7 +288,7 @@ export async function restaurantRoutes(app: FastifyInstance) {
             id: seated.id,
             guestName: seated.guestName ?? "---",
             partySize: seated.partySize,
-            timeStart: seated.timeStart.slice(0, 5),
+            timeStart: (seated.timeStart as string).slice(0, 5),
           },
         };
       }
@@ -306,7 +306,7 @@ export async function restaurantRoutes(app: FastifyInstance) {
             id: reserved.id,
             guestName: reserved.guestName ?? "---",
             partySize: reserved.partySize,
-            timeStart: reserved.timeStart.slice(0, 5),
+            timeStart: (reserved.timeStart as string).slice(0, 5),
           },
         };
       }

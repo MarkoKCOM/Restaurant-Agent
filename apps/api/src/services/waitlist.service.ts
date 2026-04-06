@@ -100,7 +100,7 @@ export async function listWaitlist(
   const rows = await db
     .select({ waitlist: waitlist, guest: guestsTable })
     .from(waitlist)
-    .leftJoin(guestsTable, eq(guestsTable.id, waitlist.guestId))
+    .leftJoin(guestsTable as any, eq(guestsTable.id, waitlist.guestId))
     .where(and(...conditions))
     .orderBy(waitlist.createdAt);
 
@@ -121,7 +121,7 @@ export async function matchWaitlist(
   const rows = await db
     .select({ waitlist: waitlist, guest: guestsTable })
     .from(waitlist)
-    .leftJoin(guestsTable, eq(guestsTable.id, waitlist.guestId))
+    .leftJoin(guestsTable as any, eq(guestsTable.id, waitlist.guestId))
     .where(
       and(
         eq(waitlist.restaurantId, restaurantId),
@@ -177,7 +177,7 @@ export async function acceptOffer(waitlistId: string): Promise<{
   const [entry] = await db
     .select({ waitlist: waitlist, guest: guestsTable })
     .from(waitlist)
-    .leftJoin(guestsTable, eq(guestsTable.id, waitlist.guestId))
+    .leftJoin(guestsTable as any, eq(guestsTable.id, waitlist.guestId))
     .where(eq(waitlist.id, waitlistId))
     .limit(1);
 

@@ -336,7 +336,7 @@ export async function listReservations(params: {
   const baseQuery = db
     .select({ reservation: reservations, guest: guestsTable })
     .from(reservations)
-    .leftJoin(guestsTable, eq(guestsTable.id, reservations.guestId));
+    .leftJoin(guestsTable as any, eq(guestsTable.id, reservations.guestId));
 
   const conditions = [] as unknown[];
 

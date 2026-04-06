@@ -20,7 +20,7 @@ export async function getDailySummary(
   const dayReservations = await db
     .select({ reservation: reservations, guest: guestsTable })
     .from(reservations)
-    .leftJoin(guestsTable, eq(guestsTable.id, reservations.guestId))
+    .leftJoin(guestsTable as any, eq(guestsTable.id, reservations.guestId))
     .where(
       and(
         eq(reservations.restaurantId, restaurantId),

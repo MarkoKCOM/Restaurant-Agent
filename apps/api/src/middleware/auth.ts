@@ -22,6 +22,7 @@ const PUBLIC_ROUTES: Array<{ method?: string; path: string; prefix?: boolean }> 
   { method: "GET", path: "/api/v1/reservations/availability" },
   { method: "GET", path: "/api/v1/restaurants", prefix: true },
   { method: "POST", path: "/api/v1/reservations" },
+  { method: "POST", path: "/api/v1/agent", prefix: true },
 ];
 
 function isPublicRoute(method: string, url: string): boolean {

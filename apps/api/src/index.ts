@@ -13,6 +13,7 @@ import { engagementRoutes } from "./routes/engagement.js";
 import { visitRoutes, feedbackRoutes } from "./routes/visits.js";
 import { waitlistRoutes } from "./routes/waitlist.js";
 import { chatRoutes } from "./routes/chat.js";
+import { agentRoutes } from "./routes/agent.js";
 import { createReminderWorker } from "./queue/reminder.worker.js";
 import { createSummaryWorker } from "./queue/summary.worker.js";
 import { createEngagementWorker } from "./queue/engagement.worker.js";
@@ -46,6 +47,7 @@ await app.register(visitRoutes, { prefix: "/api/v1/visits" });
 await app.register(feedbackRoutes, { prefix: "/api/v1/feedback" });
 await app.register(waitlistRoutes, { prefix: "/api/v1/waitlist" });
 await app.register(chatRoutes, { prefix: "/api/v1/chat" });
+await app.register(agentRoutes, { prefix: "/api/v1/agent" });
 
 try {
   await app.listen({ port: env.API_PORT, host: env.API_HOST });

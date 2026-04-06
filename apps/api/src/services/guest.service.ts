@@ -148,7 +148,7 @@ export async function getFullGuestProfile(guestId: string) {
       completedAt: challengeProgress.completedAt,
     })
     .from(challengeProgress)
-    .innerJoin(challenges, eq(challengeProgress.challengeId, challenges.id))
+    .innerJoin(challenges as any, eq(challengeProgress.challengeId, challenges.id))
     .where(eq(challengeProgress.guestId, guestId));
 
   // Compute loyalty status

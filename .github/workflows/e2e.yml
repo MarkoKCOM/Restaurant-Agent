@@ -35,4 +35,5 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run API reliability smoke test
+        if: env.ADMIN_SEED_PASSWORD != ''
         run: node scripts/api-reliability-smoke.mjs

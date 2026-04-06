@@ -14,7 +14,7 @@ Core reservation product — API, dashboard, booking widget, marketing site.
 | Marketing Site — bilingual landing page | Done |
 | BFF Raanana pilot data loaded | Done |
 
-## Phase 1.5: Pilot-Ready Polish — 🔨 IN PROGRESS (Sprint 3)
+## Phase 1.5: Pilot-Ready Polish — ✅ DONE (Sprint 3)
 
 | Deliverable | Status |
 |-------------|--------|
@@ -25,11 +25,13 @@ Core reservation product — API, dashboard, booking widget, marketing site.
 | Widget branding (dynamic colors/logo) | Done |
 | Widget phone validation (Israeli format) | Done |
 | Past-date rejection on reservations | Done |
-| Waitlist auto-match on cancellation | In Progress (Jake) |
-| Guest preference editor | In Progress (Jake) |
-| WhatsApp session manager skeleton | In Progress (Jake) |
+| Waitlist service + auto-match on cancellation | Done |
+| Guest preference editor (tags, notes, insights) | Done |
+| Guest auto-tagging by visit count | Done |
+| Dashboard login page + auth wrapper | Done |
+| E2E test runner (15 tests, full flow) | Done |
+| CI/CD workflows (type-check, smoke, deploy) | Done |
 | SSL/HTTPS | Blocked (needs domain) |
-| Dashboard login page + auth wrapper | Todo |
 
 ## Phase 1b: WhatsApp + AI Agent
 Add Baileys WhatsApp gateway and AI conversation agent.

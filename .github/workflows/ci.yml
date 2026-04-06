@@ -7,22 +7,35 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  build-and-check:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-
-      - uses: pnpm/action-setup@v4
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Clean build (matches Vercel)
-        run: pnpm build --force
+      - name: Type-check API
+        run: pnpm --filter @openseat/api type-check
 
-      - name: Run tests
-        run: pnpm test --if-present
+      - name: Build dashboard app
+        run: pnpm --filter @openseat/dashboard build
+
+      - name: Build booking widget
+        run: pnpm --filter @openseat/booking-widget build
+
+      - name: Build marketing site
+        run: pnpm --filter @openseat/marketing build

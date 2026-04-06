@@ -1,6 +1,10 @@
-import { and, eq, desc, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { reservations, guests as guestsTable } from "../db/schema.js";
+import type { InferSelectModel } from "drizzle-orm";
+
+type ReservationRow = InferSelectModel<typeof reservations>;
+type GuestRow = InferSelectModel<typeof guestsTable>;
 
 export interface DailySummary {
   date: string;
@@ -18,9 +22,8 @@ export async function getDailySummary(
   date: string,
 ): Promise<DailySummary> {
   const dayReservations = await db
-    .select({ reservation: reservations, guest: guestsTable })
+    .select()
     .from(reservations)
-    .leftJoin(guestsTable as any, eq(guestsTable.id, reservations.guestId))
     .where(
       and(
         eq(reservations.restaurantId, restaurantId),
@@ -29,37 +32,47 @@ export async function getDailySummary(
     )
     .orderBy(reservations.timeStart);
 
+  // Fetch guests for these reservations
+  const guestIds = [...new Set(dayReservations.map((r) => r.guestId))];
+  const guestRows: GuestRow[] = [];
+  for (const gid of guestIds) {
+    const [g] = await db.select().from(guestsTable).where(eq(guestsTable.id, gid)).limit(1);
+    if (g) guestRows.push(g);
+  }
+  const guestMap = new Map(guestRows.map((g) => [g.id, g]));
+
   const activeStatuses = ["pending", "confirmed", "seated", "completed"];
   const activeReservations = dayReservations.filter((r) =>
-    activeStatuses.includes(r.reservation.status),
+    activeStatuses.includes(r.status),
   );
 
   const totalReservations = activeReservations.length;
   const totalCovers = activeReservations.reduce(
-    (sum, r) => sum + r.reservation.partySize,
+    (sum, r) => sum + r.partySize,
     0,
   );
 
   const completedCount = dayReservations.filter(
-    (r) => r.reservation.status === "completed",
+    (r) => r.status === "completed",
   ).length;
   const cancelledCount = dayReservations.filter(
-    (r) => r.reservation.status === "cancelled",
+    (r) => r.status === "cancelled",
   ).length;
   const noShowCount = dayReservations.filter(
-    (r) => r.reservation.status === "no_show",
+    (r) => r.status === "no_show",
   ).length;
 
-  // Top guests: guests with most visits (from guest record) who have reservations today
+  // Top guests: guests with most visits who have reservations today
   const guestVisitMap = new Map<string, { name: string; visits: number }>();
-  for (const row of dayReservations) {
-    if (!row.guest) continue;
-    if (!activeStatuses.includes(row.reservation.status)) continue;
-    const existing = guestVisitMap.get(row.guest.id);
-    if (!existing || row.guest.visitCount > existing.visits) {
-      guestVisitMap.set(row.guest.id, {
-        name: row.guest.name,
-        visits: row.guest.visitCount,
+  for (const res of dayReservations) {
+    const guest = guestMap.get(res.guestId);
+    if (!guest) continue;
+    if (!activeStatuses.includes(res.status)) continue;
+    const existing = guestVisitMap.get(guest.id);
+    if (!existing || guest.visitCount > existing.visits) {
+      guestVisitMap.set(guest.id, {
+        name: guest.name,
+        visits: guest.visitCount,
       });
     }
   }
@@ -69,8 +82,7 @@ export async function getDailySummary(
 
   // Occupancy peak: find the 30-min slot with the most covers
   const slotCovers = new Map<string, number>();
-  for (const row of activeReservations) {
-    const res = row.reservation;
+  for (const res of activeReservations) {
     const [startH, startM] = res.timeStart.split(":").map(Number);
     const resStart = startH * 60 + startM;
     const resEndStr = res.timeEnd;

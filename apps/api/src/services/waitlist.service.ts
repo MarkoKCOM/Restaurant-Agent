@@ -88,6 +88,15 @@ export async function addToWaitlist(data: {
   return toWaitlistEntry(inserted, guestRow);
 }
 
+async function resolveGuest(guestId: string): Promise<GuestRow> {
+  const [guest] = await db
+    .select()
+    .from(guestsTable)
+    .where(eq(guestsTable.id, guestId))
+    .limit(1);
+  return guest;
+}
+
 export async function listWaitlist(
   restaurantId: string,
   date?: string,
@@ -98,13 +107,17 @@ export async function listWaitlist(
   }
 
   const rows = await db
-    .select({ waitlist: waitlist, guest: guestsTable })
+    .select()
     .from(waitlist)
-    .leftJoin(guestsTable as any, eq(guestsTable.id, waitlist.guestId))
     .where(and(...conditions))
     .orderBy(waitlist.createdAt);
 
-  return rows.map((row) => toWaitlistEntry(row.waitlist, row.guest!));
+  const entries: WaitlistEntry[] = [];
+  for (const row of rows) {
+    const guest = await resolveGuest(row.guestId);
+    if (guest) entries.push(toWaitlistEntry(row, guest));
+  }
+  return entries;
 }
 
 export async function matchWaitlist(
@@ -119,9 +132,8 @@ export async function matchWaitlist(
 
   // Get all waiting entries for this restaurant and date
   const rows = await db
-    .select({ waitlist: waitlist, guest: guestsTable })
+    .select()
     .from(waitlist)
-    .leftJoin(guestsTable as any, eq(guestsTable.id, waitlist.guestId))
     .where(
       and(
         eq(waitlist.restaurantId, restaurantId),
@@ -132,16 +144,16 @@ export async function matchWaitlist(
     .orderBy(waitlist.createdAt);
 
   // Filter: time overlap + party size fits
-  return rows
-    .filter((row) => {
-      const prefStart = timeStringToMinutes(row.waitlist.preferredTimeStart);
-      const prefEnd = timeStringToMinutes(row.waitlist.preferredTimeEnd);
-      return (
-        rangesOverlap(prefStart, prefEnd, freedStartMin, freedEndMin) &&
-        row.waitlist.partySize <= freedPartySize
-      );
-    })
-    .map((row) => toWaitlistEntry(row.waitlist, row.guest!));
+  const matched: WaitlistEntry[] = [];
+  for (const row of rows) {
+    const prefStart = timeStringToMinutes(row.preferredTimeStart);
+    const prefEnd = timeStringToMinutes(row.preferredTimeEnd);
+    if (rangesOverlap(prefStart, prefEnd, freedStartMin, freedEndMin) && row.partySize <= freedPartySize) {
+      const guest = await resolveGuest(row.guestId);
+      if (guest) matched.push(toWaitlistEntry(row, guest));
+    }
+  }
+  return matched;
 }
 
 export async function offerSlot(waitlistId: string): Promise<WaitlistEntry | null> {
@@ -174,23 +186,25 @@ export async function acceptOffer(waitlistId: string): Promise<{
   reservationId: string;
 } | null> {
   // Get the waitlist entry
-  const [entry] = await db
-    .select({ waitlist: waitlist, guest: guestsTable })
+  const [wlRow] = await db
+    .select()
     .from(waitlist)
-    .leftJoin(guestsTable as any, eq(guestsTable.id, waitlist.guestId))
     .where(eq(waitlist.id, waitlistId))
     .limit(1);
 
-  if (!entry || entry.waitlist.status !== "offered") return null;
+  if (!wlRow || wlRow.status !== "offered") return null;
+
+  const guest = await resolveGuest(wlRow.guestId);
+  if (!guest) return null;
 
   // Create reservation from waitlist entry
   const reservation = await createReservation({
-    restaurantId: entry.waitlist.restaurantId,
-    guestName: entry.guest!.name,
-    guestPhone: entry.guest!.phone,
-    date: entry.waitlist.date,
-    timeStart: entry.waitlist.preferredTimeStart,
-    partySize: entry.waitlist.partySize,
+    restaurantId: wlRow.restaurantId,
+    guestName: guest.name,
+    guestPhone: guest.phone,
+    date: wlRow.date,
+    timeStart: wlRow.preferredTimeStart,
+    partySize: wlRow.partySize,
     source: "phone",
     notes: "נוצר מרשימת המתנה",
   });
@@ -205,7 +219,7 @@ export async function acceptOffer(waitlistId: string): Promise<{
   if (!updated) return null;
 
   return {
-    waitlistEntry: toWaitlistEntry(updated, entry.guest!),
+    waitlistEntry: toWaitlistEntry(updated, guest),
     reservationId: reservation.id,
   };
 }

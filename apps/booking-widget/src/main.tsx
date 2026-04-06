@@ -7,7 +7,7 @@ function mount(el: HTMLElement, config: { restaurantId: string; apiUrl?: string 
 }
 
 // Auto-mount if data attribute present
-const el = document.querySelector("[data-sable-booking]") as HTMLElement;
+const el = document.querySelector("[data-openseat-booking]") as HTMLElement || document.querySelector("[data-sable-booking]") as HTMLElement;
 if (el) {
   mount(el, {
     restaurantId: el.dataset.restaurantId || "",
@@ -16,4 +16,5 @@ if (el) {
 }
 
 // Expose for manual mounting
+(window as any).OpenSeatBooking = { mount };
 (window as any).SableBooking = { mount };

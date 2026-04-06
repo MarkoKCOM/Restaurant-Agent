@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
 export default defineConfig({
-  base: "/dashboard/",
+  base: process.env.DASHBOARD_BASE || "/",
   plugins: [tailwindcss(), react()],
   resolve: {
     alias: {

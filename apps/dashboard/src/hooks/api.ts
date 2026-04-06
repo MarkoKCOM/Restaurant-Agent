@@ -10,13 +10,13 @@ import type {
 const API = "/api/v1";
 
 function authHeaders(): Record<string, string> {
-  const token = localStorage.getItem("sable_token");
+  const token = localStorage.getItem("openseat_token");
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 function handle401() {
-  localStorage.removeItem("sable_token");
-  localStorage.removeItem("sable_restaurant");
+  localStorage.removeItem("openseat_token");
+  localStorage.removeItem("openseat_restaurant");
   window.location.href = "/login";
 }
 

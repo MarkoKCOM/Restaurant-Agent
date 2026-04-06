@@ -40,7 +40,7 @@ export function ChatWidget() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("sable-token") ?? ""}`,
+          Authorization: `Bearer ${localStorage.getItem("openseat_token") ?? ""}`,
         },
         body: JSON.stringify({ messages: newMessages }),
       });
@@ -86,7 +86,7 @@ export function ChatWidget() {
           {/* Header */}
           <div className="bg-amber-600 text-white px-4 py-3 flex items-center gap-2">
             <span className="text-lg">&#x1F916;</span>
-            <span className="font-semibold">Sable {title}</span>
+            <span className="font-semibold">OpenSeat {title}</span>
           </div>
 
           {/* Messages */}

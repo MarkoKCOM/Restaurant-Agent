@@ -2,6 +2,7 @@ import "dotenv/config";
 import { and, eq } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
+import { env } from "../env.js";
 import { db } from "./index.js";
 import { adminUsers, guests, reservations, restaurants, tables } from "./schema.js";
 
@@ -246,6 +247,7 @@ async function seedBffRaanana() {
 
   // 5) Admin user
   const adminEmail = "admin@bff.co.il";
+  const configuredPassword = env.ADMIN_SEED_PASSWORD;
   const [existingAdmin] = await db
     .select()
     .from(adminUsers)
@@ -253,8 +255,8 @@ async function seedBffRaanana() {
     .limit(1);
 
   if (!existingAdmin) {
-    const randomPassword = crypto.randomBytes(16).toString("hex");
-    const passwordHash = await bcrypt.hash(randomPassword, 10);
+    const adminPassword = configuredPassword ?? crypto.randomBytes(16).toString("hex");
+    const passwordHash = await bcrypt.hash(adminPassword, 10);
 
     await db.insert(adminUsers).values({
       restaurantId,
@@ -266,8 +268,28 @@ async function seedBffRaanana() {
     console.log("=".repeat(50));
     console.log("Admin user created:");
     console.log(`  Email:    ${adminEmail}`);
-    console.log(`  Password: ${randomPassword}`);
+    console.log(`  Password: ${adminPassword}`);
+    if (configuredPassword) {
+      console.log("  Source:   ADMIN_SEED_PASSWORD env var");
+    }
     console.log("=".repeat(50));
+  } else if (configuredPassword) {
+    const passwordMatches = await bcrypt.compare(
+      configuredPassword,
+      existingAdmin.passwordHash,
+    );
+
+    if (!passwordMatches) {
+      const passwordHash = await bcrypt.hash(configuredPassword, 10);
+      await db
+        .update(adminUsers)
+        .set({ passwordHash })
+        .where(eq(adminUsers.id, existingAdmin.id));
+
+      console.log("Admin user password synced from ADMIN_SEED_PASSWORD:", adminEmail);
+    } else {
+      console.log("Admin user already synced with ADMIN_SEED_PASSWORD:", adminEmail);
+    }
   } else {
     console.log("Admin user already exists:", adminEmail);
   }

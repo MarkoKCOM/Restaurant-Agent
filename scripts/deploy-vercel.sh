@@ -24,6 +24,6 @@ vercel deploy --prod --yes --token "$VERCEL_TOKEN" --scope "$SCOPE" 2>&1 | tail 
 cd ../..
 
 echo "Restarting API..."
-sudo systemctl restart sable-api
+sudo systemctl restart openseat-api
 
 echo "All deployed!"

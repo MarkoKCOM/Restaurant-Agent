@@ -1,4 +1,4 @@
-# Sable — Product Roadmap
+# OpenSeat — Product Roadmap
 
 ## Phase 1: Starter MVP (Web-First) — ✅ DONE
 Core reservation product — API, dashboard, booking widget, marketing site.

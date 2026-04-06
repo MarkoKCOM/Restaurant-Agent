@@ -4,7 +4,7 @@
 Each restaurant SHALL have a fully isolated data environment: separate guest database, reservation book, loyalty program, campaigns, and analytics. No data SHALL leak between tenants.
 
 #### Scenario: Two restaurants on the platform
-- **WHEN** Restaurant A and Restaurant B are both on Sable
+- **WHEN** Restaurant A and Restaurant B are both on OpenSeat
 - **THEN** Restaurant A's owner SHALL NOT see any of Restaurant B's guests, reservations, or analytics, and vice versa
 
 ### Requirement: Per-restaurant agent instance

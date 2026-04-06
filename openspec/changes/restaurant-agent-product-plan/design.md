@@ -1,6 +1,6 @@
 ## Context
 
-We're building **Sable** — an AI-powered restaurant agent platform with two packages (Starter ₪149/mo, Growth ₪449/mo). The pilot is with a single restaurant in Israel. The platform must handle WhatsApp-based reservation management, guest CRM, loyalty/gamification, automated engagement, and analytics.
+We're building **OpenSeat** — an AI-powered restaurant agent platform with two packages (Starter ₪149/mo, Growth ₪449/mo). The pilot is with a single restaurant in Israel. The platform must handle WhatsApp-based reservation management, guest CRM, loyalty/gamification, automated engagement, and analytics.
 
 The Israeli restaurant market is a duopoly (Ontopo for bookings, Tabit for POS) with no AI-native unified solution. We're targeting the gap between free/basic tools and expensive US platforms ($500+/month).
 
@@ -381,7 +381,7 @@ Compared to market:
 
 ## Open Questions
 
-1. **Brand name** — "Sable" is placeholder. Need to brainstorm and pick final name, then secure domain.
+1. **Brand name** — "OpenSeat" is placeholder. Need to brainstorm and pick final name, then secure domain.
 2. **Pilot restaurant details** — Need the info listed above from Sione's friend.
 3. **POS integration priority** — If the pilot restaurant uses Tabit, should we consider basic POS integration earlier?
 4. **Dedicated phone number** — Does the friend have a spare SIM for the bot, or do we get one?

@@ -10,13 +10,13 @@ const LangContext = createContext<{ lang: Lang; setLang: (l: Lang) => void; t: t
 
 export function LangProvider({ children }: { children: ReactNode }) {
   const [lang, setLang] = useState<Lang>(() => {
-    const saved = localStorage.getItem("sable-lang");
+    const saved = localStorage.getItem("openseat-lang");
     return saved === "en" ? "en" : "he";
   });
 
   function changeLang(l: Lang) {
     setLang(l);
-    localStorage.setItem("sable-lang", l);
+    localStorage.setItem("openseat-lang", l);
   }
 
   const t = translations[lang];
@@ -361,7 +361,7 @@ export const translations = {
     // Help page
     help: {
       title: "מדריך למשתמש",
-      subtitle: "איך להשתמש בדשבורד של Sable",
+      subtitle: "איך להשתמש בדשבורד של OpenSeat",
       sections: [
         {
           title: "היום - מבט כללי",
@@ -759,7 +759,7 @@ export const translations = {
 
     help: {
       title: "User Guide",
-      subtitle: "How to use the Sable dashboard",
+      subtitle: "How to use the OpenSeat dashboard",
       sections: [
         {
           title: "Today - Overview",

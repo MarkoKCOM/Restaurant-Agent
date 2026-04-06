@@ -7,8 +7,8 @@ import {
   type ReactNode,
 } from "react";
 
-const TOKEN_KEY = "sable_token";
-const RESTAURANT_KEY = "sable_restaurant";
+const TOKEN_KEY = "openseat_token";
+const RESTAURANT_KEY = "openseat_restaurant";
 const API = "/api/v1";
 
 interface AuthRestaurant {

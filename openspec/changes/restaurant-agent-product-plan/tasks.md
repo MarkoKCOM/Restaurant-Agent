@@ -136,7 +136,7 @@
 - [ ] 13.5 Test web widget on pilot restaurant's website (or a test page)
 - [ ] 13.6 Test owner daily summary and alert notifications
 - [ ] 13.7 Run 1-week soft launch with pilot restaurant, collect feedback, iterate
-- [ ] 13.8 Validate name/brand — check domain availability for "Sable" or chosen name, secure domain
+- [ ] 13.8 Validate name/brand — check domain availability for "OpenSeat" or chosen name, secure domain
 
 ## 14. Branding & Landing Page
 

@@ -2,22 +2,23 @@
 # OpenSeat E2E Test — tests the full booking flow
 set -e
 
-API="http://localhost:3001"
+API="${OPENSEAT_API_URL:-${SABLE_API_URL:-http://localhost:3001}}"
 RESTAURANT_ID="c3c22e37-a309-4fde-aa6c-6e714212a3bc"
-ADMIN_EMAIL="${ADMIN_EMAIL:-admin@bff.co.il}"
-ADMIN_PASSWORD="${ADMIN_SEED_PASSWORD:-${OPENSEAT_ADMIN_PASSWORD:-}}"
+ADMIN_EMAIL="${OPENSEAT_ADMIN_EMAIL:-${SABLE_ADMIN_EMAIL:-${ADMIN_EMAIL:-admin@bff.co.il}}}"
+ADMIN_PASSWORD="${OPENSEAT_ADMIN_PASSWORD:-${SABLE_ADMIN_PASSWORD:-${ADMIN_SEED_PASSWORD:-}}}"
 
 if [ -f ./.env ]; then
   set -a
   # shellcheck disable=SC1091
   . ./.env
   set +a
-  ADMIN_EMAIL="${ADMIN_EMAIL:-admin@bff.co.il}"
-  ADMIN_PASSWORD="${ADMIN_SEED_PASSWORD:-${OPENSEAT_ADMIN_PASSWORD:-$ADMIN_PASSWORD}}"
+  API="${OPENSEAT_API_URL:-${SABLE_API_URL:-$API}}"
+  ADMIN_EMAIL="${OPENSEAT_ADMIN_EMAIL:-${SABLE_ADMIN_EMAIL:-${ADMIN_EMAIL:-admin@bff.co.il}}}"
+  ADMIN_PASSWORD="${OPENSEAT_ADMIN_PASSWORD:-${SABLE_ADMIN_PASSWORD:-${ADMIN_SEED_PASSWORD:-$ADMIN_PASSWORD}}}"
 fi
 
 if [ -z "$ADMIN_PASSWORD" ]; then
-  echo "ERROR: ADMIN_SEED_PASSWORD (or OPENSEAT_ADMIN_PASSWORD) is not set; cannot run authenticated E2E flow."
+  echo "ERROR: OPENSEAT_ADMIN_PASSWORD (or SABLE_ADMIN_PASSWORD / ADMIN_SEED_PASSWORD) is not set; cannot run authenticated E2E flow."
   exit 1
 fi
 

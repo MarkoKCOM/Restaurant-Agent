@@ -91,7 +91,13 @@ export async function loyaltyRoutes(app: FastifyInstance) {
 
   // POST /rewards — create a reward
   app.post("/rewards", async (request, reply) => {
-    const body = createRewardSchema.parse(request.body);
+    const body = createRewardSchema.parse(request.body) as {
+      restaurantId: string;
+      nameHe: string;
+      nameEn?: string;
+      description?: string;
+      pointsCost: number;
+    };
     const reward = await createReward(body);
     reply.code(201);
     return { reward };

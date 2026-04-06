@@ -1,12 +1,26 @@
 #!/usr/bin/env node
 import process from "node:process";
 
-const baseUrl = (process.argv[2] || process.env.SABLE_API_URL || "http://localhost:3001").replace(/\/$/, "");
-const adminEmail = process.env.ADMIN_EMAIL || "admin@bff.co.il";
-const adminPassword = process.env.ADMIN_SEED_PASSWORD || process.env.SABLE_ADMIN_PASSWORD;
+const baseUrl = (
+  process.argv[2] ||
+  process.env.OPENSEAT_API_URL ||
+  process.env.SABLE_API_URL ||
+  "http://localhost:3001"
+).replace(/\/$/, "");
+const adminEmail =
+  process.env.OPENSEAT_ADMIN_EMAIL ||
+  process.env.SABLE_ADMIN_EMAIL ||
+  process.env.ADMIN_EMAIL ||
+  "admin@bff.co.il";
+const adminPassword =
+  process.env.OPENSEAT_ADMIN_PASSWORD ||
+  process.env.SABLE_ADMIN_PASSWORD ||
+  process.env.ADMIN_SEED_PASSWORD;
 
 if (!adminPassword) {
-  console.error("Missing ADMIN_SEED_PASSWORD or SABLE_ADMIN_PASSWORD in environment");
+  console.error(
+    "Missing OPENSEAT_ADMIN_PASSWORD, SABLE_ADMIN_PASSWORD, or ADMIN_SEED_PASSWORD in environment",
+  );
   process.exit(1);
 }
 

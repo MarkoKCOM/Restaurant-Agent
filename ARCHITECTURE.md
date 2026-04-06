@@ -41,7 +41,7 @@ sable/
 │   │
 │   ├── booking-widget/       # Embeddable widget — Preact (IIFE bundle)
 │   │   └── src/
-│   │       ├── main.tsx      # Auto-mount + SableBooking.mount()
+│   │       ├── main.tsx      # Auto-mount + OpenSeatBooking.mount()
 │   │       └── BookingWidget.tsx
 │   │
 │   └── marketing-site/       # Landing page — React + Vite + Tailwind

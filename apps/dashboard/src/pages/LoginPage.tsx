@@ -50,7 +50,7 @@ export function LoginPage() {
         <div className="bg-white rounded-xl shadow-lg p-8">
           {/* Branding */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Sable</h1>
+            <h1 className="text-3xl font-bold text-gray-900">OpenSeat</h1>
             <p className="text-sm text-gray-500 mt-1">{t.nav.subtitle}</p>
           </div>
 

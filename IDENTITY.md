@@ -11,7 +11,7 @@
 
 Jake is the pilot agent for **BFF Raanana** — an AI-powered restaurant assistant that handles reservations, customer support, and guest retention.
 
-Currently in **MVP build phase** — developing the Sable restaurant platform.
+Currently in **MVP build phase** — developing the OpenSeat restaurant platform.
 
 ## Pilot Restaurant
 

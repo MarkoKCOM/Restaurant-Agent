@@ -1,12 +1,44 @@
 # Progress Log
 
+## 2026-04-06 (Reliability audit + deployment hardening)
+
+### Verified
+- Confirmed Vercel CLI deployment inspection is currently blocked on this VPS without Vercel auth (`npx vercel inspect ...` returns `No existing credentials found`), so deployment-log diagnosis must use a logged-in Vercel session or token.
+- Ran local + external API smoke coverage:
+  - `scripts/e2e-test.sh` now passes end-to-end against the live local API service.
+  - Added `scripts/api-reliability-smoke.mjs` to exercise login, availability, reservation creation/listing, status transitions, loyalty balance, table status, guest full profile, visit logging, and visit insights.
+  - Verified the same smoke flow works against both `http://localhost:3001` and `http://204.168.227.45`.
+- Rebuilt frontend apps successfully after fixes:
+  - `@openseat/dashboard`
+  - `@openseat/booking-widget`
+  - `@openseat/marketing`
+
+### Fixed
+- Dashboard deployment path bug:
+  - `apps/dashboard/vite.config.ts` no longer hardcodes `base: "/dashboard/"`; asset URLs now build for the actual deploy root by default.
+  - `apps/dashboard/src/main.tsx` no longer hardcodes `basename="/dashboard"`.
+  - Router basename now follows Vite `BASE_URL`, preventing blank-page behavior when the dashboard is deployed at the site root.
+- Booking widget Vercel root 404:
+  - Added `apps/booking-widget/scripts/postbuild-demo.mjs`.
+  - Booking widget build now emits `dist/index.html` alongside `openseat-booking.iife.js`, so the deployed root URL serves a working demo page instead of Vercel `404: NOT_FOUND`.
+- Booking widget API routing on Vercel:
+  - Added `/api/:path*` rewrite to `apps/booking-widget/vercel.json` so the demo page can talk to the live API over the same origin.
+- Admin login reproducibility:
+  - Added optional `ADMIN_SEED_PASSWORD` env handling in `apps/api/src/env.ts` and `apps/api/src/db/seed.ts`.
+  - Seed now syncs the existing admin password when `ADMIN_SEED_PASSWORD` is provided, instead of relying on a one-time random password.
+  - Updated `.env.example` and `scripts/e2e-test.sh` to use environment-driven admin credentials instead of a stale hardcoded password.
+
+### Remaining Follow-up
+- `pnpm lint` is still not a trustworthy gate: frontend lint scripts call ESLint, but the workspace is not fully wired for a clean lint pass yet.
+- To inspect failed Vercel deployments directly from this VPS, add Vercel auth (`vercel login` or token) for the deployment owner.
+
 ## 2026-04-04 (VPS Bootstrap + Sprint 1 Completion)
 
 ### Infrastructure
 - Fresh VPS bootstrapped: Node v22.22.2, pnpm 10.30.3, PostgreSQL 16, Redis 7, Nginx
 - Drizzle migrations generated and applied to production DB
 - Seed data loaded: BFF Ra'anana restaurant, 10 tables, 3 test guests, 8 reservations (today + tomorrow)
-- Sable API running as systemd service on port 3001
+- OpenSeat API running as systemd service on port 3001
 - Nginx reverse proxy: `/api/*` → API, `/` → dashboard static files
 - GitHub SSH (MarkoKCOM) + CLI (marciano147) verified
 

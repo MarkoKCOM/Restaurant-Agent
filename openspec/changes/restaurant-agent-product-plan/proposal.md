@@ -6,7 +6,7 @@ There's a clear gap: an AI-native restaurant agent that combines reservations, c
 
 ## What Changes
 
-### Product: **Sable** (שֵׁיבְּל)
+### Product: **OpenSeat** (שֵׁיבְּל)
 
 > *"Your restaurant's smartest team member"*
 
@@ -14,7 +14,7 @@ The name combines "table" with a nod to hospitality — works in English, sounds
 
 ### Two Packages
 
-**Sable Starter** (Reservations + AI Bot)
+**OpenSeat Starter** (Reservations + AI Bot)
 - WhatsApp reservation bot via Baileys (Hebrew, English, Arabic)
 - Embeddable web booking widget
 - Table map and capacity management
@@ -31,7 +31,7 @@ The name combines "table" with a nod to hospitality — works in English, sounds
 | L | Up to 150 | ₪249/mo | $69/mo |
 | XL | 150+ | ₪399/mo | $109/mo |
 
-**Sable Growth** (Full Suite — CRM + Loyalty + Gamification + Campaigns)
+**OpenSeat Growth** (Full Suite — CRM + Loyalty + Gamification + Campaigns)
 - Everything in Starter
 - Full guest CRM — profiles, visit history, preferences, spend
 - Post-visit engagement — automated thank-you, review requests, personalized offers
@@ -54,7 +54,7 @@ The name combines "table" with a nod to hospitality — works in English, sounds
 **Pilot restaurant: FREE** (Sione's friend — used to build and validate the MVP)
 
 ### Main Restaurant Agent
-Each restaurant gets its own AI agent instance powered by the Sable platform. The agent:
+Each restaurant gets its own AI agent instance powered by the OpenSeat platform. The agent:
 - Has the restaurant's personality, menu knowledge, hours, and policies
 - Handles all guest communication via WhatsApp (primary), web widget, and optionally voice
 - Manages the reservation book, waitlist, and table assignments

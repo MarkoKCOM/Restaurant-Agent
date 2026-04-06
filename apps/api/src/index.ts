@@ -49,7 +49,7 @@ await app.register(chatRoutes, { prefix: "/api/v1/chat" });
 
 try {
   await app.listen({ port: env.API_PORT, host: env.API_HOST });
-  console.log(`Sable API running on http://${env.API_HOST}:${env.API_PORT}`);
+  console.log(`OpenSeat API running on http://${env.API_HOST}:${env.API_PORT}`);
 
   // Start BullMQ workers
   const reminderWorker = createReminderWorker();

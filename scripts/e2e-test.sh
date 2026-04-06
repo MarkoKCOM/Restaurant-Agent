@@ -1,11 +1,27 @@
 #!/bin/bash
-# Sable E2E Test — tests the full booking flow
+# OpenSeat E2E Test — tests the full booking flow
 set -e
 
 API="http://localhost:3001"
 RESTAURANT_ID="c3c22e37-a309-4fde-aa6c-6e714212a3bc"
+ADMIN_EMAIL="${ADMIN_EMAIL:-admin@bff.co.il}"
+ADMIN_PASSWORD="${ADMIN_SEED_PASSWORD:-${OPENSEAT_ADMIN_PASSWORD:-}}"
 
-echo "=== Sable E2E Test ==="
+if [ -f ./.env ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env
+  set +a
+  ADMIN_EMAIL="${ADMIN_EMAIL:-admin@bff.co.il}"
+  ADMIN_PASSWORD="${ADMIN_SEED_PASSWORD:-${OPENSEAT_ADMIN_PASSWORD:-$ADMIN_PASSWORD}}"
+fi
+
+if [ -z "$ADMIN_PASSWORD" ]; then
+  echo "ERROR: ADMIN_SEED_PASSWORD (or OPENSEAT_ADMIN_PASSWORD) is not set; cannot run authenticated E2E flow."
+  exit 1
+fi
+
+echo "=== OpenSeat E2E Test ==="
 
 # 1. Health check
 echo -n "1. Health check... "
@@ -16,7 +32,7 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" $API/api/v1/health)
 echo -n "2. Login... "
 TOKEN=$(curl -s -X POST $API/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@bff.co.il","password":"1285c911332d150c7dc489d15a06cd06"}' \
+  -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}" \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
 [ -n "$TOKEN" ] && echo "PASS" || { echo "FAIL"; exit 1; }
 
@@ -66,7 +82,7 @@ fi
 
 # 10. Services check
 echo -n "10. Services... "
-for svc in sable-api nginx postgresql redis-server; do
+for svc in openseat-api nginx postgresql redis-server; do
   systemctl is-active $svc > /dev/null 2>&1 || { echo "FAIL ($svc down)"; exit 1; }
 done
 echo "PASS (all active)"

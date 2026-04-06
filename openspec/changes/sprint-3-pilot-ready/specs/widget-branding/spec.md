@@ -42,7 +42,7 @@ No new endpoints. `GET /api/v1/restaurants/:id` already exists and returns `prim
 ## UI Changes
 
 - Widget header: optional logo image + welcome text (from restaurant config).
-- All interactive elements (buttons, date highlights, focus rings) themed with `--sable-primary-color` CSS variable.
+- All interactive elements (buttons, date highlights, focus rings) themed with `--openseat-primary-color` CSS variable.
 - Phone input: inline validation message "Please enter a valid Israeli phone number" below the field.
 - Date picker: past dates greyed out and unselectable.
 - Loading state: skeleton placeholder matching the widget layout.

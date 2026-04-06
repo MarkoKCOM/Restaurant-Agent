@@ -1,6 +1,6 @@
 {
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
-  "buildCommand": "cd ../.. && pnpm --filter @sable/booking-widget build",
+  "buildCommand": "cd ../.. && pnpm --filter @openseat/booking-widget build",
   "outputDirectory": "dist",
   "headers": [
     { "source": "/(.*)", "headers": [{ "key": "Access-Control-Allow-Origin", "value": "*" }] }

@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import { useDashboard, useReservations, useGuests, useWaitlist } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useLang } from "../i18n.js";
 import { useAuth } from "../hooks/useAuth.js";
-import type { DashboardConfig } from "@sable/domain";
+import type { DashboardConfig } from "@openseat/domain";
 import { ChatWidget } from "./ChatWidget.js";
 
 function todayStr() {
@@ -25,6 +26,7 @@ export function Layout() {
   const { restaurant } = useCurrentRestaurant();
   const { lang, setLang, t } = useLang();
   const { logout } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { data: dashboard } = useDashboard(restaurant?.id);
   const { data: reservations } = useReservations({
     restaurantId: restaurant?.id,
@@ -45,7 +47,7 @@ export function Layout() {
 
   const dir = lang === "he" ? "rtl" : "ltr";
   const sidebarSide = lang === "he" ? "right-0 border-l" : "left-0 border-r";
-  const mainMargin = lang === "he" ? "mr-64" : "ml-64";
+  const mainMargin = lang === "he" ? "md:mr-64" : "md:ml-64";
   const textAlign = lang === "he" ? "text-right" : "text-left";
 
   const allNavItems = [
@@ -67,14 +69,52 @@ export function Layout() {
 
   return (
     <div className="min-h-screen bg-gray-50" dir={dir} style={accentStyle}>
+      {/* Mobile top bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="p-2 -ml-2 text-gray-600 hover:text-gray-900"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <h1 className="text-lg font-bold text-gray-900">{restaurant?.name ?? "OpenSeat"}</h1>
+        <button
+          onClick={() => setLang(lang === "he" ? "en" : "he")}
+          className="p-2 -mr-2 text-gray-600 hover:text-gray-900 text-sm"
+        >
+          🌐
+        </button>
+      </div>
+
+      {/* Mobile sidebar backdrop */}
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-40 bg-black bg-opacity-30"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 ${sidebarSide} w-64 bg-white border-gray-200 p-4 flex flex-col`}>
+      <aside className={`fixed inset-y-0 ${sidebarSide} w-64 bg-white border-gray-200 p-4 flex flex-col z-50 transition-transform duration-200 ${
+        sidebarOpen ? "translate-x-0" : lang === "he" ? "translate-x-full md:translate-x-0" : "-translate-x-full md:translate-x-0"
+      }`}>
         <div className="mb-8 flex items-center gap-3">
+          {/* Mobile close button */}
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="md:hidden p-1 text-gray-400 hover:text-gray-600"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
           {logo ? (
             <img src={logo} alt="" className="w-8 h-8 rounded object-contain" />
           ) : null}
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{restaurant?.name ?? "Sable"}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{restaurant?.name ?? "OpenSeat"}</h1>
             <p className="text-sm text-gray-500">{t.nav.subtitle}</p>
           </div>
         </div>
@@ -83,6 +123,7 @@ export function Layout() {
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   isActive ? activeClass : "text-gray-600 hover:bg-gray-100"
@@ -116,7 +157,7 @@ export function Layout() {
       </aside>
 
       {/* Main content */}
-      <main className={`${mainMargin} p-8 ${textAlign}`}>
+      <main className={`${mainMargin} p-4 sm:p-6 md:p-8 pt-16 md:pt-8 ${textAlign}`}>
         <Outlet />
       </main>
 

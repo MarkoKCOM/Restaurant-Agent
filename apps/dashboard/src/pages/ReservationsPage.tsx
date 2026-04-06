@@ -9,7 +9,7 @@ import {
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useToast } from "../components/Toast.js";
 import { useLang } from "../i18n.js";
-import type { Reservation } from "@sable/domain";
+import type { Reservation } from "@openseat/domain";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800",
@@ -194,21 +194,21 @@ export function ReservationsPage() {
   return (
     <div>
       {/* Page Title with count and date context */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-gray-900">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
           {t.res.title}
           {reservations && reservations.length > 0 && (
             <span className="text-gray-400 font-normal mr-2">
               ({reservations.length})
             </span>
           )}
-          <span className="text-base font-normal text-gray-500 mr-3">
+          <span className="block sm:inline text-sm sm:text-base font-normal text-gray-500 sm:mr-3">
             {t.res.dayPrefix}{currentDayName}{", "}{formatDate(date, lang)}
           </span>
         </h2>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
+          className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors shrink-0"
         >
           {t.res.create}
         </button>
@@ -294,13 +294,13 @@ export function ReservationsPage() {
         </select>
 
         {/* Guest Search */}
-        <div className="relative">
+        <div className="relative flex-1 sm:flex-none">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t.res.search}
-            className="px-3 py-2 pr-3 pl-8 border border-gray-300 rounded-lg text-sm w-56"
+            className="px-3 py-2 pr-3 pl-8 border border-gray-300 rounded-lg text-sm w-full sm:w-56"
           />
           {searchQuery && (
             <button
@@ -333,110 +333,107 @@ export function ReservationsPage() {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.res.time}</th>
-              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.res.guest}</th>
-              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.res.phone}</th>
-              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.res.partySize}</th>
-              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.res.statusCol}</th>
-              <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.res.actions}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                  {t.res.loading}
-                </td>
-              </tr>
-            ) : !displayed || displayed.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-16 text-center">
-                  <div className="flex flex-col items-center gap-3">
-                    <svg
-                      className="w-12 h-12 text-gray-300"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
-                    <p className="text-gray-500 text-sm">
-                      {t.res.noResults}
-                    </p>
-                    <button
-                      onClick={() => setShowCreateModal(true)}
-                      className="mt-1 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
-                    >
-                      {t.res.create}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              displayed.map((r: Reservation) => (
-                <tr
+        {isLoading ? (
+          <div className="px-4 py-8 text-center text-gray-500">{t.res.loading}</div>
+        ) : !displayed || displayed.length === 0 ? (
+          <div className="px-4 py-16 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p className="text-gray-500 text-sm">{t.res.noResults}</p>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="mt-1 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
+              >
+                {t.res.create}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Desktop table */}
+            <table className="w-full text-sm hidden md:table">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.res.time}</th>
+                  <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.res.guest}</th>
+                  <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.res.phone}</th>
+                  <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.res.partySize}</th>
+                  <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.res.statusCol}</th>
+                  <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.res.actions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayed.map((r: Reservation) => (
+                  <tr
+                    key={r.id}
+                    className="border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                    onClick={() => openPanel(r)}
+                  >
+                    <td className="px-4 py-3 font-mono">{r.timeStart?.slice(0, 5)}</td>
+                    <td className="px-4 py-3">{r.guest?.name ?? "\u2014"}</td>
+                    <td className="px-4 py-3 font-mono text-gray-500">{r.guest?.phone ?? "\u2014"}</td>
+                    <td className="px-4 py-3">{r.partySize}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-gray-100"}`}>
+                        {t.status[r.status as keyof typeof t.status] ?? r.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      {r.status === "confirmed" && (
+                        <button onClick={() => handleStatusChange(r.id, "seated")} className="text-xs text-green-600 hover:underline ml-2">{t.res.seat}</button>
+                      )}
+                      {r.status === "seated" && (
+                        <button onClick={() => handleStatusChange(r.id, "completed")} className="text-xs text-blue-600 hover:underline ml-2">{t.res.complete}</button>
+                      )}
+                      {(r.status === "pending" || r.status === "confirmed") && (
+                        <button onClick={() => handleStatusChange(r.id, "cancelled")} className="text-xs text-red-600 hover:underline ml-2">{t.res.cancel}</button>
+                      )}
+                      {(r.status === "confirmed" || r.status === "seated") && (
+                        <button onClick={() => noShowMutation.mutate(r.id)} className="text-xs text-orange-600 hover:underline ml-2">{t.res.markNoShow}</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Mobile card view */}
+            <div className="md:hidden divide-y divide-gray-100">
+              {displayed.map((r: Reservation) => (
+                <div
                   key={r.id}
-                  className="border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                  className="p-4 cursor-pointer active:bg-gray-50"
                   onClick={() => openPanel(r)}
                 >
-                  <td className="px-4 py-3 font-mono">{r.timeStart?.slice(0, 5)}</td>
-                  <td className="px-4 py-3">{r.guest?.name ?? "\u2014"}</td>
-                  <td className="px-4 py-3 font-mono text-gray-500">{r.guest?.phone ?? "\u2014"}</td>
-                  <td className="px-4 py-3">{r.partySize}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-gray-100"}`}
-                    >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-mono font-medium">{r.timeStart?.slice(0, 5)}</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-gray-100"}`}>
                       {t.status[r.status as keyof typeof t.status] ?? r.status}
                     </span>
-                  </td>
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  </div>
+                  <p className="font-medium text-gray-900">{r.guest?.name ?? "\u2014"}</p>
+                  <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                    <span>{r.guest?.phone ?? "\u2014"}</span>
+                    <span>{r.partySize} pax</span>
+                  </div>
+                  <div className="flex items-center gap-1 flex-wrap mt-2" onClick={(e) => e.stopPropagation()}>
                     {r.status === "confirmed" && (
-                      <button
-                        onClick={() => handleStatusChange(r.id, "seated")}
-                        className="text-xs text-green-600 hover:underline ml-2"
-                      >
-                        {t.res.seat}
-                      </button>
+                      <button onClick={() => handleStatusChange(r.id, "seated")} className="text-xs px-2 py-1 rounded bg-green-50 text-green-600">{t.res.seat}</button>
                     )}
                     {r.status === "seated" && (
-                      <button
-                        onClick={() => handleStatusChange(r.id, "completed")}
-                        className="text-xs text-blue-600 hover:underline ml-2"
-                      >
-                        {t.res.complete}
-                      </button>
+                      <button onClick={() => handleStatusChange(r.id, "completed")} className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600">{t.res.complete}</button>
                     )}
                     {(r.status === "pending" || r.status === "confirmed") && (
-                      <button
-                        onClick={() => handleStatusChange(r.id, "cancelled")}
-                        className="text-xs text-red-600 hover:underline ml-2"
-                      >
-                        {t.res.cancel}
-                      </button>
+                      <button onClick={() => handleStatusChange(r.id, "cancelled")} className="text-xs px-2 py-1 rounded bg-red-50 text-red-600">{t.res.cancel}</button>
                     )}
-                    {(r.status === "confirmed" || r.status === "seated") && (
-                      <button
-                        onClick={() => noShowMutation.mutate(r.id)}
-                        className="text-xs text-orange-600 hover:underline ml-2"
-                      >
-                        {t.res.markNoShow}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Create Reservation Modal */}

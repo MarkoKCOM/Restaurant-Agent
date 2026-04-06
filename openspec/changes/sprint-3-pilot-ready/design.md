@@ -2,7 +2,7 @@
 
 Sable is a restaurant reservation platform deployed on a VPS (204.168.227.45). Sprint 1-2 delivered working API, dashboard, booking widget, and guest profiles. The system is functional for BFF Ra'anana pilot but has critical gaps: no authentication, no hours editor, no reservation edit modal, no waitlist logic, no WhatsApp.
 
-The codebase is a Turborepo monorepo: Fastify API + Drizzle ORM + PostgreSQL, React dashboard, Preact booking widget, shared `@sable/domain` types. All deployed via systemd + nginx.
+The codebase is a Turborepo monorepo: Fastify API + Drizzle ORM + PostgreSQL, React dashboard, Preact booking widget, shared `@openseat/domain` types. All deployed via systemd + nginx.
 
 Two developers work in parallel:
 - **Claude Code** (this session): API security, dashboard polish, infrastructure

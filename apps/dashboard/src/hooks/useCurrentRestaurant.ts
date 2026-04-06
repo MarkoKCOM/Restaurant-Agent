@@ -1,6 +1,6 @@
 import { useAuth } from "./useAuth.js";
 import { useRestaurant } from "./api.js";
-import type { Restaurant } from "@sable/domain";
+import type { Restaurant } from "@openseat/domain";
 
 /**
  * Returns the current restaurant.

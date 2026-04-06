@@ -10,7 +10,7 @@ import {
 } from "../hooks/api.js";
 import { useToast } from "../components/Toast.js";
 import { useLang } from "../i18n.js";
-import type { Table, DashboardConfig } from "@sable/domain";
+import type { Table, DashboardConfig } from "@openseat/domain";
 
 const DAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
@@ -346,7 +346,7 @@ export function SettingsPage() {
         {/* Restaurant details */}
         <section className="bg-white rounded-xl border border-gray-200 p-6">
           <h3 className="text-lg font-semibold mb-4">{t.settings.restaurantDetails}</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.name}</label>
               <input
@@ -454,7 +454,7 @@ export function SettingsPage() {
           {/* Add table form */}
           {showAddTable && (
             <div className="mb-4 p-4 border border-amber-200 bg-amber-50 rounded-lg">
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">{t.settings.tableName}</label>
                   <input
@@ -509,7 +509,7 @@ export function SettingsPage() {
           {!tablesList || tablesList.length === 0 ? (
             <p className="text-gray-500 text-sm">{t.settings.noTables}</p>
           ) : (
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {tablesList.map((tbl: Table) =>
                 editingTableId === tbl.id ? (
                   <div

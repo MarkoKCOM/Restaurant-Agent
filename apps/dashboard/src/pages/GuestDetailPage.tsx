@@ -4,7 +4,7 @@ import { useGuest, useUpdateGuest, useLoyaltyBalance, useLoyaltyHistory, useVisi
 import type { LoyaltyTransaction } from "../hooks/api.js";
 import { useToast } from "../components/Toast.js";
 import { useLang } from "../i18n.js";
-import type { Reservation } from "@sable/domain";
+import type { Reservation } from "@openseat/domain";
 
 const TIER_COLORS: Record<string, string> = {
   bronze: "bg-orange-100 text-orange-700 border-orange-200",
@@ -144,18 +144,18 @@ export function GuestDetailPage() {
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-3 gap-4 mt-6">
-          <div className="rounded-lg bg-blue-50 p-4 text-center">
-            <p className="text-sm text-blue-600 font-medium">{t.guestDetail.visits}</p>
-            <p className="text-2xl font-bold text-blue-700 mt-1">{guest.visitCount}</p>
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-6">
+          <div className="rounded-lg bg-blue-50 p-3 sm:p-4 text-center">
+            <p className="text-xs sm:text-sm text-blue-600 font-medium">{t.guestDetail.visits}</p>
+            <p className="text-xl sm:text-2xl font-bold text-blue-700 mt-1">{guest.visitCount}</p>
           </div>
-          <div className="rounded-lg bg-red-50 p-4 text-center">
-            <p className="text-sm text-red-600 font-medium">{t.guestDetail.noShows}</p>
-            <p className="text-2xl font-bold text-red-700 mt-1">{guest.noShowCount}</p>
+          <div className="rounded-lg bg-red-50 p-3 sm:p-4 text-center">
+            <p className="text-xs sm:text-sm text-red-600 font-medium">{t.guestDetail.noShows}</p>
+            <p className="text-xl sm:text-2xl font-bold text-red-700 mt-1">{guest.noShowCount}</p>
           </div>
-          <div className="rounded-lg bg-gray-50 p-4 text-center">
-            <p className="text-sm text-gray-600 font-medium">{t.guestDetail.source}</p>
-            <p className="text-lg font-bold text-gray-700 mt-1">{guest.source}</p>
+          <div className="rounded-lg bg-gray-50 p-3 sm:p-4 text-center">
+            <p className="text-xs sm:text-sm text-gray-600 font-medium">{t.guestDetail.source}</p>
+            <p className="text-base sm:text-lg font-bold text-gray-700 mt-1">{guest.source}</p>
           </div>
         </div>
       </div>
@@ -164,13 +164,13 @@ export function GuestDetailPage() {
       {loyaltyBalance && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
           <h3 className="text-lg font-semibold mb-4">{t.guestDetail.loyalty}</h3>
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <div className="rounded-lg bg-amber-50 p-4 text-center">
-              <p className="text-sm text-amber-600 font-medium">{t.guestDetail.points}</p>
-              <p className="text-2xl font-bold text-amber-700 mt-1">{loyaltyBalance.points}</p>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
+            <div className="rounded-lg bg-amber-50 p-3 sm:p-4 text-center">
+              <p className="text-xs sm:text-sm text-amber-600 font-medium">{t.guestDetail.points}</p>
+              <p className="text-xl sm:text-2xl font-bold text-amber-700 mt-1">{loyaltyBalance.points}</p>
             </div>
-            <div className="rounded-lg bg-purple-50 p-4 text-center">
-              <p className="text-sm text-purple-600 font-medium">{t.guestDetail.tier}</p>
+            <div className="rounded-lg bg-purple-50 p-3 sm:p-4 text-center">
+              <p className="text-xs sm:text-sm text-purple-600 font-medium">{t.guestDetail.tier}</p>
               <p className={`text-lg font-bold mt-1 ${
                 loyaltyBalance.tier === "gold" ? "text-amber-600" :
                 loyaltyBalance.tier === "silver" ? "text-gray-600" :
@@ -179,9 +179,9 @@ export function GuestDetailPage() {
                 {t.status[loyaltyBalance.tier as keyof typeof t.status] ?? loyaltyBalance.tier}
               </p>
             </div>
-            <div className="rounded-lg bg-green-50 p-4 text-center">
-              <p className="text-sm text-green-600 font-medium">{t.guestDetail.stampsEarned}</p>
-              <p className="text-2xl font-bold text-green-700 mt-1">{loyaltyBalance.stampCard.earned}</p>
+            <div className="rounded-lg bg-green-50 p-3 sm:p-4 text-center">
+              <p className="text-xs sm:text-sm text-green-600 font-medium">{t.guestDetail.stampsEarned}</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-700 mt-1">{loyaltyBalance.stampCard.earned}</p>
             </div>
           </div>
 
@@ -373,7 +373,9 @@ export function GuestDetailPage() {
         {!reservations || reservations.length === 0 ? (
           <p className="text-gray-500 text-sm">{t.guestDetail.noReservations}</p>
         ) : (
-          <table className="w-full text-sm">
+          <>
+          {/* Desktop table */}
+          <table className="w-full text-sm hidden md:table">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className={`${dir} px-4 py-3 font-medium text-gray-500`}>{t.guestDetail.date}</th>
@@ -390,9 +392,7 @@ export function GuestDetailPage() {
                   <td className="px-4 py-3 font-mono">{r.timeStart?.slice(0, 5)}</td>
                   <td className="px-4 py-3">{r.partySize}</td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-gray-100"}`}
-                    >
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-gray-100"}`}>
                       {t.status[r.status as keyof typeof t.status] ?? r.status}
                     </span>
                   </td>
@@ -401,6 +401,25 @@ export function GuestDetailPage() {
               ))}
             </tbody>
           </table>
+
+          {/* Mobile card view */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {reservations.map((r: Reservation) => (
+              <div key={r.id} className="p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-mono text-sm">{r.date} {r.timeStart?.slice(0, 5)}</span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-gray-100"}`}>
+                    {t.status[r.status as keyof typeof t.status] ?? r.status}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                  <span>{r.partySize} pax</span>
+                  <span>{r.source}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </div>
     </div>

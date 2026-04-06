@@ -4,7 +4,7 @@ import type { TableStatusItem } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useToast } from "../components/Toast.js";
 import { useLang } from "../i18n.js";
-import type { Reservation, Table } from "@sable/domain";
+import type { Reservation, Table } from "@openseat/domain";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800",
@@ -155,7 +155,7 @@ function TableMap({ tables }: { tables: TableStatusItem[] }) {
       {tables.length === 0 ? (
         <p className="text-gray-500 text-sm">{t.today.noTables}</p>
       ) : (
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {tables.map((tbl) => {
             const cfg = TABLE_STATUS_STYLES[tbl.status];
             return (
@@ -287,7 +287,7 @@ export function TodayPage() {
       <h2 className="text-2xl font-bold text-gray-900 mb-6">{t.today.title}</h2>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8">
         {statCards.map((stat) => (
           <div key={stat.label} className={`rounded-xl p-4 ${stat.color}`}>
             <p className="text-sm font-medium">{stat.label}</p>
@@ -325,7 +325,9 @@ export function TodayPage() {
             {t.today.noReservations}
           </p>
         ) : (
-          <table className="w-full text-sm">
+          <>
+          {/* Desktop table */}
+          <table className="w-full text-sm hidden md:table">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className={`${textAlign} px-4 py-3 font-medium text-gray-500`}>{t.today.time}</th>
@@ -408,6 +410,80 @@ export function TodayPage() {
               })}
             </tbody>
           </table>
+
+          {/* Mobile card view */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {reservations.map((r: Reservation) => {
+              const isNextUp = r.id === nextUpId;
+              const rowTint = STATUS_ROW_TINT[r.status] ?? "";
+              return (
+                <div
+                  key={r.id}
+                  className={`p-4 ${rowTint} ${isNextUp ? "ring-2 ring-amber-400 ring-inset rounded-lg" : ""}`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-medium">{r.timeStart?.slice(0, 5)}</span>
+                      {isNextUp && (
+                        <span className="text-xs text-amber-600 font-medium">&#8592; {t.today.next}</span>
+                      )}
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-gray-100"}`}>
+                      {t.status[r.status as keyof typeof t.status] ?? r.status}
+                    </span>
+                  </div>
+                  <p className="font-medium text-gray-900">{r.guest?.name ?? "---"}</p>
+                  <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                    <span>{r.partySize} {t.today.covers}</span>
+                    <span>{getTableNames(r.tableIds)}</span>
+                  </div>
+                  <div className="flex items-center gap-1 flex-wrap mt-3">
+                    {r.status === "pending" && (
+                      <button
+                        onClick={() => handleStatusChange(r.id, "confirmed")}
+                        className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                      >
+                        {t.today.confirm}
+                      </button>
+                    )}
+                    {r.status === "confirmed" && (
+                      <button
+                        onClick={() => handleStatusChange(r.id, "seated")}
+                        className="text-xs px-2 py-1 rounded bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
+                      >
+                        {t.today.seat}
+                      </button>
+                    )}
+                    {r.status === "seated" && (
+                      <button
+                        onClick={() => handleStatusChange(r.id, "completed")}
+                        className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                      >
+                        {t.today.complete}
+                      </button>
+                    )}
+                    {(r.status === "pending" || r.status === "confirmed") && (
+                      <button
+                        onClick={() => handleStatusChange(r.id, "cancelled")}
+                        className="text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                      >
+                        {t.today.cancel}
+                      </button>
+                    )}
+                    {(r.status === "confirmed" || r.status === "seated") && (
+                      <button
+                        onClick={() => handleNoShow(r.id)}
+                        className="text-xs px-2 py-1 rounded bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
+                      >
+                        {t.today.markNoShow}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          </>
         )}
       </div>
     </div>

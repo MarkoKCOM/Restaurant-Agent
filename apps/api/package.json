@@ -1,5 +1,5 @@
 {
-  "name": "@sable/api",
+  "name": "@openseat/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -16,7 +16,7 @@
   "dependencies": {
     "@fastify/cors": "^11.0.0",
     "@fastify/jwt": "^9.0.0",
-    "@sable/domain": "workspace:*",
+    "@openseat/domain": "workspace:*",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.40.0",
     "dotenv": "^16.5.0",

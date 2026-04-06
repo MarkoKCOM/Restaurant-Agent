@@ -2,7 +2,7 @@ import { and, eq, desc } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { guests, visitLogs, reservations, challengeProgress, challenges } from "../db/schema.js";
-import type { CreateGuestInput, Guest as DomainGuest } from "@sable/domain";
+import type { CreateGuestInput, Guest as DomainGuest } from "@openseat/domain";
 import { getVisitHistory, getGuestInsights, getGuestDietaryProfile } from "./visit.service.js";
 import { getGuestSentimentHistory } from "./feedback.service.js";
 

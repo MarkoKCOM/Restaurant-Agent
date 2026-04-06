@@ -759,7 +759,7 @@ function AccessibilityWidget({ lang, pal }: { lang: Lang; pal: typeof palettes.w
 }
 
 /* ── Contact Form ── */
-const FORMSPREE_URL = "https://formspree.io/f/milhemsione@gmail.com";
+const FORMSPREE_URL = "https://formspree.io/f/xdapylqr";
 const CAL_LINK = "https://cal.com/openseat/intro";
 
 function ContactForm({ lang, pal }: { lang: Lang; pal: typeof palettes.warm }) {

@@ -93,14 +93,14 @@
 
 ### Done
 - Ran `pnpm install` at repo root; workspace dependencies install cleanly.
-- Fixed initial TypeScript issues in the monorepo (`@sable/booking-widget` env handling, `@sable/domain` TS project references).
+- Fixed initial TypeScript issues in the monorepo (`@openseat/booking-widget` env handling, `@openseat/domain` TS project references).
 - Implemented API service layer in `apps/api/src/services/`:
   - `guest.service.ts` — find-or-create by phone, list/get helpers, and preference/tags/notes updater, with mapping to shared domain `Guest` type.
   - `table.service.ts` — list helpers (with `includeInactive`), CRUD helpers for tables, and a smallest-fit table assignment helper.
   - `reservation.service.ts` — availability calculation based on restaurant operating hours + existing reservations, smallest-fit table assignment, create/list/update/cancel reservation flows, and mapping to shared domain `Reservation` type.
 - Wired Fastify routes to use the new services and shared domain schemas:
-  - `routes/reservations.ts` now uses `@sable/domain` Zod schemas + reservation service for availability, create, list, update, and cancel.
-  - `routes/guests.ts` now uses `@sable/domain` Zod schema + guest service for list/get/create/update.
+  - `routes/reservations.ts` now uses `@openseat/domain` Zod schemas + reservation service for availability, create, list, update, and cancel.
+  - `routes/guests.ts` now uses `@openseat/domain` Zod schema + guest service for list/get/create/update.
   - `routes/tables.ts` now uses table service for list/create/update/deactivate.
 - Normalized Drizzle schema types for reservations/waitlist time & date columns to use string types in TypeScript, matching the shared domain model.
 - Confirmed `pnpm type-check` passes across all workspaces (api, dashboard, booking-widget, marketing-site, domain).

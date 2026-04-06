@@ -5,7 +5,7 @@ import type {
   Guest,
   DashboardSnapshot,
   Table,
-} from "@sable/domain";
+} from "@openseat/domain";
 
 const API = "/api/v1";
 

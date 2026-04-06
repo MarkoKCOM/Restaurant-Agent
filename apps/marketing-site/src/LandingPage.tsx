@@ -1270,23 +1270,31 @@ export function LandingPage() {
             <a href="#pricing" className="text-gray-600 hover:text-gray-900">{c.nav.pricing}</a>
             <a href="#contact" className="text-gray-600 hover:text-gray-900">{c.nav.contact}</a>
             <ThemeToggle theme={theme} setTheme={setTheme} pal={pal} />
-            <select value={lang} onChange={(e) => setLang(e.target.value as Lang)}
-              className="appearance-none px-3 py-1 pe-8 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition text-sm cursor-pointer bg-[length:16px_16px] bg-[position:calc(100%-8px)_center] bg-no-repeat"
-              style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236b7280'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C/svg%3E\")" }}>
-              <option value="he">עברית</option>
-              <option value="en">English</option>
-              <option value="ar">العربية</option>
-            </select>
+            <div className="relative inline-block">
+              <select value={lang} onChange={(e) => setLang(e.target.value as Lang)}
+                className="appearance-none px-3 py-1 pe-7 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition text-sm cursor-pointer">
+                <option value="he">עברית</option>
+                <option value="en">English</option>
+                <option value="ar">العربية</option>
+              </select>
+              <svg className="pointer-events-none absolute top-1/2 -translate-y-1/2 end-2 w-4 h-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </div>
           </div>
           <div className="flex items-center gap-3 md:hidden">
             <ThemeToggle theme={theme} setTheme={setTheme} pal={pal} />
-            <select value={lang} onChange={(e) => setLang(e.target.value as Lang)}
-              className="appearance-none px-2 py-1 pe-7 border border-gray-300 rounded-lg bg-white text-sm cursor-pointer bg-[length:14px_14px] bg-[position:calc(100%-6px)_center] bg-no-repeat"
-              style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236b7280'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C/svg%3E\")" }}>
-              <option value="he">עב</option>
-              <option value="en">EN</option>
-              <option value="ar">عر</option>
-            </select>
+            <div className="relative inline-block">
+              <select value={lang} onChange={(e) => setLang(e.target.value as Lang)}
+                className="appearance-none px-2 py-1 pe-6 border border-gray-300 rounded-lg bg-white text-sm cursor-pointer">
+                <option value="he">עב</option>
+                <option value="en">EN</option>
+                <option value="ar">عر</option>
+              </select>
+              <svg className="pointer-events-none absolute top-1/2 -translate-y-1/2 end-1.5 w-3.5 h-3.5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </div>
             <button onClick={() => setMobileMenu(!mobileMenu)} className="p-2 text-gray-600" aria-label="Menu">
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 {mobileMenu

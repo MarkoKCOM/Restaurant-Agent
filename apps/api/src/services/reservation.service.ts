@@ -10,7 +10,7 @@ import type {
   CreateReservationInput,
   Reservation as DomainReservation,
 } from "@openseat/domain";
-import { findOrCreateGuest, toDomainGuest, type GuestRow } from "./guest.service.js";
+import { findOrCreateGuest, toDomainGuest, refreshVisitAutoTags, type GuestRow } from "./guest.service.js";
 import {
   getActiveTablesForRestaurant,
   pickBestTablesForParty,
@@ -454,6 +454,13 @@ export async function updateReservation(
         updatedAt: new Date(),
       })
       .where(eq(guestsTable.id, updated.guestId));
+
+    // Auto-tag guest based on new visit count
+    try {
+      await refreshVisitAutoTags(updated.guestId);
+    } catch {
+      // Non-critical — don't fail reservation update if auto-tagging fails
+    }
 
     // Loyalty: award points, check stamp card, evaluate tier
     try {

@@ -1,6 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { handleMessage, resetConversation } from "../services/agent.service.js";
+import {
+  handleMessage,
+  resetConversation,
+  type AgentRequest,
+} from "../services/agent.service.js";
 
 const messageSchema = z.object({
   restaurantId: z.string().uuid(),
@@ -13,7 +17,7 @@ const messageSchema = z.object({
 export async function agentRoutes(app: FastifyInstance) {
   // POST /message — send a message to the agent
   app.post("/message", async (request, reply) => {
-    const body = messageSchema.parse(request.body);
+    const body: AgentRequest = messageSchema.parse(request.body);
 
     try {
       const result = await handleMessage(body);

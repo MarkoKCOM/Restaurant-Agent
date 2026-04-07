@@ -34,6 +34,9 @@
   - table-status E2E now uses auth (route is intentionally protected)
   - public waitlist create/accept flows no longer crash when `request.user` is absent
   - full `pnpm --filter @openseat/e2e test` passes against a fresh temp API on port 3101 (15/15)
+- Fixed the failing Vercel preview build on PR #5:
+  - `apps/api/src/routes/agent.ts` now passes a concrete `AgentRequest` type into the legacy agent handler
+  - verified locally with `pnpm --filter @openseat/api build`, `pnpm --filter @openseat/api type-check`, and `pnpm --filter @openseat/dashboard build`
 
 ### Notes
 - Updated `milhemsione@gmail.com` in the local DB to `super_admin` for validation.

@@ -5,7 +5,7 @@
  * Flow: message → conversation context → LLM with tools → execute → respond
  */
 
-import Redis from "ioredis";
+import { Redis } from "ioredis";
 import { env } from "../env.js";
 import { agentTools, executeTool } from "./agent-tools.js";
 

@@ -326,6 +326,18 @@ export const translations = {
       fullName: "שם מלא",
     },
 
+    chat: {
+      title: "ג'ייק",
+      subtitle: "עוזר הדשבורד שלך",
+      open: "שאל את ג'ייק",
+      close: "סגור את ג'ייק",
+      placeholder: "שאל על הזמנות, אורחים או השירות של היום...",
+      send: "שלח",
+      thinking: "חושב...",
+      emptyState: "שלום! אפשר לשאול אותי על הזמנות, אורחים או השירות של היום.",
+      error: "שגיאה בתקשורת עם ג'ייק. נסה שוב.",
+    },
+
     // Settings page
     settings: {
       title: "הגדרות",
@@ -766,6 +778,18 @@ export const translations = {
       loading: "Loading...",
       addError: "Error adding to waitlist",
       fullName: "Full name",
+    },
+
+    chat: {
+      title: "Jake",
+      subtitle: "Your dashboard assistant",
+      open: "Ask Jake",
+      close: "Close Jake",
+      placeholder: "Ask about reservations, guests, or today’s service...",
+      send: "Send",
+      thinking: "Thinking...",
+      emptyState: "Hi! Ask me about reservations, guests, or today’s service.",
+      error: "Error communicating with Jake. Try again.",
     },
 
     settings: {

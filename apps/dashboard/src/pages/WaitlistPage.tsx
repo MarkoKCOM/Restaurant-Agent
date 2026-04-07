@@ -75,6 +75,8 @@ export function WaitlistPage() {
   const { t, lang } = useLang();
 
   const dir = lang === "he" ? "text-right" : "text-left";
+  const previousDayLabel = lang === "he" ? "יום קודם" : "Previous day";
+  const nextDayLabel = lang === "he" ? "יום הבא" : "Next day";
 
   const { data: waitlistEntries, isLoading } = useWaitlist(restaurant?.id, date);
   const offerMutation = useOfferSlot();
@@ -106,6 +108,8 @@ export function WaitlistPage() {
         </h2>
         <button
           onClick={() => setShowAddModal(true)}
+          title={t.waitlist.addToWaitlist}
+          aria-label={t.waitlist.addToWaitlist}
           className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
         >
           {t.waitlist.addToWaitlist}
@@ -117,6 +121,8 @@ export function WaitlistPage() {
         <div className="flex items-center gap-1">
           <button
             onClick={() => setDate(shiftDate(date, -1))}
+            title={previousDayLabel}
+            aria-label={previousDayLabel}
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,6 +131,8 @@ export function WaitlistPage() {
           </button>
           <button
             onClick={() => setDate(todayStr())}
+            title={t.waitlist.today}
+            aria-label={t.waitlist.today}
             className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
               isToday
                 ? "bg-amber-50 border-amber-300 text-amber-700"
@@ -141,6 +149,8 @@ export function WaitlistPage() {
           />
           <button
             onClick={() => setDate(shiftDate(date, 1))}
+            title={nextDayLabel}
+            aria-label={nextDayLabel}
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -150,8 +160,8 @@ export function WaitlistPage() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      {/* Desktop Table */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hidden md:block">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
@@ -181,6 +191,8 @@ export function WaitlistPage() {
                     </p>
                     <button
                       onClick={() => setShowAddModal(true)}
+                      title={t.waitlist.addToWaitlist}
+                      aria-label={t.waitlist.addToWaitlist}
                       className="mt-1 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
                     >
                       {t.waitlist.addToWaitlist}
@@ -214,6 +226,8 @@ export function WaitlistPage() {
                           <button
                             onClick={() => offerMutation.mutate(entry.id)}
                             disabled={offerMutation.isPending}
+                            title={t.waitlist.offerTable}
+                            aria-label={t.waitlist.offerTable}
                             className="text-xs text-blue-600 hover:underline"
                           >
                             {t.waitlist.offerTable}
@@ -221,6 +235,8 @@ export function WaitlistPage() {
                           <button
                             onClick={() => cancelMutation.mutate(entry.id)}
                             disabled={cancelMutation.isPending}
+                            title={t.waitlist.cancelEntry}
+                            aria-label={t.waitlist.cancelEntry}
                             className="text-xs text-red-600 hover:underline"
                           >
                             {t.waitlist.cancelEntry}
@@ -233,6 +249,8 @@ export function WaitlistPage() {
                           <button
                             onClick={() => acceptMutation.mutate(entry.id)}
                             disabled={acceptMutation.isPending}
+                            title={t.waitlist.accept}
+                            aria-label={t.waitlist.accept}
                             className="text-xs text-green-600 hover:underline"
                           >
                             {t.waitlist.accept}
@@ -240,6 +258,8 @@ export function WaitlistPage() {
                           <button
                             onClick={() => cancelMutation.mutate(entry.id)}
                             disabled={cancelMutation.isPending}
+                            title={t.waitlist.cancelEntry}
+                            aria-label={t.waitlist.cancelEntry}
                             className="text-xs text-red-600 hover:underline"
                           >
                             {t.waitlist.cancelEntry}
@@ -249,6 +269,8 @@ export function WaitlistPage() {
                       {entry.status === "accepted" && (
                         <a
                           href="/reservations"
+                          title={t.waitlist.viewReservation}
+                          aria-label={t.waitlist.viewReservation}
                           className="text-xs text-amber-600 hover:underline"
                         >
                           {t.waitlist.viewReservation}
@@ -261,6 +283,106 @@ export function WaitlistPage() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="md:hidden space-y-3">
+        {isLoading ? (
+          <div className="px-4 py-8 text-center text-gray-500">{t.waitlist.loading}</div>
+        ) : !waitlistEntries || waitlistEntries.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-200 px-4 py-16 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <span className="text-4xl">{"⏳"}</span>
+              <p className="text-gray-500 text-sm">{t.waitlist.noEntries}</p>
+              <button
+                onClick={() => setShowAddModal(true)}
+                title={t.waitlist.addToWaitlist}
+                aria-label={t.waitlist.addToWaitlist}
+                className="mt-1 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
+              >
+                {t.waitlist.addToWaitlist}
+              </button>
+            </div>
+          </div>
+        ) : (
+          waitlistEntries.map((entry: WaitlistEntry) => (
+            <div key={entry.id} className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-start justify-between mb-2">
+                <div>
+                  <div className="font-medium text-gray-900">{entry.guestName}</div>
+                  <div className="text-sm text-gray-500 font-mono">{entry.guestPhone}</div>
+                </div>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[entry.status] ?? "bg-gray-100"}`}
+                >
+                  {statusLabel(entry.status)}
+                </span>
+              </div>
+              <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
+                <span className="font-mono">
+                  {entry.preferredTimeStart?.slice(0, 5)} - {entry.preferredTimeEnd?.slice(0, 5)}
+                </span>
+                <span>{entry.partySize} {t.waitlist.partySize}</span>
+              </div>
+              {entry.status === "offered" && entry.expiresAt && (
+                <div className="mb-3">
+                  <CountdownTimer expiresAt={entry.expiresAt} t={t} />
+                </div>
+              )}
+              <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+                {entry.status === "waiting" && (
+                  <>
+                    <button
+                      onClick={() => offerMutation.mutate(entry.id)}
+                      disabled={offerMutation.isPending}
+                      title={t.waitlist.offerTable}
+                      aria-label={t.waitlist.offerTable}
+                      className="text-xs font-medium text-blue-600 hover:underline"
+                    >
+                      {t.waitlist.offerTable}
+                    </button>
+                    <button
+                      onClick={() => cancelMutation.mutate(entry.id)}
+                      disabled={cancelMutation.isPending}
+                      title={t.waitlist.cancelEntry}
+                      aria-label={t.waitlist.cancelEntry}
+                      className="text-xs font-medium text-red-600 hover:underline"
+                    >
+                      {t.waitlist.cancelEntry}
+                    </button>
+                  </>
+                )}
+                {entry.status === "offered" && (
+                  <>
+                    <button
+                      onClick={() => acceptMutation.mutate(entry.id)}
+                      disabled={acceptMutation.isPending}
+                      title={t.waitlist.accept}
+                      aria-label={t.waitlist.accept}
+                      className="text-xs font-medium text-green-600 hover:underline"
+                    >
+                      {t.waitlist.accept}
+                    </button>
+                    <button
+                      onClick={() => cancelMutation.mutate(entry.id)}
+                      disabled={cancelMutation.isPending}
+                      title={t.waitlist.cancelEntry}
+                      aria-label={t.waitlist.cancelEntry}
+                      className="text-xs font-medium text-red-600 hover:underline"
+                    >
+                      {t.waitlist.cancelEntry}
+                    </button>
+                  </>
+                )}
+                {entry.status === "accepted" && (
+                  <a href="/reservations" className="text-xs font-medium text-amber-600 hover:underline">
+                    {t.waitlist.viewReservation}
+                  </a>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Add to Waitlist Modal */}

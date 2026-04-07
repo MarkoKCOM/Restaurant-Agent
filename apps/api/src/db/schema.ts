@@ -28,6 +28,7 @@ export const reservationSourceEnum = pgEnum("reservation_source", [
   "web",
   "walk_in",
   "phone",
+  "telegram",
 ]);
 export const waitlistStatusEnum = pgEnum("waitlist_status", [
   "waiting",
@@ -40,6 +41,7 @@ export const guestSourceEnum = pgEnum("guest_source", [
   "web",
   "walk_in",
   "referral",
+  "telegram",
 ]);
 export const languageEnum = pgEnum("language", ["he", "en", "ar", "ru"]);
 export const tierEnum = pgEnum("tier", ["bronze", "silver", "gold"]);

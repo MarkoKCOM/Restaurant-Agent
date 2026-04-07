@@ -67,7 +67,7 @@ export interface Guest {
   phone: string;
   email?: string;
   language: "he" | "en" | "ar" | "ru";
-  source: "whatsapp" | "web" | "walk_in" | "referral";
+  source: "whatsapp" | "web" | "walk_in" | "referral" | "telegram";
   visitCount: number;
   noShowCount: number;
   tier: "bronze" | "silver" | "gold";
@@ -86,7 +86,7 @@ export interface Reservation {
   partySize: number;
   tableIds?: string[];
   status: ReservationStatus;
-  source: "whatsapp" | "web" | "walk_in" | "phone";
+  source: "whatsapp" | "web" | "walk_in" | "phone" | "telegram";
   notes?: string;
   guest?: Guest;
 }

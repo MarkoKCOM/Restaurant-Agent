@@ -244,8 +244,8 @@ export async function createReservation(
     );
   }
 
-  const guestSource: GuestRow["source"] =
-    input.source === "phone" || !input.source ? "web" : input.source;
+  const guestSource =
+    input.source === "phone" || !input.source ? "web" as const : input.source;
 
   const guestRow = await findOrCreateGuest({
     restaurantId: input.restaurantId,

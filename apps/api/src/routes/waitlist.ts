@@ -27,9 +27,13 @@ export async function waitlistRoutes(app: FastifyInstance) {
   // POST / — add to waitlist
   app.post("/", async (request, reply) => {
     const body = addToWaitlistSchema.parse(request.body) as Parameters<typeof addToWaitlist>[0];
-    const err = enforceTenant(request.user!, body.restaurantId);
-    if (err) {
-      return reply.status(403).send({ error: err });
+    const user = request.user;
+
+    if (user) {
+      const err = enforceTenant(user, body.restaurantId);
+      if (err) {
+        return reply.status(403).send({ error: err });
+      }
     }
 
     const entry = await addToWaitlist(body);
@@ -103,9 +107,12 @@ export async function waitlistRoutes(app: FastifyInstance) {
       return { error: "Waitlist entry not found or not in offered state" };
     }
 
-    const err = enforceTenant(request.user!, waitlistRow.restaurantId);
-    if (err) {
-      return reply.status(403).send({ error: err });
+    const user = request.user;
+    if (user) {
+      const err = enforceTenant(user, waitlistRow.restaurantId);
+      if (err) {
+        return reply.status(403).send({ error: err });
+      }
     }
 
     const result = await acceptOffer(id);

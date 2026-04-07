@@ -29,6 +29,11 @@
   - super-admin login returns `role=super_admin` and `restaurant=null`
   - `GET /api/v1/admin/restaurants` returns tenant list for super-admin
   - regular restaurant admin gets `403` on that endpoint
+- Fixed E2E auth/env drift after the rebase:
+  - `apps/e2e` now auto-loads repo `.env` for direct local runs
+  - table-status E2E now uses auth (route is intentionally protected)
+  - public waitlist create/accept flows no longer crash when `request.user` is absent
+  - full `pnpm --filter @openseat/e2e test` passes against a fresh temp API on port 3101 (15/15)
 
 ### Notes
 - Updated `milhemsione@gmail.com` in the local DB to `super_admin` for validation.

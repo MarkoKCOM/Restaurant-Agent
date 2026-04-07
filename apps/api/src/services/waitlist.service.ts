@@ -1,9 +1,8 @@
 import { and, eq, lte, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { waitlist, guests as guestsTable, reservations } from "../db/schema.js";
+import { waitlist, guests as guestsTable } from "../db/schema.js";
 import { findOrCreateGuest, type GuestRow } from "./guest.service.js";
-import { createReservation } from "./reservation.service.js";
 
 export type WaitlistRow = InferSelectModel<typeof waitlist>;
 
@@ -197,7 +196,8 @@ export async function acceptOffer(waitlistId: string): Promise<{
   const guest = await resolveGuest(wlRow.guestId);
   if (!guest) return null;
 
-  // Create reservation from waitlist entry
+  // Create reservation from waitlist entry (dynamic import to avoid circular dependency)
+  const { createReservation } = await import("./reservation.service.js");
   const reservation = await createReservation({
     restaurantId: wlRow.restaurantId,
     guestName: guest.name,
@@ -256,4 +256,34 @@ export async function cancelWaitlistEntry(waitlistId: string): Promise<WaitlistE
     .limit(1);
 
   return guest ? toWaitlistEntry(updated, guest) : null;
+}
+
+// ── Aliases matching task spec ────────────────────────
+
+/** Alias for cancelWaitlistEntry */
+export const removeFromWaitlist = cancelWaitlistEntry;
+
+/** Alias for listWaitlist */
+export const getWaitlistByRestaurant = listWaitlist;
+
+/**
+ * Auto-match on cancellation — simplified wrapper around matchWaitlist.
+ * Finds the best waitlist match by party size + timestamp for a freed slot.
+ * Called externally; the full auto-offer flow lives in reservation.service.cancelReservation.
+ */
+export async function autoMatchOnCancellation(
+  restaurantId: string,
+  date: string,
+  freedTableCapacity: number,
+  freedTimeStart?: string,
+  freedTimeEnd?: string,
+): Promise<WaitlistEntry | null> {
+  const timeStart = freedTimeStart ?? "00:00";
+  const timeEnd = freedTimeEnd ?? "23:59";
+  const matches = await matchWaitlist(restaurantId, date, timeStart, timeEnd, freedTableCapacity);
+  if (matches.length === 0) return null;
+  // Auto-offer the best (first) match
+  const best = matches[0]!;
+  const offered = await offerSlot(best.id);
+  return offered ? best : null;
 }

@@ -2,6 +2,17 @@
  * OpenSeat API client — used by E2E tests and agent integrations.
  */
 
+import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+const envFile = resolve(repoRoot, ".env");
+
+if (existsSync(envFile)) {
+  process.loadEnvFile(envFile);
+}
+
 const BASE_URL = process.env.OPENSEAT_API_URL || "http://localhost:3001";
 const ADMIN_EMAIL = process.env.OPENSEAT_ADMIN_EMAIL || "admin@bff.co.il";
 const ADMIN_PASSWORD = process.env.OPENSEAT_ADMIN_PASSWORD || process.env.ADMIN_SEED_PASSWORD || "";
@@ -90,8 +101,7 @@ export async function addToWaitlist(data: {
   preferredTimeEnd: string;
   partySize: number;
 }) {
-  const token = await getToken();
-  return request("/api/v1/waitlist", { method: "POST", token, body: data });
+  return request("/api/v1/waitlist", { method: "POST", body: data });
 }
 
 // ── Auth-required endpoints ─────────────────────────
@@ -138,7 +148,8 @@ export async function getDashboard(restaurantId: string) {
 }
 
 export async function getTableStatus(restaurantId: string) {
-  return request(`/api/v1/restaurants/${restaurantId}/table-status`);
+  const token = await getToken();
+  return request(`/api/v1/restaurants/${restaurantId}/table-status`, { token });
 }
 
 export async function getLoyaltyBalance(guestId: string) {

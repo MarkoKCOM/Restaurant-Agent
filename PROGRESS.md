@@ -1,5 +1,72 @@
 # Progress Log
 
+## 2026-04-07 (Super-admin dashboard + tenant enforcement)
+
+### Added
+- OpenSpec change `openspec/changes/super-admin-dashboard/` with proposal, design, tasks, and capability updates for role-aware auth + multi-restaurant dashboard switching.
+- Backend support for `super_admin` users:
+  - `admin_users.role` enum (`admin` / `super_admin`)
+  - nullable `restaurant_id` for platform-wide users
+  - `GET /api/v1/admin/restaurants`
+  - role-aware JWT/login response
+- Dashboard support for platform admins:
+  - role-aware auth state in `useAuth`
+  - `/restaurants` picker page
+  - sidebar link for switching active restaurant context
+  - `X-Restaurant-Id` header for super-admin API requests
+
+### Security / Enforcement
+- Tightened auth middleware so only `GET /api/v1/restaurants` and `GET /api/v1/restaurants/:id` stay public; restaurant subroutes like `/dashboard` and `/table-status` are no longer accidentally public.
+- Added tenant checks across core dashboard routes (`restaurants`, `reservations`, `guests`, `tables`, `waitlist`) so normal admins cannot cross restaurant boundaries by passing arbitrary IDs.
+
+### Verified
+- `pnpm --filter @openseat/api type-check`
+- `pnpm --filter @openseat/dashboard type-check`
+- `pnpm --filter @openseat/api build`
+- `pnpm --filter @openseat/dashboard build`
+- Applied DB migration `0004_admin_roles.sql` locally.
+- Smoke-tested a temp API instance on port 3101:
+  - super-admin login returns `role=super_admin` and `restaurant=null`
+  - `GET /api/v1/admin/restaurants` returns tenant list for super-admin
+  - regular restaurant admin gets `403` on that endpoint
+- Fixed E2E auth/env drift after the rebase:
+  - `apps/e2e` now auto-loads repo `.env` for direct local runs
+  - table-status E2E now uses auth (route is intentionally protected)
+  - public waitlist create/accept flows no longer crash when `request.user` is absent
+  - full `pnpm --filter @openseat/e2e test` passes against a fresh temp API on port 3101 (15/15)
+- Fixed the failing Vercel preview build on PR #5:
+  - `apps/api/src/routes/agent.ts` now passes a concrete `AgentRequest` type into the legacy agent handler
+  - verified locally with `pnpm --filter @openseat/api build`, `pnpm --filter @openseat/api type-check`, and `pnpm --filter @openseat/dashboard build`
+
+### Notes
+- Updated `milhemsione@gmail.com` in the local DB to `super_admin` for validation.
+- Current picker shows one tenant (BFF Ra'anana) today, but the flow is now ready for multi-restaurant onboarding.
+
+## 2026-04-07 (Guides + Sprint 3b completion)
+
+### Verified
+- All Sprint 3b features confirmed implemented and functional:
+  - Waitlist service + auto-match on cancellation
+  - Guest preference editor in dashboard
+  - Guest auto-tagging by visit count (חדש/חוזר/קבוע/VIP)
+  - Dashboard login page + auth wrapper
+- All 5 apps build cleanly (full turbo cache)
+
+### Created
+- `docs/OWNER-GUIDE.md` — comprehensive guide for restaurant owner (dashboard, reservations, guests, loyalty, engagement, daily workflow)
+- `docs/CUSTOMER-GUIDE.md` — customer-facing guide (widget booking, chat booking, loyalty program, waitlist)
+- `docs/CUSTOMER-GUIDE-HE.md` — Hebrew version of customer guide
+
+### Infrastructure
+- Telegram group configured: OpenSeat (-1003691973621) with topics (General=1, Owner=17, Reports=20)
+- Hermes bot already connected to group via openclaw config
+
+### Still Needed
+- Telegram bot bridge for customer-facing agent testing (separate from Hermes, needs @BotFather token)
+- WhatsApp Baileys integration (parked for now)
+- SSL/HTTPS (needs domain)
+- Real BFF Ra'anana data (actual hours, table layout)
+
 ## 2026-04-06 (Sprint 3b completion + E2E test runner)
 
 ### Sprint 3b — Completed

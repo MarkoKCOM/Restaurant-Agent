@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useGuest, useUpdateGuest, useLoyaltyBalance, useLoyaltyHistory, useVisitInsights } from "../hooks/api.js";
-import type { LoyaltyTransaction } from "../hooks/api.js";
+import { useGuest, useUpdateGuest, useUpdateGuestPreferences, useLoyaltyBalance, useLoyaltyHistory, useVisitInsights } from "../hooks/api.js";
+import type { LoyaltyTransaction, GuestPreferences } from "../hooks/api.js";
 import { useToast } from "../components/Toast.js";
 import { useLang } from "../i18n.js";
 import type { Reservation } from "@openseat/domain";
@@ -26,6 +26,7 @@ export function GuestDetailPage() {
   const navigate = useNavigate();
   const { data, isLoading } = useGuest(id);
   const updateGuestMutation = useUpdateGuest();
+  const updatePrefsMutation = useUpdateGuestPreferences();
   const { data: loyaltyBalance } = useLoyaltyBalance(id);
   const { data: loyaltyHistory } = useLoyaltyHistory(id);
   const { data: visitInsights } = useVisitInsights(id);
@@ -37,6 +38,13 @@ export function GuestDetailPage() {
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesValue, setNotesValue] = useState("");
   const [newTag, setNewTag] = useState("");
+
+  // Preferences editor state
+  const [editingPrefs, setEditingPrefs] = useState(false);
+  const [prefDietary, setPrefDietary] = useState<string[]>([]);
+  const [prefSeating, setPrefSeating] = useState("no_preference");
+  const [prefLanguage, setPrefLanguage] = useState("he");
+  const [prefNotes, setPrefNotes] = useState("");
 
   if (isLoading) {
     return (
@@ -107,11 +115,60 @@ export function GuestDetailPage() {
     );
   }
 
+  // Preferences helpers
+  const DIETARY_OPTIONS = ["kosher", "vegan", "vegetarian", "gluten_free", "none"] as const;
+  const SEATING_OPTIONS = ["indoor", "outdoor", "bar", "no_preference"] as const;
+  const LANGUAGE_OPTIONS = ["he", "en", "ar", "ru"] as const;
+
+  function startEditPrefs() {
+    const prefs = (guest.preferences ?? {}) as Partial<GuestPreferences>;
+    setPrefDietary(prefs.dietary ?? []);
+    setPrefSeating(prefs.seating ?? "no_preference");
+    setPrefLanguage(prefs.language ?? "he");
+    setPrefNotes(prefs.notes ?? "");
+    setEditingPrefs(true);
+  }
+
+  function toggleDietary(val: string) {
+    setPrefDietary((prev) => {
+      if (val === "none") return prev.includes("none") ? [] : ["none"];
+      const without = prev.filter((d) => d !== "none");
+      return without.includes(val)
+        ? without.filter((d) => d !== val)
+        : [...without, val];
+    });
+  }
+
+  function savePreferences() {
+    if (!id) return;
+    updatePrefsMutation.mutate(
+      {
+        id,
+        data: {
+          dietary: prefDietary,
+          seating: prefSeating,
+          language: prefLanguage,
+          notes: prefNotes,
+        },
+      },
+      {
+        onSuccess: () => {
+          setEditingPrefs(false);
+          showToast(t.guestDetail.toastPrefsSaved);
+        },
+        onError: () => showToast(t.guestDetail.toastPrefsError, "error"),
+      },
+    );
+  }
+
   // Determine which tags are "auto" vs "manual"
-  const AUTO_TAG_PREFIXES = ["auto:", "vip", "regular", "new"];
+  const AUTO_TAGS = new Set([
+    "vip", "regular", "returning", "new",
+    "lapsed", "happy", "at_risk", "big_spender",
+    "חדש", "חוזר", "קבוע", "VIP",
+  ]);
   function isAutoTag(tag: string): boolean {
-    const lower = tag.toLowerCase();
-    return AUTO_TAG_PREFIXES.some((p) => lower.startsWith(p));
+    return AUTO_TAGS.has(tag) || AUTO_TAGS.has(tag.toLowerCase());
   }
 
   return (
@@ -158,6 +215,160 @@ export function GuestDetailPage() {
             <p className="text-base sm:text-lg font-bold text-gray-700 mt-1">{guest.source}</p>
           </div>
         </div>
+      </div>
+
+      {/* Preferences Section */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">{t.guestDetail.preferences}</h3>
+          {!editingPrefs && (
+            <button
+              onClick={startEditPrefs}
+              className="text-sm text-amber-600 hover:text-amber-700"
+            >
+              {t.guestDetail.edit}
+            </button>
+          )}
+        </div>
+        {editingPrefs ? (
+          <div className="space-y-4">
+            {/* Dietary checkboxes */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t.guestDetail.dietary}</label>
+              <div className="flex flex-wrap gap-2">
+                {DIETARY_OPTIONS.map((opt) => (
+                  <label
+                    key={opt}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition-colors ${
+                      prefDietary.includes(opt)
+                        ? "bg-amber-100 border-amber-300 text-amber-800"
+                        : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={prefDietary.includes(opt)}
+                      onChange={() => toggleDietary(opt)}
+                      className="sr-only"
+                    />
+                    {t.guestDetail[`dietary_${opt}` as keyof typeof t.guestDetail] ?? opt}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Seating dropdown */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.guestDetail.seating}</label>
+              <select
+                value={prefSeating}
+                onChange={(e) => setPrefSeating(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-full max-w-xs"
+              >
+                {SEATING_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {t.guestDetail[`seating_${opt}` as keyof typeof t.guestDetail] ?? opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Language dropdown */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.guestDetail.languagePref}</label>
+              <select
+                value={prefLanguage}
+                onChange={(e) => setPrefLanguage(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-full max-w-xs"
+              >
+                {LANGUAGE_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {t.guestDetail[`lang_${opt}` as keyof typeof t.guestDetail] ?? opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Free-text notes */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.guestDetail.prefNotes}</label>
+              <textarea
+                value={prefNotes}
+                onChange={(e) => setPrefNotes(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none"
+                placeholder={t.guestDetail.prefNotesPlaceholder}
+              />
+            </div>
+
+            {/* Save / Cancel */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={savePreferences}
+                disabled={updatePrefsMutation.isPending}
+                className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
+              >
+                {updatePrefsMutation.isPending ? t.guestDetail.saving : t.guestDetail.savePreferences}
+              </button>
+              <button
+                onClick={() => setEditingPrefs(false)}
+                className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+              >
+                {t.guestDetail.cancelEdit}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2 text-sm text-gray-600">
+            {(() => {
+              const prefs = (guest.preferences ?? {}) as Partial<GuestPreferences>;
+              const hasDietary = prefs.dietary && prefs.dietary.length > 0;
+              const hasSeating = prefs.seating && prefs.seating !== "no_preference";
+              const hasLang = prefs.language;
+              const hasPrefNotes = prefs.notes;
+              const hasAny = hasDietary || hasSeating || hasLang || hasPrefNotes;
+
+              if (!hasAny) {
+                return <p className="text-gray-400">{t.guestDetail.noNotes}</p>;
+              }
+
+              return (
+                <>
+                  {hasDietary && (
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-700">{t.guestDetail.dietary}:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {prefs.dietary!.map((d) => (
+                          <span key={d} className="px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs">
+                            {t.guestDetail[`dietary_${d}` as keyof typeof t.guestDetail] ?? d}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {hasSeating && (
+                    <div>
+                      <span className="font-medium text-gray-700">{t.guestDetail.seating}:</span>{" "}
+                      {t.guestDetail[`seating_${prefs.seating}` as keyof typeof t.guestDetail] ?? prefs.seating}
+                    </div>
+                  )}
+                  {hasLang && (
+                    <div>
+                      <span className="font-medium text-gray-700">{t.guestDetail.languagePref}:</span>{" "}
+                      {t.guestDetail[`lang_${prefs.language}` as keyof typeof t.guestDetail] ?? prefs.language}
+                    </div>
+                  )}
+                  {hasPrefNotes && (
+                    <div>
+                      <span className="font-medium text-gray-700">{t.guestDetail.prefNotes}:</span>{" "}
+                      {prefs.notes}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        )}
       </div>
 
       {/* Loyalty Section */}

@@ -29,6 +29,13 @@
       "when": 1775378252817,
       "tag": "0003_flimsy_wolf_cub",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1775550000000,
+      "tag": "0004_admin_roles",
+      "breakpoints": true
     }
   ]
 }

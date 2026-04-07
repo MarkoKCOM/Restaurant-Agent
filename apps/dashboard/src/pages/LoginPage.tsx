@@ -19,8 +19,8 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      await login(email, password);
-      navigate("/today", { replace: true });
+      const result = await login(email, password);
+      navigate(result.role === "super_admin" ? "/restaurants" : "/today", { replace: true });
     } catch (err) {
       if (err instanceof Error && err.message === "INVALID_CREDENTIALS") {
         setError(t.login.errorInvalid);

@@ -260,6 +260,7 @@ async function seedBffRaanana() {
 
     await db.insert(adminUsers).values({
       restaurantId,
+      role: "admin",
       email: adminEmail,
       passwordHash,
       name: "BFF Admin",
@@ -292,6 +293,42 @@ async function seedBffRaanana() {
     }
   } else {
     console.log("Admin user already exists:", adminEmail);
+  }
+
+  const superAdminEmail = env.SUPER_ADMIN_SEED_EMAIL;
+  const superAdminPassword = env.SUPER_ADMIN_SEED_PASSWORD;
+  const superAdminName = env.SUPER_ADMIN_SEED_NAME ?? "Platform Admin";
+
+  if (superAdminEmail && superAdminPassword) {
+    const [existingSuperAdmin] = await db
+      .select()
+      .from(adminUsers)
+      .where(eq(adminUsers.email, superAdminEmail))
+      .limit(1);
+
+    const passwordHash = await bcrypt.hash(superAdminPassword, 10);
+
+    if (!existingSuperAdmin) {
+      await db.insert(adminUsers).values({
+        restaurantId: null,
+        role: "super_admin",
+        email: superAdminEmail,
+        passwordHash,
+        name: superAdminName,
+      });
+      console.log("Super admin created:", superAdminEmail);
+    } else {
+      await db
+        .update(adminUsers)
+        .set({
+          restaurantId: null,
+          role: "super_admin",
+          passwordHash,
+          name: superAdminName,
+        })
+        .where(eq(adminUsers.id, existingSuperAdmin.id));
+      console.log("Super admin synced from env:", superAdminEmail);
+    }
   }
 
   return restaurantId;

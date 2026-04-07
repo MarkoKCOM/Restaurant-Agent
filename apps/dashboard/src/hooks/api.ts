@@ -11,11 +11,27 @@ const API = "/api/v1";
 
 function authHeaders(): Record<string, string> {
   const token = localStorage.getItem("openseat_token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const role = localStorage.getItem("openseat_role");
+  const storedRestaurant = localStorage.getItem("openseat_restaurant");
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+  if (role === "super_admin" && storedRestaurant) {
+    try {
+      const restaurant = JSON.parse(storedRestaurant) as { id?: string };
+      if (restaurant.id) {
+        headers["X-Restaurant-Id"] = restaurant.id;
+      }
+    } catch {
+      // Ignore broken localStorage and fall back to auth only.
+    }
+  }
+
+  return headers;
 }
 
 function handle401() {
   localStorage.removeItem("openseat_token");
+  localStorage.removeItem("openseat_role");
   localStorage.removeItem("openseat_restaurant");
   window.location.href = "/login";
 }
@@ -38,10 +54,29 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
 
 // --- Restaurant ---
 
+export interface AdminRestaurantListItem {
+  id: string;
+  name: string;
+  slug: string;
+  cuisineType: string | null;
+  address: string | null;
+  phone: string | null;
+  package: string | null;
+  createdAt: string;
+  adminCount: number;
+}
+
 export function useRestaurants() {
   return useQuery<Restaurant[]>({
     queryKey: ["restaurants"],
     queryFn: () => fetchJSON(`${API}/restaurants`),
+  });
+}
+
+export function useAdminRestaurants() {
+  return useQuery<AdminRestaurantListItem[]>({
+    queryKey: ["admin-restaurants"],
+    queryFn: () => fetchJSON(`${API}/admin/restaurants`),
   });
 }
 
@@ -333,6 +368,33 @@ export function useUpdateGuest() {
     mutationFn: async ({ id, data }: { id: string; data: Partial<Guest> }) => {
       const res = await fetchWithAuth(`${API}/guests/${id}`, {
         method: "PATCH",
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: ["guest", id] });
+      qc.invalidateQueries({ queryKey: ["guests"] });
+    },
+  });
+}
+
+// --- Guest Preferences ---
+
+export interface GuestPreferences {
+  dietary: string[];
+  seating: string;
+  language: string;
+  notes: string;
+}
+
+export function useUpdateGuestPreferences() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: GuestPreferences }) => {
+      const res = await fetchWithAuth(`${API}/guests/${id}/preferences`, {
+        method: "PUT",
         body: JSON.stringify(data),
       });
       if (!res.ok) throw new Error(`API error: ${res.status}`);

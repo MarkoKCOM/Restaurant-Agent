@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 import {
   addToWaitlist,
   listWaitlist,
@@ -8,6 +9,9 @@ import {
   cancelWaitlistEntry,
   expireStaleOffers,
 } from "../services/waitlist.service.js";
+import { db } from "../db/index.js";
+import { waitlist } from "../db/schema.js";
+import { enforceTenant, resolveRestaurantId } from "../middleware/auth.js";
 
 const addToWaitlistSchema = z.object({
   restaurantId: z.string().uuid(),
@@ -23,32 +27,64 @@ export async function waitlistRoutes(app: FastifyInstance) {
   // POST / — add to waitlist
   app.post("/", async (request, reply) => {
     const body = addToWaitlistSchema.parse(request.body) as Parameters<typeof addToWaitlist>[0];
+    const user = request.user;
+
+    if (user) {
+      const err = enforceTenant(user, body.restaurantId);
+      if (err) {
+        return reply.status(403).send({ error: err });
+      }
+    }
+
     const entry = await addToWaitlist(body);
     reply.code(201);
     return { waitlistEntry: entry };
   });
 
   // GET / — list waitlist entries
-  app.get("/", async (request) => {
+  app.get("/", async (request, reply) => {
     const { restaurantId, date } = request.query as {
       restaurantId?: string;
       date?: string;
     };
 
-    if (!restaurantId) {
+    if (restaurantId) {
+      const err = enforceTenant(request.user!, restaurantId);
+      if (err) {
+        return reply.status(403).send({ error: err });
+      }
+    }
+
+    const scopedRestaurantId = resolveRestaurantId(request.user!, restaurantId);
+    if (!scopedRestaurantId) {
       return { waitlist: [] };
     }
 
-    // Expire stale offers first
     await expireStaleOffers();
 
-    const entries = await listWaitlist(restaurantId, date);
+    const entries = await listWaitlist(scopedRestaurantId, date);
     return { waitlist: entries };
   });
 
   // POST /:id/offer — offer a slot to a waitlist entry
   app.post("/:id/offer", async (request, reply) => {
     const { id } = request.params as { id: string };
+    const [waitlistRow] = await db
+      .select({ restaurantId: waitlist.restaurantId })
+      .from(waitlist)
+      .where(eq(waitlist.id, id))
+      .limit(1);
+
+    if (!waitlistRow) {
+      reply.code(404);
+      return { error: "Waitlist entry not found" };
+    }
+
+    const err = enforceTenant(request.user!, waitlistRow.restaurantId);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
     const entry = await offerSlot(id);
     if (!entry) {
       reply.code(404);
@@ -60,6 +96,25 @@ export async function waitlistRoutes(app: FastifyInstance) {
   // POST /:id/accept — accept offer and create reservation
   app.post("/:id/accept", async (request, reply) => {
     const { id } = request.params as { id: string };
+    const [waitlistRow] = await db
+      .select({ restaurantId: waitlist.restaurantId })
+      .from(waitlist)
+      .where(eq(waitlist.id, id))
+      .limit(1);
+
+    if (!waitlistRow) {
+      reply.code(404);
+      return { error: "Waitlist entry not found or not in offered state" };
+    }
+
+    const user = request.user;
+    if (user) {
+      const err = enforceTenant(user, waitlistRow.restaurantId);
+      if (err) {
+        return reply.status(403).send({ error: err });
+      }
+    }
+
     const result = await acceptOffer(id);
     if (!result) {
       reply.code(404);
@@ -74,6 +129,22 @@ export async function waitlistRoutes(app: FastifyInstance) {
   // DELETE /:id — cancel waitlist entry
   app.delete("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
+    const [waitlistRow] = await db
+      .select({ restaurantId: waitlist.restaurantId })
+      .from(waitlist)
+      .where(eq(waitlist.id, id))
+      .limit(1);
+
+    if (!waitlistRow) {
+      reply.code(404);
+      return { error: "Waitlist entry not found" };
+    }
+
+    const err = enforceTenant(request.user!, waitlistRow.restaurantId);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
     const entry = await cancelWaitlistEntry(id);
     if (!entry) {
       reply.code(404);

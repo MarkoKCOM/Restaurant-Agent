@@ -43,6 +43,7 @@ export const guestSourceEnum = pgEnum("guest_source", [
 ]);
 export const languageEnum = pgEnum("language", ["he", "en", "ar", "ru"]);
 export const tierEnum = pgEnum("tier", ["bronze", "silver", "gold"]);
+export const adminRoleEnum = pgEnum("admin_role", ["admin", "super_admin"]);
 export const conversationStatusEnum = pgEnum("conversation_status", [
   "active",
   "escalated",
@@ -79,9 +80,8 @@ export const restaurants = pgTable("restaurants", {
 
 export const adminUsers = pgTable("admin_users", {
   id: uuid("id").primaryKey().defaultRandom(),
-  restaurantId: uuid("restaurant_id")
-    .notNull()
-    .references(() => restaurants.id),
+  restaurantId: uuid("restaurant_id").references(() => restaurants.id),
+  role: adminRoleEnum("role").notNull().default("admin"),
   email: varchar("email", { length: 255 }).notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   name: varchar("name", { length: 255 }).notNull(),

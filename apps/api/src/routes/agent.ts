@@ -6,7 +6,7 @@ import {
   type AgentRequest,
 } from "../services/agent.service.js";
 
-const messageSchema = z.object({
+const messageSchema: z.ZodType<AgentRequest> = z.object({
   restaurantId: z.string().uuid(),
   senderId: z.string().min(1),
   message: z.string().min(1),

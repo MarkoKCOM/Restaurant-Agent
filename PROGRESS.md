@@ -1,5 +1,29 @@
 # Progress Log
 
+## 2026-04-06 (Sprint 3b completion + E2E test runner)
+
+### Sprint 3b — Completed
+- [x] Waitlist service + routes + auto-match on cancellation (was already built)
+- [x] Guest preference editor in dashboard (GuestDetailPage with tags, notes, insights)
+- [x] Guest auto-tagging by visit count (fires automatically on visit creation)
+- [x] Dashboard login page + auth wrapper (ProtectedRoute, localStorage JWT)
+- [x] Waitlist public routes (POST /waitlist and POST /waitlist/:id/accept)
+- [ ] WhatsApp session manager — on hold, using Hermes+Telegram for testing
+
+### CI/CD Fixes
+- Fixed PR #1 and PR #2 — merged into single PR, resolved conflicts
+- CI: build @openseat/domain before API type-check
+- Smoke test: skip gracefully when GitHub secrets not configured
+- Vercel deploy: fixed Drizzle ORM type mismatch (challenges innerJoin)
+
+### E2E Test Runner (PR #3)
+- Added `@openseat/e2e` package — 15 tests covering full API flow
+- Tests: health, restaurants, availability, reservation CRUD, status transitions, loyalty, visits, guest profiles, tables, dashboard, waitlist
+- All 15 passing in ~230ms against live API
+- API client with auto token refresh on 401
+- Set ADMIN_SEED_PASSWORD in .env for authenticated test flows
+- Hermes can trigger via `pnpm --filter @openseat/e2e test`
+
 ## 2026-04-06 (Reliability audit + deployment hardening)
 
 ### Verified

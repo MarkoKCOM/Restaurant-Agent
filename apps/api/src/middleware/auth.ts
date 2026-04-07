@@ -15,13 +15,15 @@ declare module "fastify" {
   }
 }
 
-const PUBLIC_ROUTES: Array<{ method?: string; path: string; prefix?: boolean }> = [
+const PUBLIC_ROUTES: Array<{ method?: string; path: string; prefix?: boolean; suffix?: string }> = [
   { path: "/health" },
   { path: "/api/v1/health" },
   { path: "/api/v1/auth/login" },
   { method: "GET", path: "/api/v1/reservations/availability" },
   { method: "GET", path: "/api/v1/restaurants", prefix: true },
   { method: "POST", path: "/api/v1/reservations" },
+  { method: "POST", path: "/api/v1/waitlist" },
+  { method: "POST", path: "/api/v1/waitlist", prefix: true, suffix: "/accept" },
 ];
 
 function isPublicRoute(method: string, url: string): boolean {
@@ -30,7 +32,10 @@ function isPublicRoute(method: string, url: string): boolean {
 
   for (const route of PUBLIC_ROUTES) {
     if (route.method && route.method !== method.toUpperCase()) continue;
-    if (route.prefix) {
+    if (route.prefix && route.suffix) {
+      // Match: path starts with route.path + "/" and ends with route.suffix
+      if (path.startsWith(route.path + "/") && path.endsWith(route.suffix)) return true;
+    } else if (route.prefix) {
       if (path === route.path || path.startsWith(route.path + "/")) return true;
     } else {
       if (path === route.path) return true;

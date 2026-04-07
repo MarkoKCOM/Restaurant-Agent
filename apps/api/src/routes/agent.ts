@@ -6,7 +6,7 @@ import {
   type AgentRequest,
 } from "../services/agent.service.js";
 
-const messageSchema: z.ZodType<AgentRequest> = z.object({
+const messageSchema = z.object({
   restaurantId: z.string().uuid(),
   senderId: z.string().min(1),
   message: z.string().min(1),
@@ -17,7 +17,7 @@ const messageSchema: z.ZodType<AgentRequest> = z.object({
 export async function agentRoutes(app: FastifyInstance) {
   // POST /message — send a message to the agent
   app.post("/message", async (request, reply) => {
-    const body: AgentRequest = messageSchema.parse(request.body);
+    const body = messageSchema.parse(request.body) as AgentRequest;
 
     try {
       const result = await handleMessage(body);

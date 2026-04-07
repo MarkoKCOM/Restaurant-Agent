@@ -1,5 +1,39 @@
 # Progress Log
 
+## 2026-04-07 (Super-admin dashboard + tenant enforcement)
+
+### Added
+- OpenSpec change `openspec/changes/super-admin-dashboard/` with proposal, design, tasks, and capability updates for role-aware auth + multi-restaurant dashboard switching.
+- Backend support for `super_admin` users:
+  - `admin_users.role` enum (`admin` / `super_admin`)
+  - nullable `restaurant_id` for platform-wide users
+  - `GET /api/v1/admin/restaurants`
+  - role-aware JWT/login response
+- Dashboard support for platform admins:
+  - role-aware auth state in `useAuth`
+  - `/restaurants` picker page
+  - sidebar link for switching active restaurant context
+  - `X-Restaurant-Id` header for super-admin API requests
+
+### Security / Enforcement
+- Tightened auth middleware so only `GET /api/v1/restaurants` and `GET /api/v1/restaurants/:id` stay public; restaurant subroutes like `/dashboard` and `/table-status` are no longer accidentally public.
+- Added tenant checks across core dashboard routes (`restaurants`, `reservations`, `guests`, `tables`, `waitlist`) so normal admins cannot cross restaurant boundaries by passing arbitrary IDs.
+
+### Verified
+- `pnpm --filter @openseat/api type-check`
+- `pnpm --filter @openseat/dashboard type-check`
+- `pnpm --filter @openseat/api build`
+- `pnpm --filter @openseat/dashboard build`
+- Applied DB migration `0004_admin_roles.sql` locally.
+- Smoke-tested a temp API instance on port 3101:
+  - super-admin login returns `role=super_admin` and `restaurant=null`
+  - `GET /api/v1/admin/restaurants` returns tenant list for super-admin
+  - regular restaurant admin gets `403` on that endpoint
+
+### Notes
+- Updated `milhemsione@gmail.com` in the local DB to `super_admin` for validation.
+- Current picker shows one tenant (BFF Ra'anana) today, but the flow is now ready for multi-restaurant onboarding.
+
 ## 2026-04-07 (Guides + Sprint 3b completion)
 
 ### Verified

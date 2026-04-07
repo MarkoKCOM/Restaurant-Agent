@@ -3,6 +3,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { restaurants, reservations, tables, guests } from "../db/schema.js";
 import { getDailySummary } from "../services/summary.service.js";
+import { enforceTenant } from "../middleware/auth.js";
 
 export async function restaurantRoutes(app: FastifyInstance) {
   // GET / — list all restaurants
@@ -59,6 +60,10 @@ export async function restaurantRoutes(app: FastifyInstance) {
   app.patch("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = request.body as Record<string, unknown>;
+    const err = enforceTenant(request.user!, id);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
 
     const updates: Record<string, unknown> = {};
     const allowed = [
@@ -109,6 +114,11 @@ export async function restaurantRoutes(app: FastifyInstance) {
   // GET /:id/dashboard — dashboard snapshot for today
   app.get("/:id/dashboard", async (request, reply) => {
     const { id } = request.params as { id: string };
+    const err = enforceTenant(request.user!, id);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
     const today = new Date().toISOString().slice(0, 10);
 
     const [restaurant] = await db
@@ -215,6 +225,10 @@ export async function restaurantRoutes(app: FastifyInstance) {
   app.get("/:id/summary", async (request, reply) => {
     const { id } = request.params as { id: string };
     const { date } = request.query as { date?: string };
+    const err = enforceTenant(request.user!, id);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
 
     const [restaurant] = await db
       .select()
@@ -234,6 +248,11 @@ export async function restaurantRoutes(app: FastifyInstance) {
   // GET /:id/table-status — live table status for today
   app.get("/:id/table-status", async (request, reply) => {
     const { id } = request.params as { id: string };
+    const err = enforceTenant(request.user!, id);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
     const today = new Date().toISOString().slice(0, 10);
     const nowTime = new Date().toTimeString().slice(0, 5); // HH:MM
 
@@ -325,6 +344,10 @@ export async function restaurantRoutes(app: FastifyInstance) {
   // DELETE /:id/reset-reservations — delete all reservations for this restaurant (testing/pilot)
   app.delete("/:id/reset-reservations", async (request, reply) => {
     const { id } = request.params as { id: string };
+    const err = enforceTenant(request.user!, id);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
 
     const [restaurant] = await db
       .select()
@@ -345,8 +368,13 @@ export async function restaurantRoutes(app: FastifyInstance) {
   });
 
   // GET /:id/tables — tables for restaurant
-  app.get("/:id/tables", async (request) => {
+  app.get("/:id/tables", async (request, reply) => {
     const { id } = request.params as { id: string };
+    const err = enforceTenant(request.user!, id);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
     const rows = await db
       .select()
       .from(tables)

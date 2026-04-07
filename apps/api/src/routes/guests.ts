@@ -15,6 +15,7 @@ import {
 import { getGuestSentimentHistory } from "../services/feedback.service.js";
 import { db } from "../db/index.js";
 import { reservations } from "../db/schema.js";
+import { enforceTenant, resolveRestaurantId } from "../middleware/auth.js";
 
 const updateGuestSchema = z.object({
   preferences: z.record(z.unknown()).optional(),
@@ -24,9 +25,19 @@ const updateGuestSchema = z.object({
 
 export async function guestRoutes(app: FastifyInstance) {
   // GET / — list guests
-  app.get("/", async (request) => {
+  app.get("/", async (request, reply) => {
     const { restaurantId } = request.query as { restaurantId?: string };
-    const rows = await listGuests({ restaurantId });
+    const user = request.user!;
+
+    if (restaurantId) {
+      const err = enforceTenant(user, restaurantId);
+      if (err) {
+        return reply.status(403).send({ error: err });
+      }
+    }
+
+    const scopedRestaurantId = resolveRestaurantId(user, restaurantId);
+    const rows = await listGuests({ restaurantId: scopedRestaurantId ?? undefined });
     const guests = rows.map(toDomainGuest);
     return { guests };
   });
@@ -40,6 +51,11 @@ export async function guestRoutes(app: FastifyInstance) {
     if (!row) {
       reply.code(404);
       return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, row.restaurantId);
+    if (err) {
+      return reply.status(403).send({ error: err });
     }
 
     const guest = toDomainGuest(row);
@@ -61,6 +77,11 @@ export async function guestRoutes(app: FastifyInstance) {
   // POST / — create or find guest
   app.post("/", async (request, reply) => {
     const body = createGuestSchema.parse(request.body) as Parameters<typeof findOrCreateGuest>[0];
+    const err = enforceTenant(request.user!, body.restaurantId);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
     const row = await findOrCreateGuest(body);
     reply.code(201);
     return { guest: toDomainGuest(row) };
@@ -69,8 +90,18 @@ export async function guestRoutes(app: FastifyInstance) {
   // GET /:id/full-profile — mega profile for WhatsApp bot
   app.get("/:id/full-profile", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const profile = await getFullGuestProfile(id);
+    const guestRow = await getGuestById(id);
+    if (!guestRow) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
 
+    const err = enforceTenant(request.user!, guestRow.restaurantId);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
+    const profile = await getFullGuestProfile(id);
     if (!profile) {
       reply.code(404);
       return { error: "Guest not found" };
@@ -80,8 +111,19 @@ export async function guestRoutes(app: FastifyInstance) {
   });
 
   // GET /:id/sentiment — sentiment history
-  app.get("/:id/sentiment", async (request) => {
+  app.get("/:id/sentiment", async (request, reply) => {
     const { id } = request.params as { id: string };
+    const guestRow = await getGuestById(id);
+    if (!guestRow) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, guestRow.restaurantId);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
     const history = await getGuestSentimentHistory(id);
     return { history };
   });
@@ -89,8 +131,18 @@ export async function guestRoutes(app: FastifyInstance) {
   // POST /:id/auto-tag — recalculate and apply auto tags
   app.post("/:id/auto-tag", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const tags = await autoTagGuest(id);
+    const guestRow = await getGuestById(id);
+    if (!guestRow) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
 
+    const err = enforceTenant(request.user!, guestRow.restaurantId);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
+    const tags = await autoTagGuest(id);
     if (!tags) {
       reply.code(404);
       return { error: "Guest not found" };
@@ -111,6 +163,16 @@ export async function guestRoutes(app: FastifyInstance) {
     });
 
     const prefs = preferencesSchema.parse(request.body ?? {});
+    const guestRow = await getGuestById(id);
+    if (!guestRow) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, guestRow.restaurantId);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
 
     const updated = await updateGuestPreferences(id, { preferences: prefs });
     if (!updated) {
@@ -125,6 +187,16 @@ export async function guestRoutes(app: FastifyInstance) {
   app.patch("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = updateGuestSchema.parse(request.body ?? {}) as Parameters<typeof updateGuestPreferences>[1];
+    const guestRow = await getGuestById(id);
+    if (!guestRow) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, guestRow.restaurantId);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
 
     const updated = await updateGuestPreferences(id, body);
     if (!updated) {

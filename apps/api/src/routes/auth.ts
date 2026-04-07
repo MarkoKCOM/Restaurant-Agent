@@ -30,20 +30,30 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.status(401).send({ error: "Invalid email or password" });
     }
 
-    const [restaurant] = await db
-      .select()
-      .from(restaurants)
-      .where(eq(restaurants.id, user.restaurantId))
-      .limit(1);
+    let restaurant = null;
+    if (user.restaurantId) {
+      const [row] = await db
+        .select()
+        .from(restaurants)
+        .where(eq(restaurants.id, user.restaurantId))
+        .limit(1);
+      restaurant = row ?? null;
+    }
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, restaurantId: user.restaurantId },
+      {
+        id: user.id,
+        email: user.email,
+        restaurantId: user.restaurantId ?? null,
+        role: user.role ?? "admin",
+      },
       env.JWT_SECRET,
       { expiresIn: "24h" },
     );
 
     return {
       token,
+      role: user.role ?? "admin",
       restaurant: restaurant
         ? { id: restaurant.id, name: restaurant.name }
         : null,

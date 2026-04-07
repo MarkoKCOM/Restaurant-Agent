@@ -25,7 +25,7 @@ const DEFAULT_PAGES = ["today", "reservations", "waitlist", "guests", "settings"
 export function Layout() {
   const { restaurant } = useCurrentRestaurant();
   const { lang, setLang, t } = useLang();
-  const { logout } = useAuth();
+  const { logout, isSuperAdmin } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { data: dashboard } = useDashboard(restaurant?.id);
   const { data: reservations } = useReservations({
@@ -51,6 +51,9 @@ export function Layout() {
   const textAlign = lang === "he" ? "text-right" : "text-left";
 
   const allNavItems = [
+    ...(isSuperAdmin
+      ? [{ to: "/restaurants", key: "restaurants", label: t.nav.restaurantsAdmin, icon: "🏢", count: 0 }]
+      : []),
     { to: "/today", key: "today", label: t.nav.today, icon: "📅", count: todayCount },
     { to: "/reservations", key: "reservations", label: t.nav.reservations, icon: "📋", count: pendingCount },
     { to: "/waitlist", key: "waitlist", label: t.nav.waitlist, icon: "⏳", count: waitingCount },
@@ -59,7 +62,9 @@ export function Layout() {
     { to: "/help", key: "help", label: t.nav.help, icon: "❓", count: 0 },
   ];
 
-  const navItems = allNavItems.filter((item) => visiblePages.includes(item.key));
+  const navItems = allNavItems.filter((item) =>
+    item.key === "restaurants" ? isSuperAdmin : visiblePages.includes(item.key),
+  );
 
   // Dynamic accent color style
   const accentStyle = accentColor ? { "--accent": accentColor } as React.CSSProperties : undefined;
@@ -79,7 +84,9 @@ export function Layout() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <h1 className="text-lg font-bold text-gray-900">{restaurant?.name ?? "OpenSeat"}</h1>
+        <h1 className="text-lg font-bold text-gray-900">
+          {restaurant?.name ?? (isSuperAdmin ? t.superAdmin.noRestaurantSelected : "OpenSeat")}
+        </h1>
         <button
           onClick={() => setLang(lang === "he" ? "en" : "he")}
           className="p-2 -mr-2 text-gray-600 hover:text-gray-900 text-sm"
@@ -114,8 +121,15 @@ export function Layout() {
             <img src={logo} alt="" className="w-8 h-8 rounded object-contain" />
           ) : null}
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{restaurant?.name ?? "OpenSeat"}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {restaurant?.name ?? (isSuperAdmin ? t.superAdmin.noRestaurantSelected : "OpenSeat")}
+            </h1>
             <p className="text-sm text-gray-500">{t.nav.subtitle}</p>
+            {isSuperAdmin ? (
+              <p className="text-xs text-amber-700 mt-1">
+                {restaurant ? t.superAdmin.currentPrefix + " " + restaurant.name : t.superAdmin.switchHint}
+              </p>
+            ) : null}
           </div>
         </div>
         <nav className="space-y-1 flex-1">

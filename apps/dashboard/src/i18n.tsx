@@ -38,6 +38,7 @@ export const translations = {
       guests: "אורחים",
       settings: "הגדרות",
       help: "עזרה",
+      restaurantsAdmin: "כל המסעדות",
       logout: "יציאה",
     },
 
@@ -49,6 +50,24 @@ export const translations = {
       submit: "כניסה",
       errorInvalid: "אימייל או סיסמה שגויים",
       errorGeneral: "שגיאה בהתחברות, נסו שוב",
+    },
+
+    superAdmin: {
+      title: "בחירת מסעדה",
+      subtitle: "בחר מסעדה כדי להיכנס להקשר הפעיל של הדאשבורד.",
+      searchLabel: "חיפוש",
+      searchPlaceholder: "חפש לפי שם, כתובת או סלאג...",
+      loading: "טוען מסעדות...",
+      loadError: "שגיאה בטעינת רשימת המסעדות",
+      empty: "לא נמצאו מסעדות מתאימות.",
+      currentPrefix: "מסעדה פעילה:",
+      activeBadge: "פעילה",
+      packageLabel: "חבילה",
+      adminsLabel: "מנהלים",
+      noAddress: "אין כתובת",
+      openButton: "פתח דאשבורד",
+      noRestaurantSelected: "בחר מסעדה",
+      switchHint: "ניתן לעבור בין מסעדות מכל המסעדות",
     },
 
     // Statuses
@@ -468,6 +487,7 @@ export const translations = {
       guests: "Guests",
       settings: "Settings",
       help: "Help",
+      restaurantsAdmin: "All Restaurants",
       logout: "Logout",
     },
 
@@ -478,6 +498,24 @@ export const translations = {
       submit: "Sign In",
       errorInvalid: "Invalid email or password",
       errorGeneral: "Login failed, please try again",
+    },
+
+    superAdmin: {
+      title: "Choose a restaurant",
+      subtitle: "Pick the active restaurant context for this dashboard session.",
+      searchLabel: "Search",
+      searchPlaceholder: "Search by name, address, or slug...",
+      loading: "Loading restaurants...",
+      loadError: "Could not load the restaurant list",
+      empty: "No matching restaurants found.",
+      currentPrefix: "Active restaurant:",
+      activeBadge: "Active",
+      packageLabel: "Package",
+      adminsLabel: "Admins",
+      noAddress: "No address available",
+      openButton: "Open dashboard",
+      noRestaurantSelected: "Choose restaurant",
+      switchHint: "Switch restaurants any time from All Restaurants",
     },
 
     status: {

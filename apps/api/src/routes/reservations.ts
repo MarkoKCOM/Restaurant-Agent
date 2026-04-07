@@ -4,6 +4,7 @@ import {
   availabilityQuerySchema,
   createReservationSchema,
 } from "@openseat/domain";
+import { eq } from "drizzle-orm";
 import {
   cancelReservation,
   checkAvailability,
@@ -12,6 +13,9 @@ import {
   markNoShow,
   updateReservation,
 } from "../services/reservation.service.js";
+import { db } from "../db/index.js";
+import { reservations } from "../db/schema.js";
+import { enforceTenant, resolveRestaurantId } from "../middleware/auth.js";
 
 const updateReservationSchema = z.object({
   date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/).optional(),
@@ -42,13 +46,22 @@ export async function reservationRoutes(app: FastifyInstance) {
   });
 
   // GET / — list reservations
-  app.get("/", async (request) => {
+  app.get("/", async (request, reply) => {
     const { restaurantId, date } = request.query as {
       restaurantId?: string;
       date?: string;
     };
+    const user = request.user!;
 
-    const reservations = await listReservations({ restaurantId, date });
+    if (restaurantId) {
+      const err = enforceTenant(user, restaurantId);
+      if (err) {
+        return reply.status(403).send({ error: err });
+      }
+    }
+
+    const scopedRestaurantId = resolveRestaurantId(user, restaurantId);
+    const reservations = await listReservations({ restaurantId: scopedRestaurantId ?? undefined, date });
     return { reservations };
   });
 
@@ -56,6 +69,21 @@ export async function reservationRoutes(app: FastifyInstance) {
   app.patch("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = updateReservationSchema.parse(request.body) as Parameters<typeof updateReservation>[1];
+    const [reservationRow] = await db
+      .select({ restaurantId: reservations.restaurantId })
+      .from(reservations)
+      .where(eq(reservations.id, id))
+      .limit(1);
+
+    if (!reservationRow) {
+      reply.code(404);
+      return { error: "Reservation not found" };
+    }
+
+    const err = enforceTenant(request.user!, reservationRow.restaurantId);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
 
     const updated = await updateReservation(id, body);
     if (!updated) {
@@ -69,6 +97,21 @@ export async function reservationRoutes(app: FastifyInstance) {
   // POST /:id/no-show — mark reservation as no-show
   app.post("/:id/no-show", async (request, reply) => {
     const { id } = request.params as { id: string };
+    const [reservationRow] = await db
+      .select({ restaurantId: reservations.restaurantId })
+      .from(reservations)
+      .where(eq(reservations.id, id))
+      .limit(1);
+
+    if (!reservationRow) {
+      reply.code(404);
+      return { error: "Reservation not found" };
+    }
+
+    const err = enforceTenant(request.user!, reservationRow.restaurantId);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
 
     const reservation = await markNoShow(id);
     if (!reservation) {
@@ -83,6 +126,21 @@ export async function reservationRoutes(app: FastifyInstance) {
   app.delete("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
     const { reason } = (request.query ?? {}) as { reason?: string };
+    const [reservationRow] = await db
+      .select({ restaurantId: reservations.restaurantId })
+      .from(reservations)
+      .where(eq(reservations.id, id))
+      .limit(1);
+
+    if (!reservationRow) {
+      reply.code(404);
+      return { error: "Reservation not found" };
+    }
+
+    const err = enforceTenant(request.user!, reservationRow.restaurantId);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
 
     const result = await cancelReservation(id, reason);
     if (!result) {

@@ -11,11 +11,28 @@ import { LoginPage } from "./pages/LoginPage.js";
 import { AuthProvider, useAuth } from "./hooks/useAuth.js";
 import { LangProvider } from "./i18n.js";
 import { HelpPage } from "./pages/HelpPage.js";
+import { RestaurantPickerPage } from "./pages/RestaurantPickerPage.js";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
+}
+
+function SuperAdminRoute({ children }: { children: React.ReactNode }) {
+  const { isSuperAdmin } = useAuth();
+  if (!isSuperAdmin) {
+    return <Navigate to="/today" replace />;
+  }
+  return <>{children}</>;
+}
+
+function RequireRestaurantContext({ children }: { children: React.ReactNode }) {
+  const { isSuperAdmin, restaurant } = useAuth();
+  if (isSuperAdmin && !restaurant) {
+    return <Navigate to="/restaurants" replace />;
   }
   return <>{children}</>;
 }
@@ -32,13 +49,70 @@ function AppRoutes() {
         }
       >
         <Route path="/" element={<Navigate to="/today" replace />} />
-        <Route path="/today" element={<TodayPage />} />
-        <Route path="/reservations" element={<ReservationsPage />} />
-        <Route path="/waitlist" element={<WaitlistPage />} />
-        <Route path="/guests" element={<GuestsPage />} />
-        <Route path="/guests/:id" element={<GuestDetailPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/help" element={<HelpPage />} />
+        <Route
+          path="/restaurants"
+          element={
+            <SuperAdminRoute>
+              <RestaurantPickerPage />
+            </SuperAdminRoute>
+          }
+        />
+        <Route
+          path="/today"
+          element={
+            <RequireRestaurantContext>
+              <TodayPage />
+            </RequireRestaurantContext>
+          }
+        />
+        <Route
+          path="/reservations"
+          element={
+            <RequireRestaurantContext>
+              <ReservationsPage />
+            </RequireRestaurantContext>
+          }
+        />
+        <Route
+          path="/waitlist"
+          element={
+            <RequireRestaurantContext>
+              <WaitlistPage />
+            </RequireRestaurantContext>
+          }
+        />
+        <Route
+          path="/guests"
+          element={
+            <RequireRestaurantContext>
+              <GuestsPage />
+            </RequireRestaurantContext>
+          }
+        />
+        <Route
+          path="/guests/:id"
+          element={
+            <RequireRestaurantContext>
+              <GuestDetailPage />
+            </RequireRestaurantContext>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <RequireRestaurantContext>
+              <SettingsPage />
+            </RequireRestaurantContext>
+          }
+        />
+        <Route
+          path="/help"
+          element={
+            <RequireRestaurantContext>
+              <HelpPage />
+            </RequireRestaurantContext>
+          }
+        />
       </Route>
     </Routes>
   );

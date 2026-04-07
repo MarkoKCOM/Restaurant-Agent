@@ -10,6 +10,7 @@ import {
   updateGuestPreferences,
   getFullGuestProfile,
   autoTagGuest,
+  refreshVisitAutoTags,
 } from "../services/guest.service.js";
 import { getGuestSentimentHistory } from "../services/feedback.service.js";
 import { db } from "../db/index.js";
@@ -96,6 +97,28 @@ export async function guestRoutes(app: FastifyInstance) {
     }
 
     return { tags };
+  });
+
+  // PUT /:id/preferences — update structured guest preferences
+  app.put("/:id/preferences", async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const preferencesSchema = z.object({
+      dietary: z.array(z.string()).default([]),
+      seating: z.string().default("no_preference"),
+      language: z.string().default("he"),
+      notes: z.string().default(""),
+    });
+
+    const prefs = preferencesSchema.parse(request.body ?? {});
+
+    const updated = await updateGuestPreferences(id, { preferences: prefs });
+    if (!updated) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    return { guest: toDomainGuest(updated) };
   });
 
   // PATCH /:id — update guest preferences

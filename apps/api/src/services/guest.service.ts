@@ -192,7 +192,50 @@ export async function getFullGuestProfile(guestId: string) {
   };
 }
 
-// ── Auto-Tag Guest ────────────────────────────────────
+// ── Visit-count auto-tags (Hebrew) ───────────────────
+
+/** Tags automatically assigned based on visitCount thresholds */
+const VISIT_AUTO_TAGS = ["חדש", "חוזר", "קבוע", "VIP"] as const;
+
+/**
+ * Compute the correct visit-count tag for a given count.
+ * Returns the single tag that should be present.
+ */
+function visitCountTag(visitCount: number): string {
+  if (visitCount >= 25) return "VIP";
+  if (visitCount >= 10) return "קבוע";
+  if (visitCount >= 3) return "חוזר";
+  return "חדש";
+}
+
+/**
+ * Apply visit-count auto-tags to an existing tags array.
+ * Removes any stale visit-count auto-tags and adds the correct one.
+ * Preserves all other (manual + insight-based) tags.
+ */
+function applyVisitAutoTags(currentTags: string[], visitCount: number): string[] {
+  const visitAutoSet = new Set<string>(VISIT_AUTO_TAGS);
+  // Strip old visit-count tags
+  const filtered = currentTags.filter((t) => !visitAutoSet.has(t));
+  // Add the correct one
+  filtered.push(visitCountTag(visitCount));
+  return filtered;
+}
+
+// ── Auto-Tag Guest (full) ────────────────────────────
+
+/** All tags that autoTagGuest may write (visit + insight-based) */
+const ALL_AUTO_TAGS = new Set([
+  ...VISIT_AUTO_TAGS,
+  "vip",        // legacy english — kept for back-compat detection
+  "regular",
+  "returning",
+  "new",
+  "lapsed",
+  "happy",
+  "at_risk",
+  "big_spender",
+]);
 
 export async function autoTagGuest(guestId: string) {
   const guest = await getGuestById(guestId);
@@ -202,29 +245,11 @@ export async function autoTagGuest(guestId: string) {
   const currentTags = (guest.tags as string[] | null) ?? [];
 
   // Keep manual tags (anything not auto-generated)
-  const autoTags = new Set([
-    "vip",
-    "regular",
-    "returning",
-    "new",
-    "lapsed",
-    "happy",
-    "at_risk",
-    "big_spender",
-  ]);
-  const manualTags = currentTags.filter((t) => !autoTags.has(t));
+  const manualTags = currentTags.filter((t) => !ALL_AUTO_TAGS.has(t));
   const newTags = new Set(manualTags);
 
-  // Visit count based tags
-  if (guest.visitCount >= 15) {
-    newTags.add("vip");
-  } else if (guest.visitCount >= 5) {
-    newTags.add("regular");
-  } else if (guest.visitCount >= 1) {
-    newTags.add("returning");
-  } else {
-    newTags.add("new");
-  }
+  // Visit count based tags (Hebrew)
+  newTags.add(visitCountTag(guest.visitCount));
 
   // Lapsed check
   if (guest.lastVisitDate) {
@@ -257,4 +282,32 @@ export async function autoTagGuest(guestId: string) {
     .where(eq(guests.id, guestId));
 
   return tagsArray;
+}
+
+// ── Quick visit-count re-tag (called on reservation completion) ──
+
+/**
+ * Lightweight auto-tag update that only touches visit-count tags.
+ * Called from the reservation completion flow after visitCount is incremented.
+ */
+export async function refreshVisitAutoTags(guestId: string): Promise<string[] | null> {
+  const guest = await getGuestById(guestId);
+  if (!guest) return null;
+
+  const currentTags = (guest.tags as string[] | null) ?? [];
+  const updatedTags = applyVisitAutoTags(currentTags, guest.visitCount);
+
+  // Only write if something changed
+  const changed =
+    updatedTags.length !== currentTags.length ||
+    updatedTags.some((t, i) => t !== currentTags[i]);
+
+  if (changed) {
+    await db
+      .update(guests)
+      .set({ tags: updatedTags, updatedAt: new Date() })
+      .where(eq(guests.id, guestId));
+  }
+
+  return updatedTags;
 }

@@ -53,6 +53,13 @@ export interface Table {
   isActive: boolean;
 }
 
+export interface GuestPreferences {
+  dietary: string[];
+  seating: string;
+  language: string;
+  notes: string;
+}
+
 export interface Guest {
   id: string;
   restaurantId: string;
@@ -64,7 +71,7 @@ export interface Guest {
   visitCount: number;
   noShowCount: number;
   tier: "bronze" | "silver" | "gold";
-  preferences?: Record<string, unknown>;
+  preferences?: GuestPreferences | Record<string, unknown>;
   tags?: string[];
   notes?: string;
 }

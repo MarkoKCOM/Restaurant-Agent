@@ -345,6 +345,33 @@ export function useUpdateGuest() {
   });
 }
 
+// --- Guest Preferences ---
+
+export interface GuestPreferences {
+  dietary: string[];
+  seating: string;
+  language: string;
+  notes: string;
+}
+
+export function useUpdateGuestPreferences() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: GuestPreferences }) => {
+      const res = await fetchWithAuth(`${API}/guests/${id}/preferences`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: ["guest", id] });
+      qc.invalidateQueries({ queryKey: ["guests"] });
+    },
+  });
+}
+
 // --- Loyalty ---
 
 export interface LoyaltyBalance {

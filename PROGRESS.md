@@ -1,5 +1,30 @@
 # Progress Log
 
+## 2026-04-07 (Guides + Sprint 3b completion)
+
+### Verified
+- All Sprint 3b features confirmed implemented and functional:
+  - Waitlist service + auto-match on cancellation
+  - Guest preference editor in dashboard
+  - Guest auto-tagging by visit count (חדש/חוזר/קבוע/VIP)
+  - Dashboard login page + auth wrapper
+- All 5 apps build cleanly (full turbo cache)
+
+### Created
+- `docs/OWNER-GUIDE.md` — comprehensive guide for restaurant owner (dashboard, reservations, guests, loyalty, engagement, daily workflow)
+- `docs/CUSTOMER-GUIDE.md` — customer-facing guide (widget booking, chat booking, loyalty program, waitlist)
+- `docs/CUSTOMER-GUIDE-HE.md` — Hebrew version of customer guide
+
+### Infrastructure
+- Telegram group configured: OpenSeat (-1003691973621) with topics (General=1, Owner=17, Reports=20)
+- Hermes bot already connected to group via openclaw config
+
+### Still Needed
+- Telegram bot bridge for customer-facing agent testing (separate from Hermes, needs @BotFather token)
+- WhatsApp Baileys integration (parked for now)
+- SSL/HTTPS (needs domain)
+- Real BFF Ra'anana data (actual hours, table layout)
+
 ## 2026-04-06 (Sprint 3b completion + E2E test runner)
 
 ### Sprint 3b — Completed

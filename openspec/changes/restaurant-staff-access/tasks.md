@@ -34,5 +34,5 @@
 
 ### Delivery
 - [x] Implement on a feature branch
-- [ ] Push branch
-- [ ] Open PR with role matrix and rollout notes
+- [x] Push branch
+- [x] Open PR with role matrix and rollout notes

@@ -9,6 +9,8 @@ import {
   listRewards,
   redeemReward,
 } from "../services/loyalty.service.js";
+import { getGuestById } from "../services/guest.service.js";
+import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
 
 const awardPointsSchema = z.object({
   restaurantId: z.string().uuid(),
@@ -32,6 +34,16 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   // GET /:guestId/balance — points balance + tier + stamp progress
   app.get("/:guestId/balance", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
 
     const balance = await getPointsBalance(guestId);
     if (!balance) {
@@ -50,9 +62,19 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   });
 
   // GET /:guestId/history — transaction history
-  app.get("/:guestId/history", async (request) => {
+  app.get("/:guestId/history", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
     const { limit } = request.query as { limit?: string };
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
 
     const parsedLimit = limit ? Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100) : 20;
     const transactions = await getTransactionHistory(guestId, parsedLimit);
@@ -64,6 +86,10 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   app.post("/:guestId/award", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
     const body = awardPointsSchema.parse(request.body);
+    const err = enforceTenant(request.user!, body.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
 
     const transaction = await awardPoints(
       guestId,
@@ -85,6 +111,11 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       return { error: "restaurantId query parameter is required" };
     }
 
+    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
     const rewardsList = await listRewards(restaurantId);
     return { rewards: rewardsList };
   });
@@ -98,6 +129,11 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       description?: string;
       pointsCost: number;
     };
+    const err = enforceTenant(request.user!, body.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
     const reward = await createReward(body);
     reply.code(201);
     return { reward };
@@ -110,6 +146,10 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       rewardId: string;
     };
     const body = redeemRewardSchema.parse(request.body);
+    const err = enforceTenant(request.user!, body.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
 
     try {
       const result = await redeemReward(guestId, body.restaurantId, rewardId);
@@ -131,6 +171,16 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   // GET /:guestId/stamp-card — stamp card status
   app.get("/:guestId/stamp-card", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
 
     const stampCard = await checkStampCard(guestId);
     if (!stampCard) {

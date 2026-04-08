@@ -331,6 +331,42 @@ async function seedBffRaanana() {
     }
   }
 
+  const employeeSeedEmail = env.EMPLOYEE_SEED_EMAIL;
+  const employeeSeedPassword = env.EMPLOYEE_SEED_PASSWORD;
+  const employeeSeedName = env.EMPLOYEE_SEED_NAME ?? "BFF Employee";
+
+  if (employeeSeedEmail && employeeSeedPassword) {
+    const [existingEmployee] = await db
+      .select()
+      .from(adminUsers)
+      .where(eq(adminUsers.email, employeeSeedEmail))
+      .limit(1);
+
+    const passwordHash = await bcrypt.hash(employeeSeedPassword, 10);
+
+    if (!existingEmployee) {
+      await db.insert(adminUsers).values({
+        restaurantId,
+        role: "employee",
+        email: employeeSeedEmail,
+        passwordHash,
+        name: employeeSeedName,
+      });
+      console.log("Employee user created:", employeeSeedEmail);
+    } else {
+      await db
+        .update(adminUsers)
+        .set({
+          restaurantId,
+          role: "employee",
+          passwordHash,
+          name: employeeSeedName,
+        })
+        .where(eq(adminUsers.id, existingEmployee.id));
+      console.log("Employee user synced from env:", employeeSeedEmail);
+    }
+  }
+
   return restaurantId;
 }
 

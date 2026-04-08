@@ -12,7 +12,9 @@ import {
 import {
   getFullGuestProfile,
   autoTagGuest,
+  getGuestById,
 } from "../services/guest.service.js";
+import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
 
 const logVisitSchema = z.object({
   guestId: z.string().uuid(),
@@ -61,6 +63,11 @@ export async function visitRoutes(app: FastifyInstance) {
   // POST /api/v1/visits — log a visit
   app.post("/", async (request, reply) => {
     const body = logVisitSchema.parse(request.body) as Parameters<typeof logVisit>[0];
+    const err = enforceTenant(request.user!, body.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
     const visit = await logVisit(body);
 
     // Auto-tag guest after visit
@@ -71,16 +78,38 @@ export async function visitRoutes(app: FastifyInstance) {
   });
 
   // GET /api/v1/visits/:guestId — visit history
-  app.get("/:guestId", async (request) => {
+  app.get("/:guestId", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
     const { limit } = request.query as { limit?: string };
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
     const visits = await getVisitHistory(guestId, limit ? parseInt(limit, 10) : 20);
     return { visits };
   });
 
   // GET /api/v1/visits/:guestId/insights — aggregated guest insights
-  app.get("/:guestId/insights", async (request) => {
+  app.get("/:guestId/insights", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
     const insights = await getGuestInsights(guestId);
     return { insights };
   });

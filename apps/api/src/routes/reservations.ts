@@ -17,7 +17,7 @@ import {
 } from "../services/reservation.service.js";
 import { db } from "../db/index.js";
 import { reservations } from "../db/schema.js";
-import { enforceTenant, resolveRestaurantId } from "../middleware/auth.js";
+import { enforceTenant, requireOperationalRole, resolveRestaurantId } from "../middleware/auth.js";
 
 const updateReservationSchema = z.object({
   date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/).optional(),
@@ -64,7 +64,7 @@ export async function reservationRoutes(app: FastifyInstance) {
     const body = createWalkInSchema.parse(request.body);
     const user = request.user!;
 
-    const err = enforceTenant(user, body.restaurantId);
+    const err = requireOperationalRole(user) ?? enforceTenant(user, body.restaurantId);
     if (err) {
       return reply.status(403).send({ error: err });
     }
@@ -88,6 +88,10 @@ export async function reservationRoutes(app: FastifyInstance) {
       date?: string;
     };
     const user = request.user!;
+    const roleErr = requireOperationalRole(user);
+    if (roleErr) {
+      return reply.status(403).send({ error: roleErr });
+    }
 
     if (restaurantId) {
       const err = enforceTenant(user, restaurantId);
@@ -116,7 +120,7 @@ export async function reservationRoutes(app: FastifyInstance) {
       return { error: "Reservation not found" };
     }
 
-    const err = enforceTenant(request.user!, reservationRow.restaurantId);
+    const err = requireOperationalRole(request.user!) ?? enforceTenant(request.user!, reservationRow.restaurantId);
     if (err) {
       return reply.status(403).send({ error: err });
     }
@@ -150,7 +154,7 @@ export async function reservationRoutes(app: FastifyInstance) {
       return { error: "Reservation not found" };
     }
 
-    const err = enforceTenant(request.user!, reservationRow.restaurantId);
+    const err = requireOperationalRole(request.user!) ?? enforceTenant(request.user!, reservationRow.restaurantId);
     if (err) {
       return reply.status(403).send({ error: err });
     }
@@ -185,7 +189,7 @@ export async function reservationRoutes(app: FastifyInstance) {
       return { error: "Reservation not found" };
     }
 
-    const err = enforceTenant(request.user!, reservationRow.restaurantId);
+    const err = requireOperationalRole(request.user!) ?? enforceTenant(request.user!, reservationRow.restaurantId);
     if (err) {
       return reply.status(403).send({ error: err });
     }

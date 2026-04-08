@@ -3,7 +3,7 @@ import fp from "fastify-plugin";
 import jwt from "jsonwebtoken";
 import { env } from "../env.js";
 
-export type AdminRole = "admin" | "super_admin";
+export type AdminRole = "admin" | "employee" | "super_admin";
 
 export interface AuthUser {
   id: string;
@@ -73,6 +73,9 @@ async function authMiddlewarePlugin(app: FastifyInstance) {
 
     try {
       const payload = jwt.verify(token, env.JWT_SECRET) as AuthUser;
+      if (payload.role && payload.role !== "admin" && payload.role !== "employee" && payload.role !== "super_admin") {
+        throw new Error("Invalid role");
+      }
       const role = payload.role ?? "admin";
       const requestedRestaurantId = request.headers["x-restaurant-id"];
       const activeRestaurantId =
@@ -132,6 +135,33 @@ export function enforceTenant(
  * Guard: ensures the user has super_admin role.
  * Returns an error string if not, or null if OK.
  */
+export function requireRole(
+  user: AuthUser,
+  allowedRoles: AdminRole[],
+  errorMessage = "Forbidden: insufficient role",
+): string | null {
+  if (!allowedRoles.includes(user.role)) {
+    return errorMessage;
+  }
+  return null;
+}
+
+export function requireOperationalRole(user: AuthUser): string | null {
+  return requireRole(
+    user,
+    ["admin", "employee", "super_admin"],
+    "Forbidden: operational role required",
+  );
+}
+
+export function requireRestaurantAdmin(user: AuthUser): string | null {
+  return requireRole(
+    user,
+    ["admin", "super_admin"],
+    "Forbidden: admin role required",
+  );
+}
+
 export function requireSuperAdmin(user: AuthUser): string | null {
   if (user.role !== "super_admin") {
     return "Forbidden: super_admin role required";

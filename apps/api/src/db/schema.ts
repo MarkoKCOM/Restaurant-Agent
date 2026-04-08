@@ -45,7 +45,7 @@ export const guestSourceEnum = pgEnum("guest_source", [
 ]);
 export const languageEnum = pgEnum("language", ["he", "en", "ar", "ru"]);
 export const tierEnum = pgEnum("tier", ["bronze", "silver", "gold"]);
-export const adminRoleEnum = pgEnum("admin_role", ["admin", "super_admin"]);
+export const adminRoleEnum = pgEnum("admin_role", ["admin", "employee", "super_admin"]);
 export const conversationStatusEnum = pgEnum("conversation_status", [
   "active",
   "escalated",

@@ -9,6 +9,7 @@ import { WaitlistPage } from "./pages/WaitlistPage.js";
 import { GuestDetailPage } from "./pages/GuestDetailPage.js";
 import { LoginPage } from "./pages/LoginPage.js";
 import { AuthProvider, useAuth } from "./hooks/useAuth.js";
+import type { DashboardPageKey } from "@openseat/domain";
 import { LangProvider } from "./i18n.js";
 import { HelpPage } from "./pages/HelpPage.js";
 import { RestaurantPickerPage } from "./pages/RestaurantPickerPage.js";
@@ -37,6 +38,21 @@ function RequireRestaurantContext({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function PageAccessRoute({
+  page,
+  children,
+}: {
+  page: DashboardPageKey;
+  children: React.ReactNode;
+}) {
+  const { canAccess, dashboardAccess, isSuperAdmin } = useAuth();
+  if (!canAccess(page)) {
+    const fallbackPage = dashboardAccess.pages[0] ?? (isSuperAdmin ? "restaurants" : null);
+    return <Navigate to={fallbackPage ? `/${fallbackPage}` : "/login"} replace />;
+  }
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -61,7 +77,9 @@ function AppRoutes() {
           path="/today"
           element={
             <RequireRestaurantContext>
-              <TodayPage />
+              <PageAccessRoute page="today">
+                <TodayPage />
+              </PageAccessRoute>
             </RequireRestaurantContext>
           }
         />
@@ -69,7 +87,9 @@ function AppRoutes() {
           path="/reservations"
           element={
             <RequireRestaurantContext>
-              <ReservationsPage />
+              <PageAccessRoute page="reservations">
+                <ReservationsPage />
+              </PageAccessRoute>
             </RequireRestaurantContext>
           }
         />
@@ -77,7 +97,9 @@ function AppRoutes() {
           path="/waitlist"
           element={
             <RequireRestaurantContext>
-              <WaitlistPage />
+              <PageAccessRoute page="waitlist">
+                <WaitlistPage />
+              </PageAccessRoute>
             </RequireRestaurantContext>
           }
         />
@@ -85,7 +107,9 @@ function AppRoutes() {
           path="/guests"
           element={
             <RequireRestaurantContext>
-              <GuestsPage />
+              <PageAccessRoute page="guests">
+                <GuestsPage />
+              </PageAccessRoute>
             </RequireRestaurantContext>
           }
         />
@@ -93,7 +117,9 @@ function AppRoutes() {
           path="/guests/:id"
           element={
             <RequireRestaurantContext>
-              <GuestDetailPage />
+              <PageAccessRoute page="guests">
+                <GuestDetailPage />
+              </PageAccessRoute>
             </RequireRestaurantContext>
           }
         />
@@ -101,7 +127,9 @@ function AppRoutes() {
           path="/settings"
           element={
             <RequireRestaurantContext>
-              <SettingsPage />
+              <PageAccessRoute page="settings">
+                <SettingsPage />
+              </PageAccessRoute>
             </RequireRestaurantContext>
           }
         />
@@ -109,7 +137,9 @@ function AppRoutes() {
           path="/help"
           element={
             <RequireRestaurantContext>
-              <HelpPage />
+              <PageAccessRoute page="help">
+                <HelpPage />
+              </PageAccessRoute>
             </RequireRestaurantContext>
           }
         />

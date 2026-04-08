@@ -1,5 +1,42 @@
 # Progress Log
 
+## 2026-04-08 (Restaurant staff access + role-based dashboard)
+
+### Added
+- OpenSpec change `openspec/changes/restaurant-staff-access/` with proposal, design, tasks, and capability specs for restaurant-scoped employee access.
+- New restaurant-scoped `employee` role alongside existing `admin` and `super_admin` roles.
+- Role-aware login payload now returns `dashboardAccess` so the dashboard can render the correct page/action set.
+- Dashboard auth context now understands permissions and exposes role-aware helpers (`canAccess`, `can`).
+- Optional employee seed support via env:
+  - `EMPLOYEE_SEED_EMAIL`
+  - `EMPLOYEE_SEED_PASSWORD`
+  - `EMPLOYEE_SEED_NAME`
+
+### Changed
+- Dashboard navigation and route guards now differentiate between:
+  - `admin` (owner/admin full access)
+  - `employee` (Today, Reservations, Waitlist only)
+  - `super_admin` (platform-wide access)
+- API authorization now layers role checks on top of tenant checks.
+- Owner/admin-only API areas are blocked for employees, including guest CRM, settings writes, table management, loyalty admin flows, engagement admin flows, and visit/insight endpoints used by owner-style CRM screens.
+- Operational APIs remain available to employees for service workflow, including dashboard snapshot, reservations, walk-ins, waitlist, and read-only restaurant tables needed by Today.
+
+### Verified
+- `pnpm --filter @openseat/api type-check`
+- `pnpm --filter @openseat/dashboard type-check`
+- `pnpm --filter @openseat/api build`
+- `pnpm --filter @openseat/dashboard build`
+- `pnpm --filter @openseat/e2e type-check`
+- `OPENSEAT_API_URL=http://localhost:3103 pnpm --filter @openseat/e2e test` -> 21/21 passed
+- `OPENSEAT_API_URL=http://localhost:3103 node scripts/api-reliability-smoke.mjs` passed
+- Employee smoke validation on temp API:
+  - login returns `role=employee` with pages `[today, reservations, waitlist]`
+  - `GET /restaurants/:id/dashboard` succeeds
+  - guests/settings/table-create endpoints return `403`
+- Admin smoke validation on temp API:
+  - login remains `role=admin`
+  - guests/settings access still succeeds
+
 ## 2026-04-08 (Reservation lifecycle ops + walk-in flow)
 
 ### Added

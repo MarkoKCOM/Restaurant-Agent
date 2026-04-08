@@ -18,6 +18,7 @@ import {
   type TableRow,
 } from "./table.service.js";
 import { onVisitCompleted } from "./loyalty.service.js";
+import { autoProgressVisitCountChallenges, updateStreak } from "./challenge.service.js";
 
 export type ReservationRow = InferSelectModel<typeof reservations>;
 
@@ -666,21 +667,58 @@ export async function updateReservation(
 
     try {
       await refreshVisitAutoTags(updated.guestId);
-    } catch {
-      // Non-critical
+    } catch (error) {
+      console.error("reservation completion: failed to refresh visit auto tags", {
+        reservationId: updated.id,
+        guestId: updated.guestId,
+        restaurantId: updated.restaurantId,
+        error,
+      });
     }
 
     try {
       await onVisitCompleted(updated.guestId, updated.restaurantId, updated.id);
-    } catch {
-      // Non-critical
+    } catch (error) {
+      console.error("reservation completion: failed to award loyalty updates", {
+        reservationId: updated.id,
+        guestId: updated.guestId,
+        restaurantId: updated.restaurantId,
+        error,
+      });
+    }
+
+    try {
+      await updateStreak(updated.guestId, updated.restaurantId);
+    } catch (error) {
+      console.error("reservation completion: failed to update streak", {
+        reservationId: updated.id,
+        guestId: updated.guestId,
+        restaurantId: updated.restaurantId,
+        error,
+      });
+    }
+
+    try {
+      await autoProgressVisitCountChallenges(updated.guestId, updated.restaurantId);
+    } catch (error) {
+      console.error("reservation completion: failed to progress visit_count challenges", {
+        reservationId: updated.id,
+        guestId: updated.guestId,
+        restaurantId: updated.restaurantId,
+        error,
+      });
     }
 
     try {
       await scheduleThankYou(updated.guestId, updated.restaurantId, updated.id);
       await scheduleReviewRequest(updated.guestId, updated.restaurantId, updated.id);
-    } catch {
-      // Non-critical
+    } catch (error) {
+      console.error("reservation completion: failed to schedule engagement jobs", {
+        reservationId: updated.id,
+        guestId: updated.guestId,
+        restaurantId: updated.restaurantId,
+        error,
+      });
     }
   }
 

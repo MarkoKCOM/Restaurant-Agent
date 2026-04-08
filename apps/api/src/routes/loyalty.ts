@@ -7,13 +7,23 @@ import {
   getPointsBalance,
   getTransactionHistory,
   listRewards,
-  redeemReward,
 } from "../services/loyalty.service.js";
-import { getGuestById } from "../services/guest.service.js";
-import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
+import { getMembershipSummary } from "../services/membership-summary.service.js";
+import {
+  claimReward,
+  getClaimById,
+  redeemClaim,
+  verifyClaimByCode,
+} from "../services/reward-claims.service.js";
+import { getGuestById, toDomainGuest, updateGuestPreferences } from "../services/guest.service.js";
+import {
+  enforceTenant,
+  requireOperationalRole,
+  requireRestaurantAdmin,
+} from "../middleware/auth.js";
 
 const awardPointsSchema = z.object({
-  restaurantId: z.string().uuid(),
+  restaurantId: z.string().uuid().optional(),
   points: z.coerce.number().int().min(1),
   reason: z.string().min(1),
 });
@@ -26,9 +36,35 @@ const createRewardSchema = z.object({
   pointsCost: z.coerce.number().int().min(1),
 });
 
-const redeemRewardSchema = z.object({
-  restaurantId: z.string().uuid(),
+const claimRewardSchema = z.object({
+  reservationId: z.string().uuid().optional(),
 });
+
+const messagingPreferencesSchema = z.object({
+  optedOutCampaigns: z.boolean(),
+});
+
+function sendLoyaltyError(reply: { code: (status: number) => unknown }, err: unknown) {
+  const message = err instanceof Error ? err.message : "Loyalty operation failed";
+  if (message.includes("Insufficient points")) {
+    reply.code(400);
+    return { error: message };
+  }
+  if (
+    message.includes("not found")
+    || message.includes("not belong")
+    || message.includes("does not belong")
+  ) {
+    reply.code(404);
+    return { error: message };
+  }
+  if (message.includes("already")) {
+    reply.code(409);
+    return { error: message };
+  }
+  reply.code(400);
+  return { error: message };
+}
 
 export async function loyaltyRoutes(app: FastifyInstance) {
   // GET /:guestId/balance — points balance + tier + stamp progress
@@ -79,21 +115,55 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const parsedLimit = limit ? Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100) : 20;
     const transactions = await getTransactionHistory(guestId, parsedLimit);
 
-    return { transactions };
+    return {
+      transactions: transactions.map((tx) => ({
+        ...tx,
+        description: tx.reason ?? tx.type,
+      })),
+    };
+  });
+
+  // GET /:guestId/summary — normalized WhatsApp/member summary
+  app.get("/:guestId/summary", async (request, reply) => {
+    const { guestId } = request.params as { guestId: string };
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
+    const summary = await getMembershipSummary(guestId);
+    if (!summary) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    return { summary };
   });
 
   // POST /:guestId/award — manual point award (owner action)
   app.post("/:guestId/award", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
     const body = awardPointsSchema.parse(request.body);
-    const err = enforceTenant(request.user!, body.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
       return reply.status(403).send({ error: err });
     }
 
     const transaction = await awardPoints(
       guestId,
-      body.restaurantId,
+      guest.restaurantId,
       body.points,
       body.reason,
     );
@@ -139,33 +209,120 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     return { reward };
   });
 
-  // POST /:guestId/redeem/:rewardId — redeem a reward
-  app.post("/:guestId/redeem/:rewardId", async (request, reply) => {
-    const { guestId, rewardId } = request.params as {
-      guestId: string;
-      rewardId: string;
-    };
-    const body = redeemRewardSchema.parse(request.body);
-    const err = enforceTenant(request.user!, body.restaurantId) ?? requireRestaurantAdmin(request.user!);
+  // POST /:guestId/rewards/:rewardId/claim — claim a reward for later redemption
+  app.post("/:guestId/rewards/:rewardId/claim", async (request, reply) => {
+    const { guestId, rewardId } = request.params as { guestId: string; rewardId: string };
+    const body = claimRewardSchema.parse(request.body ?? {});
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireOperationalRole(request.user!);
     if (err) {
       return reply.status(403).send({ error: err });
     }
 
     try {
-      const result = await redeemReward(guestId, body.restaurantId, rewardId);
-      return { redemption: result };
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Redemption failed";
-      if (message.includes("Insufficient points")) {
-        reply.code(400);
-        return { error: message };
-      }
-      if (message.includes("not found") || message.includes("not belong")) {
-        reply.code(404);
-        return { error: message };
-      }
-      throw err;
+      const claim = await claimReward(guestId, rewardId, body.reservationId);
+      reply.code(201);
+      return { claim };
+    } catch (err) {
+      return sendLoyaltyError(reply, err);
     }
+  });
+
+  // POST /:guestId/redeem/:rewardId — backwards-compatible alias for claim flow
+  app.post("/:guestId/redeem/:rewardId", async (request, reply) => {
+    const { guestId, rewardId } = request.params as { guestId: string; rewardId: string };
+    const body = claimRewardSchema.parse(request.body ?? {});
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireOperationalRole(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
+    try {
+      const claim = await claimReward(guestId, rewardId, body.reservationId);
+      return {
+        redemption: {
+          transactionId: claim.loyaltyTransactionId,
+          rewardName: claim.rewardName,
+          pointsSpent: claim.pointsSpent,
+          remainingBalance: claim.remainingBalance,
+          redemptionCode: claim.claimCode,
+        },
+      };
+    } catch (err) {
+      return sendLoyaltyError(reply, err);
+    }
+  });
+
+  // GET /claims/:claimCode/verify — staff-safe verification flow
+  app.get("/claims/:claimCode/verify", async (request, reply) => {
+    const { claimCode } = request.params as { claimCode: string };
+    const claim = await verifyClaimByCode(claimCode);
+    if (!claim) {
+      reply.code(404);
+      return { error: "Claim not found" };
+    }
+
+    const err = enforceTenant(request.user!, claim.restaurantId) ?? requireOperationalRole(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
+    return { claim };
+  });
+
+  // POST /claims/:claimId/redeem — mark a claim as honored by staff
+  app.post("/claims/:claimId/redeem", async (request, reply) => {
+    const { claimId } = request.params as { claimId: string };
+    const claim = await getClaimById(claimId);
+    if (!claim) {
+      reply.code(404);
+      return { error: "Claim not found" };
+    }
+
+    const err = enforceTenant(request.user!, claim.restaurantId) ?? requireOperationalRole(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
+    try {
+      const redeemedClaim = await redeemClaim(claimId, request.user!.id);
+      return { claim: redeemedClaim };
+    } catch (err) {
+      return sendLoyaltyError(reply, err);
+    }
+  });
+
+  // PATCH /:guestId/messaging-preferences — member club/promotional opt-out
+  app.patch("/:guestId/messaging-preferences", async (request, reply) => {
+    const { guestId } = request.params as { guestId: string };
+    const body = messagingPreferencesSchema.parse(request.body ?? {});
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireOperationalRole(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
+    const updated = await updateGuestPreferences(guestId, {
+      optedOutCampaigns: body.optedOutCampaigns,
+    });
+
+    return { guest: updated ? toDomainGuest(updated) : null };
   });
 
   // GET /:guestId/stamp-card — stamp card status

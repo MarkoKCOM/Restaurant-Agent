@@ -316,3 +316,34 @@ export const challengeProgress = pgTable("challenge_progress", {
   status: varchar("status", { length: 20 }).notNull().default("in_progress"),
   completedAt: timestamp("completed_at"),
 });
+
+// ── Reward Claims ──────────────────────────────────────
+
+export const rewardClaimStatusEnum = pgEnum("reward_claim_status", [
+  "active",
+  "redeemed",
+  "expired",
+  "cancelled",
+]);
+
+export const rewardClaims = pgTable("reward_claims", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  restaurantId: uuid("restaurant_id")
+    .notNull()
+    .references(() => restaurants.id),
+  guestId: uuid("guest_id")
+    .notNull()
+    .references(() => guests.id),
+  rewardId: uuid("reward_id")
+    .notNull()
+    .references(() => rewards.id),
+  loyaltyTransactionId: uuid("loyalty_transaction_id").references(
+    () => loyaltyTransactions.id,
+  ),
+  claimCode: varchar("claim_code", { length: 20 }).notNull().unique(),
+  status: rewardClaimStatusEnum("status").notNull().default("active"),
+  claimedAt: timestamp("claimed_at").notNull().defaultNow(),
+  redeemedAt: timestamp("redeemed_at"),
+  redeemedBy: uuid("redeemed_by").references(() => adminUsers.id),
+  reservationId: uuid("reservation_id").references(() => reservations.id),
+});

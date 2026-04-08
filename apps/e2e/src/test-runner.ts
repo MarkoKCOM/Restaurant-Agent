@@ -38,6 +38,9 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
   const results: TestResult[] = [];
   let reservationId = "";
   let guestId = "";
+  let rewardId = "";
+  let rewardClaimId = "";
+  let rewardClaimCode = "";
   let noShowReservationId = "";
   let noShowGuestId = "";
   let patchNoShowReservationId = "";
@@ -188,7 +191,76 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
     return `points=${(data as any).pointsBalance} tier=${(data as any).tier}`;
   }));
 
-  // 8. Log a visit
+  // 9. Create reward for membership claim flow
+  results.push(await runTest("Create Reward", async () => {
+    const data = await api.createReward({
+      restaurantId: RESTAURANT_ID,
+      nameHe: `Reward ${runId}`,
+      description: `Reward for ${runId}`,
+      pointsCost: 10,
+    });
+    rewardId = (data as any).reward.id;
+    return `rewardId=${rewardId.slice(0, 8)}... cost=${(data as any).reward.pointsCost}`;
+  }));
+
+  // 10. Membership summary
+  results.push(await runTest("Membership Summary", async () => {
+    if (!guestId) throw new Error("No guest");
+    const data = await api.getMembershipSummary(guestId);
+    const summary = (data as any).summary;
+    if (!summary?.loyalty || !summary?.rewards || !summary?.referrals || !summary?.streak) {
+      throw new Error("Membership summary missing expected sections");
+    }
+    return `points=${summary.loyalty.pointsBalance} rewards=${summary.rewards.available.length} optedOut=${summary.optedOutCampaigns}`;
+  }));
+
+  // 11. Claim reward
+  results.push(await runTest("Claim Reward", async () => {
+    if (!guestId || !rewardId) throw new Error("Missing guest or reward");
+    const data = await api.claimReward(guestId, rewardId, { reservationId });
+    const claim = (data as any).claim;
+    rewardClaimId = claim.id;
+    rewardClaimCode = claim.claimCode;
+    if (claim.status !== "active") {
+      throw new Error(`Expected active claim, got ${claim.status}`);
+    }
+    return `claimId=${claim.id.slice(0, 8)}... code=${claim.claimCode}`;
+  }));
+
+  // 12. Verify reward claim
+  results.push(await runTest("Verify Reward Claim", async () => {
+    if (!rewardClaimCode) throw new Error("No reward claim code");
+    const data = await api.verifyRewardClaim(rewardClaimCode);
+    const claim = (data as any).claim;
+    if (claim.status !== "active") {
+      throw new Error(`Expected active claim during verification, got ${claim.status}`);
+    }
+    return `guest=${claim.guestName} reward=${claim.rewardName}`;
+  }));
+
+  // 13. Redeem reward claim
+  results.push(await runTest("Redeem Reward Claim", async () => {
+    if (!rewardClaimId) throw new Error("No reward claim id");
+    const data = await api.redeemRewardClaim(rewardClaimId);
+    const claim = (data as any).claim;
+    if (claim.status !== "redeemed" || !claim.redeemedAt) {
+      throw new Error("Claim was not redeemed correctly");
+    }
+    return `status=${claim.status} redeemedAt=${claim.redeemedAt}`;
+  }));
+
+  // 14. Update messaging preferences
+  results.push(await runTest("Update Messaging Preferences", async () => {
+    if (!guestId) throw new Error("No guest");
+    const data = await api.updateMessagingPreferences(guestId, true);
+    const guest = (data as any).guest;
+    if (!guest?.optedOutCampaigns) {
+      throw new Error("Expected optedOutCampaigns to be true");
+    }
+    return `optedOut=${guest.optedOutCampaigns}`;
+  }));
+
+  // 15. Log a visit
   results.push(await runTest("Create Visit", async () => {
     if (!guestId) throw new Error("No guest");
     const data = await api.createVisit({

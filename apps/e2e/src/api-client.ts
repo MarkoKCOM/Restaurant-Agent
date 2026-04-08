@@ -176,6 +176,46 @@ export async function getLoyaltyBalance(guestId: string) {
   return request(`/api/v1/loyalty/${guestId}/balance`, { token });
 }
 
+export async function getMembershipSummary(guestId: string) {
+  const token = await getToken();
+  return request(`/api/v1/loyalty/${guestId}/summary`, { token });
+}
+
+export async function createReward(data: {
+  restaurantId: string;
+  nameHe: string;
+  nameEn?: string;
+  description?: string;
+  pointsCost: number;
+}) {
+  const token = await getToken();
+  return request("/api/v1/loyalty/rewards", { method: "POST", token, body: data });
+}
+
+export async function claimReward(guestId: string, rewardId: string, body: { reservationId?: string } = {}) {
+  const token = await getToken();
+  return request(`/api/v1/loyalty/${guestId}/rewards/${rewardId}/claim`, { method: "POST", token, body });
+}
+
+export async function verifyRewardClaim(claimCode: string) {
+  const token = await getToken();
+  return request(`/api/v1/loyalty/claims/${claimCode}/verify`, { token });
+}
+
+export async function redeemRewardClaim(claimId: string) {
+  const token = await getToken();
+  return request(`/api/v1/loyalty/claims/${claimId}/redeem`, { method: "POST", token });
+}
+
+export async function updateMessagingPreferences(guestId: string, optedOutCampaigns: boolean) {
+  const token = await getToken();
+  return request(`/api/v1/loyalty/${guestId}/messaging-preferences`, {
+    method: "PATCH",
+    token,
+    body: { optedOutCampaigns },
+  });
+}
+
 export async function createVisit(data: {
   guestId: string;
   restaurantId: string;

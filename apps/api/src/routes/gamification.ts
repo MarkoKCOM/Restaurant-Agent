@@ -6,11 +6,14 @@ import {
 } from "../services/referral.service.js";
 import {
   createChallenge,
-  listActiveChallenges,
+  getChallengeById,
   getGuestActiveChallenges,
-  incrementChallengeProgress,
   getStreak,
+  incrementChallengeProgress,
+  listActiveChallenges,
 } from "../services/challenge.service.js";
+import { getGuestById } from "../services/guest.service.js";
+import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
 
 export async function gamificationRoutes(app: FastifyInstance) {
   // ── Referrals ─────────────────────────────────────────
@@ -18,6 +21,16 @@ export async function gamificationRoutes(app: FastifyInstance) {
   // POST /:guestId/referral-code — generate referral code
   app.post("/:guestId/referral-code", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
 
     try {
       const code = await generateReferralCode(guestId);
@@ -40,6 +53,17 @@ export async function gamificationRoutes(app: FastifyInstance) {
       return { error: "guestId and referralCode are required" };
     }
 
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
     try {
       const result = await applyReferral(guestId, referralCode);
       return {
@@ -57,6 +81,16 @@ export async function gamificationRoutes(app: FastifyInstance) {
   // GET /:guestId/referral-stats — referral stats
   app.get("/:guestId/referral-stats", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
 
     try {
       const stats = await getReferralStats(guestId);
@@ -76,6 +110,11 @@ export async function gamificationRoutes(app: FastifyInstance) {
     if (!restaurantId) {
       reply.code(400);
       return { error: "restaurantId query parameter is required" };
+    }
+
+    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
     }
 
     const activeChallenges = await listActiveChallenges(restaurantId);
@@ -100,6 +139,11 @@ export async function gamificationRoutes(app: FastifyInstance) {
       return { error: "restaurantId, name, type, target, and reward are required" };
     }
 
+    const err = enforceTenant(request.user!, body.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
     try {
       const challenge = await createChallenge(body);
       reply.code(201);
@@ -120,11 +164,22 @@ export async function gamificationRoutes(app: FastifyInstance) {
       return { error: "restaurantId query parameter is required" };
     }
 
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+    if (guest.restaurantId !== restaurantId) {
+      return reply.status(404).send({ error: "Guest not found in restaurant" });
+    }
+
     try {
-      const challengesWithProgress = await getGuestActiveChallenges(
-        guestId,
-        restaurantId,
-      );
+      const challengesWithProgress = await getGuestActiveChallenges(guestId, restaurantId);
       return { challenges: challengesWithProgress };
     } catch (err: any) {
       reply.code(400);
@@ -138,6 +193,21 @@ export async function gamificationRoutes(app: FastifyInstance) {
       guestId: string;
       challengeId: string;
     };
+
+    const guest = await getGuestById(guestId);
+    const challenge = await getChallengeById(challengeId);
+    if (!guest || !challenge) {
+      reply.code(404);
+      return { error: "Guest or challenge not found" };
+    }
+
+    const err = enforceTenant(request.user!, challenge.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+    if (guest.restaurantId !== challenge.restaurantId) {
+      return reply.status(404).send({ error: "Guest not found for challenge restaurant" });
+    }
 
     try {
       const result = await incrementChallengeProgress(guestId, challengeId);
@@ -153,6 +223,16 @@ export async function gamificationRoutes(app: FastifyInstance) {
   // GET /:guestId/streak — streak info
   app.get("/:guestId/streak", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
 
     try {
       const streak = await getStreak(guestId);

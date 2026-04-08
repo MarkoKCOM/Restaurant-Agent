@@ -3,6 +3,7 @@ import {
   listEngagementJobs,
   checkWinBack,
 } from "../services/engagement.service.js";
+import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
 
 export async function engagementRoutes(app: FastifyInstance) {
   // GET /jobs — list engagement jobs with optional filters
@@ -18,6 +19,11 @@ export async function engagementRoutes(app: FastifyInstance) {
       return { error: "restaurantId query parameter is required" };
     }
 
+    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
     const jobs = await listEngagementJobs({ restaurantId, guestId, status });
     return { jobs };
   });
@@ -29,6 +35,11 @@ export async function engagementRoutes(app: FastifyInstance) {
     if (!restaurantId) {
       reply.code(400);
       return { error: "restaurantId query parameter is required" };
+    }
+
+    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
     }
 
     const result = await checkWinBack(restaurantId);

@@ -3,7 +3,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { restaurants, reservations, tables, guests } from "../db/schema.js";
 import { getDailySummary } from "../services/summary.service.js";
-import { enforceTenant } from "../middleware/auth.js";
+import { enforceTenant, requireOperationalRole, requireRestaurantAdmin } from "../middleware/auth.js";
 
 export async function restaurantRoutes(app: FastifyInstance) {
   // GET / — list all restaurants
@@ -60,7 +60,7 @@ export async function restaurantRoutes(app: FastifyInstance) {
   app.patch("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = request.body as Record<string, unknown>;
-    const err = enforceTenant(request.user!, id);
+    const err = enforceTenant(request.user!, id) ?? requireRestaurantAdmin(request.user!);
     if (err) {
       return reply.status(403).send({ error: err });
     }
@@ -225,7 +225,7 @@ export async function restaurantRoutes(app: FastifyInstance) {
   app.get("/:id/summary", async (request, reply) => {
     const { id } = request.params as { id: string };
     const { date } = request.query as { date?: string };
-    const err = enforceTenant(request.user!, id);
+    const err = enforceTenant(request.user!, id) ?? requireOperationalRole(request.user!);
     if (err) {
       return reply.status(403).send({ error: err });
     }
@@ -344,7 +344,7 @@ export async function restaurantRoutes(app: FastifyInstance) {
   // DELETE /:id/reset-reservations — delete all reservations for this restaurant (testing/pilot)
   app.delete("/:id/reset-reservations", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const err = enforceTenant(request.user!, id);
+    const err = enforceTenant(request.user!, id) ?? requireRestaurantAdmin(request.user!);
     if (err) {
       return reply.status(403).send({ error: err });
     }

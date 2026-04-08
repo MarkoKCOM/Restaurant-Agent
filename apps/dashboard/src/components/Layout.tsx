@@ -26,14 +26,14 @@ const DEFAULT_PAGES = ["today", "reservations", "waitlist", "guests", "settings"
 export function Layout() {
   const { restaurant } = useCurrentRestaurant();
   const { lang, setLang, t } = useLang();
-  const { logout, isSuperAdmin } = useAuth();
+  const { logout, isSuperAdmin, canAccess } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { data: dashboard } = useDashboard(restaurant?.id);
   const { data: reservations } = useReservations({
     restaurantId: restaurant?.id,
     date: todayStr(),
   });
-  const { data: guests } = useGuests(restaurant?.id);
+  const { data: guests } = useGuests(canAccess("guests") ? restaurant?.id : undefined);
   const { data: waitlistEntries } = useWaitlist(restaurant?.id, todayStr());
 
   const config: DashboardConfig = (restaurant as any)?.dashboardConfig ?? {};
@@ -63,9 +63,13 @@ export function Layout() {
     { to: "/help", key: "help", label: t.nav.help, icon: "❓", count: 0 },
   ];
 
-  const navItems = allNavItems.filter((item) =>
-    item.key === "restaurants" ? isSuperAdmin : visiblePages.includes(item.key),
-  );
+  const navItems = allNavItems.filter((item) => {
+    const allowedByRole = item.key === "restaurants"
+      ? isSuperAdmin && canAccess("restaurants")
+      : canAccess(item.key as "today" | "reservations" | "waitlist" | "guests" | "settings" | "help");
+
+    return allowedByRole && (item.key === "restaurants" ? true : visiblePages.includes(item.key));
+  });
 
   // Dynamic accent color style
   const accentStyle = accentColor ? { "--accent": accentColor } as React.CSSProperties : undefined;

@@ -9,7 +9,7 @@ import {
 } from "../services/table.service.js";
 import { db } from "../db/index.js";
 import { tables } from "../db/schema.js";
-import { enforceTenant, resolveRestaurantId } from "../middleware/auth.js";
+import { enforceTenant, requireOperationalRole, requireRestaurantAdmin, resolveRestaurantId } from "../middleware/auth.js";
 
 const createTableSchema = z.object({
   restaurantId: z.string().uuid(),
@@ -33,6 +33,11 @@ export async function tableRoutes(app: FastifyInstance) {
       includeInactive?: string;
     };
 
+    const roleErr = requireOperationalRole(request.user!);
+    if (roleErr) {
+      return reply.status(403).send({ error: roleErr });
+    }
+
     if (restaurantId) {
       const err = enforceTenant(request.user!, restaurantId);
       if (err) {
@@ -53,7 +58,7 @@ export async function tableRoutes(app: FastifyInstance) {
   // POST / — create table
   app.post("/", async (request, reply) => {
     const body = createTableSchema.parse(request.body);
-    const err = enforceTenant(request.user!, body.restaurantId);
+    const err = enforceTenant(request.user!, body.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
       return reply.status(403).send({ error: err });
     }
@@ -85,7 +90,7 @@ export async function tableRoutes(app: FastifyInstance) {
       return { error: "Table not found" };
     }
 
-    const err = enforceTenant(request.user!, tableRow.restaurantId);
+    const err = enforceTenant(request.user!, tableRow.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
       return reply.status(403).send({ error: err });
     }
@@ -113,7 +118,7 @@ export async function tableRoutes(app: FastifyInstance) {
       return { error: "Table not found" };
     }
 
-    const err = enforceTenant(request.user!, tableRow.restaurantId);
+    const err = enforceTenant(request.user!, tableRow.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
       return reply.status(403).send({ error: err });
     }

@@ -15,7 +15,7 @@ import {
 import { getGuestSentimentHistory } from "../services/feedback.service.js";
 import { db } from "../db/index.js";
 import { reservations } from "../db/schema.js";
-import { enforceTenant, resolveRestaurantId } from "../middleware/auth.js";
+import { enforceTenant, requireRestaurantAdmin, resolveRestaurantId } from "../middleware/auth.js";
 
 const updateGuestSchema = z.object({
   preferences: z.record(z.unknown()).optional(),
@@ -28,6 +28,10 @@ export async function guestRoutes(app: FastifyInstance) {
   app.get("/", async (request, reply) => {
     const { restaurantId } = request.query as { restaurantId?: string };
     const user = request.user!;
+    const roleErr = requireRestaurantAdmin(user);
+    if (roleErr) {
+      return reply.status(403).send({ error: roleErr });
+    }
 
     if (restaurantId) {
       const err = enforceTenant(user, restaurantId);
@@ -53,7 +57,7 @@ export async function guestRoutes(app: FastifyInstance) {
       return { error: "Guest not found" };
     }
 
-    const err = enforceTenant(request.user!, row.restaurantId);
+    const err = enforceTenant(request.user!, row.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
       return reply.status(403).send({ error: err });
     }
@@ -77,7 +81,7 @@ export async function guestRoutes(app: FastifyInstance) {
   // POST / — create or find guest
   app.post("/", async (request, reply) => {
     const body = createGuestSchema.parse(request.body) as Parameters<typeof findOrCreateGuest>[0];
-    const err = enforceTenant(request.user!, body.restaurantId);
+    const err = enforceTenant(request.user!, body.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
       return reply.status(403).send({ error: err });
     }
@@ -96,7 +100,7 @@ export async function guestRoutes(app: FastifyInstance) {
       return { error: "Guest not found" };
     }
 
-    const err = enforceTenant(request.user!, guestRow.restaurantId);
+    const err = enforceTenant(request.user!, guestRow.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
       return reply.status(403).send({ error: err });
     }
@@ -119,7 +123,7 @@ export async function guestRoutes(app: FastifyInstance) {
       return { error: "Guest not found" };
     }
 
-    const err = enforceTenant(request.user!, guestRow.restaurantId);
+    const err = enforceTenant(request.user!, guestRow.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
       return reply.status(403).send({ error: err });
     }
@@ -137,7 +141,7 @@ export async function guestRoutes(app: FastifyInstance) {
       return { error: "Guest not found" };
     }
 
-    const err = enforceTenant(request.user!, guestRow.restaurantId);
+    const err = enforceTenant(request.user!, guestRow.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
       return reply.status(403).send({ error: err });
     }
@@ -169,7 +173,7 @@ export async function guestRoutes(app: FastifyInstance) {
       return { error: "Guest not found" };
     }
 
-    const err = enforceTenant(request.user!, guestRow.restaurantId);
+    const err = enforceTenant(request.user!, guestRow.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
       return reply.status(403).send({ error: err });
     }
@@ -193,7 +197,7 @@ export async function guestRoutes(app: FastifyInstance) {
       return { error: "Guest not found" };
     }
 
-    const err = enforceTenant(request.user!, guestRow.restaurantId);
+    const err = enforceTenant(request.user!, guestRow.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
       return reply.status(403).send({ error: err });
     }

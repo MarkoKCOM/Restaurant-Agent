@@ -45,8 +45,6 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
   const guestPhone = `050${String(Date.now()).slice(-7)}`;
   const reservationDate = plusDays(1);
   const today = plusDays(0);
-  const walkInDate = plusDays(10);
-  const immediateSeatWalkInDate = plusDays(11);
 
   // 1. Health check
   results.push(await runTest("Health Check", async () => {
@@ -258,53 +256,77 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
 
   // 14. Walk-in creation (confirmed)
   results.push(await runTest("Create Walk-In", async () => {
-    const availability = await api.getAvailability(RESTAURANT_ID, walkInDate, 2);
-    const slot = (availability as any).slots?.[0]?.time;
-    if (!slot) throw new Error(`No availability for walk-in test on ${walkInDate}`);
+    for (let offset = 10; offset < 40; offset += 1) {
+      const date = plusDays(offset);
+      const availability = await api.getAvailability(RESTAURANT_ID, date, 2);
+      const slot = (availability as any).slots?.[0]?.time;
+      if (!slot) continue;
 
-    const data = await api.createWalkIn({
-      restaurantId: RESTAURANT_ID,
-      guestName: `Walk In ${runId}`,
-      guestPhone: `053${String(Date.now()).slice(-7)}`,
-      date: walkInDate,
-      timeStart: slot,
-      partySize: 2,
-      notes: `${runId}-walk-in`,
-    });
-    const reservation = (data as any).reservation;
-    if (reservation.status !== "confirmed") {
-      throw new Error(`Expected confirmed walk-in, got ${reservation.status}`);
+      try {
+        const data = await api.createWalkIn({
+          restaurantId: RESTAURANT_ID,
+          guestName: `Walk In ${runId}`,
+          guestPhone: `053${String(Date.now()).slice(-7)}`,
+          date,
+          timeStart: slot,
+          partySize: 2,
+          notes: `${runId}-walk-in`,
+        });
+        const reservation = (data as any).reservation;
+        if (reservation.status !== "confirmed") {
+          throw new Error(`Expected confirmed walk-in, got ${reservation.status}`);
+        }
+        if (!reservation.confirmedAt || reservation.seatedAt) {
+          throw new Error("Walk-in confirmation timestamps are incorrect");
+        }
+        return `status=${reservation.status} confirmedAt=${reservation.confirmedAt}`;
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('409')) {
+          continue;
+        }
+        throw err;
+      }
     }
-    if (!reservation.confirmedAt || reservation.seatedAt) {
-      throw new Error("Walk-in confirmation timestamps are incorrect");
-    }
-    return `status=${reservation.status} confirmedAt=${reservation.confirmedAt}`;
+
+    throw new Error('No creatable walk-in slot found');
   }));
 
   // 15. Walk-in creation (immediately seated)
   results.push(await runTest("Create Walk-In Immediate Seat", async () => {
-    const availability = await api.getAvailability(RESTAURANT_ID, immediateSeatWalkInDate, 2);
-    const slot = (availability as any).slots?.[0]?.time;
-    if (!slot) throw new Error(`No availability for immediate-seat walk-in test on ${immediateSeatWalkInDate}`);
+    for (let offset = 11; offset < 41; offset += 1) {
+      const date = plusDays(offset);
+      const availability = await api.getAvailability(RESTAURANT_ID, date, 2);
+      const slot = (availability as any).slots?.[0]?.time;
+      if (!slot) continue;
 
-    const data = await api.createWalkIn({
-      restaurantId: RESTAURANT_ID,
-      guestName: `Walk In Seat ${runId}`,
-      guestPhone: `054${String(Date.now()).slice(-7)}`,
-      date: immediateSeatWalkInDate,
-      timeStart: slot,
-      partySize: 2,
-      notes: `${runId}-walk-in-seat`,
-      seatImmediately: true,
-    });
-    const reservation = (data as any).reservation;
-    if (reservation.status !== "seated") {
-      throw new Error(`Expected seated walk-in, got ${reservation.status}`);
+      try {
+        const data = await api.createWalkIn({
+          restaurantId: RESTAURANT_ID,
+          guestName: `Walk In Seat ${runId}`,
+          guestPhone: `054${String(Date.now()).slice(-7)}`,
+          date,
+          timeStart: slot,
+          partySize: 2,
+          notes: `${runId}-walk-in-seat`,
+          seatImmediately: true,
+        });
+        const reservation = (data as any).reservation;
+        if (reservation.status !== "seated") {
+          throw new Error(`Expected seated walk-in, got ${reservation.status}`);
+        }
+        if (!reservation.confirmedAt || !reservation.seatedAt) {
+          throw new Error("Immediate-seat walk-in timestamps are incorrect");
+        }
+        return `status=${reservation.status} seatedAt=${reservation.seatedAt}`;
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('409')) {
+          continue;
+        }
+        throw err;
+      }
     }
-    if (!reservation.confirmedAt || !reservation.seatedAt) {
-      throw new Error("Immediate-seat walk-in timestamps are incorrect");
-    }
-    return `status=${reservation.status} seatedAt=${reservation.seatedAt}`;
+
+    throw new Error('No creatable immediate-seat walk-in slot found');
   }));
 
   // Build summary

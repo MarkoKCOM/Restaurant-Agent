@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
+import { DASHBOARD_ACCESS_BY_ROLE, type DashboardRole } from "@openseat/domain";
 import { db } from "../db/index.js";
 import { adminUsers, restaurants } from "../db/schema.js";
 import { env } from "../env.js";
@@ -40,12 +41,19 @@ export async function authRoutes(app: FastifyInstance) {
       restaurant = row ?? null;
     }
 
+    if (user.role !== "admin" && user.role !== "employee" && user.role !== "super_admin") {
+      return reply.status(500).send({ error: "Invalid role configuration" });
+    }
+
+    const role: DashboardRole = user.role;
+    const dashboardAccess = DASHBOARD_ACCESS_BY_ROLE[role];
+
     const token = jwt.sign(
       {
         id: user.id,
         email: user.email,
         restaurantId: user.restaurantId ?? null,
-        role: user.role ?? "admin",
+        role,
       },
       env.JWT_SECRET,
       { expiresIn: "24h" },
@@ -53,10 +61,11 @@ export async function authRoutes(app: FastifyInstance) {
 
     return {
       token,
-      role: user.role ?? "admin",
+      role,
       restaurant: restaurant
         ? { id: restaurant.id, name: restaurant.name }
         : null,
+      dashboardAccess,
     };
   });
 }

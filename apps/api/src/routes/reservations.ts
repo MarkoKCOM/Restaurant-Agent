@@ -3,12 +3,14 @@ import { z } from "zod";
 import {
   availabilityQuerySchema,
   createReservationSchema,
+  createWalkInSchema,
 } from "@openseat/domain";
 import { eq } from "drizzle-orm";
 import {
   cancelReservation,
   checkAvailability,
   createReservation,
+  createWalkIn,
   listReservations,
   markNoShow,
   updateReservation,
@@ -29,6 +31,10 @@ const updateReservationSchema = z.object({
   cancellationReason: z.string().nullable().optional(),
 });
 
+function isReservationHttpError(err: unknown): err is Error & { statusCode: number } {
+  return err instanceof Error && typeof (err as any).statusCode === "number";
+}
+
 export async function reservationRoutes(app: FastifyInstance) {
   // GET /availability
   app.get("/availability", async (request) => {
@@ -40,9 +46,39 @@ export async function reservationRoutes(app: FastifyInstance) {
   // POST / — create reservation
   app.post("/", async (request, reply) => {
     const body = createReservationSchema.parse(request.body) as Parameters<typeof createReservation>[0];
-    const reservation = await createReservation(body);
-    reply.code(201);
-    return { reservation };
+
+    try {
+      const reservation = await createReservation(body);
+      reply.code(201);
+      return { reservation };
+    } catch (err) {
+      if (isReservationHttpError(err)) {
+        return reply.status(err.statusCode).send({ error: err.message });
+      }
+      throw err;
+    }
+  });
+
+  // POST /walk-in — owner walk-in creation (authenticated)
+  app.post("/walk-in", async (request, reply) => {
+    const body = createWalkInSchema.parse(request.body);
+    const user = request.user!;
+
+    const err = enforceTenant(user, body.restaurantId);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
+    try {
+      const reservation = await createWalkIn(body);
+      reply.code(201);
+      return { reservation };
+    } catch (error) {
+      if (isReservationHttpError(error)) {
+        return reply.status(error.statusCode).send({ error: error.message });
+      }
+      throw error;
+    }
   });
 
   // GET / — list reservations
@@ -61,8 +97,8 @@ export async function reservationRoutes(app: FastifyInstance) {
     }
 
     const scopedRestaurantId = resolveRestaurantId(user, restaurantId);
-    const reservations = await listReservations({ restaurantId: scopedRestaurantId ?? undefined, date });
-    return { reservations };
+    const reservationList = await listReservations({ restaurantId: scopedRestaurantId ?? undefined, date });
+    return { reservations: reservationList };
   });
 
   // PATCH /:id — update reservation
@@ -85,13 +121,19 @@ export async function reservationRoutes(app: FastifyInstance) {
       return reply.status(403).send({ error: err });
     }
 
-    const updated = await updateReservation(id, body);
-    if (!updated) {
-      reply.code(404);
-      return { error: "Reservation not found" };
+    try {
+      const updated = await updateReservation(id, body);
+      if (!updated) {
+        reply.code(404);
+        return { error: "Reservation not found" };
+      }
+      return { reservation: updated };
+    } catch (e) {
+      if (isReservationHttpError(e)) {
+        return reply.status(e.statusCode).send({ error: e.message });
+      }
+      throw e;
     }
-
-    return { reservation: updated };
   });
 
   // POST /:id/no-show — mark reservation as no-show
@@ -113,13 +155,19 @@ export async function reservationRoutes(app: FastifyInstance) {
       return reply.status(403).send({ error: err });
     }
 
-    const reservation = await markNoShow(id);
-    if (!reservation) {
-      reply.code(404);
-      return { error: "Reservation not found" };
+    try {
+      const reservation = await markNoShow(id);
+      if (!reservation) {
+        reply.code(404);
+        return { error: "Reservation not found" };
+      }
+      return { reservation };
+    } catch (e) {
+      if (isReservationHttpError(e)) {
+        return reply.status(e.statusCode).send({ error: e.message });
+      }
+      throw e;
     }
-
-    return { reservation };
   });
 
   // DELETE /:id — cancel reservation
@@ -142,15 +190,21 @@ export async function reservationRoutes(app: FastifyInstance) {
       return reply.status(403).send({ error: err });
     }
 
-    const result = await cancelReservation(id, reason);
-    if (!result) {
-      reply.code(404);
-      return { error: "Reservation not found" };
+    try {
+      const result = await cancelReservation(id, reason);
+      if (!result) {
+        reply.code(404);
+        return { error: "Reservation not found" };
+      }
+      return {
+        reservation: result.reservation,
+        waitlistMatch: result.waitlistMatch,
+      };
+    } catch (e) {
+      if (isReservationHttpError(e)) {
+        return reply.status(e.statusCode).send({ error: e.message });
+      }
+      throw e;
     }
-
-    return {
-      reservation: result.reservation,
-      waitlistMatch: result.waitlistMatch,
-    };
   });
 }

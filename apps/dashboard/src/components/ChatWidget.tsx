@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLang } from "../i18n.js";
+import { Tooltip } from "./Tooltip.js";
 
 interface Message {
   role: "user" | "assistant";
@@ -9,7 +10,7 @@ interface Message {
 const API = "/api/v1";
 
 export function ChatWidget() {
-  const { lang } = useLang();
+  const { lang, t } = useLang();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -55,7 +56,7 @@ export function ChatWidget() {
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: lang === "he" ? "שגיאה בתקשורת עם הבוט. נסה שוב." : "Error communicating with the bot. Try again." },
+        { role: "assistant", content: t.chat.error },
       ]);
     } finally {
       setLoading(false);
@@ -63,37 +64,69 @@ export function ChatWidget() {
   }
 
   const placeholder = lang === "he" ? "שאל שאלה..." : "Ask a question...";
-  const title = lang === "he" ? "עזרה" : "Help";
   const dir = lang === "he" ? "rtl" : "ltr";
+  const buttonSide = lang === "he" ? "left-4 md:left-6" : "right-4 md:right-6";
+  const panelSide = lang === "he" ? "left-4 md:left-6" : "right-4 md:right-6";
+  const panelTitle = t.chat.title;
+  const panelSubtitle = t.chat.subtitle;
+  const openLabel = t.chat.open;
+  const closeLabel = t.chat.close;
 
   return (
     <>
       {/* Floating button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 left-6 z-50 w-14 h-14 rounded-full bg-amber-600 text-white shadow-lg hover:bg-amber-700 transition-all flex items-center justify-center text-2xl"
-        title={title}
-      >
-        {isOpen ? "\u2715" : "\u2753"}
-      </button>
+      <Tooltip content={isOpen ? closeLabel : openLabel} className={`fixed bottom-4 md:bottom-6 ${buttonSide} z-50`}>
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex h-11 w-11 items-center justify-center gap-2 rounded-full bg-amber-600 px-3 text-white shadow-md ring-1 ring-black/5 transition-all hover:-translate-y-0.5 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300 md:h-10 md:w-auto"
+          title={isOpen ? closeLabel : openLabel}
+          aria-label={isOpen ? closeLabel : openLabel}
+        >
+          {isOpen ? (
+            <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          ) : (
+            <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h8M8 14h5m-6 6l-3 2V6a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H9l-2 2z" />
+            </svg>
+          )}
+          <span className="hidden text-sm font-medium md:inline">{isOpen ? closeLabel : openLabel}</span>
+        </button>
+      </Tooltip>
 
       {/* Chat panel */}
       {isOpen && (
         <div
-          className="fixed bottom-24 left-6 z-50 w-96 max-h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
+          className={`fixed bottom-[4.5rem] md:bottom-20 ${panelSide} z-50 flex max-h-[26rem] w-[min(21rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl`}
           dir={dir}
         >
           {/* Header */}
-          <div className="bg-amber-600 text-white px-4 py-3 flex items-center gap-2">
-            <span className="text-lg">&#x1F916;</span>
-            <span className="font-semibold">OpenSeat {title}</span>
+          <div className="flex items-start justify-between gap-3 bg-amber-600 px-4 py-2.5 text-white">
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-base">🤖</span>
+              <div>
+                <div className="font-semibold leading-tight">{panelTitle}</div>
+                <div className="text-xs text-amber-50/90">{panelSubtitle}</div>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="rounded-full p-1.5 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+              title={closeLabel}
+              aria-label={closeLabel}
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px] max-h-[350px]">
+          <div className="min-h-[160px] max-h-[280px] flex-1 space-y-3 overflow-y-auto p-4">
             {messages.length === 0 && (
               <p className="text-sm text-gray-400 text-center mt-8">
-                {lang === "he" ? "שלום! איך אפשר לעזור?" : "Hi! How can I help?"}
+                {t.chat.emptyState}
               </p>
             )}
             {messages.map((msg, i) => (
@@ -115,7 +148,7 @@ export function ChatWidget() {
             {loading && (
               <div className="flex justify-start">
                 <div className="bg-gray-100 rounded-xl px-3 py-2 text-sm text-gray-500">
-                  {lang === "he" ? "חושב..." : "Thinking..."}
+                  {t.chat.thinking}
                 </div>
               </div>
             )}
@@ -130,7 +163,7 @@ export function ChatWidget() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder={placeholder}
+              placeholder={t.chat.placeholder || placeholder}
               className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               disabled={loading}
             />
@@ -138,8 +171,10 @@ export function ChatWidget() {
               onClick={handleSend}
               disabled={loading || !input.trim()}
               className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50 transition-colors"
+              title={t.chat.send}
+              aria-label={t.chat.send}
             >
-              {lang === "he" ? "שלח" : "Send"}
+              {t.chat.send}
             </button>
           </div>
         </div>

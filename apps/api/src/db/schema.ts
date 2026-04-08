@@ -148,6 +148,11 @@ export const reservations = pgTable("reservations", {
   cancellationReason: text("cancellation_reason"),
   confirmationSentAt: timestamp("confirmation_sent_at"),
   reminderSentAt: timestamp("reminder_sent_at"),
+  confirmedAt: timestamp("confirmed_at"),
+  seatedAt: timestamp("seated_at"),
+  completedAt: timestamp("completed_at"),
+  cancelledAt: timestamp("cancelled_at"),
+  noShowAt: timestamp("no_show_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

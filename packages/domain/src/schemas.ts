@@ -26,6 +26,18 @@ export const createGuestSchema = z.object({
   source: z.enum(["whatsapp", "web", "walk_in", "referral", "telegram"]).default("web"),
 });
 
+export const createWalkInSchema = z.object({
+  restaurantId: z.string().uuid(),
+  guestName: z.string().min(1),
+  guestPhone: z.string().min(5),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  timeStart: z.string().regex(/^\d{2}:\d{2}$/),
+  partySize: z.coerce.number().int().min(1).max(50),
+  notes: z.string().optional(),
+  seatImmediately: z.boolean().default(false),
+});
+
 export type CreateReservationInput = z.infer<typeof createReservationSchema>;
 export type AvailabilityQuery = z.infer<typeof availabilityQuerySchema>;
-export type CreateGuestInput = z.infer<typeof createGuestSchema>;
+export type CreateGuestInput = z.input<typeof createGuestSchema>;
+export type CreateWalkInInput = z.infer<typeof createWalkInSchema>;

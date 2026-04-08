@@ -8,6 +8,7 @@ import type {
   AvailabilityQuery,
   AvailabilitySlot,
   CreateReservationInput,
+  CreateWalkInInput,
   Reservation as DomainReservation,
 } from "@openseat/domain";
 import { findOrCreateGuest, toDomainGuest, refreshVisitAutoTags, type GuestRow } from "./guest.service.js";
@@ -20,6 +21,39 @@ import { onVisitCompleted } from "./loyalty.service.js";
 
 export type ReservationRow = InferSelectModel<typeof reservations>;
 
+type ReservationHttpError = Error & { statusCode: number };
+
+// ── Status transition rules ────────────────────────────
+
+const VALID_TRANSITIONS: Partial<Record<ReservationRow["status"], ReservationRow["status"][]>> = {
+  pending: ["confirmed", "cancelled"],
+  confirmed: ["seated", "cancelled", "no_show"],
+  seated: ["completed", "cancelled"],
+};
+
+function makeReservationError(message: string, statusCode = 400): ReservationHttpError {
+  const err = new Error(message) as ReservationHttpError;
+  err.statusCode = statusCode;
+  return err;
+}
+
+/** Throws a 409 error if the transition is not allowed. */
+export function assertValidTransition(
+  from: ReservationRow["status"],
+  to: ReservationRow["status"],
+): void {
+  if (from === to) return;
+  const allowed = VALID_TRANSITIONS[from];
+  if (!allowed || !allowed.includes(to)) {
+    throw makeReservationError(
+      `Cannot transition reservation from "${from}" to "${to}"`,
+      409,
+    );
+  }
+}
+
+// ── Constants ──────────────────────────────────────────
+
 const ACTIVE_RESERVATION_STATUSES: ReservationRow["status"][] = [
   "pending",
   "confirmed",
@@ -28,6 +62,8 @@ const ACTIVE_RESERVATION_STATUSES: ReservationRow["status"][] = [
 
 const DEFAULT_RESERVATION_DURATION_MINUTES = 120;
 const SLOT_INTERVAL_MINUTES = 30;
+
+// ── Helpers ────────────────────────────────────────────
 
 function timeStringToMinutes(time: string): number {
   const [hours, minutes] = time.split(":").map(Number);
@@ -53,6 +89,117 @@ function computeReservationEnd(
 ): string {
   const start = timeStringToMinutes(timeStart);
   return minutesToTimeString(start + durationMinutes);
+}
+
+function getJerusalemTodayString(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jerusalem",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  if (!year || !month || !day) {
+    throw new Error("Failed to compute Jerusalem date");
+  }
+
+  return `${year}-${month}-${day}`;
+}
+
+type RestaurantRow = InferSelectModel<typeof restaurants>;
+type OperatingHoursWindow = {
+  dayKey: string;
+  open: string;
+  close: string;
+  openMinutes: number;
+  closeMinutes: number;
+};
+
+async function getRestaurantOrThrow(restaurantId: string): Promise<RestaurantRow> {
+  const [restaurant] = await db
+    .select()
+    .from(restaurants)
+    .where(eq(restaurants.id, restaurantId))
+    .limit(1);
+
+  if (!restaurant) {
+    throw makeReservationError("Restaurant not found", 404);
+  }
+
+  return restaurant;
+}
+
+function getOperatingHoursWindow(restaurant: RestaurantRow, date: string): OperatingHoursWindow {
+  const dayKey = getDayKey(date);
+  const operatingHours = (restaurant.operatingHours as unknown as Record<
+    string,
+    { open: string; close: string } | null
+  >) ?? {};
+  const dayHours = operatingHours[dayKey];
+
+  if (!dayHours) {
+    throw makeReservationError(
+      `Restaurant is closed on ${dayKey}. No operating hours defined for this day.`,
+      400,
+    );
+  }
+
+  const openMinutes = timeStringToMinutes(dayHours.open);
+  let closeMinutes = timeStringToMinutes(dayHours.close);
+  if (closeMinutes <= openMinutes) {
+    closeMinutes += 24 * 60;
+  }
+
+  return {
+    dayKey,
+    open: dayHours.open,
+    close: dayHours.close,
+    openMinutes,
+    closeMinutes,
+  };
+}
+
+function assertReservationDateIsNotPast(date: string): void {
+  if (date < getJerusalemTodayString()) {
+    throw makeReservationError("Cannot create a reservation for a date in the past", 400);
+  }
+}
+
+function assertReservationWithinOperatingHours(timeStart: string, window: OperatingHoursWindow): void {
+  let requestedStartMinutes = timeStringToMinutes(timeStart);
+  if (requestedStartMinutes < window.openMinutes) {
+    requestedStartMinutes += 24 * 60;
+  }
+
+  const requestedEndMinutes = requestedStartMinutes + DEFAULT_RESERVATION_DURATION_MINUTES;
+
+  if (requestedStartMinutes < window.openMinutes || requestedEndMinutes > window.closeMinutes) {
+    throw makeReservationError(
+      `Requested time ${timeStart} is outside operating hours (${window.open}–${window.close}) for ${window.dayKey}.`,
+      400,
+    );
+  }
+}
+
+function buildLifecycleTimestamps(
+  existing: Pick<ReservationRow, "status" | "confirmedAt" | "seatedAt" | "completedAt" | "cancelledAt" | "noShowAt">,
+  nextStatus: ReservationRow["status"],
+  now: Date,
+) {
+  assertValidTransition(existing.status, nextStatus);
+
+  return {
+    status: nextStatus,
+    confirmedAt: (nextStatus === "confirmed" && !existing.confirmedAt) ? now : existing.confirmedAt,
+    seatedAt: (nextStatus === "seated" && !existing.seatedAt) ? now : existing.seatedAt,
+    completedAt: (nextStatus === "completed" && !existing.completedAt) ? now : existing.completedAt,
+    cancelledAt: (nextStatus === "cancelled" && !existing.cancelledAt) ? now : existing.cancelledAt,
+    noShowAt: (nextStatus === "no_show" && !existing.noShowAt) ? now : existing.noShowAt,
+  };
 }
 
 function rangesOverlap(startA: number, endA: number, startB: number, endB: number): boolean {
@@ -112,8 +259,15 @@ function toDomainReservation(row: ReservationRow, guestRow?: GuestRow): DomainRe
     source: row.source,
     notes: row.notes ?? undefined,
     guest: guestRow ? toDomainGuest(guestRow) : undefined,
+    confirmedAt: row.confirmedAt?.toISOString() ?? undefined,
+    seatedAt: row.seatedAt?.toISOString() ?? undefined,
+    completedAt: row.completedAt?.toISOString() ?? undefined,
+    cancelledAt: row.cancelledAt?.toISOString() ?? undefined,
+    noShowAt: row.noShowAt?.toISOString() ?? undefined,
   };
 }
+
+// ── Public service functions ───────────────────────────
 
 export async function checkAvailability(
   input: AvailabilityQuery,
@@ -141,7 +295,6 @@ export async function checkAvailability(
 
   const openMinutes = timeStringToMinutes(dayHours.open);
   let closeMinutes = timeStringToMinutes(dayHours.close);
-  // Handle overnight hours (e.g. open 17:30, close 01:00)
   if (closeMinutes <= openMinutes) {
     closeMinutes += 24 * 60;
   }
@@ -189,60 +342,11 @@ export async function checkAvailability(
 export async function createReservation(
   input: CreateReservationInput,
 ): Promise<DomainReservation> {
-  // Reject dates in the past (Asia/Jerusalem timezone)
-  const nowInJerusalem = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }),
-  );
-  const todayStr = [
-    nowInJerusalem.getFullYear(),
-    String(nowInJerusalem.getMonth() + 1).padStart(2, "0"),
-    String(nowInJerusalem.getDate()).padStart(2, "0"),
-  ].join("-");
+  assertReservationDateIsNotPast(input.date);
 
-  if (input.date < todayStr) {
-    throw new Error("Cannot create a reservation for a date in the past");
-  }
-
-  // Operating hours enforcement
-  const [restaurant] = await db
-    .select()
-    .from(restaurants)
-    .where(eq(restaurants.id, input.restaurantId))
-    .limit(1);
-
-  if (!restaurant) {
-    throw new Error("Restaurant not found");
-  }
-
-  const dayKey = getDayKey(input.date);
-  const operatingHours = (restaurant.operatingHours as unknown as Record<
-    string,
-    { open: string; close: string } | null
-  >) ?? {};
-  const dayHours = operatingHours[dayKey];
-
-  if (!dayHours) {
-    throw new Error(`Restaurant is closed on ${dayKey}. No operating hours defined for this day.`);
-  }
-
-  let requestedStartMinutes = timeStringToMinutes(input.timeStart);
-  const openMinutes = timeStringToMinutes(dayHours.open);
-  let closeMinutes = timeStringToMinutes(dayHours.close);
-  // Handle overnight hours (e.g. open 17:30, close 01:00)
-  if (closeMinutes <= openMinutes) {
-    closeMinutes += 24 * 60;
-  }
-  // Handle late-night bookings (e.g. 00:30 when open is 17:30)
-  if (requestedStartMinutes < openMinutes) {
-    requestedStartMinutes += 24 * 60;
-  }
-  const requestedEndMinutes = requestedStartMinutes + DEFAULT_RESERVATION_DURATION_MINUTES;
-
-  if (requestedStartMinutes < openMinutes || requestedEndMinutes > closeMinutes) {
-    throw new Error(
-      `Requested time ${input.timeStart} is outside operating hours (${dayHours.open}–${dayHours.close}) for ${dayKey}.`,
-    );
-  }
+  const restaurant = await getRestaurantOrThrow(input.restaurantId);
+  const operatingWindow = getOperatingHoursWindow(restaurant, input.date);
+  assertReservationWithinOperatingHours(input.timeStart, operatingWindow);
 
   const guestSource =
     input.source === "phone" || !input.source ? "web" as const : input.source;
@@ -270,15 +374,16 @@ export async function createReservation(
   );
 
   if (availableTables.length === 0) {
-    throw new Error("No tables available for requested time");
+    throw makeReservationError("No tables available for requested time", 409);
   }
 
   const tableIds = pickBestTablesForParty(availableTables, input.partySize);
   if (!tableIds) {
-    throw new Error("No suitable table combination found for party size");
+    throw makeReservationError("No suitable table combination found for party size", 409);
   }
 
   const timeEnd = computeReservationEnd(input.timeStart);
+  const now = new Date();
 
   const [inserted] = await db
     .insert(reservations)
@@ -293,6 +398,7 @@ export async function createReservation(
       status: "confirmed",
       source: input.source ?? "web",
       notes: input.notes,
+      confirmedAt: now,
     })
     .returning();
 
@@ -300,7 +406,6 @@ export async function createReservation(
     throw new Error("Failed to create reservation");
   }
 
-  // Schedule reminder 3 hours before reservation
   try {
     const resDateTime = new Date(`${input.date}T${input.timeStart}:00`);
     const reminderTime = new Date(resDateTime.getTime() - 3 * 60 * 60 * 1000);
@@ -322,6 +427,97 @@ export async function createReservation(
     }
   } catch {
     // Non-critical — don't fail reservation if reminder scheduling fails
+  }
+
+  return toDomainReservation(inserted, guestRow);
+}
+
+export async function createWalkIn(
+  input: CreateWalkInInput,
+): Promise<DomainReservation> {
+  assertReservationDateIsNotPast(input.date);
+
+  const restaurant = await getRestaurantOrThrow(input.restaurantId);
+  const operatingWindow = getOperatingHoursWindow(restaurant, input.date);
+  assertReservationWithinOperatingHours(input.timeStart, operatingWindow);
+
+  const guestRow = await findOrCreateGuest({
+    restaurantId: input.restaurantId,
+    name: input.guestName,
+    phone: input.guestPhone,
+    email: undefined,
+    source: "walk_in",
+  });
+
+  const dayReservations = await getReservationsForDay(input.restaurantId, input.date);
+  const allTables = await getActiveTablesForRestaurant(input.restaurantId);
+
+  const startMinutes = timeStringToMinutes(input.timeStart);
+  const endMinutes = startMinutes + DEFAULT_RESERVATION_DURATION_MINUTES;
+
+  const availableTables = filterAvailableTablesForSlot(
+    allTables,
+    dayReservations,
+    startMinutes,
+    endMinutes,
+  );
+
+  if (availableTables.length === 0) {
+    throw makeReservationError("No tables available for requested time", 409);
+  }
+
+  const tableIds = pickBestTablesForParty(availableTables, input.partySize);
+  if (!tableIds) {
+    throw makeReservationError("No suitable table combination found for party size", 409);
+  }
+
+  const timeEnd = computeReservationEnd(input.timeStart);
+  const now = new Date();
+  const status: ReservationRow["status"] = input.seatImmediately ? "seated" : "confirmed";
+
+  const [inserted] = await db
+    .insert(reservations)
+    .values({
+      restaurantId: input.restaurantId,
+      guestId: guestRow.id,
+      date: input.date,
+      timeStart: input.timeStart,
+      timeEnd,
+      partySize: input.partySize,
+      tableIds,
+      status,
+      source: "walk_in",
+      notes: input.notes,
+      confirmedAt: now,
+      seatedAt: input.seatImmediately ? now : undefined,
+    })
+    .returning();
+
+  if (!inserted) {
+    throw new Error("Failed to create walk-in reservation");
+  }
+
+  try {
+    const resDateTime = new Date(`${input.date}T${input.timeStart}:00`);
+    const reminderTime = new Date(resDateTime.getTime() - 3 * 60 * 60 * 1000);
+    const delay = reminderTime.getTime() - Date.now();
+    if (delay > 0) {
+      await reminderQueue.add(
+        "reminder",
+        {
+          reservationId: inserted.id,
+          restaurantId: input.restaurantId,
+          guestId: guestRow.id,
+          guestPhone: guestRow.phone,
+          date: input.date,
+          timeStart: input.timeStart,
+          partySize: input.partySize,
+        },
+        { delay, jobId: `reminder-${inserted.id}` },
+      );
+    }
+  } catch {
+    // Non-critical — don't fail walk-in creation if reminder scheduling fails
   }
 
   return toDomainReservation(inserted, guestRow);
@@ -386,6 +582,8 @@ export async function updateReservation(
   const existing = await getReservationRowById(id);
   if (!existing) return null;
 
+  const newStatus = input.status ?? existing.status;
+
   const newDate = input.date ?? existing.date;
   const newTimeStart = input.timeStart ?? existing.timeStart;
   const newPartySize = input.partySize ?? existing.partySize;
@@ -420,7 +618,8 @@ export async function updateReservation(
 
   const timeEnd = computeReservationEnd(newTimeStart);
 
-  const newStatus = input.status ?? existing.status;
+  const now = new Date();
+  const lifecycle = buildLifecycleTimestamps(existing, newStatus, now);
 
   const [updated] = await db
     .update(reservations)
@@ -430,20 +629,30 @@ export async function updateReservation(
       timeEnd,
       partySize: newPartySize,
       tableIds: newTableIds,
-      status: newStatus,
+      ...lifecycle,
       notes: input.notes ?? existing.notes,
       cancellationReason:
         input.cancellationReason !== undefined
           ? input.cancellationReason
           : existing.cancellationReason,
-      updatedAt: new Date(),
+      updatedAt: now,
     })
     .where(eq(reservations.id, id))
     .returning();
 
   if (!updated) return null;
 
-  // Track visit completion: increment visitCount and update lastVisitDate
+  if (newStatus === "no_show" && existing.status !== "no_show") {
+    await db
+      .update(guestsTable)
+      .set({
+        noShowCount: sql`${guestsTable.noShowCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(guestsTable.id, updated.guestId));
+  }
+
+  // Increment visitCount/loyalty only on entry to completed
   if (newStatus === "completed" && existing.status !== "completed") {
     const today = new Date().toISOString().slice(0, 10);
     await db
@@ -455,26 +664,23 @@ export async function updateReservation(
       })
       .where(eq(guestsTable.id, updated.guestId));
 
-    // Auto-tag guest based on new visit count
     try {
       await refreshVisitAutoTags(updated.guestId);
     } catch {
-      // Non-critical — don't fail reservation update if auto-tagging fails
+      // Non-critical
     }
 
-    // Loyalty: award points, check stamp card, evaluate tier
     try {
       await onVisitCompleted(updated.guestId, updated.restaurantId, updated.id);
     } catch {
-      // Non-critical — don't fail reservation update if loyalty processing fails
+      // Non-critical
     }
 
-    // Engagement: schedule post-visit thank-you and review request
     try {
       await scheduleThankYou(updated.guestId, updated.restaurantId, updated.id);
       await scheduleReviewRequest(updated.guestId, updated.restaurantId, updated.id);
     } catch {
-      // Non-critical — don't fail reservation update if engagement scheduling fails
+      // Non-critical
     }
   }
 
@@ -494,23 +700,24 @@ export async function cancelReservation(
   reservation: DomainReservation;
   waitlistMatch?: { id: string; guestName: string; guestPhone: string };
 } | null> {
-  // Get the reservation before cancelling so we have slot details
   const existing = await getReservationRowById(id);
   if (!existing) return null;
+
+  const now = new Date();
+  const lifecycle = buildLifecycleTimestamps(existing, "cancelled", now);
 
   const [updated] = await db
     .update(reservations)
     .set({
-      status: "cancelled",
+      ...lifecycle,
       cancellationReason: reason ?? null,
-      updatedAt: new Date(),
+      updatedAt: now,
     })
     .where(eq(reservations.id, id))
     .returning();
 
   if (!updated) return null;
 
-  // Remove scheduled reminder
   try { await reminderQueue.remove(`reminder-${id}`); } catch { /* ignore */ }
 
   const [guestRow] = await db
@@ -521,7 +728,6 @@ export async function cancelReservation(
 
   const reservation = toDomainReservation(updated, guestRow);
 
-  // Auto-match waitlist: find guests waiting for this slot
   let waitlistMatch: { id: string; guestName: string; guestPhone: string } | undefined;
   try {
     const { matchWaitlist, offerSlot } = await import("./waitlist.service.js");
@@ -535,7 +741,6 @@ export async function cancelReservation(
     );
     if (matches.length > 0) {
       const firstMatch = matches[0]!;
-      // Auto-offer to the first match
       await offerSlot(firstMatch.id);
       waitlistMatch = {
         id: firstMatch.id,
@@ -544,7 +749,7 @@ export async function cancelReservation(
       };
     }
   } catch {
-    // Non-critical — don't fail cancellation if waitlist matching fails
+    // Non-critical
   }
 
   return { reservation, waitlistMatch };
@@ -554,25 +759,30 @@ export async function markNoShow(id: string): Promise<DomainReservation | null> 
   const existing = await getReservationRowById(id);
   if (!existing) return null;
 
+  const now = new Date();
+  const lifecycle = buildLifecycleTimestamps(existing, "no_show", now);
+
   const [updated] = await db
     .update(reservations)
     .set({
-      status: "no_show",
-      updatedAt: new Date(),
+      ...lifecycle,
+      updatedAt: now,
     })
     .where(eq(reservations.id, id))
     .returning();
 
   if (!updated) return null;
 
-  // Increment guest noShowCount
-  await db
-    .update(guestsTable)
-    .set({
-      noShowCount: sql`${guestsTable.noShowCount} + 1`,
-      updatedAt: new Date(),
-    })
-    .where(eq(guestsTable.id, updated.guestId));
+  // Increment noShowCount only on entry to no_show
+  if (existing.status !== "no_show") {
+    await db
+      .update(guestsTable)
+      .set({
+        noShowCount: sql`${guestsTable.noShowCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(guestsTable.id, updated.guestId));
+  }
 
   const [guestRow] = await db
     .select()

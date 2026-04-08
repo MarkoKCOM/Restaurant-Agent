@@ -115,7 +115,7 @@ for (const status of ["confirmed", "seated", "completed"]) {
 const loyalty = await request(`/api/v1/loyalty/${reservation.guestId}/balance`, { token });
 record("loyalty.balance", { pointsBalance: loyalty.pointsBalance, tier: loyalty.tier, visits: loyalty.stampCard?.visits });
 
-const tableStatus = await request(`/api/v1/restaurants/${restaurantId}/table-status`);
+const tableStatus = await request(`/api/v1/restaurants/${restaurantId}/table-status`, { token });
 record("restaurants.table-status", { tableCount: tableStatus.length });
 
 const fullProfileBeforeVisit = await request(`/api/v1/guests/${reservation.guestId}/full-profile`, { token });

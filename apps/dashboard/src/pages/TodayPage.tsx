@@ -366,6 +366,8 @@ export function TodayPage() {
                         {r.status === "pending" && (
                           <button
                             onClick={() => handleStatusChange(r.id, "confirmed")}
+                            title={t.today.confirm}
+                            aria-label={t.today.confirm}
                             className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                           >
                             {t.today.confirm}
@@ -374,6 +376,8 @@ export function TodayPage() {
                         {r.status === "confirmed" && (
                           <button
                             onClick={() => handleStatusChange(r.id, "seated")}
+                            title={t.today.seat}
+                            aria-label={t.today.seat}
                             className="text-xs px-2 py-1 rounded bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
                           >
                             {t.today.seat}
@@ -382,6 +386,8 @@ export function TodayPage() {
                         {r.status === "seated" && (
                           <button
                             onClick={() => handleStatusChange(r.id, "completed")}
+                            title={t.today.complete}
+                            aria-label={t.today.complete}
                             className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
                           >
                             {t.today.complete}
@@ -390,6 +396,8 @@ export function TodayPage() {
                         {(r.status === "pending" || r.status === "confirmed") && (
                           <button
                             onClick={() => handleStatusChange(r.id, "cancelled")}
+                            title={t.today.cancel}
+                            aria-label={t.today.cancel}
                             className="text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
                           >
                             {t.today.cancel}
@@ -398,6 +406,8 @@ export function TodayPage() {
                         {(r.status === "confirmed" || r.status === "seated") && (
                           <button
                             onClick={() => handleNoShow(r.id)}
+                            title={t.today.markNoShow}
+                            aria-label={t.today.markNoShow}
                             className="text-xs px-2 py-1 rounded bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
                           >
                             {t.today.markNoShow}
@@ -441,6 +451,8 @@ export function TodayPage() {
                     {r.status === "pending" && (
                       <button
                         onClick={() => handleStatusChange(r.id, "confirmed")}
+                        title={t.today.confirm}
+                        aria-label={t.today.confirm}
                         className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                       >
                         {t.today.confirm}
@@ -449,6 +461,8 @@ export function TodayPage() {
                     {r.status === "confirmed" && (
                       <button
                         onClick={() => handleStatusChange(r.id, "seated")}
+                        title={t.today.seat}
+                        aria-label={t.today.seat}
                         className="text-xs px-2 py-1 rounded bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
                       >
                         {t.today.seat}
@@ -457,6 +471,8 @@ export function TodayPage() {
                     {r.status === "seated" && (
                       <button
                         onClick={() => handleStatusChange(r.id, "completed")}
+                        title={t.today.complete}
+                        aria-label={t.today.complete}
                         className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
                       >
                         {t.today.complete}
@@ -465,6 +481,8 @@ export function TodayPage() {
                     {(r.status === "pending" || r.status === "confirmed") && (
                       <button
                         onClick={() => handleStatusChange(r.id, "cancelled")}
+                        title={t.today.cancel}
+                        aria-label={t.today.cancel}
                         className="text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
                       >
                         {t.today.cancel}
@@ -473,6 +491,8 @@ export function TodayPage() {
                     {(r.status === "confirmed" || r.status === "seated") && (
                       <button
                         onClick={() => handleNoShow(r.id)}
+                        title={t.today.markNoShow}
+                        aria-label={t.today.markNoShow}
                         className="text-xs px-2 py-1 rounded bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
                       >
                         {t.today.markNoShow}

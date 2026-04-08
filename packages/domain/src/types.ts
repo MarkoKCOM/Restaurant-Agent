@@ -89,6 +89,11 @@ export interface Reservation {
   source: "whatsapp" | "web" | "walk_in" | "phone" | "telegram";
   notes?: string;
   guest?: Guest;
+  confirmedAt?: string;
+  seatedAt?: string;
+  completedAt?: string;
+  cancelledAt?: string;
+  noShowAt?: string;
 }
 
 export type ReservationStatus =

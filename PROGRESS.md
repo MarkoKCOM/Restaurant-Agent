@@ -1,5 +1,39 @@
 # Progress Log
 
+## 2026-04-08 (Reservation lifecycle ops + walk-in flow)
+
+### Added
+- OpenSpec change `openspec/changes/reservation-lifecycle-ops/` with proposal, design, tasks, and capability updates for lifecycle timestamps, guided status actions, and walk-in operations.
+- Reservation lifecycle timestamps across the stack:
+  - DB columns: `confirmed_at`, `seated_at`, `completed_at`, `cancelled_at`, `no_show_at`
+  - shared domain types/schemas now expose lifecycle metadata to API + dashboard
+  - reservation service now records timestamps through a centralized transition flow
+- Authenticated owner walk-in API: `POST /api/v1/reservations/walk-in`
+- Dashboard owner workflow improvements:
+  - guided lifecycle action buttons instead of free-form status edits
+  - lifecycle history + source labels in reservation detail
+  - Today view status controls aligned with backend rules
+  - walk-in creation flow, including immediate seating
+- E2E coverage additions for:
+  - lifecycle timestamp assertions on confirm/seat/complete
+  - both no-show paths (`POST /no-show` and `PATCH status=no_show`) including guest no-show counter updates
+  - walk-in creation with and without immediate seating
+
+### Fixed
+- Reservations dashboard submit flow now calls the dedicated walk-in mutation instead of sending an invalid generic reservation payload.
+- `scripts/api-reliability-smoke.mjs` now authenticates the table-status request so the API Smoke workflow matches the protected route behavior.
+- Reservation lifecycle UI typing issues in `reservationLifecycle.ts` / `ReservationsPage.tsx` uncovered during verification.
+
+### Verified
+- `pnpm --filter @openseat/domain build`
+- `pnpm --filter @openseat/api type-check`
+- `pnpm --filter @openseat/dashboard type-check`
+- `pnpm --filter @openseat/api build`
+- `pnpm --filter @openseat/dashboard build`
+- `pnpm --filter @openseat/e2e type-check`
+- `OPENSEAT_API_URL=http://localhost:3102 pnpm --filter @openseat/e2e test` -> 21/21 passed
+- `OPENSEAT_API_URL=http://localhost:3102 node scripts/api-reliability-smoke.mjs` passed against a temp API after applying local SQL migration `0005_reservation_lifecycle_timestamps.sql`
+
 ## 2026-04-07 (Super-admin dashboard + tenant enforcement)
 
 ### Added

@@ -52,6 +52,14 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
   return res;
 }
 
+async function getErrorMessage(res: Response): Promise<string> {
+  const payload = await res.json().catch(() => null) as
+    | { error?: string; message?: string }
+    | null;
+
+  return payload?.error ?? payload?.message ?? `API error: ${res.status}`;
+}
+
 // --- Restaurant ---
 
 export interface AdminRestaurantListItem {
@@ -158,7 +166,7 @@ export function useUpdateReservation() {
         method: "PATCH",
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      if (!res.ok) throw new Error(await getErrorMessage(res));
       return res.json();
     },
     onSuccess: () => {
@@ -199,7 +207,7 @@ export function useMarkNoShow() {
       const res = await fetchWithAuth(`${API}/reservations/${id}/no-show`, {
         method: "POST",
       });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      if (!res.ok) throw new Error(await getErrorMessage(res));
       return res.json();
     },
     onSuccess: () => {
@@ -218,7 +226,7 @@ export function useCancelReservation() {
       const res = await fetchWithAuth(`${API}/reservations/${id}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      if (!res.ok) throw new Error(await getErrorMessage(res));
       return res.json();
     },
     onSuccess: () => {
@@ -247,15 +255,40 @@ export function useCreateReservation() {
         method: "POST",
         body: JSON.stringify(data),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: `API error: ${res.status}` }));
-        throw new Error(err.error ?? err.message ?? `API error: ${res.status}`);
-      }
+      if (!res.ok) throw new Error(await getErrorMessage(res));
       return res.json();
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["reservations"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useCreateWalkIn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      restaurantId: string;
+      guestName: string;
+      guestPhone: string;
+      date: string;
+      timeStart: string;
+      partySize: number;
+      notes?: string;
+      seatImmediately?: boolean;
+    }) => {
+      const res = await fetchWithAuth(`${API}/reservations/walk-in`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(await getErrorMessage(res));
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reservations"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["tableStatus"] });
     },
   });
 }

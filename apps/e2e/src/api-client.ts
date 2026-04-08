@@ -116,9 +116,28 @@ export async function updateReservation(id: string, data: Record<string, unknown
   return request(`/api/v1/reservations/${id}`, { method: "PATCH", token, body: data });
 }
 
+export async function markNoShow(id: string) {
+  const token = await getToken();
+  return request(`/api/v1/reservations/${id}/no-show`, { method: "POST", token });
+}
+
 export async function cancelReservation(id: string) {
   const token = await getToken();
   return request(`/api/v1/reservations/${id}`, { method: "DELETE", token });
+}
+
+export async function createWalkIn(data: {
+  restaurantId: string;
+  guestName: string;
+  guestPhone: string;
+  date: string;
+  timeStart: string;
+  partySize: number;
+  notes?: string;
+  seatImmediately?: boolean;
+}) {
+  const token = await getToken();
+  return request("/api/v1/reservations/walk-in", { method: "POST", token, body: data });
 }
 
 export async function listGuests(restaurantId: string) {

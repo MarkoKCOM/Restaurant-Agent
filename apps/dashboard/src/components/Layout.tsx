@@ -6,6 +6,7 @@ import { useLang } from "../i18n.js";
 import { useAuth } from "../hooks/useAuth.js";
 import type { DashboardConfig } from "@openseat/domain";
 import { ChatWidget } from "./ChatWidget.js";
+import { Tooltip } from "./Tooltip.js";
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -79,6 +80,8 @@ export function Layout() {
         <button
           onClick={() => setSidebarOpen(true)}
           className="p-2 -ml-2 text-gray-600 hover:text-gray-900"
+          title={lang === "he" ? "פתח תפריט" : "Open menu"}
+          aria-label={lang === "he" ? "פתח תפריט" : "Open menu"}
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -90,6 +93,8 @@ export function Layout() {
         <button
           onClick={() => setLang(lang === "he" ? "en" : "he")}
           className="p-2 -mr-2 text-gray-600 hover:text-gray-900 text-sm"
+          title={lang === "he" ? "Switch to English" : "החלף לעברית"}
+          aria-label={lang === "he" ? "Switch to English" : "החלף לעברית"}
         >
           🌐
         </button>
@@ -112,6 +117,8 @@ export function Layout() {
           <button
             onClick={() => setSidebarOpen(false)}
             className="md:hidden p-1 text-gray-400 hover:text-gray-600"
+            title={lang === "he" ? "סגור תפריט" : "Close menu"}
+            aria-label={lang === "he" ? "סגור תפריט" : "Close menu"}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -134,39 +141,50 @@ export function Layout() {
         </div>
         <nav className="space-y-1 flex-1">
           {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive ? activeClass : "text-gray-600 hover:bg-gray-100"
-                }`
-              }
-            >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
-              <CountBadge count={item.count} />
-            </NavLink>
+            <Tooltip key={item.to} content={item.label} className="flex w-full">
+              <NavLink
+                to={item.to}
+                onClick={() => setSidebarOpen(false)}
+                title={item.label}
+                aria-label={item.label}
+                className={({ isActive }) =>
+                  `flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isActive ? activeClass : "text-gray-600 hover:bg-gray-100"
+                  }`
+                }
+              >
+                <span>{item.icon}</span>
+                <span>{item.label}</span>
+                <CountBadge count={item.count} />
+              </NavLink>
+            </Tooltip>
           ))}
         </nav>
 
         {/* Bottom controls */}
         <div className="border-t border-gray-200 pt-3 space-y-2">
-          <button
-            onClick={() => setLang(lang === "he" ? "en" : "he")}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
-          >
-            <span>🌐</span>
-            <span>{lang === "he" ? "English" : "עברית"}</span>
-          </button>
-          <button
-            onClick={logout}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
-          >
-            <span>🚪</span>
-            <span>{t.nav.logout}</span>
-          </button>
+          <Tooltip content={lang === "he" ? "Switch to English" : "החלף לעברית"} className="flex w-full">
+            <button
+              onClick={() => setLang(lang === "he" ? "en" : "he")}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+              title={lang === "he" ? "Switch to English" : "החלף לעברית"}
+              aria-label={lang === "he" ? "Switch to English" : "החלף לעברית"}
+            >
+              <span>🌐</span>
+              <span>{lang === "he" ? "English" : "עברית"}</span>
+            </button>
+          </Tooltip>
+          <Tooltip content={t.nav.logout} className="flex w-full">
+            <button
+              onClick={logout}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+              title={t.nav.logout}
+              aria-label={t.nav.logout}
+            >
+              <span>🚪</span>
+              <span>{t.nav.logout}</span>
+            </button>
+          </Tooltip>
         </div>
       </aside>
 

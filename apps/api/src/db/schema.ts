@@ -28,6 +28,7 @@ export const reservationSourceEnum = pgEnum("reservation_source", [
   "web",
   "walk_in",
   "phone",
+  "telegram",
 ]);
 export const waitlistStatusEnum = pgEnum("waitlist_status", [
   "waiting",
@@ -40,6 +41,7 @@ export const guestSourceEnum = pgEnum("guest_source", [
   "web",
   "walk_in",
   "referral",
+  "telegram",
 ]);
 export const languageEnum = pgEnum("language", ["he", "en", "ar", "ru"]);
 export const tierEnum = pgEnum("tier", ["bronze", "silver", "gold"]);
@@ -146,6 +148,11 @@ export const reservations = pgTable("reservations", {
   cancellationReason: text("cancellation_reason"),
   confirmationSentAt: timestamp("confirmation_sent_at"),
   reminderSentAt: timestamp("reminder_sent_at"),
+  confirmedAt: timestamp("confirmed_at"),
+  seatedAt: timestamp("seated_at"),
+  completedAt: timestamp("completed_at"),
+  cancelledAt: timestamp("cancelled_at"),
+  noShowAt: timestamp("no_show_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

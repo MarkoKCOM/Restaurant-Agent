@@ -5,11 +5,18 @@ import {
   useMarkNoShow,
   useCancelReservation,
   useCreateReservation,
+  useCreateWalkIn,
 } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useToast } from "../components/Toast.js";
 import { useLang } from "../i18n.js";
-import type { Reservation } from "@openseat/domain";
+import {
+  getAllowedReservationActions,
+  getLatestReservationLifecycleEvent,
+  getReservationLifecycleEvents,
+  getReservationSourceTone,
+} from "../lib/reservationLifecycle.js";
+import type { Reservation, ReservationStatus } from "@openseat/domain";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800",
@@ -61,6 +68,44 @@ function formatDate(dateStr: string, lang: string): string {
   return d.toLocaleDateString(lang === "he" ? "he-IL" : "en-US", { day: "numeric", month: "long" });
 }
 
+function getSourceLabel(source: Reservation["source"], t: ReturnType<typeof useLang>["t"]) {
+  const keyMap = {
+    walk_in: t.res.sourceWalkIn,
+    phone: t.res.sourcePhone,
+    web: t.res.sourceWeb,
+    whatsapp: t.res.sourceWhatsapp,
+    telegram: t.res.sourceTelegram,
+  } satisfies Record<Reservation["source"], string>;
+
+  return keyMap[source] ?? source;
+}
+
+function getActionLabel(status: ReservationStatus, t: ReturnType<typeof useLang>["t"]) {
+  switch (status) {
+    case "confirmed":
+      return t.res.confirm;
+    case "seated":
+      return t.res.seat;
+    case "completed":
+      return t.res.complete;
+    case "cancelled":
+      return t.res.cancel;
+    case "no_show":
+      return t.res.markNoShow;
+    default:
+      return t.status[status as keyof typeof t.status] ?? status;
+  }
+}
+
+function getLifecycleTimestampLabel(timestamp: string, lang: string) {
+  return new Date(timestamp).toLocaleString(lang === "he" ? "he-IL" : "en-US", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function ReservationsPage() {
   const { restaurant } = useCurrentRestaurant();
   const [date, setDate] = useState(todayStr());
@@ -70,10 +115,14 @@ export function ReservationsPage() {
   const [sortBy, setSortBy] = useState<string>("time");
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createMode, setCreateMode] = useState<"reservation" | "walk_in">("reservation");
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { t, lang } = useLang();
 
   const dir = lang === "he" ? "text-right" : "text-left";
+  const previousDayLabel = lang === "he" ? "יום קודם" : "Previous day";
+  const nextDayLabel = lang === "he" ? "יום הבא" : "Next day";
+  const clearSearchLabel = lang === "he" ? "נקה חיפוש" : "Clear search";
 
   const SORT_OPTIONS = [
     { value: "time", label: t.res.sortByTime },
@@ -180,6 +229,31 @@ export function ReservationsPage() {
     );
   }
 
+  function handleQuickAction(id: string, status: ReservationStatus) {
+    if (status === "cancelled") {
+      cancelMutation.mutate(id, {
+        onSuccess: () => showToast(t.res.toastCancelled),
+        onError: () => showToast(t.res.toastStatusError, "error"),
+      });
+      return;
+    }
+
+    if (status === "no_show") {
+      noShowMutation.mutate(id, {
+        onSuccess: () => showToast(t.res.toastNoShow),
+        onError: () => showToast(t.res.toastNoShowError, "error"),
+      });
+      return;
+    }
+
+    handleStatusChange(id, status);
+  }
+
+  function openCreateModal(mode: "reservation" | "walk_in") {
+    setCreateMode(mode);
+    setShowCreateModal(true);
+  }
+
   function openPanel(r: Reservation) {
     setSelectedReservation(r);
   }
@@ -206,18 +280,32 @@ export function ReservationsPage() {
             {t.res.dayPrefix}{currentDayName}{", "}{formatDate(date, lang)}
           </span>
         </h2>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors shrink-0"
-        >
-          {t.res.create}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => openCreateModal("walk_in")}
+            title={t.res.walkIn}
+            aria-label={t.res.walkIn}
+            className="px-4 py-2 bg-white text-amber-700 border border-amber-300 rounded-lg text-sm font-medium hover:bg-amber-50 transition-colors"
+          >
+            {t.res.walkIn}
+          </button>
+          <button
+            onClick={() => openCreateModal("reservation")}
+            title={t.res.create}
+            aria-label={t.res.create}
+            className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
+          >
+            {t.res.create}
+          </button>
+        </div>
       </div>
 
       {/* Status Summary Bar */}
       <div className="flex flex-wrap gap-2 mb-4">
         <button
           onClick={() => setStatusFilter("")}
+          title={t.res.all}
+          aria-label={t.res.all}
           className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
             statusFilter === ""
               ? "bg-gray-800 text-white"
@@ -231,6 +319,8 @@ export function ReservationsPage() {
           <button
             key={s}
             onClick={() => setStatusFilter(statusFilter === s ? "" : s)}
+            title={t.status[s as keyof typeof t.status]}
+            aria-label={t.status[s as keyof typeof t.status]}
             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
               statusFilter === s
                 ? "ring-2 ring-offset-1 ring-gray-400 " + (STATUS_BADGE_COLORS[s] ?? "")
@@ -249,6 +339,8 @@ export function ReservationsPage() {
         <div className="flex items-center gap-1">
           <button
             onClick={() => setDate(shiftDate(date, -1))}
+            title={previousDayLabel}
+            aria-label={previousDayLabel}
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -257,6 +349,8 @@ export function ReservationsPage() {
           </button>
           <button
             onClick={() => setDate(todayStr())}
+            title={t.res.today}
+            aria-label={t.res.today}
             className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
               isToday
                 ? "bg-amber-50 border-amber-300 text-amber-700"
@@ -273,6 +367,8 @@ export function ReservationsPage() {
           />
           <button
             onClick={() => setDate(shiftDate(date, 1))}
+            title={nextDayLabel}
+            aria-label={nextDayLabel}
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -308,6 +404,8 @@ export function ReservationsPage() {
                 setSearchQuery("");
                 setDebouncedSearch("");
               }}
+              title={clearSearchLabel}
+              aria-label={clearSearchLabel}
               className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -343,7 +441,9 @@ export function ReservationsPage() {
               </svg>
               <p className="text-gray-500 text-sm">{t.res.noResults}</p>
               <button
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => openCreateModal("reservation")}
+                title={t.res.create}
+                aria-label={t.res.create}
                 className="mt-1 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
               >
                 {t.res.create}
@@ -365,72 +465,117 @@ export function ReservationsPage() {
                 </tr>
               </thead>
               <tbody>
-                {displayed.map((r: Reservation) => (
-                  <tr
-                    key={r.id}
-                    className="border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
-                    onClick={() => openPanel(r)}
-                  >
-                    <td className="px-4 py-3 font-mono">{r.timeStart?.slice(0, 5)}</td>
-                    <td className="px-4 py-3">{r.guest?.name ?? "\u2014"}</td>
-                    <td className="px-4 py-3 font-mono text-gray-500">{r.guest?.phone ?? "\u2014"}</td>
-                    <td className="px-4 py-3">{r.partySize}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-gray-100"}`}>
-                        {t.status[r.status as keyof typeof t.status] ?? r.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      {r.status === "confirmed" && (
-                        <button onClick={() => handleStatusChange(r.id, "seated")} className="text-xs text-green-600 hover:underline ml-2">{t.res.seat}</button>
-                      )}
-                      {r.status === "seated" && (
-                        <button onClick={() => handleStatusChange(r.id, "completed")} className="text-xs text-blue-600 hover:underline ml-2">{t.res.complete}</button>
-                      )}
-                      {(r.status === "pending" || r.status === "confirmed") && (
-                        <button onClick={() => handleStatusChange(r.id, "cancelled")} className="text-xs text-red-600 hover:underline ml-2">{t.res.cancel}</button>
-                      )}
-                      {(r.status === "confirmed" || r.status === "seated") && (
-                        <button onClick={() => noShowMutation.mutate(r.id)} className="text-xs text-orange-600 hover:underline ml-2">{t.res.markNoShow}</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {displayed.map((r: Reservation) => {
+                  const lifecycleEvent = getLatestReservationLifecycleEvent(r);
+                  const actions = getAllowedReservationActions(r.status);
+                  return (
+                    <tr
+                      key={r.id}
+                      className="border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => openPanel(r)}
+                    >
+                      <td className="px-4 py-3 font-mono">{r.timeStart?.slice(0, 5)}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1">
+                          <span>{r.guest?.name ?? "—"}</span>
+                          <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                            <span className={`inline-flex rounded-full px-2 py-0.5 font-medium ${getReservationSourceTone(r.source)}`}>
+                              {getSourceLabel(r.source, t)}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-gray-500">{r.guest?.phone ?? "—"}</td>
+                      <td className="px-4 py-3">{r.partySize}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1">
+                          <span className={`w-fit px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-gray-100"}`}>
+                            {t.status[r.status as keyof typeof t.status] ?? r.status}
+                          </span>
+                          {lifecycleEvent?.timestamp && (
+                            <span className="text-[11px] text-gray-500">
+                              {t.res.updatedAt} {getLifecycleTimestampLabel(lifecycleEvent.timestamp, lang)}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {actions.length === 0 ? (
+                            <span className="text-xs text-gray-400">{t.res.noActions}</span>
+                          ) : (
+                            actions.map((action) => (
+                              <button
+                                key={action}
+                                onClick={() => handleQuickAction(r.id, action)}
+                                title={getActionLabel(action, t)}
+                                aria-label={getActionLabel(action, t)}
+                                className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                              >
+                                {getActionLabel(action, t)}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
 
             {/* Mobile card view */}
             <div className="md:hidden divide-y divide-gray-100">
-              {displayed.map((r: Reservation) => (
-                <div
-                  key={r.id}
-                  className="p-4 cursor-pointer active:bg-gray-50"
-                  onClick={() => openPanel(r)}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-mono font-medium">{r.timeStart?.slice(0, 5)}</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-gray-100"}`}>
-                      {t.status[r.status as keyof typeof t.status] ?? r.status}
-                    </span>
+              {displayed.map((r: Reservation) => {
+                const lifecycleEvent = getLatestReservationLifecycleEvent(r);
+                const actions = getAllowedReservationActions(r.status);
+                return (
+                  <div
+                    key={r.id}
+                    className="p-4 cursor-pointer active:bg-gray-50"
+                    onClick={() => openPanel(r)}
+                  >
+                    <div className="flex items-center justify-between mb-1 gap-3">
+                      <span className="font-mono font-medium">{r.timeStart?.slice(0, 5)}</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-gray-100"}`}>
+                        {t.status[r.status as keyof typeof t.status] ?? r.status}
+                      </span>
+                    </div>
+                    <p className="font-medium text-gray-900">{r.guest?.name ?? "—"}</p>
+                    <div className="flex items-center gap-2 text-[11px] mt-2 flex-wrap">
+                      <span className={`inline-flex rounded-full px-2 py-0.5 font-medium ${getReservationSourceTone(r.source)}`}>
+                        {getSourceLabel(r.source, t)}
+                      </span>
+                      {lifecycleEvent?.timestamp && (
+                        <span className="text-gray-500">
+                          {t.res.updatedAt} {getLifecycleTimestampLabel(lifecycleEvent.timestamp, lang)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-gray-500 mt-2">
+                      <span>{r.guest?.phone ?? "—"}</span>
+                      <span>{r.partySize} pax</span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-wrap mt-3" onClick={(e) => e.stopPropagation()}>
+                      {actions.length === 0 ? (
+                        <span className="text-xs text-gray-400">{t.res.noActions}</span>
+                      ) : (
+                        actions.map((action) => (
+                          <button
+                            key={action}
+                            onClick={() => handleQuickAction(r.id, action)}
+                            title={getActionLabel(action, t)}
+                            aria-label={getActionLabel(action, t)}
+                            className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                          >
+                            {getActionLabel(action, t)}
+                          </button>
+                        ))
+                      )}
+                    </div>
                   </div>
-                  <p className="font-medium text-gray-900">{r.guest?.name ?? "\u2014"}</p>
-                  <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
-                    <span>{r.guest?.phone ?? "\u2014"}</span>
-                    <span>{r.partySize} pax</span>
-                  </div>
-                  <div className="flex items-center gap-1 flex-wrap mt-2" onClick={(e) => e.stopPropagation()}>
-                    {r.status === "confirmed" && (
-                      <button onClick={() => handleStatusChange(r.id, "seated")} className="text-xs px-2 py-1 rounded bg-green-50 text-green-600">{t.res.seat}</button>
-                    )}
-                    {r.status === "seated" && (
-                      <button onClick={() => handleStatusChange(r.id, "completed")} className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600">{t.res.complete}</button>
-                    )}
-                    {(r.status === "pending" || r.status === "confirmed") && (
-                      <button onClick={() => handleStatusChange(r.id, "cancelled")} className="text-xs px-2 py-1 rounded bg-red-50 text-red-600">{t.res.cancel}</button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}
@@ -441,6 +586,7 @@ export function ReservationsPage() {
         <CreateReservationModal
           restaurantId={restaurant.id}
           defaultDate={date}
+          mode={createMode}
           onClose={() => setShowCreateModal(false)}
         />
       )}
@@ -452,6 +598,7 @@ export function ReservationsPage() {
           onClose={closePanel}
           updateMutation={updateMutation}
           cancelMutation={cancelMutation}
+          noShowMutation={noShowMutation}
         />
       )}
     </div>
@@ -465,14 +612,16 @@ function ReservationDetailPanel({
   onClose,
   updateMutation,
   cancelMutation,
+  noShowMutation,
 }: {
   reservation: Reservation;
   onClose: () => void;
   updateMutation: ReturnType<typeof useUpdateReservation>;
   cancelMutation: ReturnType<typeof useCancelReservation>;
+  noShowMutation: ReturnType<typeof useMarkNoShow>;
 }) {
   const { showToast } = useToast();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [editDate, setEditDate] = useState(reservation.date);
   const [editTime, setEditTime] = useState(reservation.timeStart?.slice(0, 5) ?? "");
   const [editPartySize, setEditPartySize] = useState(reservation.partySize);
@@ -481,12 +630,14 @@ function ReservationDetailPanel({
   const [saved, setSaved] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
 
-  // Animate in
+  const lifecycleEvents = getReservationLifecycleEvents(reservation);
+  const latestEvent = lifecycleEvents[0];
+  const quickActions = getAllowedReservationActions(reservation.status);
+
   useEffect(() => {
     requestAnimationFrame(() => setPanelOpen(true));
   }, []);
 
-  // Sync form if reservation changes
   useEffect(() => {
     setEditDate(reservation.date);
     setEditTime(reservation.timeStart?.slice(0, 5) ?? "");
@@ -524,13 +675,46 @@ function ReservationDetailPanel({
       onSuccess: (data: any) => {
         if (data?.waitlistMatch) {
           const match = data.waitlistMatch;
-          showToast(
-            `${t.res.waitlistMatch}: ${match.guestName} (${match.guestPhone})`,
-          );
+          showToast(`${t.res.waitlistMatch}: ${match.guestName} (${match.guestPhone})`);
+        } else {
+          showToast(t.res.toastCancelled);
         }
         onClose();
       },
+      onError: () => showToast(t.res.toastStatusError, "error"),
     });
+  }
+
+  function handleMarkNoShow() {
+    noShowMutation.mutate(reservation.id, {
+      onSuccess: () => {
+        showToast(t.res.toastNoShow);
+        onClose();
+      },
+      onError: () => showToast(t.res.toastNoShowError, "error"),
+    });
+  }
+
+  function handleQuickAction(action: ReservationStatus) {
+    if (action === "cancelled") {
+      handleCancel();
+      return;
+    }
+    if (action === "no_show") {
+      handleMarkNoShow();
+      return;
+    }
+
+    updateMutation.mutate(
+      { id: reservation.id, data: { status: action } },
+      {
+        onSuccess: () => {
+          showToast(getActionLabel(action, t));
+          onClose();
+        },
+        onError: () => showToast(t.res.toastStatusError, "error"),
+      },
+    );
   }
 
   function handleClose() {
@@ -540,7 +724,6 @@ function ReservationDetailPanel({
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className={`fixed inset-0 z-40 bg-black transition-opacity duration-200 ${
           panelOpen ? "bg-opacity-30" : "bg-opacity-0"
@@ -548,14 +731,12 @@ function ReservationDetailPanel({
         onClick={handleClose}
       />
 
-      {/* Panel - slides from right in RTL (which is left in LTR DOM) */}
       <div
         className={`fixed top-0 right-0 z-50 h-full w-96 max-w-full bg-white shadow-xl border-l border-gray-200 transform transition-transform duration-200 ease-out ${
           panelOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="flex flex-col h-full">
-          {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">{t.res.details}</h3>
             <button
@@ -568,23 +749,53 @@ function ReservationDetailPanel({
             </button>
           </div>
 
-          {/* Content */}
           <div className="flex-1 overflow-y-auto p-6 space-y-5">
-            {/* Guest info (read-only) */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-sm font-medium text-gray-900">{reservation.guest?.name ?? "\u2014"}</p>
-              <p className="text-sm text-gray-500 font-mono mt-1">{reservation.guest?.phone ?? "\u2014"}</p>
+            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+              <div>
+                <p className="text-sm font-medium text-gray-900">{reservation.guest?.name ?? "—"}</p>
+                <p className="text-sm text-gray-500 font-mono mt-1">{reservation.guest?.phone ?? "—"}</p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                <span className={`inline-flex rounded-full px-2 py-0.5 font-medium ${getReservationSourceTone(reservation.source)}`}>
+                  {getSourceLabel(reservation.source, t)}
+                </span>
+                <span className={`inline-flex rounded-full px-2 py-0.5 font-medium ${STATUS_COLORS[reservation.status] ?? "bg-gray-100"}`}>
+                  {t.status[reservation.status as keyof typeof t.status] ?? reservation.status}
+                </span>
+              </div>
+              {latestEvent?.timestamp && (
+                <p className="text-xs text-gray-500">
+                  {t.res.updatedAt} {getLifecycleTimestampLabel(latestEvent.timestamp, lang)}
+                </p>
+              )}
               {reservation.guestId && (
                 <a
                   href={`/guests/${reservation.guestId}`}
-                  className="text-xs text-amber-600 hover:underline mt-2 inline-block"
+                  className="text-xs text-amber-600 hover:underline inline-block"
                 >
                   {t.res.viewGuestProfile}
                 </a>
               )}
             </div>
 
-            {/* Date */}
+            {quickActions.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t.res.actions}</label>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {quickActions.map((action) => (
+                    <button
+                      key={action}
+                      onClick={() => handleQuickAction(action)}
+                      disabled={updateMutation.isPending || cancelMutation.isPending || noShowMutation.isPending}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50"
+                    >
+                      {getActionLabel(action, t)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.date}</label>
               <input
@@ -595,7 +806,6 @@ function ReservationDetailPanel({
               />
             </div>
 
-            {/* Time */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.timeStart}</label>
               <input
@@ -606,7 +816,6 @@ function ReservationDetailPanel({
               />
             </div>
 
-            {/* Party size */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.partySize}</label>
               <select
@@ -622,12 +831,11 @@ function ReservationDetailPanel({
               </select>
             </div>
 
-            {/* Status */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.statusCol}</label>
               <select
                 value={editStatus}
-                onChange={(e) => setEditStatus(e.target.value as Reservation["status"])}
+                onChange={(e) => setEditStatus(e.target.value as ReservationStatus)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
               >
                 {ALL_STATUSES.map((s) => (
@@ -636,7 +844,6 @@ function ReservationDetailPanel({
               </select>
             </div>
 
-            {/* Tables */}
             {reservation.tableIds && reservation.tableIds.length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.tables}</label>
@@ -644,7 +851,6 @@ function ReservationDetailPanel({
               </div>
             )}
 
-            {/* Notes */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.notes}</label>
               <textarea
@@ -655,9 +861,30 @@ function ReservationDetailPanel({
                 placeholder={t.res.notesPlaceholder}
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t.res.lifecycleTitle}</label>
+              {lifecycleEvents.length === 0 ? (
+                <p className="text-sm text-gray-500">{t.res.lifecycleEmpty}</p>
+              ) : (
+                <div className="space-y-2">
+                  {lifecycleEvents.map((event) => (
+                    <div key={`${event.key}-${event.timestamp}`} className="rounded-lg border border-gray-200 px-3 py-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-medium text-gray-900">
+                          {t.status[event.key as keyof typeof t.status] ?? event.key}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {event.timestamp ? getLifecycleTimestampLabel(event.timestamp, lang) : "—"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Footer actions */}
           <div className="px-6 py-4 border-t border-gray-200 space-y-3">
             <div className="flex items-center gap-3">
               <button
@@ -688,13 +915,16 @@ function ReservationDetailPanel({
 function CreateReservationModal({
   restaurantId,
   defaultDate,
+  mode,
   onClose,
 }: {
   restaurantId: string;
   defaultDate: string;
+  mode: "reservation" | "walk_in";
   onClose: () => void;
 }) {
   const createMutation = useCreateReservation();
+  const createWalkInMutation = useCreateWalkIn();
   const { showToast } = useToast();
   const { t } = useLang();
   const [guestName, setGuestName] = useState("");
@@ -705,9 +935,35 @@ function CreateReservationModal({
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
 
+  const isWalkIn = mode === "walk_in";
+  const activeMutation = isWalkIn ? createWalkInMutation : createMutation;
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
+
+    if (isWalkIn) {
+      createWalkInMutation.mutate(
+        {
+          restaurantId,
+          guestName,
+          guestPhone,
+          date,
+          timeStart,
+          partySize,
+          notes: notes || undefined,
+        },
+        {
+          onSuccess: () => {
+            showToast(t.res.walkInCreated);
+            onClose();
+          },
+          onError: (err) => setError(err.message || t.res.toastWalkInError),
+        },
+      );
+      return;
+    }
+
     createMutation.mutate(
       {
         restaurantId,
@@ -720,7 +976,10 @@ function CreateReservationModal({
         source: "phone",
       },
       {
-        onSuccess: () => { showToast(t.res.toastCreated); onClose(); },
+        onSuccess: () => {
+          showToast(t.res.toastCreated);
+          onClose();
+        },
         onError: (err) => setError(err.message || t.res.toastCreateError),
       },
     );
@@ -728,20 +987,25 @@ function CreateReservationModal({
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 z-40 bg-black bg-opacity-30"
         onClick={onClose}
       />
 
-      {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
           className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between mb-5">
-            <h3 className="text-lg font-semibold text-gray-900">{t.res.newReservation}</h3>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {isWalkIn ? t.res.walkInModalTitle : t.res.newReservation}
+              </h3>
+              {isWalkIn && (
+                <p className="text-sm text-gray-500 mt-1">{t.res.walkInHelper}</p>
+              )}
+            </div>
             <button
               onClick={onClose}
               className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
@@ -752,8 +1016,13 @@ function CreateReservationModal({
             </button>
           </div>
 
+          <div className="mb-4 flex items-center gap-2 flex-wrap text-[11px]">
+            <span className={`inline-flex rounded-full px-2 py-0.5 font-medium ${getReservationSourceTone(isWalkIn ? "walk_in" : "phone")}`}>
+              {getSourceLabel(isWalkIn ? "walk_in" : "phone", t)}
+            </span>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Guest Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.guestName}</label>
               <input
@@ -766,12 +1035,13 @@ function CreateReservationModal({
               />
             </div>
 
-            {/* Phone */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.guestPhone}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {isWalkIn ? t.res.guestPhoneOptional : t.res.guestPhone}
+              </label>
               <input
                 type="tel"
-                required
+                required={!isWalkIn}
                 value={guestPhone}
                 onChange={(e) => setGuestPhone(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
@@ -779,7 +1049,6 @@ function CreateReservationModal({
               />
             </div>
 
-            {/* Date */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.date}</label>
               <input
@@ -791,7 +1060,6 @@ function CreateReservationModal({
               />
             </div>
 
-            {/* Time */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.timeStart}</label>
               <input
@@ -803,7 +1071,6 @@ function CreateReservationModal({
               />
             </div>
 
-            {/* Party Size */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.partySize}</label>
               <select
@@ -817,7 +1084,6 @@ function CreateReservationModal({
               </select>
             </div>
 
-            {/* Notes */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.notes}</label>
               <textarea
@@ -829,18 +1095,18 @@ function CreateReservationModal({
               />
             </div>
 
-            {/* Error */}
             {error && (
               <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
             )}
 
-            {/* Submit */}
             <button
               type="submit"
-              disabled={createMutation.isPending}
+              disabled={activeMutation.isPending}
               className="w-full px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
             >
-              {createMutation.isPending ? t.res.creating : t.res.createBtn}
+              {activeMutation.isPending
+                ? t.res.creating
+                : (isWalkIn ? t.res.walkIn : t.res.createBtn)}
             </button>
           </form>
         </div>

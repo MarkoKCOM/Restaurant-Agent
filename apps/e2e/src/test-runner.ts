@@ -38,9 +38,15 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
   const results: TestResult[] = [];
   let reservationId = "";
   let guestId = "";
+  let noShowReservationId = "";
+  let noShowGuestId = "";
+  let patchNoShowReservationId = "";
+  let patchNoShowGuestId = "";
   const guestPhone = `050${String(Date.now()).slice(-7)}`;
   const reservationDate = plusDays(1);
   const today = plusDays(0);
+  const walkInDate = plusDays(10);
+  const immediateSeatWalkInDate = plusDays(11);
 
   // 1. Health check
   results.push(await runTest("Health Check", async () => {
@@ -88,16 +94,96 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
     return `${list.length} reservations on ${reservationDate}`;
   }));
 
-  // 6. Confirm → Seat → Complete
+  // 6. Confirm → Seat → Complete with lifecycle timestamps
   for (const status of ["confirmed", "seated", "completed"] as const) {
     results.push(await runTest(`Update Status: ${status}`, async () => {
       if (!reservationId) throw new Error("No reservation to update");
       const data = await api.updateReservation(reservationId, { status });
-      return `status=${(data as any).reservation.status}`;
+      const reservation = (data as any).reservation;
+      const timestampKey = `${status}At`;
+      if (!reservation[timestampKey]) {
+        throw new Error(`Missing lifecycle timestamp ${timestampKey}`);
+      }
+      return `status=${reservation.status} ${timestampKey}=${reservation[timestampKey]}`;
     }));
   }
 
-  // 7. Loyalty balance
+  // 7. Create and mark no-show
+  results.push(await runTest("Create Reservation for No-Show", async () => {
+    const data = await api.createReservation({
+      restaurantId: RESTAURANT_ID,
+      guestName: `No Show ${runId}`,
+      guestPhone: `052${String(Date.now()).slice(-7)}`,
+      date: reservationDate,
+      timeStart: "20:00",
+      partySize: 2,
+      notes: `${runId}-no-show`,
+      source: "phone",
+    });
+    const res = (data as any).reservation;
+    noShowReservationId = res.id;
+    noShowGuestId = res.guestId;
+    return `id=${res.id.slice(0, 8)}... status=${res.status}`;
+  }));
+
+  results.push(await runTest("Mark No-Show", async () => {
+    if (!noShowReservationId || !noShowGuestId) throw new Error("No reservation to mark no-show");
+    const before = await api.getGuestProfile(noShowGuestId);
+    const beforeCount = (before as any).profile?.guest?.noShowCount ?? 0;
+
+    const data = await api.markNoShow(noShowReservationId);
+    const reservation = (data as any).reservation;
+    if (!reservation.noShowAt) {
+      throw new Error("Missing noShowAt timestamp");
+    }
+
+    const after = await api.getGuestProfile(noShowGuestId);
+    const afterCount = (after as any).profile?.guest?.noShowCount ?? 0;
+    if (afterCount !== beforeCount + 1) {
+      throw new Error(`Expected noShowCount ${beforeCount + 1}, got ${afterCount}`);
+    }
+
+    return `status=${reservation.status} noShowAt=${reservation.noShowAt} noShowCount=${afterCount}`;
+  }));
+
+  results.push(await runTest("Create Reservation for PATCH No-Show", async () => {
+    const data = await api.createReservation({
+      restaurantId: RESTAURANT_ID,
+      guestName: `Patch No Show ${runId}`,
+      guestPhone: `055${String(Date.now()).slice(-7)}`,
+      date: reservationDate,
+      timeStart: "20:30",
+      partySize: 2,
+      notes: `${runId}-patch-no-show`,
+      source: "phone",
+    });
+    const res = (data as any).reservation;
+    patchNoShowReservationId = res.id;
+    patchNoShowGuestId = res.guestId;
+    return `id=${res.id.slice(0, 8)}... status=${res.status}`;
+  }));
+
+  results.push(await runTest("Patch Status: no_show", async () => {
+    if (!patchNoShowReservationId || !patchNoShowGuestId) throw new Error("No reservation to patch no-show");
+    const before = await api.getGuestProfile(patchNoShowGuestId);
+    const beforeCount = (before as any).profile?.guest?.noShowCount ?? 0;
+
+    const data = await api.updateReservation(patchNoShowReservationId, { status: "no_show" });
+    const reservation = (data as any).reservation;
+    if (!reservation.noShowAt) {
+      throw new Error("Missing noShowAt timestamp after PATCH");
+    }
+
+    const after = await api.getGuestProfile(patchNoShowGuestId);
+    const afterCount = (after as any).profile?.guest?.noShowCount ?? 0;
+    if (afterCount !== beforeCount + 1) {
+      throw new Error(`Expected PATCH noShowCount ${beforeCount + 1}, got ${afterCount}`);
+    }
+
+    return `status=${reservation.status} noShowAt=${reservation.noShowAt} noShowCount=${afterCount}`;
+  }));
+
+  // 8. Loyalty balance
   results.push(await runTest("Loyalty Balance", async () => {
     if (!guestId) throw new Error("No guest");
     const data = await api.getLoyaltyBalance(guestId);
@@ -168,6 +254,57 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
     const data = await api.listWaitlist(RESTAURANT_ID, reservationDate);
     const list = (data as any).waitlist as Array<unknown>;
     return `${list?.length ?? 0} entries`;
+  }));
+
+  // 14. Walk-in creation (confirmed)
+  results.push(await runTest("Create Walk-In", async () => {
+    const availability = await api.getAvailability(RESTAURANT_ID, walkInDate, 2);
+    const slot = (availability as any).slots?.[0]?.time;
+    if (!slot) throw new Error(`No availability for walk-in test on ${walkInDate}`);
+
+    const data = await api.createWalkIn({
+      restaurantId: RESTAURANT_ID,
+      guestName: `Walk In ${runId}`,
+      guestPhone: `053${String(Date.now()).slice(-7)}`,
+      date: walkInDate,
+      timeStart: slot,
+      partySize: 2,
+      notes: `${runId}-walk-in`,
+    });
+    const reservation = (data as any).reservation;
+    if (reservation.status !== "confirmed") {
+      throw new Error(`Expected confirmed walk-in, got ${reservation.status}`);
+    }
+    if (!reservation.confirmedAt || reservation.seatedAt) {
+      throw new Error("Walk-in confirmation timestamps are incorrect");
+    }
+    return `status=${reservation.status} confirmedAt=${reservation.confirmedAt}`;
+  }));
+
+  // 15. Walk-in creation (immediately seated)
+  results.push(await runTest("Create Walk-In Immediate Seat", async () => {
+    const availability = await api.getAvailability(RESTAURANT_ID, immediateSeatWalkInDate, 2);
+    const slot = (availability as any).slots?.[0]?.time;
+    if (!slot) throw new Error(`No availability for immediate-seat walk-in test on ${immediateSeatWalkInDate}`);
+
+    const data = await api.createWalkIn({
+      restaurantId: RESTAURANT_ID,
+      guestName: `Walk In Seat ${runId}`,
+      guestPhone: `054${String(Date.now()).slice(-7)}`,
+      date: immediateSeatWalkInDate,
+      timeStart: slot,
+      partySize: 2,
+      notes: `${runId}-walk-in-seat`,
+      seatImmediately: true,
+    });
+    const reservation = (data as any).reservation;
+    if (reservation.status !== "seated") {
+      throw new Error(`Expected seated walk-in, got ${reservation.status}`);
+    }
+    if (!reservation.confirmedAt || !reservation.seatedAt) {
+      throw new Error("Immediate-seat walk-in timestamps are incorrect");
+    }
+    return `status=${reservation.status} seatedAt=${reservation.seatedAt}`;
   }));
 
   // Build summary

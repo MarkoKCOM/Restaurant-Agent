@@ -96,6 +96,10 @@ export async function applyReferral(
     throw new Error("Guest has already been referred");
   }
 
+  if (newGuest.restaurantId !== referrer.restaurantId) {
+    throw new Error("Referral code does not belong to this restaurant");
+  }
+
   // Set referredBy on new guest
   await db
     .update(guests)
@@ -129,11 +133,11 @@ export async function getReferralStats(
   const transactions = await db
     .select({ points: loyaltyTransactions.points })
     .from(loyaltyTransactions)
-    .where(eq(loyaltyTransactions.guestId, guestId));
+    .where(
+      sql`${loyaltyTransactions.guestId} = ${guestId} AND ${loyaltyTransactions.reason} = 'referral_bonus'`,
+    );
 
-  const totalPointsEarned = transactions
-    .filter((t) => t.points > 0)
-    .reduce((sum, t) => sum + t.points, 0);
+  const totalPointsEarned = transactions.reduce((sum, t) => sum + t.points, 0);
 
   return { referralCount, totalPointsEarned };
 }

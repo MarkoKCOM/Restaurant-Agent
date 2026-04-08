@@ -60,7 +60,7 @@ async function processEngagement(job: Job<EngagementJobData>): Promise<void> {
   switch (type) {
     case "thank_you":
       console.log(
-        `SEND WhatsApp to ${phone}: Thank you for visiting ${restaurantName}! You earned 10 points. Balance: ${balance + 10}`,
+        `SEND WhatsApp to ${phone}: Thank you for visiting ${restaurantName}! Your current member balance is ${balance} points.`,
       );
       break;
 

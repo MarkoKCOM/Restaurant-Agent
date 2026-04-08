@@ -74,6 +74,7 @@ export interface Guest {
   preferences?: GuestPreferences | Record<string, unknown>;
   tags?: string[];
   notes?: string;
+  optedOutCampaigns?: boolean;
 }
 
 export interface Reservation {
@@ -130,4 +131,67 @@ export interface DashboardSnapshot {
   };
   upcoming: Reservation[];
   occupancyByHour: Record<string, number>;
+}
+
+export type RewardClaimStatus = "active" | "redeemed" | "expired" | "cancelled";
+
+export interface RewardCatalogItem {
+  id: string;
+  nameHe: string;
+  nameEn?: string;
+  description?: string;
+  pointsCost: number;
+  claimable: boolean;
+  pointsShortfall: number;
+}
+
+export interface RewardClaim {
+  id: string;
+  rewardId: string;
+  rewardName: string;
+  claimCode: string;
+  status: RewardClaimStatus;
+  claimedAt: string;
+  redeemedAt?: string;
+  reservationId?: string;
+}
+
+export interface ReferralSummary {
+  referralCode?: string;
+  referredBy?: string;
+  referralCount: number;
+  totalReferralPoints: number;
+}
+
+export interface StreakSummary {
+  current: number;
+  best: number;
+  lastVisitWeek: string;
+}
+
+export interface MembershipSummary {
+  guestId: string;
+  restaurantId: string;
+  loyalty: {
+    pointsBalance: number;
+    tier: "bronze" | "silver" | "gold";
+    visitCount: number;
+    noShowCount: number;
+    stampCard: {
+      visits: number;
+      stampsNeeded: number;
+      stampsUntilReward: number;
+      earned: number;
+    } | null;
+  };
+  rewards: {
+    available: RewardCatalogItem[];
+  };
+  claims: {
+    active: RewardClaim[];
+    past: RewardClaim[];
+  };
+  referrals: ReferralSummary;
+  streak: StreakSummary;
+  optedOutCampaigns: boolean;
 }

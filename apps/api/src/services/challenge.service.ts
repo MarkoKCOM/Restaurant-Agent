@@ -104,6 +104,16 @@ export async function listActiveChallenges(
     );
 }
 
+export async function getChallengeById(challengeId: string): Promise<ChallengeRow | null> {
+  const [challenge] = await db
+    .select()
+    .from(challenges)
+    .where(eq(challenges.id, challengeId))
+    .limit(1);
+
+  return challenge ?? null;
+}
+
 export async function getGuestChallengeProgress(
   guestId: string,
   challengeId: string,
@@ -222,6 +232,37 @@ export async function getGuestActiveChallenges(
       return { challenge, progress };
     }),
   );
+
+  return results;
+}
+
+export async function autoProgressVisitCountChallenges(
+  guestId: string,
+  restaurantId: string,
+): Promise<Array<{ challengeId: string; completed: boolean; progress: number; target: number }>> {
+  const activeChallenges = await db
+    .select({ id: challenges.id })
+    .from(challenges)
+    .where(
+      and(
+        eq(challenges.restaurantId, restaurantId),
+        eq(challenges.isActive, true),
+        eq(challenges.type, "visit_count"),
+        sql`(${challenges.endDate} IS NULL OR ${challenges.endDate} >= ${new Date().toISOString().slice(0, 10)})`,
+      ),
+    );
+
+  const results: Array<{ challengeId: string; completed: boolean; progress: number; target: number }> = [];
+
+  for (const challenge of activeChallenges) {
+    const result = await incrementChallengeProgress(guestId, challenge.id);
+    results.push({
+      challengeId: challenge.id,
+      completed: result.completed,
+      progress: result.progress,
+      target: result.target,
+    });
+  }
 
   return results;
 }

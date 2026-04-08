@@ -23,6 +23,7 @@ export function toDomainGuest(row: GuestRow): DomainGuest {
     preferences: (row.preferences as Record<string, unknown> | null) ?? undefined,
     tags: (row.tags as string[] | null) ?? undefined,
     notes: row.notes ?? undefined,
+    optedOutCampaigns: row.optedOutCampaigns,
   };
 }
 
@@ -97,6 +98,7 @@ export async function updateGuestPreferences(
     preferences?: Record<string, unknown>;
     tags?: string[];
     notes?: string;
+    optedOutCampaigns?: boolean;
   },
 ): Promise<GuestRow | null> {
   const update: Partial<GuestRow> & { [key: string]: unknown } = {};
@@ -111,6 +113,10 @@ export async function updateGuestPreferences(
 
   if (data.notes !== undefined) {
     update.notes = data.notes;
+  }
+
+  if (data.optedOutCampaigns !== undefined) {
+    update.optedOutCampaigns = data.optedOutCampaigns;
   }
 
   if (Object.keys(update).length === 0) {

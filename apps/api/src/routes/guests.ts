@@ -21,6 +21,7 @@ const updateGuestSchema = z.object({
   preferences: z.record(z.unknown()).optional(),
   tags: z.array(z.string()).optional(),
   notes: z.string().optional(),
+  optedOutCampaigns: z.boolean().optional(),
 });
 
 export async function guestRoutes(app: FastifyInstance) {

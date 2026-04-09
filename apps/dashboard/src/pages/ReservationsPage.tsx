@@ -6,6 +6,8 @@ import {
   useCancelReservation,
   useCreateReservation,
   useCreateWalkIn,
+  useVerifyClaimCode,
+  useRedeemClaim,
 } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useToast } from "../components/Toast.js";
@@ -104,6 +106,19 @@ function getLifecycleTimestampLabel(timestamp: string, lang: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function getServiceSignals(reservation: Reservation, t: ReturnType<typeof useLang>["t"]) {
+  const tags = (reservation.guest?.tags ?? []).map((tag) => tag.toLowerCase());
+  const notes = `${reservation.notes ?? ""} ${reservation.guest?.notes ?? ""}`.toLowerCase();
+  const items: string[] = [];
+  if (tags.some((tag) => tag.includes("vip")) || reservation.guest?.tier === "gold") items.push(t.today.memberVip);
+  if (tags.some((tag) => tag.includes("regular") || tag.includes("קבוע"))) items.push(t.today.memberRegular);
+  if (/birthday|יום הולדת/.test(notes)) items.push(t.guestDetail.signalBirthday);
+  if (/celebrat|anniversary|חוגג|חגיג/.test(notes)) items.push(t.guestDetail.signalCelebration);
+  if (/owner friend|חבר בעלים/.test(notes)) items.push(t.guestDetail.signalOwnerFriend);
+  if (/house comp|כבוד הבית|free stuff|comped/.test(notes)) items.push(t.guestDetail.signalHouseComp);
+  return items;
 }
 
 export function ReservationsPage() {
@@ -482,6 +497,11 @@ export function ReservationsPage() {
                             <span className={`inline-flex rounded-full px-2 py-0.5 font-medium ${getReservationSourceTone(r.source)}`}>
                               {getSourceLabel(r.source, t)}
                             </span>
+                            {getServiceSignals(r, t).map((signal) => (
+                              <span key={signal} className="inline-flex rounded-full px-2 py-0.5 font-medium bg-gray-100 text-gray-700">
+                                {signal}
+                              </span>
+                            ))}
                           </div>
                         </div>
                       </td>
@@ -546,6 +566,11 @@ export function ReservationsPage() {
                       <span className={`inline-flex rounded-full px-2 py-0.5 font-medium ${getReservationSourceTone(r.source)}`}>
                         {getSourceLabel(r.source, t)}
                       </span>
+                      {getServiceSignals(r, t).map((signal) => (
+                        <span key={signal} className="inline-flex rounded-full px-2 py-0.5 font-medium bg-gray-100 text-gray-700">
+                          {signal}
+                        </span>
+                      ))}
                       {lifecycleEvent?.timestamp && (
                         <span className="text-gray-500">
                           {t.res.updatedAt} {getLifecycleTimestampLabel(lifecycleEvent.timestamp, lang)}
@@ -629,6 +654,9 @@ function ReservationDetailPanel({
   const [editStatus, setEditStatus] = useState(reservation.status);
   const [saved, setSaved] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [claimCode, setClaimCode] = useState("");
+  const verifyClaimMutation = useVerifyClaimCode();
+  const redeemClaimMutation = useRedeemClaim();
 
   const lifecycleEvents = getReservationLifecycleEvents(reservation);
   const latestEvent = lifecycleEvents[0];
@@ -717,6 +745,22 @@ function ReservationDetailPanel({
     );
   }
 
+  function handleVerifyClaim() {
+    if (!claimCode.trim()) return;
+    verifyClaimMutation.mutate(claimCode.trim(), {
+      onError: () => showToast(t.today.claimVerifyError, "error"),
+    });
+  }
+
+  function handleRedeemClaim() {
+    const claimId = verifyClaimMutation.data?.claim?.id;
+    if (!claimId) return;
+    redeemClaimMutation.mutate(claimId, {
+      onSuccess: () => showToast(t.today.claimRedeemed),
+      onError: () => showToast(t.today.claimRedeemError, "error"),
+    });
+  }
+
   function handleClose() {
     setPanelOpen(false);
     setTimeout(onClose, 200);
@@ -762,6 +806,11 @@ function ReservationDetailPanel({
                 <span className={`inline-flex rounded-full px-2 py-0.5 font-medium ${STATUS_COLORS[reservation.status] ?? "bg-gray-100"}`}>
                   {t.status[reservation.status as keyof typeof t.status] ?? reservation.status}
                 </span>
+                {getServiceSignals(reservation, t).map((signal) => (
+                  <span key={signal} className="inline-flex rounded-full px-2 py-0.5 font-medium bg-gray-100 text-gray-700">
+                    {signal}
+                  </span>
+                ))}
               </div>
               {latestEvent?.timestamp && (
                 <p className="text-xs text-gray-500">
@@ -775,6 +824,33 @@ function ReservationDetailPanel({
                 >
                   {t.res.viewGuestProfile}
                 </a>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-gray-200 p-4 space-y-3">
+              <h4 className="text-sm font-semibold text-gray-900">{t.today.claimVerifyTitle}</h4>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={claimCode}
+                  onChange={(e) => setClaimCode(e.target.value)}
+                  placeholder={t.today.claimCodePlaceholder}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+                <button onClick={handleVerifyClaim} className="px-3 py-2 rounded-lg text-white text-sm font-medium" style={{ backgroundColor: "var(--brand-primary)" }}>
+                  {t.today.claimVerifyBtn}
+                </button>
+              </div>
+              {verifyClaimMutation.data?.claim && (
+                <div className="rounded-lg bg-gray-50 px-3 py-3 text-sm text-gray-700">
+                  <p>{t.today.claimRewardLabel}: {verifyClaimMutation.data.claim.rewardName}</p>
+                  {verifyClaimMutation.data.claim.guestName ? <p>{t.today.claimGuestLabel}: {verifyClaimMutation.data.claim.guestName}</p> : null}
+                  {verifyClaimMutation.data.claim.status === "active" ? (
+                    <button onClick={handleRedeemClaim} className="mt-2 px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-medium">
+                      {t.today.claimRedeemBtn}
+                    </button>
+                  ) : null}
+                </div>
               )}
             </div>
 

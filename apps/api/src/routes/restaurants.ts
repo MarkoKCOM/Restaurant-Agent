@@ -1,9 +1,38 @@
 import type { FastifyInstance } from "fastify";
 import { eq, and, sql } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "../db/index.js";
 import { restaurants, reservations, tables, guests } from "../db/schema.js";
 import { getDailySummary } from "../services/summary.service.js";
 import { enforceTenant, requireOperationalRole, requireRestaurantAdmin } from "../middleware/auth.js";
+import { dashboardConfigSchema } from "@openseat/domain";
+
+/**
+ * Normalize stored dashboardConfig: promotes legacy accentColor/logo into
+ * the structured palette/branding fields while keeping both for compatibility.
+ */
+function normalizeDashboardConfig(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== "object") return {};
+  const cfg = raw as Record<string, unknown>;
+
+  // Promote legacy accentColor → palette.primary (if palette.primary not set)
+  const palette = (cfg.palette as Record<string, unknown> | undefined) ?? {};
+  if (cfg.accentColor && !palette.primary) {
+    palette.primary = cfg.accentColor;
+  }
+
+  // Promote legacy logo → branding.logo (if branding.logo not set)
+  const branding = (cfg.branding as Record<string, unknown> | undefined) ?? {};
+  if (cfg.logo && !branding.logo) {
+    branding.logo = cfg.logo;
+  }
+
+  return {
+    ...cfg,
+    palette: Object.keys(palette).length > 0 ? palette : undefined,
+    branding: Object.keys(branding).length > 0 ? branding : undefined,
+  };
+}
 
 export async function restaurantRoutes(app: FastifyInstance) {
   // GET / — list all restaurants
@@ -53,6 +82,7 @@ export async function restaurantRoutes(app: FastifyInstance) {
       operatingHours: row.operatingHours,
       package: row.package,
       widgetConfig: row.widgetConfig,
+      dashboardConfig: normalizeDashboardConfig(row.dashboardConfig),
     };
   });
 
@@ -82,6 +112,15 @@ export async function restaurantRoutes(app: FastifyInstance) {
       }
     }
 
+    // Validate and normalize dashboardConfig if provided.
+    if (body.dashboardConfig !== undefined) {
+      const parsed = dashboardConfigSchema.safeParse(body.dashboardConfig);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid dashboardConfig", details: parsed.error.flatten() });
+      }
+      updates.dashboardConfig = normalizeDashboardConfig(parsed.data);
+    }
+
     if (Object.keys(updates).length === 0) {
       return reply.status(400).send({ error: "No valid fields to update" });
     }
@@ -108,6 +147,7 @@ export async function restaurantRoutes(app: FastifyInstance) {
       email: updated.email,
       operatingHours: updated.operatingHours,
       widgetConfig: updated.widgetConfig,
+      dashboardConfig: normalizeDashboardConfig(updated.dashboardConfig),
     };
   });
 

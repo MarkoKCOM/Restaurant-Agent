@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { Outlet, NavLink } from "react-router-dom";
+import { Outlet, NavLink, useLocation } from "react-router-dom";
 import { useDashboard, useReservations, useGuests, useWaitlist } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useLang } from "../i18n.js";
 import { useAuth } from "../hooks/useAuth.js";
 import type { DashboardConfig } from "@openseat/domain";
+import { isFeatureEnabled, isPageVisible } from "@openseat/domain";
 import { ChatWidget } from "./ChatWidget.js";
 import { Tooltip } from "./Tooltip.js";
+import { resolveTheme } from "../lib/dashboardTheme.js";
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -15,18 +17,20 @@ function todayStr() {
 function CountBadge({ count }: { count: number }) {
   if (count === 0) return null;
   return (
-    <span className="mr-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-white text-xs font-bold">
+    <span
+      className="mr-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-white text-xs font-bold"
+      style={{ backgroundColor: "var(--brand-primary)" }}
+    >
       {count > 99 ? "99+" : count}
     </span>
   );
 }
 
-const DEFAULT_PAGES = ["today", "reservations", "waitlist", "guests", "settings", "help"];
-
 export function Layout() {
+  const location = useLocation();
   const { restaurant } = useCurrentRestaurant();
   const { lang, setLang, t } = useLang();
-  const { logout, isSuperAdmin, canAccess } = useAuth();
+  const { logout, isSuperAdmin, canAccess, dashboardAccess, role } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { data: dashboard } = useDashboard(restaurant?.id);
   const { data: reservations } = useReservations({
@@ -36,10 +40,12 @@ export function Layout() {
   const { data: guests } = useGuests(canAccess("guests") ? restaurant?.id : undefined);
   const { data: waitlistEntries } = useWaitlist(restaurant?.id, todayStr());
 
-  const config: DashboardConfig = (restaurant as any)?.dashboardConfig ?? {};
-  const visiblePages = config.visiblePages ?? DEFAULT_PAGES;
-  const accentColor = config.accentColor;
-  const logo = config.logo;
+  const config: DashboardConfig = restaurant?.dashboardConfig ?? {};
+  const usePlatformTheme = location.pathname.startsWith("/restaurants");
+  const theme = resolveTheme(usePlatformTheme ? undefined : config, {
+    isSuperAdmin,
+    hasRestaurant: usePlatformTheme ? false : !!restaurant,
+  });
 
   const pendingCount = reservations?.filter((r) => r.status === "pending").length ?? 0;
   const todayCount = dashboard?.today?.reservations ?? 0;
@@ -64,22 +70,23 @@ export function Layout() {
   ];
 
   const navItems = allNavItems.filter((item) => {
-    const allowedByRole = item.key === "restaurants"
-      ? isSuperAdmin && canAccess("restaurants")
-      : canAccess(item.key as "today" | "reservations" | "waitlist" | "guests" | "settings" | "help");
+    if (item.key === "restaurants") {
+      return isSuperAdmin && canAccess("restaurants");
+    }
 
-    return allowedByRole && (item.key === "restaurants" ? true : visiblePages.includes(item.key));
+    const page = item.key as "today" | "reservations" | "waitlist" | "guests" | "settings" | "help";
+    if (!role) return canAccess(page);
+    if (!isPageVisible(page, dashboardAccess, usePlatformTheme ? undefined : config, role)) {
+      return false;
+    }
+    if (page === "waitlist" && !isFeatureEnabled("waitlist", usePlatformTheme ? undefined : config)) {
+      return false;
+    }
+    return true;
   });
 
-  // Dynamic accent color style
-  const accentStyle = accentColor ? { "--accent": accentColor } as React.CSSProperties : undefined;
-  const activeClass = accentColor
-    ? `bg-opacity-10 text-[var(--accent)]`
-    : "bg-amber-50 text-amber-700";
-
   return (
-    <div className="min-h-screen bg-gray-50" dir={dir} style={accentStyle}>
-      {/* Mobile top bar */}
+    <div className="min-h-screen bg-gray-50" dir={dir} style={theme.cssVars}>
       <div className="md:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <button
           onClick={() => setSidebarOpen(true)}
@@ -104,7 +111,6 @@ export function Layout() {
         </button>
       </div>
 
-      {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
           className="md:hidden fixed inset-0 z-40 bg-black bg-opacity-30"
@@ -112,15 +118,16 @@ export function Layout() {
         />
       )}
 
-      {/* Sidebar */}
-      <aside className={`fixed inset-y-0 ${sidebarSide} w-64 bg-white border-gray-200 p-4 flex flex-col z-50 transition-transform duration-200 ${
-        sidebarOpen ? "translate-x-0" : lang === "he" ? "translate-x-full md:translate-x-0" : "-translate-x-full md:translate-x-0"
-      }`}>
+      <aside
+        className={`fixed inset-y-0 ${sidebarSide} w-64 border-gray-200 p-4 flex flex-col z-50 transition-transform duration-200 ${
+          sidebarOpen ? "translate-x-0" : lang === "he" ? "translate-x-full md:translate-x-0" : "-translate-x-full md:translate-x-0"
+        }`}
+        style={{ backgroundColor: "var(--brand-sidebar)", color: "var(--brand-sidebar-text)" }}
+      >
         <div className="mb-8 flex items-center gap-3">
-          {/* Mobile close button */}
           <button
             onClick={() => setSidebarOpen(false)}
-            className="md:hidden p-1 text-gray-400 hover:text-gray-600"
+            className="md:hidden p-1 opacity-70 hover:opacity-100"
             title={lang === "he" ? "סגור תפריט" : "Close menu"}
             aria-label={lang === "he" ? "סגור תפריט" : "Close menu"}
           >
@@ -128,16 +135,19 @@ export function Layout() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-          {logo ? (
-            <img src={logo} alt="" className="w-8 h-8 rounded object-contain" />
+          {theme.branding.logo ? (
+            <img src={theme.branding.logo} alt="" className="w-8 h-8 rounded object-contain" />
           ) : null}
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold" style={{ color: "var(--brand-sidebar-text)" }}>
               {restaurant?.name ?? (isSuperAdmin ? t.superAdmin.noRestaurantSelected : "OpenSeat")}
             </h1>
-            <p className="text-sm text-gray-500">{t.nav.subtitle}</p>
+            {theme.branding.wordmark ? (
+              <img src={theme.branding.wordmark} alt="" className="mt-2 h-5 object-contain" />
+            ) : null}
+            <p className="text-sm opacity-75">{theme.branding.tagline ?? t.nav.subtitle}</p>
             {isSuperAdmin ? (
-              <p className="text-xs text-amber-700 mt-1">
+              <p className="text-xs mt-1" style={{ color: "var(--brand-primary)" }}>
                 {restaurant ? t.superAdmin.currentPrefix + " " + restaurant.name : t.superAdmin.switchHint}
               </p>
             ) : null}
@@ -153,7 +163,9 @@ export function Layout() {
                 aria-label={item.label}
                 className={({ isActive }) =>
                   `flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive ? activeClass : "text-gray-600 hover:bg-gray-100"
+                    isActive
+                      ? "bg-[color:var(--brand-surface)] text-[color:var(--brand-primary)]"
+                      : "text-[color:var(--brand-sidebar-text)] hover:bg-black/5"
                   }`
                 }
               >
@@ -165,12 +177,11 @@ export function Layout() {
           ))}
         </nav>
 
-        {/* Bottom controls */}
-        <div className="border-t border-gray-200 pt-3 space-y-2">
+        <div className="border-t border-black/10 pt-3 space-y-2">
           <Tooltip content={lang === "he" ? "Switch to English" : "החלף לעברית"} className="flex w-full">
             <button
               onClick={() => setLang(lang === "he" ? "en" : "he")}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-[color:var(--brand-sidebar-text)] hover:bg-black/5 transition-colors"
               title={lang === "he" ? "Switch to English" : "החלף לעברית"}
               aria-label={lang === "he" ? "Switch to English" : "החלף לעברית"}
             >
@@ -192,7 +203,6 @@ export function Layout() {
         </div>
       </aside>
 
-      {/* Main content */}
       <main className={`${mainMargin} p-4 sm:p-6 md:p-8 pt-16 md:pt-8 ${textAlign}`}>
         <Outlet />
       </main>

@@ -7,10 +7,15 @@ import {
   useUpdateTable,
   useDeleteTable,
   useResetReservations,
+  useRewards,
+  useCreateReward,
+  useUpdateReward,
 } from "../hooks/api.js";
 import { useToast } from "../components/Toast.js";
 import { useLang } from "../i18n.js";
+import { useAuth } from "../hooks/useAuth.js";
 import type { Table, DashboardConfig } from "@openseat/domain";
+import { resolveTheme } from "../lib/dashboardTheme.js";
 
 const DAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
@@ -35,23 +40,41 @@ const FEATURE_KEYS = ["waitlist", "loyalty", "guestNotes", "occupancyHeatmap", "
 function DashboardCustomization({ restaurant, updateMutation }: { restaurant: any; updateMutation: any }) {
   const { t } = useLang();
   const { showToast } = useToast();
+  const { canDo } = useAuth();
   const config: DashboardConfig = restaurant?.dashboardConfig ?? {};
+  const { data: rewardsData } = useRewards(restaurant?.id, true);
+  const createRewardMutation = useCreateReward();
+  const updateRewardMutation = useUpdateReward();
 
-  const [accentColor, setAccentColor] = useState(config.accentColor ?? "#d97706");
-  const [logoUrl, setLogoUrl] = useState(config.logo ?? "");
+  const [primaryColor, setPrimaryColor] = useState(config.palette?.primary ?? config.accentColor ?? "#d97706");
+  const [sidebarColor, setSidebarColor] = useState(config.palette?.sidebar ?? "#ffffff");
+  const [sidebarTextColor, setSidebarTextColor] = useState(config.palette?.sidebarText ?? "#374151");
+  const [surfaceColor, setSurfaceColor] = useState(config.palette?.surface ?? "#fffbeb");
+  const [accentColor, setAccentColor] = useState(config.palette?.accent ?? config.accentColor ?? "#f59e0b");
+  const [logoUrl, setLogoUrl] = useState(config.branding?.logo ?? config.logo ?? "");
+  const [wordmarkUrl, setWordmarkUrl] = useState(config.branding?.wordmark ?? "");
+  const [tagline, setTagline] = useState(config.branding?.tagline ?? "");
   const [pages, setPages] = useState<string[]>(config.visiblePages ?? ALL_PAGES);
   const [features, setFeatures] = useState(config.features ?? {
     waitlist: true, loyalty: true, guestNotes: true, occupancyHeatmap: true, tableMap: true,
   });
+  const [rewardNameHe, setRewardNameHe] = useState("");
+  const [rewardNameEn, setRewardNameEn] = useState("");
+  const [rewardPoints, setRewardPoints] = useState(120);
+  const [rewardDescription, setRewardDescription] = useState("");
 
   useEffect(() => {
-    if (restaurant?.dashboardConfig) {
-      const c = restaurant.dashboardConfig as DashboardConfig;
-      setAccentColor(c.accentColor ?? "#d97706");
-      setLogoUrl(c.logo ?? "");
-      setPages(c.visiblePages ?? ALL_PAGES);
-      setFeatures(c.features ?? { waitlist: true, loyalty: true, guestNotes: true, occupancyHeatmap: true, tableMap: true });
-    }
+    const c = (restaurant?.dashboardConfig ?? {}) as DashboardConfig;
+    setPrimaryColor(c.palette?.primary ?? c.accentColor ?? "#d97706");
+    setSidebarColor(c.palette?.sidebar ?? "#ffffff");
+    setSidebarTextColor(c.palette?.sidebarText ?? "#374151");
+    setSurfaceColor(c.palette?.surface ?? "#fffbeb");
+    setAccentColor(c.palette?.accent ?? c.accentColor ?? "#f59e0b");
+    setLogoUrl(c.branding?.logo ?? c.logo ?? "");
+    setWordmarkUrl(c.branding?.wordmark ?? "");
+    setTagline(c.branding?.tagline ?? "");
+    setPages(c.visiblePages ?? ALL_PAGES);
+    setFeatures(c.features ?? { waitlist: true, loyalty: true, guestNotes: true, occupancyHeatmap: true, tableMap: true });
   }, [restaurant?.dashboardConfig]);
 
   function togglePage(page: string) {
@@ -62,11 +85,34 @@ function DashboardCustomization({ restaurant, updateMutation }: { restaurant: an
     setFeatures((prev: any) => ({ ...prev, [key]: !prev[key] }));
   }
 
+  function resetBranding() {
+    setPrimaryColor("#d97706");
+    setSidebarColor("#ffffff");
+    setSidebarTextColor("#374151");
+    setSurfaceColor("#fffbeb");
+    setAccentColor("#f59e0b");
+    setLogoUrl("");
+    setWordmarkUrl("");
+    setTagline("");
+  }
+
   function handleSave() {
     if (!restaurant?.id) return;
     const dashboardConfig: DashboardConfig = {
-      accentColor,
+      accentColor: primaryColor,
       logo: logoUrl || undefined,
+      branding: {
+        logo: logoUrl || undefined,
+        wordmark: wordmarkUrl || undefined,
+        tagline: tagline || undefined,
+      },
+      palette: {
+        primary: primaryColor,
+        sidebar: sidebarColor,
+        sidebarText: sidebarTextColor,
+        surface: surfaceColor,
+        accent: accentColor,
+      },
       visiblePages: pages,
       features: features as DashboardConfig["features"],
     };
@@ -75,6 +121,39 @@ function DashboardCustomization({ restaurant, updateMutation }: { restaurant: an
       {
         onSuccess: () => showToast(t.settings.toastCustomSaved),
         onError: () => showToast(t.settings.toastCustomError, "error"),
+      },
+    );
+  }
+
+  function handleCreateReward() {
+    if (!restaurant?.id || !rewardNameHe.trim()) return;
+    createRewardMutation.mutate(
+      {
+        restaurantId: restaurant.id,
+        nameHe: rewardNameHe.trim(),
+        nameEn: rewardNameEn.trim() || undefined,
+        description: rewardDescription.trim() || undefined,
+        pointsCost: rewardPoints,
+      },
+      {
+        onSuccess: () => {
+          setRewardNameHe("");
+          setRewardNameEn("");
+          setRewardDescription("");
+          setRewardPoints(120);
+          showToast(t.settings.membership_toastRewardCreated);
+        },
+        onError: () => showToast(t.settings.membership_toastError, "error"),
+      },
+    );
+  }
+
+  function handleToggleReward(id: string, isActive: boolean) {
+    updateRewardMutation.mutate(
+      { id, data: { isActive: !isActive } },
+      {
+        onSuccess: () => showToast(t.settings.membership_toastRewardUpdated),
+        onError: () => showToast(t.settings.membership_toastError, "error"),
       },
     );
   }
@@ -96,94 +175,198 @@ function DashboardCustomization({ restaurant, updateMutation }: { restaurant: an
     tableMap: t.settings.feat_tableMap,
   };
 
+  const previewTheme = resolveTheme(
+    {
+      accentColor: primaryColor,
+      logo: logoUrl || undefined,
+      branding: { logo: logoUrl || undefined, wordmark: wordmarkUrl || undefined, tagline: tagline || undefined },
+      palette: {
+        primary: primaryColor,
+        sidebar: sidebarColor,
+        sidebarText: sidebarTextColor,
+        surface: surfaceColor,
+        accent: accentColor,
+      },
+    },
+    { isSuperAdmin: false, hasRestaurant: true },
+  );
+
   return (
     <section className="bg-white rounded-xl border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold mb-1">{t.settings.customization}</h3>
-      <p className="text-sm text-gray-500 mb-6">{t.settings.customizationDesc}</p>
-
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Accent Color */}
+      <div className="flex items-center justify-between gap-3 mb-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.accentColor}</label>
-          <div className="flex items-center gap-3">
-            <input
-              type="color"
-              value={accentColor}
-              onChange={(e) => setAccentColor(e.target.value)}
-              className="w-10 h-10 rounded border border-gray-300 cursor-pointer"
-            />
-            <input
-              type="text"
-              value={accentColor}
-              onChange={(e) => setAccentColor(e.target.value)}
-              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono"
-              dir="ltr"
-            />
+          <h3 className="text-lg font-semibold mb-1">{t.settings.customization}</h3>
+          <p className="text-sm text-gray-500">{t.settings.customizationDesc}</p>
+        </div>
+        <button
+          onClick={resetBranding}
+          className="px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50"
+        >
+          {t.settings.brand_resetDefaults}
+        </button>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 mb-3">{t.settings.brand_palette}</h4>
+            <div className="grid sm:grid-cols-2 gap-4">
+              {[
+                [t.settings.brand_primary, primaryColor, setPrimaryColor],
+                [t.settings.brand_sidebar, sidebarColor, setSidebarColor],
+                [t.settings.brand_sidebarText, sidebarTextColor, setSidebarTextColor],
+                [t.settings.brand_surface, surfaceColor, setSurfaceColor],
+                [t.settings.brand_accent, accentColor, setAccentColor],
+              ].map(([label, value, setter]) => (
+                <div key={label as string}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{label as string}</label>
+                  <div className="flex items-center gap-3">
+                    <input type="color" value={value as string} onChange={(e) => (setter as any)(e.target.value)} className="w-10 h-10 rounded border border-gray-300 cursor-pointer" />
+                    <input type="text" value={value as string} onChange={(e) => (setter as any)(e.target.value)} className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono" dir="ltr" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 mb-3">{t.settings.brand_branding}</h4>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.brand_logo}</label>
+                <input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder={t.settings.logoPlaceholder} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" dir="ltr" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.brand_wordmark}</label>
+                <input value={wordmarkUrl} onChange={(e) => setWordmarkUrl(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" dir="ltr" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.brand_tagline}</label>
+                <input value={tagline} onChange={(e) => setTagline(e.target.value)} maxLength={120} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t.settings.visiblePages}</label>
+            <div className="flex flex-wrap gap-2">
+              {ALL_PAGES.map((page) => (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => togglePage(page)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                    pages.includes(page)
+                      ? "bg-[color:var(--brand-surface)] border-[color:var(--brand-primary)] text-[color:var(--brand-primary)]"
+                      : "bg-gray-50 border-gray-200 text-gray-400"
+                  }`}
+                >
+                  {pageLabels[page] ?? page}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t.settings.featureToggles}</label>
+            <div className="space-y-2">
+              {FEATURE_KEYS.map((key) => (
+                <label key={key} className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={!!(features as any)[key]} onChange={() => toggleFeature(key)} className="w-4 h-4 rounded border-gray-300" />
+                  <span className="text-sm text-gray-700">{featureLabels[key]}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <button
+            onClick={handleSave}
+            disabled={updateMutation.isPending}
+            className="px-6 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50"
+            style={{ backgroundColor: primaryColor }}
+          >
+            {updateMutation.isPending ? t.settings.saving : t.settings.saveCustomization}
+          </button>
+        </div>
+
+        <div className="space-y-6">
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 mb-3">{t.settings.brand_preview}</h4>
+            <div className="rounded-2xl overflow-hidden border border-gray-200" style={previewTheme.cssVars}>
+              <div className="p-4" style={{ backgroundColor: "var(--brand-sidebar)", color: "var(--brand-sidebar-text)" }}>
+                <div className="flex items-center gap-3">
+                  {logoUrl ? <img src={logoUrl} alt="" className="w-10 h-10 rounded object-contain bg-white/70" /> : null}
+                  <div>
+                    <p className="font-semibold">{restaurant?.name}</p>
+                    <p className="text-sm opacity-75">{tagline || t.nav.subtitle}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 bg-white">
+                <div className="rounded-xl p-4 mb-3" style={{ backgroundColor: "var(--brand-surface)" }}>
+                  <div className="w-24 h-3 rounded-full mb-2" style={{ backgroundColor: "var(--brand-primary)" }} />
+                  <div className="w-40 h-2 rounded-full bg-gray-200" />
+                </div>
+                <button className="px-4 py-2 rounded-lg text-white text-sm font-medium" style={{ backgroundColor: "var(--brand-primary)" }}>
+                  {t.settings.saveCustomization}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 rounded-xl border border-gray-200 p-5">
+            <h4 className="text-base font-semibold mb-1">{t.settings.membership_title}</h4>
+            {restaurant?.package !== "growth" ? (
+              <div>
+                <p className="text-sm text-gray-500 mb-3">{t.settings.membership_lockedDesc}</p>
+                <span className="inline-flex rounded-full px-3 py-1 text-xs font-semibold bg-amber-100 text-amber-800">{t.settings.membership_lockedTitle}</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">{t.settings.membership_rewards}</p>
+                  <div className="space-y-2">
+                    {(rewardsData?.rewards ?? []).length === 0 ? (
+                      <p className="text-sm text-gray-500">{t.settings.membership_noRewards}</p>
+                    ) : (
+                      (rewardsData?.rewards ?? []).map((reward) => (
+                        <div key={reward.id} className="rounded-lg border border-gray-200 bg-white px-3 py-3 flex items-center justify-between gap-3">
+                          <div>
+                            <p className="font-medium text-gray-900">{reward.nameHe}</p>
+                            <p className="text-xs text-gray-500">{reward.pointsCost} pts • {reward.description || reward.nameEn || "—"}</p>
+                          </div>
+                          {canDo("loyalty.reward.manage") ? (
+                            <button
+                              onClick={() => handleToggleReward(reward.id, reward.isActive)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium ${reward.isActive ? "bg-red-50 text-red-600" : "bg-green-50 text-green-700"}`}
+                            >
+                              {reward.isActive ? t.settings.membership_deactivate : t.settings.membership_reactivate}
+                            </button>
+                          ) : null}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {canDo("loyalty.reward.manage") ? (
+                  <div className="grid sm:grid-cols-2 gap-3 rounded-xl border border-gray-200 bg-white p-4">
+                    <input value={rewardNameHe} onChange={(e) => setRewardNameHe(e.target.value)} placeholder={t.settings.membership_rewardNameHe} className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                    <input value={rewardNameEn} onChange={(e) => setRewardNameEn(e.target.value)} placeholder={t.settings.membership_rewardNameEn} className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                    <input type="number" min={1} value={rewardPoints} onChange={(e) => setRewardPoints(Number(e.target.value) || 1)} placeholder={t.settings.membership_rewardPoints} className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                    <input value={rewardDescription} onChange={(e) => setRewardDescription(e.target.value)} placeholder={t.settings.membership_rewardDesc} className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                    <div className="sm:col-span-2">
+                      <button onClick={handleCreateReward} disabled={createRewardMutation.isPending} className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: primaryColor }}>
+                        {t.settings.membership_createReward}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Logo */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.logoUrl}</label>
-          <input
-            type="text"
-            value={logoUrl}
-            onChange={(e) => setLogoUrl(e.target.value)}
-            placeholder={t.settings.logoPlaceholder}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-            dir="ltr"
-          />
-          {logoUrl && (
-            <img src={logoUrl} alt="" className="mt-2 w-8 h-8 rounded object-contain border border-gray-200" />
-          )}
-        </div>
       </div>
-
-      {/* Visible Pages */}
-      <div className="mt-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">{t.settings.visiblePages}</label>
-        <div className="flex flex-wrap gap-2">
-          {ALL_PAGES.map((page) => (
-            <button
-              key={page}
-              onClick={() => togglePage(page)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                pages.includes(page)
-                  ? "bg-amber-50 border-amber-300 text-amber-700"
-                  : "bg-gray-50 border-gray-200 text-gray-400"
-              }`}
-            >
-              {pageLabels[page] ?? page}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Feature Toggles */}
-      <div className="mt-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">{t.settings.featureToggles}</label>
-        <div className="space-y-2">
-          {FEATURE_KEYS.map((key) => (
-            <label key={key} className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={!!(features as any)[key]}
-                onChange={() => toggleFeature(key)}
-                className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
-              />
-              <span className="text-sm text-gray-700">{featureLabels[key]}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <button
-        onClick={handleSave}
-        disabled={updateMutation.isPending}
-        className="mt-6 px-6 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
-      >
-        {updateMutation.isPending ? t.settings.saving : t.settings.saveCustomization}
-      </button>
     </section>
   );
 }

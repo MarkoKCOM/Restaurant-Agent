@@ -45,6 +45,7 @@ interface AuthContextValue {
   logout: () => void;
   switchRestaurant: (restaurant: AuthRestaurant | null) => void;
   canAccess: (page: DashboardPageKey) => boolean;
+  canDo: (action: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -116,6 +117,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const canAccess = useCallback(
     (page: DashboardPageKey) => dashboardAccess.pages.includes(page),
+    [dashboardAccess],
+  );
+
+  const canDo = useCallback(
+    (action: string) => dashboardAccess.actions.includes(action),
     [dashboardAccess],
   );
 
@@ -235,6 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         switchRestaurant,
         canAccess,
+        canDo,
       }}
     >
       {children}

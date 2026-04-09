@@ -7,6 +7,7 @@ import {
   getPointsBalance,
   getTransactionHistory,
   listRewards,
+  updateReward,
 } from "../services/loyalty.service.js";
 import { getMembershipSummary } from "../services/membership-summary.service.js";
 import {
@@ -34,6 +35,14 @@ const createRewardSchema = z.object({
   nameEn: z.string().optional(),
   description: z.string().optional(),
   pointsCost: z.coerce.number().int().min(1),
+});
+
+const updateRewardSchema = z.object({
+  nameHe: z.string().min(1).optional(),
+  nameEn: z.string().optional(),
+  description: z.string().optional(),
+  pointsCost: z.coerce.number().int().min(1).optional(),
+  isActive: z.boolean().optional(),
 });
 
 const claimRewardSchema = z.object({
@@ -174,7 +183,10 @@ export async function loyaltyRoutes(app: FastifyInstance) {
 
   // GET /rewards — list rewards for a restaurant
   app.get("/rewards", async (request, reply) => {
-    const { restaurantId } = request.query as { restaurantId?: string };
+    const { restaurantId, includeInactive } = request.query as {
+      restaurantId?: string;
+      includeInactive?: string;
+    };
 
     if (!restaurantId) {
       reply.code(400);
@@ -186,8 +198,31 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       return reply.status(403).send({ error: err });
     }
 
-    const rewardsList = await listRewards(restaurantId);
+    const rewardsList = await listRewards(restaurantId, includeInactive === "true");
     return { rewards: rewardsList };
+  });
+
+  // PATCH /rewards/:rewardId — update reward fields (admin/super_admin)
+  app.patch("/rewards/:rewardId", async (request, reply) => {
+    const { rewardId } = request.params as { rewardId: string };
+    const body = updateRewardSchema.parse(request.body ?? {});
+
+    const adminErr = requireRestaurantAdmin(request.user!);
+    if (adminErr) return reply.status(403).send({ error: adminErr });
+
+    const restaurantId = request.user!.restaurantId;
+    if (!restaurantId) {
+      reply.code(400);
+      return { error: "Restaurant context required" };
+    }
+
+    const updated = await updateReward(rewardId, restaurantId, body);
+    if (!updated) {
+      reply.code(404);
+      return { error: "Reward not found" };
+    }
+
+    return { reward: updated };
   });
 
   // POST /rewards — create a reward

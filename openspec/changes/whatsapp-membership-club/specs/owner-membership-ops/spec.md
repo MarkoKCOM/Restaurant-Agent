@@ -34,3 +34,19 @@ Membership state SHALL be surfaced where it affects service.
 #### Scenario: VIP reservation
 - WHEN a high-tier or reward-carrying guest has a reservation
 - THEN reservation and guest views SHALL expose the relevant VIP/reward signal to staff before service
+
+#### Scenario: Special-attention guest arrives
+- WHEN a guest is marked as a VIP, regular, owner friend, long-term loyal guest, celebration booking, birthday guest, or house-comp guest
+- THEN reservation and guest views SHALL surface that special-attention signal clearly to owners/staff before service
+- AND the dashboard SHALL make it obvious what kind of attention is expected
+
+### Requirement: Recognition moments support real hospitality, not only loyalty math
+The dashboard SHALL help restaurants recognize relationship-based guest moments that matter operationally.
+
+#### Scenario: Birthday or celebration booking
+- WHEN a guest is celebrating a birthday, anniversary, or other special occasion
+- THEN the owner/staff SHALL be able to see that context on the reservation or guest record before arrival
+
+#### Scenario: Long-term regular or owner friend
+- WHEN a guest is known as a regular, VIP, owner friend, or house-comp guest
+- THEN the dashboard SHALL preserve and surface that relationship context so the restaurant can give appropriate attention on arrival

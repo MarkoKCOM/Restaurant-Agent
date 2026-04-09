@@ -37,6 +37,44 @@ export const createWalkInSchema = z.object({
   seatImmediately: z.boolean().default(false),
 });
 
+// ── Dashboard config validation ────────────────────────────────────────────
+
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{3,8}$/).optional();
+
+export const dashboardPaletteSchema = z.object({
+  primary: hexColor,
+  sidebar: hexColor,
+  sidebarText: hexColor,
+  surface: hexColor,
+  accent: hexColor,
+}).strict();
+
+export const dashboardBrandingSchema = z.object({
+  logo: z.string().url().optional(),
+  wordmark: z.string().url().optional(),
+  tagline: z.string().max(120).optional(),
+}).strict();
+
+export const dashboardConfigSchema = z.object({
+  // Legacy fields (kept for compatibility)
+  accentColor: hexColor,
+  logo: z.string().url().optional(),
+  // Structured brand kit
+  palette: dashboardPaletteSchema.optional(),
+  branding: dashboardBrandingSchema.optional(),
+  language: z.enum(["he", "en"]).optional(),
+  visiblePages: z.array(z.string()).optional(),
+  features: z.object({
+    waitlist: z.boolean().optional(),
+    loyalty: z.boolean().optional(),
+    guestNotes: z.boolean().optional(),
+    occupancyHeatmap: z.boolean().optional(),
+    tableMap: z.boolean().optional(),
+  }).optional(),
+}).passthrough();
+
+export type DashboardConfigInput = z.infer<typeof dashboardConfigSchema>;
+
 export type CreateReservationInput = z.infer<typeof createReservationSchema>;
 export type AvailabilityQuery = z.infer<typeof availabilityQuerySchema>;
 export type CreateGuestInput = z.input<typeof createGuestSchema>;

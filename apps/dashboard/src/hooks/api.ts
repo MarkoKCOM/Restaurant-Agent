@@ -440,6 +440,145 @@ export function useUpdateGuestPreferences() {
   });
 }
 
+// --- Rewards ---
+
+export interface Reward {
+  id: string;
+  restaurantId: string;
+  nameHe: string;
+  nameEn?: string;
+  description?: string;
+  pointsCost: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface RewardClaimVerified {
+  id: string;
+  rewardId: string;
+  rewardName: string;
+  claimCode: string;
+  guestId: string;
+  guestName?: string;
+  status: string;
+  claimedAt: string;
+  restaurantId: string;
+}
+
+export interface MembershipSummaryData {
+  guestId: string;
+  restaurantId: string;
+  loyalty: {
+    pointsBalance: number;
+    tier: string;
+    visitCount: number;
+    noShowCount: number;
+    stampCard: {
+      visits: number;
+      stampsNeeded: number;
+      stampsUntilReward: number;
+      earned: number;
+    } | null;
+  };
+  rewards: { available: { id: string; nameHe: string; nameEn?: string; pointsCost: number; claimable: boolean; pointsShortfall: number }[] };
+  claims: {
+    active: { id: string; rewardId: string; rewardName: string; claimCode: string; status: string; claimedAt: string }[];
+    past: { id: string; rewardId: string; rewardName: string; claimCode: string; status: string; claimedAt: string; redeemedAt?: string }[];
+  };
+  referrals: { referralCode?: string; referralCount: number; totalReferralPoints: number; referredBy?: string };
+  streak: { current: number; best: number; lastVisitWeek: string };
+  optedOutCampaigns: boolean;
+}
+
+export function useRewards(restaurantId: string | undefined, includeInactive = false) {
+  return useQuery<{ rewards: Reward[] }>({
+    queryKey: ["rewards", restaurantId, includeInactive],
+    queryFn: () => {
+      const params = new URLSearchParams({ restaurantId: restaurantId! });
+      if (includeInactive) params.set("includeInactive", "true");
+      return fetchJSON(`${API}/loyalty/rewards?${params}`);
+    },
+    enabled: !!restaurantId,
+  });
+}
+
+export function useCreateReward() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      restaurantId: string;
+      nameHe: string;
+      nameEn?: string;
+      description?: string;
+      pointsCost: number;
+    }) => {
+      const res = await fetchWithAuth(`${API}/loyalty/rewards`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(await getErrorMessage(res));
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["rewards"] });
+    },
+  });
+}
+
+export function useUpdateReward() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: { nameHe?: string; nameEn?: string; description?: string; pointsCost?: number; isActive?: boolean };
+    }) => {
+      const res = await fetchWithAuth(`${API}/loyalty/rewards/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(await getErrorMessage(res));
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["rewards"] });
+    },
+  });
+}
+
+export function useMembershipSummary(guestId: string | undefined) {
+  return useQuery<{ summary: MembershipSummaryData }>({
+    queryKey: ["membership-summary", guestId],
+    queryFn: () => fetchJSON(`${API}/loyalty/${guestId}/summary`),
+    enabled: !!guestId,
+    retry: false,
+  });
+}
+
+export function useVerifyClaimCode() {
+  return useMutation({
+    mutationFn: async (code: string) => {
+      const res = await fetchWithAuth(`${API}/loyalty/claims/${encodeURIComponent(code)}/verify`);
+      if (!res.ok) throw new Error(await getErrorMessage(res));
+      return res.json() as Promise<{ claim: RewardClaimVerified }>;
+    },
+  });
+}
+
+export function useRedeemClaim() {
+  return useMutation({
+    mutationFn: async (claimId: string) => {
+      const res = await fetchWithAuth(`${API}/loyalty/claims/${claimId}/redeem`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error(await getErrorMessage(res));
+      return res.json();
+    },
+  });
+}
+
 // --- Loyalty ---
 
 export interface LoyaltyBalance {

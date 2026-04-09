@@ -1,9 +1,10 @@
-import { useMemo } from "react";
-import { useDashboard, useReservations, useTableStatus, useUpdateReservation, useMarkNoShow, useTables } from "../hooks/api.js";
+import { useMemo, useState } from "react";
+import { useDashboard, useReservations, useTableStatus, useUpdateReservation, useMarkNoShow, useTables, useVerifyClaimCode, useRedeemClaim } from "../hooks/api.js";
 import type { TableStatusItem } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useToast } from "../components/Toast.js";
 import { useLang } from "../i18n.js";
+import { isFeatureEnabled } from "@openseat/domain";
 import type { Reservation, Table } from "@openseat/domain";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -140,6 +141,19 @@ function OccupancyHeatmap({
   );
 }
 
+function getServiceSignals(reservation: Reservation, t: ReturnType<typeof useLang>["t"]) {
+  const tags = (reservation.guest?.tags ?? []).map((tag) => tag.toLowerCase());
+  const notes = `${reservation.notes ?? ""} ${reservation.guest?.notes ?? ""}`.toLowerCase();
+  const items: string[] = [];
+  if (tags.some((tag) => tag.includes("vip")) || reservation.guest?.tier === "gold") items.push(t.today.memberVip);
+  if (tags.some((tag) => tag.includes("regular") || tag.includes("קבוע"))) items.push(t.today.memberRegular);
+  if (/birthday|יום הולדת/.test(notes)) items.push(t.guestDetail.signalBirthday);
+  if (/celebrat|anniversary|חוגג|חגיג/.test(notes)) items.push(t.guestDetail.signalCelebration);
+  if (/owner friend|חבר בעלים/.test(notes)) items.push(t.guestDetail.signalOwnerFriend);
+  if (/house comp|כבוד הבית|free stuff|comped/.test(notes)) items.push(t.guestDetail.signalHouseComp);
+  return items;
+}
+
 function TableMap({ tables }: { tables: TableStatusItem[] }) {
   const { t } = useLang();
 
@@ -205,13 +219,19 @@ export function TodayPage() {
   const { data: tablesList } = useTables(restaurant?.id);
   const updateMutation = useUpdateReservation();
   const noShowMutation = useMarkNoShow();
+  const verifyClaimMutation = useVerifyClaimCode();
+  const redeemClaimMutation = useRedeemClaim();
   const { showToast } = useToast();
   const { t, lang } = useLang();
+  const [claimCode, setClaimCode] = useState("");
 
   const textAlign = lang === "he" ? "text-right" : "text-left";
 
   const stats = dashboard?.today;
   const occupancyByHour = dashboard?.occupancyByHour;
+  const loyaltyEnabled = isFeatureEnabled("loyalty", restaurant?.dashboardConfig);
+  const tableMapEnabled = isFeatureEnabled("tableMap", restaurant?.dashboardConfig);
+  const occupancyEnabled = isFeatureEnabled("occupancyHeatmap", restaurant?.dashboardConfig);
 
   // Build table ID -> name map
   const tableNameMap = useMemo(() => {
@@ -270,6 +290,25 @@ export function TodayPage() {
     });
   }
 
+  function handleVerifyClaim() {
+    if (!claimCode.trim()) return;
+    verifyClaimMutation.mutate(claimCode.trim(), {
+      onError: () => showToast(t.today.claimVerifyError, "error"),
+    });
+  }
+
+  function handleRedeemClaim() {
+    const claimId = verifyClaimMutation.data?.claim?.id;
+    if (!claimId) return;
+    redeemClaimMutation.mutate(claimId, {
+      onSuccess: () => {
+        showToast(t.today.claimRedeemed);
+        setClaimCode("");
+      },
+      onError: () => showToast(t.today.claimRedeemError, "error"),
+    });
+  }
+
   function getTableNames(tableIds?: string[]): string {
     if (!tableIds || tableIds.length === 0) return "\u2014";
     return tableIds.map((id) => tableNameMap[id] ?? id.slice(0, 6)).join(", ");
@@ -297,7 +336,7 @@ export function TodayPage() {
       </div>
 
       {/* Occupancy heatmap */}
-      {occupancyByHour && (
+      {occupancyEnabled && occupancyByHour && (
         <OccupancyHeatmap
           occupancyByHour={occupancyByHour}
           operatingHours={restaurant?.operatingHours}
@@ -305,7 +344,37 @@ export function TodayPage() {
       )}
 
       {/* Table Map */}
-      {tableStatus && <TableMap tables={tableStatus} />}
+      {tableMapEnabled && tableStatus && <TableMap tables={tableStatus} />}
+
+      {/* Staff reward verification */}
+      {loyaltyEnabled && (
+        <div className="mb-6 bg-white rounded-xl border border-gray-200 p-4">
+          <h3 className="text-base font-semibold mb-3">{t.today.claimVerifyTitle}</h3>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              value={claimCode}
+              onChange={(e) => setClaimCode(e.target.value)}
+              placeholder={t.today.claimCodePlaceholder}
+              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+            <button onClick={handleVerifyClaim} className="px-4 py-2 rounded-lg text-white text-sm font-medium" style={{ backgroundColor: "var(--brand-primary)" }}>
+              {t.today.claimVerifyBtn}
+            </button>
+            {verifyClaimMutation.data?.claim?.status === "active" && (
+              <button onClick={handleRedeemClaim} className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium">
+                {t.today.claimRedeemBtn}
+              </button>
+            )}
+          </div>
+          {verifyClaimMutation.data?.claim && (
+            <div className="mt-3 rounded-lg bg-gray-50 px-3 py-3 text-sm text-gray-700">
+              <p>{t.today.claimRewardLabel}: {verifyClaimMutation.data.claim.rewardName}</p>
+              {verifyClaimMutation.data.claim.guestName ? <p>{t.today.claimGuestLabel}: {verifyClaimMutation.data.claim.guestName}</p> : null}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Next up countdown */}
       {nextUpId && (
@@ -353,7 +422,16 @@ export function TodayPage() {
                         <span className="mr-2 text-xs text-amber-600 font-medium">&#8592; {t.today.next}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3">{r.guest?.name ?? "---"}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-1">
+                        <span>{r.guest?.name ?? "---"}</span>
+                        <div className="flex flex-wrap gap-1">
+                          {getServiceSignals(r, t).map((signal) => (
+                            <span key={signal} className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[11px] font-medium">{signal}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-4 py-3">{r.partySize}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{getTableNames(r.tableIds)}</td>
                     <td className="px-4 py-3">
@@ -443,6 +521,11 @@ export function TodayPage() {
                     </span>
                   </div>
                   <p className="font-medium text-gray-900">{r.guest?.name ?? "---"}</p>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {getServiceSignals(r, t).map((signal) => (
+                      <span key={signal} className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[11px] font-medium">{signal}</span>
+                    ))}
+                  </div>
                   <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
                     <span>{r.partySize} {t.today.covers}</span>
                     <span>{getTableNames(r.tableIds)}</span>

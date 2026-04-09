@@ -36,7 +36,12 @@ export async function getDailySummary(
   const guestIds = [...new Set(dayReservations.map((r) => r.guestId))];
   const guestRows: GuestRow[] = [];
   for (const gid of guestIds) {
-    const [g] = await db.select().from(guestsTable).where(eq(guestsTable.id, gid)).limit(1);
+    const guestResult = await db
+      .select()
+      .from(guestsTable as any)
+      .where(eq(guestsTable.id, gid))
+      .limit(1) as GuestRow[];
+    const [g] = guestResult;
     if (g) guestRows.push(g);
   }
   const guestMap = new Map(guestRows.map((g) => [g.id, g]));

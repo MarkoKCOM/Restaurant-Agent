@@ -140,7 +140,16 @@ export async function gamificationRoutes(app: FastifyInstance) {
     }
 
     try {
-      const challenge = await createChallenge(body);
+      const challenge = await createChallenge({
+        restaurantId: body.restaurantId,
+        name: body.name,
+        description: body.description,
+        type: body.type,
+        target: body.target,
+        reward: body.reward,
+        startDate: body.startDate,
+        endDate: body.endDate,
+      });
       reply.code(201);
       return { challenge };
     } catch (err: any) {

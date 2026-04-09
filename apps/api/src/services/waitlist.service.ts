@@ -88,11 +88,12 @@ export async function addToWaitlist(data: {
 }
 
 async function resolveGuest(guestId: string): Promise<GuestRow> {
-  const [guest] = await db
+  const guestResult = await db
     .select()
-    .from(guestsTable)
+    .from(guestsTable as any)
     .where(eq(guestsTable.id, guestId))
-    .limit(1);
+    .limit(1) as GuestRow[];
+  const [guest] = guestResult;
   return guest;
 }
 
@@ -111,9 +112,9 @@ export async function listWaitlist(
       guest: guestsTable,
     })
     .from(waitlist)
-    .leftJoin(guestsTable, eq(waitlist.guestId, guestsTable.id))
+    .leftJoin(guestsTable as any, eq(waitlist.guestId, guestsTable.id))
     .where(and(...conditions))
-    .orderBy(waitlist.createdAt);
+    .orderBy(waitlist.createdAt) as Array<{ waitlist: WaitlistRow; guest: GuestRow | null }>;
 
   return rows
     .filter((row) => row.guest != null)
@@ -172,11 +173,12 @@ export async function offerSlot(waitlistId: string): Promise<WaitlistEntry | nul
 
   if (!updated) return null;
 
-  const [guest] = await db
+  const guestResult = await db
     .select()
-    .from(guestsTable)
+    .from(guestsTable as any)
     .where(eq(guestsTable.id, updated.guestId))
-    .limit(1);
+    .limit(1) as GuestRow[];
+  const [guest] = guestResult;
 
   return guest ? toWaitlistEntry(updated, guest) : null;
 }
@@ -250,11 +252,12 @@ export async function cancelWaitlistEntry(waitlistId: string): Promise<WaitlistE
 
   if (!updated) return null;
 
-  const [guest] = await db
+  const guestResult = await db
     .select()
-    .from(guestsTable)
+    .from(guestsTable as any)
     .where(eq(guestsTable.id, updated.guestId))
-    .limit(1);
+    .limit(1) as GuestRow[];
+  const [guest] = guestResult;
 
   return guest ? toWaitlistEntry(updated, guest) : null;
 }

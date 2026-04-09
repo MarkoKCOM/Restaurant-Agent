@@ -548,9 +548,12 @@ export async function listReservations(params: {
       guest: guestsTable,
     })
     .from(reservations)
-    .leftJoin(guestsTable, eq(reservations.guestId, guestsTable.id))
+    .leftJoin(guestsTable as any, eq(reservations.guestId, guestsTable.id))
     .where(whereClause)
-    .orderBy(reservations.date, reservations.timeStart);
+    .orderBy(reservations.date, reservations.timeStart) as Array<{
+      reservation: ReservationRow;
+      guest: GuestRow | null;
+    }>;
 
   return rows.map((row) =>
     toDomainReservation(row.reservation, row.guest ?? undefined),
@@ -722,11 +725,12 @@ export async function updateReservation(
     }
   }
 
-  const [guestRow] = await db
+  const guestResult = await db
     .select()
-    .from(guestsTable)
+    .from(guestsTable as any)
     .where(eq(guestsTable.id, updated.guestId))
-    .limit(1);
+    .limit(1) as GuestRow[];
+  const [guestRow] = guestResult;
 
   return toDomainReservation(updated, guestRow);
 }
@@ -758,11 +762,12 @@ export async function cancelReservation(
 
   try { await reminderQueue.remove(`reminder-${id}`); } catch { /* ignore */ }
 
-  const [guestRow] = await db
+  const guestResult = await db
     .select()
-    .from(guestsTable)
+    .from(guestsTable as any)
     .where(eq(guestsTable.id, updated.guestId))
-    .limit(1);
+    .limit(1) as GuestRow[];
+  const [guestRow] = guestResult;
 
   const reservation = toDomainReservation(updated, guestRow);
 
@@ -822,11 +827,12 @@ export async function markNoShow(id: string): Promise<DomainReservation | null> 
       .where(eq(guestsTable.id, updated.guestId));
   }
 
-  const [guestRow] = await db
+  const guestResult = await db
     .select()
-    .from(guestsTable)
+    .from(guestsTable as any)
     .where(eq(guestsTable.id, updated.guestId))
-    .limit(1);
+    .limit(1) as GuestRow[];
+  const [guestRow] = guestResult;
 
   return toDomainReservation(updated, guestRow);
 }

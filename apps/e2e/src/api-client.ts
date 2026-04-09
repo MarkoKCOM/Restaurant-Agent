@@ -231,3 +231,174 @@ export async function createVisit(data: {
   const token = await getToken();
   return request("/api/v1/visits", { method: "POST", token, body: data });
 }
+
+// ── Additional endpoints ───────────────────────────
+
+export async function getRestaurant(id: string) {
+  return request(`/api/v1/restaurants/${id}`);
+}
+
+export async function updateRestaurant(id: string, data: Record<string, unknown>) {
+  const token = await getToken();
+  return request(`/api/v1/restaurants/${id}`, { method: "PATCH", token, body: data });
+}
+
+export async function getDailySummary(restaurantId: string) {
+  const token = await getToken();
+  return request(`/api/v1/restaurants/${restaurantId}/summary`, { token });
+}
+
+export async function getGuest(guestId: string) {
+  const token = await getToken();
+  return request(`/api/v1/guests/${guestId}`, { token });
+}
+
+export async function createGuest(data: { restaurantId: string; name: string; phone: string; email?: string }) {
+  const token = await getToken();
+  return request("/api/v1/guests", { method: "POST", token, body: data });
+}
+
+export async function updateGuest(guestId: string, data: Record<string, unknown>) {
+  const token = await getToken();
+  return request(`/api/v1/guests/${guestId}`, { method: "PATCH", token, body: data });
+}
+
+export async function getGuestSentiment(guestId: string) {
+  const token = await getToken();
+  return request(`/api/v1/guests/${guestId}/sentiment`, { token });
+}
+
+export async function autoTagGuest(guestId: string) {
+  const token = await getToken();
+  return request(`/api/v1/guests/${guestId}/auto-tag`, { method: "POST", token });
+}
+
+export async function listTables(restaurantId: string) {
+  const token = await getToken();
+  return request(`/api/v1/tables?restaurantId=${restaurantId}`, { token });
+}
+
+export async function createTable(data: { restaurantId: string; name: string; minSeats: number; maxSeats: number }) {
+  const token = await getToken();
+  return request("/api/v1/tables", { method: "POST", token, body: data });
+}
+
+export async function updateTable(id: string, data: Record<string, unknown>) {
+  const token = await getToken();
+  return request(`/api/v1/tables/${id}`, { method: "PATCH", token, body: data });
+}
+
+export async function deleteTable(id: string) {
+  const token = await getToken();
+  return request(`/api/v1/tables/${id}`, { method: "DELETE", token });
+}
+
+export async function offerWaitlistSlot(id: string) {
+  const token = await getToken();
+  return request(`/api/v1/waitlist/${id}/offer`, { method: "POST", token });
+}
+
+export async function acceptWaitlistOffer(id: string) {
+  return request(`/api/v1/waitlist/${id}/accept`, { method: "POST" });
+}
+
+export async function awardPoints(guestId: string, data: { restaurantId: string; points: number; reason: string }) {
+  const token = await getToken();
+  return request(`/api/v1/loyalty/${guestId}/award`, { method: "POST", token, body: data });
+}
+
+export async function getLoyaltyHistory(guestId: string) {
+  const token = await getToken();
+  return request(`/api/v1/loyalty/${guestId}/history`, { token });
+}
+
+export async function listRewards(restaurantId: string) {
+  const token = await getToken();
+  return request(`/api/v1/loyalty/rewards?restaurantId=${restaurantId}`, { token });
+}
+
+export async function getStampCard(guestId: string) {
+  const token = await getToken();
+  return request(`/api/v1/loyalty/${guestId}/stamp-card`, { token });
+}
+
+export async function getVisitHistory(guestId: string) {
+  const token = await getToken();
+  return request(`/api/v1/visits/${guestId}`, { token });
+}
+
+export async function submitFeedback(data: {
+  guestId: string;
+  restaurantId: string;
+  rating: number;
+  feedback?: string;
+  channel: string;
+}) {
+  return request("/api/v1/feedback", { method: "POST", body: data });
+}
+
+export async function getFeedbackSummary(restaurantId: string) {
+  const token = await getToken();
+  return request(`/api/v1/feedback/summary?restaurantId=${restaurantId}`, { token });
+}
+
+export async function generateReferralCode(guestId: string) {
+  const token = await getToken();
+  return request(`/api/v1/gamification/${guestId}/referral-code`, { method: "POST", token });
+}
+
+export async function applyReferral(data: { guestId: string; referralCode: string }) {
+  const token = await getToken();
+  return request("/api/v1/gamification/apply-referral", { method: "POST", token, body: data });
+}
+
+export async function getReferralStats(guestId: string) {
+  const token = await getToken();
+  return request(`/api/v1/gamification/${guestId}/referral-stats`, { token });
+}
+
+export async function listChallenges(restaurantId: string) {
+  const token = await getToken();
+  return request(`/api/v1/gamification/challenges?restaurantId=${restaurantId}`, { token });
+}
+
+export async function createChallenge(data: {
+  restaurantId: string;
+  name: string;
+  type: string;
+  target: number;
+  reward: number;
+}) {
+  const token = await getToken();
+  return request("/api/v1/gamification/challenges", { method: "POST", token, body: data });
+}
+
+export async function getGuestChallenges(guestId: string, restaurantId: string) {
+  const token = await getToken();
+  return request(`/api/v1/gamification/${guestId}/challenges?restaurantId=${restaurantId}`, { token });
+}
+
+export async function incrementChallenge(guestId: string, challengeId: string) {
+  const token = await getToken();
+  return request(`/api/v1/gamification/${guestId}/challenges/${challengeId}/increment`, { method: "POST", token });
+}
+
+export async function getStreak(guestId: string) {
+  const token = await getToken();
+  return request(`/api/v1/gamification/${guestId}/streak`, { token });
+}
+
+export async function listEngagementJobs(restaurantId: string) {
+  const token = await getToken();
+  return request(`/api/v1/engagement/jobs?restaurantId=${restaurantId}`, { token });
+}
+
+export async function triggerWinBack(restaurantId: string) {
+  const token = await getToken();
+  return request(`/api/v1/engagement/win-back/check?restaurantId=${restaurantId}`, { method: "POST", token });
+}
+
+export async function getAdminRestaurants() {
+  const token = await getToken();
+  return request("/api/v1/admin/restaurants", { token });
+}

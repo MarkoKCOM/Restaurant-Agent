@@ -24,7 +24,7 @@ const chatMessageSchema = z.object({
   ).min(1).max(50),
 });
 
-const CHAT_MODEL = process.env.CHAT_MODEL || "qwen/qwen3-coder:free";
+const CHAT_MODEL = process.env.CHAT_MODEL || "openrouter/free";
 const CHAT_TIMEOUT_MS = 30_000;
 
 export const chatRoutes: FastifyPluginAsync = async (app) => {

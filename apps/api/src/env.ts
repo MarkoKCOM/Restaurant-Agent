@@ -19,7 +19,7 @@ const envSchema = z.object({
   // AI / Agent
   OPENROUTER_API_KEY: z.string().optional(),
   AGENT_MODEL: z.string().default("google/gemini-2.5-flash"),
-  CHAT_MODEL: z.string().default("qwen/qwen3-coder:free"),
+  CHAT_MODEL: z.string().default("openrouter/free"),
 });
 
 export const env = envSchema.parse(process.env);

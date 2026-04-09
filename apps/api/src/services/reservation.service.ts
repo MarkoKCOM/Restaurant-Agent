@@ -543,18 +543,20 @@ export async function listReservations(params: {
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   const rows = await db
-    .select({
-      reservation: reservations,
-      guest: guestsTable,
-    })
+    .select()
     .from(reservations)
-    .leftJoin(guestsTable, eq(reservations.guestId, guestsTable.id))
     .where(whereClause)
     .orderBy(reservations.date, reservations.timeStart);
 
-  return rows.map((row) =>
-    toDomainReservation(row.reservation, row.guest ?? undefined),
-  );
+  const guestRows = restaurantId
+    ? await db
+        .select()
+        .from(guestsTable)
+        .where(eq(guestsTable.restaurantId, restaurantId))
+    : [];
+  const guestMap = new Map(guestRows.map((guest) => [guest.id, guest]));
+
+  return rows.map((row) => toDomainReservation(row, guestMap.get(row.guestId)));
 }
 
 async function getReservationRowById(id: string): Promise<ReservationRow | undefined> {

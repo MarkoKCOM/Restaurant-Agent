@@ -26,17 +26,25 @@ const addToWaitlistSchema = z.object({
 export async function waitlistRoutes(app: FastifyInstance) {
   // POST / — add to waitlist
   app.post("/", async (request, reply) => {
-    const body = addToWaitlistSchema.parse(request.body) as Parameters<typeof addToWaitlist>[0];
+    const parsed = addToWaitlistSchema.parse(request.body);
     const user = request.user;
 
     if (user) {
-      const err = enforceTenant(user, body.restaurantId);
+      const err = enforceTenant(user, parsed.restaurantId!);
       if (err) {
         return reply.status(403).send({ error: err });
       }
     }
 
-    const entry = await addToWaitlist(body);
+    const entry = await addToWaitlist({
+      restaurantId: parsed.restaurantId!,
+      guestName: parsed.guestName!,
+      guestPhone: parsed.guestPhone!,
+      date: parsed.date!,
+      preferredTimeStart: parsed.preferredTimeStart!,
+      preferredTimeEnd: parsed.preferredTimeEnd!,
+      partySize: parsed.partySize!,
+    });
     reply.code(201);
     return { waitlistEntry: entry };
   });

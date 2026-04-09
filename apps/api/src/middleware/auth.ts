@@ -35,6 +35,7 @@ const PUBLIC_ROUTES: Array<{
   { method: "POST", path: "/api/v1/waitlist" },
   { method: "POST", path: "/api/v1/waitlist", prefix: true, suffix: "/accept" },
   { method: "POST", path: "/api/v1/agent", prefix: true },
+  { method: "POST", path: "/api/v1/feedback" },
 ];
 
 function isPublicRoute(method: string, url: string): boolean {
@@ -73,10 +74,11 @@ async function authMiddlewarePlugin(app: FastifyInstance) {
 
     try {
       const payload = jwt.verify(token, env.JWT_SECRET) as AuthUser;
-      if (payload.role && payload.role !== "admin" && payload.role !== "employee" && payload.role !== "super_admin") {
-        throw new Error("Invalid role");
+      const validRoles: AdminRole[] = ["admin", "employee", "super_admin"];
+      if (!payload.role || !validRoles.includes(payload.role)) {
+        throw new Error("Invalid or missing role in token");
       }
-      const role = payload.role ?? "admin";
+      const role = payload.role;
       const requestedRestaurantId = request.headers["x-restaurant-id"];
       const activeRestaurantId =
         role === "super_admin" && typeof requestedRestaurantId === "string"

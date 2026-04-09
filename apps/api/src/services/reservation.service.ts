@@ -530,7 +530,7 @@ export async function listReservations(params: {
 }): Promise<DomainReservation[]> {
   const { restaurantId, date } = params;
 
-  const conditions = [] as any[];
+  const conditions: ReturnType<typeof eq>[] = [];
 
   if (restaurantId) {
     conditions.push(eq(reservations.restaurantId, restaurantId));
@@ -540,21 +540,21 @@ export async function listReservations(params: {
     conditions.push(eq(reservations.date, date));
   }
 
-  const baseQuery = conditions.length > 0
-    ? db.select().from(reservations).where(and(...conditions))
-    : db.select().from(reservations);
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  const rows = await baseQuery.orderBy(
-    reservations.date,
-    reservations.timeStart,
+  const rows = await db
+    .select({
+      reservation: reservations,
+      guest: guestsTable,
+    })
+    .from(reservations)
+    .leftJoin(guestsTable, eq(reservations.guestId, guestsTable.id))
+    .where(whereClause)
+    .orderBy(reservations.date, reservations.timeStart);
+
+  return rows.map((row) =>
+    toDomainReservation(row.reservation, row.guest ?? undefined),
   );
-
-  const results: DomainReservation[] = [];
-  for (const row of rows) {
-    const [guest] = await db.select().from(guestsTable).where(eq(guestsTable.id, row.guestId)).limit(1);
-    results.push(toDomainReservation(row, guest ?? undefined));
-  }
-  return results;
 }
 
 async function getReservationRowById(id: string): Promise<ReservationRow | undefined> {

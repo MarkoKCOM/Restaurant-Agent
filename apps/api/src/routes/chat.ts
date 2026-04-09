@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import { z } from "zod";
 
 const SYSTEM_PROMPT = `You are OpenSeat's help assistant, embedded in the restaurant dashboard. You help restaurant owners and staff understand how to use the OpenSeat platform.
 
@@ -14,38 +15,64 @@ You know everything about OpenSeat:
 
 Keep answers concise and helpful. If you don't know something, say so. Answer in the same language the user writes in (Hebrew or English).`;
 
+const chatMessageSchema = z.object({
+  messages: z.array(
+    z.object({
+      role: z.enum(["user", "assistant"]),
+      content: z.string().max(2000),
+    }),
+  ).min(1).max(50),
+});
+
+const CHAT_MODEL = process.env.CHAT_MODEL || "qwen/qwen3-coder:free";
+const CHAT_TIMEOUT_MS = 30_000;
+
 export const chatRoutes: FastifyPluginAsync = async (app) => {
   app.post("/", async (request, reply) => {
-    const { messages } = request.body as { messages: { role: string; content: string }[] };
+    const { messages } = chatMessageSchema.parse(request.body);
 
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       return reply.status(503).send({ error: "Chat not configured. OPENROUTER_API_KEY is missing." });
     }
 
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "qwen/qwen3-coder:free",
-        max_tokens: 1024,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          ...messages.slice(-10),
-        ],
-      }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
 
-    if (!res.ok) {
-      const err = await res.text();
-      return reply.status(502).send({ error: "AI service error", details: err });
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: CHAT_MODEL,
+          max_tokens: 1024,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            ...messages.slice(-10),
+          ],
+        }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        console.warn("Chat AI service error:", res.status);
+        return reply.status(502).send({ error: "AI service error" });
+      }
+
+      const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+      const text = data.choices?.[0]?.message?.content ?? "Sorry, I couldn't generate a response.";
+      return reply.send({ message: text });
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") {
+        return reply.status(504).send({ error: "AI service timeout" });
+      }
+      console.error("Chat route error:", err);
+      return reply.status(500).send({ error: "Internal error" });
+    } finally {
+      clearTimeout(timeout);
     }
-
-    const data = await res.json() as any;
-    const text = data.choices?.[0]?.message?.content ?? "Sorry, I couldn't generate a response.";
-    return reply.send({ message: text });
   });
 };

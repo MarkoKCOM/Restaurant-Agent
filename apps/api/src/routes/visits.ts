@@ -71,7 +71,9 @@ export async function visitRoutes(app: FastifyInstance) {
     const visit = await logVisit(body);
 
     // Auto-tag guest after visit
-    await autoTagGuest(body.guestId).catch(() => {});
+    await autoTagGuest(body.guestId).catch((err) => {
+      console.warn("Auto-tag after visit failed:", err);
+    });
 
     reply.code(201);
     return { visit };
@@ -116,20 +118,26 @@ export async function visitRoutes(app: FastifyInstance) {
 }
 
 export async function feedbackRoutes(app: FastifyInstance) {
-  // POST /api/v1/feedback — submit feedback
+  // POST /api/v1/feedback — submit feedback (public — guests submit via widget/WhatsApp)
   app.post("/", async (request, reply) => {
     const body = submitFeedbackSchema.parse(request.body) as Parameters<typeof submitFeedback>[0];
     const result = await submitFeedback(body);
 
     // Auto-tag guest after feedback
-    await autoTagGuest(body.guestId).catch(() => {});
+    await autoTagGuest(body.guestId).catch((err) => {
+      console.warn("Auto-tag after feedback failed:", err);
+    });
 
     reply.code(201);
     return { visit: result };
   });
 
-  // GET /api/v1/feedback/summary — restaurant feedback summary
-  app.get("/summary", async (request) => {
+  // GET /api/v1/feedback/summary — restaurant feedback summary (requires auth)
+  app.get("/summary", async (request, reply) => {
+    if (!request.user) {
+      return reply.status(401).send({ error: "Unauthorized" });
+    }
+
     const { restaurantId, from, to } = request.query as {
       restaurantId: string;
       from?: string;
@@ -137,7 +145,12 @@ export async function feedbackRoutes(app: FastifyInstance) {
     };
 
     if (!restaurantId) {
-      return { error: "restaurantId is required" };
+      return reply.status(400).send({ error: "restaurantId is required" });
+    }
+
+    const err = enforceTenant(request.user, restaurantId);
+    if (err) {
+      return reply.status(403).send({ error: err });
     }
 
     const summary = await getFeedbackSummary(restaurantId, { from, to });

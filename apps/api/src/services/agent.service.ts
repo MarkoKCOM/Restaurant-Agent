@@ -103,36 +103,45 @@ Rules:
 // ── LLM Call ────────────────────────────────────────
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const MODEL = process.env.AGENT_MODEL || "google/gemini-2.5-flash";
+const LLM_TIMEOUT_MS = 30_000;
 
 async function callLLM(messages: Message[], tools: unknown[]): Promise<{
   content: string | null;
   tool_calls?: ToolCall[];
 }> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const apiKey = env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY not set");
 
-  const res = await fetch(OPENROUTER_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 1024,
-      messages,
-      tools,
-      tool_choice: "auto",
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`LLM error ${res.status}: ${err}`);
+  let res: Response;
+  try {
+    res = await fetch(OPENROUTER_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: env.AGENT_MODEL,
+        max_tokens: 1024,
+        messages,
+        tools,
+        tool_choice: "auto",
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
   }
 
-  const data = await res.json() as any;
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`LLM error ${res.status}: ${errText}`);
+  }
+
+  const data = await res.json() as { choices?: Array<{ message?: { content?: string; tool_calls?: ToolCall[] } }> };
   const choice = data.choices?.[0]?.message;
   return {
     content: choice?.content ?? null,

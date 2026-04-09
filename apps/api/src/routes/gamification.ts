@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { z } from "zod";
 import {
   generateReferralCode,
   applyReferral,
@@ -42,16 +43,13 @@ export async function gamificationRoutes(app: FastifyInstance) {
   });
 
   // POST /apply-referral — apply a referral code
-  app.post("/apply-referral", async (request, reply) => {
-    const { guestId, referralCode } = request.body as {
-      guestId: string;
-      referralCode: string;
-    };
+  const applyReferralSchema = z.object({
+    guestId: z.string().uuid(),
+    referralCode: z.string().min(1),
+  });
 
-    if (!guestId || !referralCode) {
-      reply.code(400);
-      return { error: "guestId and referralCode are required" };
-    }
+  app.post("/apply-referral", async (request, reply) => {
+    const { guestId, referralCode } = applyReferralSchema.parse(request.body);
 
     const guest = await getGuestById(guestId);
     if (!guest) {
@@ -122,22 +120,19 @@ export async function gamificationRoutes(app: FastifyInstance) {
   });
 
   // POST /challenges — create a challenge
-  app.post("/challenges", async (request, reply) => {
-    const body = request.body as {
-      restaurantId: string;
-      name: string;
-      description?: string;
-      type: string;
-      target: number;
-      reward: number;
-      startDate?: string;
-      endDate?: string;
-    };
+  const createChallengeSchema = z.object({
+    restaurantId: z.string().uuid(),
+    name: z.string().min(1),
+    description: z.string().optional(),
+    type: z.string().min(1),
+    target: z.coerce.number().int().min(1),
+    reward: z.coerce.number().int().min(0),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+  });
 
-    if (!body.restaurantId || !body.name || !body.type || !body.target || !body.reward) {
-      reply.code(400);
-      return { error: "restaurantId, name, type, target, and reward are required" };
-    }
+  app.post("/challenges", async (request, reply) => {
+    const body = createChallengeSchema.parse(request.body);
 
     const err = enforceTenant(request.user!, body.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {

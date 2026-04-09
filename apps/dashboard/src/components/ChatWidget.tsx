@@ -1,10 +1,15 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useLang } from "../i18n.js";
 import { Tooltip } from "./Tooltip.js";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
+}
+
+interface Position {
+  x: number;
+  y: number;
 }
 
 const API = "/api/v1";
@@ -15,6 +20,10 @@ export function ChatWidget() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [position, setPosition] = useState<Position | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragOffset = useRef<Position>({ x: 0, y: 0 });
+  const panelRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -25,6 +34,40 @@ export function ChatWidget() {
   useEffect(() => {
     if (isOpen) inputRef.current?.focus();
   }, [isOpen]);
+
+  // Reset position when closing
+  useEffect(() => {
+    if (!isOpen) setPosition(null);
+  }, [isOpen]);
+
+  // Drag handlers
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const rect = panel.getBoundingClientRect();
+    dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    setIsDragging(true);
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    e.preventDefault();
+  }, []);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const maxX = window.innerWidth - panel.offsetWidth;
+    const maxY = window.innerHeight - panel.offsetHeight;
+    const x = Math.min(Math.max(0, e.clientX - dragOffset.current.x), maxX);
+    const y = Math.min(Math.max(0, e.clientY - dragOffset.current.y), maxY);
+    setPosition({ x, y });
+  }, [isDragging]);
+
+  const handlePointerUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
 
   async function handleSend() {
     const text = input.trim();
@@ -72,6 +115,11 @@ export function ChatWidget() {
   const openLabel = t.chat.open;
   const closeLabel = t.chat.close;
 
+  // Panel style: use dragged position or default fixed position
+  const panelStyle: React.CSSProperties = position
+    ? { position: "fixed", left: position.x, top: position.y, bottom: "auto", right: "auto" }
+    : {};
+
   return (
     <>
       {/* Floating button */}
@@ -98,12 +146,19 @@ export function ChatWidget() {
       {/* Chat panel */}
       {isOpen && (
         <div
-          className={`fixed bottom-[4.5rem] md:bottom-20 ${panelSide} z-50 flex max-h-[26rem] w-[min(21rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl`}
+          ref={panelRef}
+          className={`${position ? "" : `fixed bottom-[4.5rem] md:bottom-20 ${panelSide}`} z-50 flex max-h-[26rem] w-[min(21rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl`}
+          style={panelStyle}
           dir={dir}
         >
-          {/* Header */}
-          <div className="flex items-start justify-between gap-3 bg-amber-600 px-4 py-2.5 text-white">
-            <div className="flex items-center gap-2">
+          {/* Header — draggable */}
+          <div
+            className={`flex items-start justify-between gap-3 bg-amber-600 px-4 py-2.5 text-white ${isDragging ? "cursor-grabbing" : "cursor-grab"}`}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+          >
+            <div className="flex items-center gap-2 select-none">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-base">🤖</span>
               <div>
                 <div className="font-semibold leading-tight">{panelTitle}</div>

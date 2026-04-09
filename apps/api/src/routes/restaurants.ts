@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/index.js";
-import { restaurants, reservations, tables, guests as guestsTable } from "../db/schema.js";
+import { restaurants, reservations, tables, guests } from "../db/schema.js";
 import { getDailySummary } from "../services/summary.service.js";
 import { enforceTenant, requireOperationalRole, requireRestaurantAdmin } from "../middleware/auth.js";
 import { dashboardConfigSchema } from "@openseat/domain";
@@ -313,8 +313,15 @@ export async function restaurantRoutes(app: FastifyInstance) {
         partySize: reservations.partySize,
         tableIds: reservations.tableIds,
         status: reservations.status,
+        guestName: guests.name,
       })
       .from(reservations)
+      // drizzle-orm 0.43.x can hit a protected-member type mismatch on Vercel's
+      // production builder here; the explicit cast keeps the runtime join intact.
+      .leftJoin(
+        guests as any,
+        and(eq(reservations.guestId, guests.id), eq(guests.restaurantId, id)),
+      )
       .where(
         and(
           eq(reservations.restaurantId, id),
@@ -322,19 +329,9 @@ export async function restaurantRoutes(app: FastifyInstance) {
         ),
       );
 
-    const guestRows = await db
-      .select({ id: guestsTable.id, name: guestsTable.name })
-      .from(guestsTable)
-      .where(eq(guestsTable.restaurantId, id));
-
-    const guestNameById = new Map(guestRows.map((guest) => [guest.id, guest.name]));
-
-    const activeReservations = todayReservations
-      .map((reservation) => ({
-        ...reservation,
-        guestName: guestNameById.get(reservation.guestId) ?? null,
-      }))
-      .filter((r) => ["pending", "confirmed", "seated"].includes(r.status));
+    const activeReservations = todayReservations.filter(
+      (r) => ["pending", "confirmed", "seated"].includes(r.status),
+    );
 
     const result = allTables.map((table) => {
       // Find reservations that reference this table

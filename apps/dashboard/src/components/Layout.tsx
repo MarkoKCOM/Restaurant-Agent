@@ -3,7 +3,7 @@ import { useDashboard, useReservations, useGuests, useWaitlist } from "../hooks/
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useLang } from "../i18n.js";
 import { useAuth } from "../hooks/useAuth.js";
-import type { DashboardConfig } from "@sable/domain";
+import type { DashboardConfig } from "@openseat/domain";
 import { ChatWidget } from "./ChatWidget.js";
 
 function todayStr() {
@@ -74,7 +74,7 @@ export function Layout() {
             <img src={logo} alt="" className="w-8 h-8 rounded object-contain" />
           ) : null}
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{restaurant?.name ?? "Sable"}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{restaurant?.name ?? "OpenSeat"}</h1>
             <p className="text-sm text-gray-500">{t.nav.subtitle}</p>
           </div>
         </div>

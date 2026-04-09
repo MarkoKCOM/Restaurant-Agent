@@ -6,8 +6,8 @@ export default defineConfig({
   build: {
     lib: {
       entry: "src/main.tsx",
-      name: "SableBooking",
-      fileName: "sable-booking",
+      name: "OpenSeatBooking",
+      fileName: "openseat-booking",
       formats: ["iife"],
     },
     rollupOptions: {

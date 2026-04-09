@@ -1,4 +1,4 @@
-# Sable
+# OpenSeat
 
 AI-powered restaurant management platform - reservations, guest CRM, loyalty, gamification, campaigns, and automation. All via WhatsApp and web.
 

@@ -1,11 +1,11 @@
 #!/bin/bash
-# Sable E2E Test — tests the full booking flow
+# OpenSeat E2E Test — tests the full booking flow
 set -e
 
 API="http://localhost:3001"
 RESTAURANT_ID="c3c22e37-a309-4fde-aa6c-6e714212a3bc"
 
-echo "=== Sable E2E Test ==="
+echo "=== OpenSeat E2E Test ==="
 
 # 1. Health check
 echo -n "1. Health check... "
@@ -66,7 +66,7 @@ fi
 
 # 10. Services check
 echo -n "10. Services... "
-for svc in sable-api nginx postgresql redis-server; do
+for svc in openseat-api nginx postgresql redis-server; do
   systemctl is-active $svc > /dev/null 2>&1 || { echo "FAIL ($svc down)"; exit 1; }
 done
 echo "PASS (all active)"

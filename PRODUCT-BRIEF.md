@@ -1,13 +1,13 @@
-# Sable - Product Brief
+# OpenSeat - Product Brief
 
-> The complete reference for what Sable is, what it does, how it works, and where it's going.
+> The complete reference for what OpenSeat is, what it does, how it works, and where it's going.
 > Share this doc with designers, developers, investors, or anyone who needs the full picture.
 
 ---
 
-## What is Sable?
+## What is OpenSeat?
 
-Sable is an AI-powered restaurant management platform. It replaces expensive reservation systems (Ontopo, Tabit, OpenTable, SevenRooms) with a modern, affordable alternative that includes AI-native guest retention, loyalty, CRM, and WhatsApp automation.
+OpenSeat is an AI-powered restaurant management platform. It replaces expensive reservation systems (Ontopo, Tabit, OpenTable, SevenRooms) with a modern, affordable alternative that includes AI-native guest retention, loyalty, CRM, and WhatsApp automation.
 
 **One line:** Your restaurant's smartest team member - reservations, guest CRM, loyalty, gamification, campaigns, and automation. All AI-powered, via WhatsApp and your website.
 
@@ -38,7 +38,7 @@ Sable is an AI-powered restaurant management platform. It replaces expensive res
 
 ## Competitive Comparison
 
-| Feature | Sable | Ontopo | Tabit | SevenRooms |
+| Feature | OpenSeat | Ontopo | Tabit | SevenRooms |
 |---------|-------|--------|-------|------------|
 | Online reservations | Yes | Yes | Yes | Yes |
 | Booking widget | Yes | No | Yes | Yes |
@@ -249,7 +249,7 @@ Everything in Starter + loyalty + CRM + automation.
 ## Repository Structure
 
 ```
-sable/
+openseat/
 ├── apps/
 │   ├── api/              # Fastify backend (routes, services, DB, queue)
 │   ├── dashboard/        # React owner dashboard
@@ -364,7 +364,7 @@ Voice/phone reservations, POS integration, Instagram DM, mobile app, AI table yi
 ## Marketing Copy (Hebrew)
 
 ### Hero
-- Title: Sable
+- Title: OpenSeat
 - Subtitle: חבר הצוות הכי חכם של המסעדה שלך
 - Description: מערכת מלאה לניהול מסעדה - הזמנות, CRM אורחים, נאמנות, גיימיפיקציה, קמפיינים ואוטומציה. הכל מונע AI, הכל בוואטסאפ ובאתר שלך.
 - Trust badge: מופעל ע״י AI - עובד 24/7 בלי הפסקות

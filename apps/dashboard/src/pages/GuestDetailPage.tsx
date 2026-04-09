@@ -4,7 +4,7 @@ import { useGuest, useUpdateGuest, useLoyaltyBalance, useLoyaltyHistory, useVisi
 import type { LoyaltyTransaction } from "../hooks/api.js";
 import { useToast } from "../components/Toast.js";
 import { useLang } from "../i18n.js";
-import type { Reservation } from "@sable/domain";
+import type { Reservation } from "@openseat/domain";
 
 const TIER_COLORS: Record<string, string> = {
   bronze: "bg-orange-100 text-orange-700 border-orange-200",

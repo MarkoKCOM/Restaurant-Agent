@@ -5,7 +5,7 @@
 Turborepo + pnpm workspaces. Each app is independently buildable and deployable.
 
 ```text
-sable/
+openseat/
 ├── package.json              # Root — Turborepo scripts
 ├── pnpm-workspace.yaml
 ├── turbo.json
@@ -41,7 +41,7 @@ sable/
 │   │
 │   ├── booking-widget/       # Embeddable widget — Preact (IIFE bundle)
 │   │   └── src/
-│   │       ├── main.tsx      # Auto-mount + SableBooking.mount()
+│   │       ├── main.tsx      # Auto-mount + OpenSeatBooking.mount()
 │   │       └── BookingWidget.tsx
 │   │
 │   └── marketing-site/       # Landing page — React + Vite + Tailwind

@@ -32,6 +32,6 @@
 ### Track C: Shared / Final
 
 - [ ] C1. **Build + type-check** — `pnpm build` passes with zero errors across all 5 packages
-- [ ] C2. **Deploy** — Restart sable-api service, verify all endpoints
+- [ ] C2. **Deploy** — Restart openseat-api service, verify all endpoints
 - [ ] C3. **Commit + push** — All changes committed to main branch on GitHub
 - [ ] C4. **PROGRESS.md** — Update with Sprint 3 completion notes

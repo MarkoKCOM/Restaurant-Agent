@@ -10,7 +10,7 @@ import {
 } from "../hooks/api.js";
 import { useToast } from "../components/Toast.js";
 import { useLang } from "../i18n.js";
-import type { Table, DashboardConfig } from "@sable/domain";
+import type { Table, DashboardConfig } from "@openseat/domain";
 
 const DAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 

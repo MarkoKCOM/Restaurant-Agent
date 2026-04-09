@@ -12,7 +12,7 @@
 - **Owner:** Sione's friend (details TBD — need name, menu, table layout, hours)
 
 ## Context
-- Building an AI restaurant agent platform (codename: Sable)
+- Building an AI restaurant agent platform (codename: OpenSeat)
 - Two packages: Starter (reservations) and Growth (retention/loyalty/gamification)
 - Pilot is free — BFF Raanana is the first test restaurant
 - Sione wants Jake to handle all restaurant agent work using GPT models to save Claude usage

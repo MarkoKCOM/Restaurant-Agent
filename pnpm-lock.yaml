@@ -23,7 +23,7 @@ importers:
       '@fastify/jwt':
         specifier: ^9.0.0
         version: 9.1.0
-      '@sable/domain':
+      '@openseat/domain':
         specifier: workspace:*
         version: link:../../packages/domain
       bcryptjs:
@@ -100,7 +100,7 @@ importers:
 
   apps/dashboard:
     dependencies:
-      '@sable/domain':
+      '@openseat/domain':
         specifier: workspace:*
         version: link:../../packages/domain
       '@tanstack/react-query':

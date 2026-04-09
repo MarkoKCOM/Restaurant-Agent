@@ -6,7 +6,7 @@ const t = {
   he: {
     nav: { product: "המוצר", tools: "כלים", pricing: "מחירון", demo: "דמו" },
     hero: {
-      title: "Sable",
+      title: "OpenSeat",
       subtitle: "חבר הצוות הכי חכם של המסעדה שלך",
       desc: "מערכת מלאה לניהול מסעדה - הזמנות, CRM אורחים, נאמנות, גיימיפיקציה, קמפיינים ואוטומציה. הכל מונע AI, הכל בוואטסאפ ובאתר שלך.",
       cta1: "ראה מחירים",
@@ -172,9 +172,9 @@ const t = {
       { num: "3", title: "אורח מגיע", desc: "הצוות רואה הכל בדשבורד - פרופיל, העדפות, היסטוריה" },
       { num: "4", title: "אחרי הביקור", desc: "נקודות נצברות, תודה נשלחת, ביקורת מתבקשת, והאורח חוזר" },
     ],
-    comparisonTitle: "למה Sable ולא המתחרים",
+    comparisonTitle: "למה OpenSeat ולא המתחרים",
     comparison: {
-      headers: ["", "Sable", "Ontopo", "Tabit", "SevenRooms"],
+      headers: ["", "OpenSeat", "Ontopo", "Tabit", "SevenRooms"],
       rows: [
         ["הזמנות אונליין", "v", "v", "v", "v"],
         ["בוט וואטסאפ AI", "v", "x", "x", "x"],
@@ -235,7 +235,7 @@ const t = {
   en: {
     nav: { product: "Product", tools: "Tools", pricing: "Pricing", demo: "Demo" },
     hero: {
-      title: "Sable",
+      title: "OpenSeat",
       subtitle: "Your restaurant's smartest team member",
       desc: "Complete restaurant management - reservations, guest CRM, loyalty, gamification, campaigns & automation. All AI-powered, via WhatsApp and your website.",
       cta1: "See pricing",
@@ -401,9 +401,9 @@ const t = {
       { num: "3", title: "Guest arrives", desc: "Staff sees everything on dashboard - profile, preferences, history" },
       { num: "4", title: "After the visit", desc: "Points earned, thank-you sent, review requested, and the guest comes back" },
     ],
-    comparisonTitle: "Why Sable over the competition",
+    comparisonTitle: "Why OpenSeat over the competition",
     comparison: {
-      headers: ["", "Sable", "Ontopo", "Tabit", "SevenRooms"],
+      headers: ["", "OpenSeat", "Ontopo", "Tabit", "SevenRooms"],
       rows: [
         ["Online reservations", "v", "v", "v", "v"],
         ["WhatsApp AI Bot", "v", "x", "x", "x"],
@@ -641,7 +641,7 @@ export function LandingPage() {
     <div dir={dir} className="min-h-screen bg-white text-gray-900" style={{ direction: dir }}>
       {/* Nav */}
       <nav className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-100 px-6 py-3 flex items-center justify-between">
-        <span className="text-xl font-bold">Sable</span>
+        <span className="text-xl font-bold">OpenSeat</span>
         <div className="flex items-center gap-6 text-sm">
           <a href="#tools" className="text-gray-600 hover:text-gray-900 hidden md:inline">{c.nav.tools}</a>
           <a href="#pricing" className="text-gray-600 hover:text-gray-900 hidden md:inline">{c.nav.pricing}</a>
@@ -850,7 +850,7 @@ export function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-gray-200 px-6 py-8 text-center text-sm text-gray-400">
-        Sable &copy; 2026 KaspaCom
+        OpenSeat &copy; 2026 KaspaCom
       </footer>
     </div>
   );

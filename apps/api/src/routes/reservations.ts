@@ -3,7 +3,7 @@ import { z } from "zod";
 import {
   availabilityQuerySchema,
   createReservationSchema,
-} from "@sable/domain";
+} from "@openseat/domain";
 import {
   cancelReservation,
   checkAvailability,

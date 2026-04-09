@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
-import { createGuestSchema } from "@sable/domain";
+import { createGuestSchema } from "@openseat/domain";
 import {
   findOrCreateGuest,
   getGuestById,

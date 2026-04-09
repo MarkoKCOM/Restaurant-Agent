@@ -1,8 +1,8 @@
 import type { FastifyPluginAsync } from "fastify";
 
-const SYSTEM_PROMPT = `You are Sable's help assistant, embedded in the restaurant dashboard. You help restaurant owners and staff understand how to use the Sable platform.
+const SYSTEM_PROMPT = `You are OpenSeat's help assistant, embedded in the restaurant dashboard. You help restaurant owners and staff understand how to use the OpenSeat platform.
 
-You know everything about Sable:
+You know everything about OpenSeat:
 - **Today page**: Shows today's reservations, occupancy heatmap by hour, live table map (available/reserved/occupied), next-up countdown, and stats (reservations, covers, cancellations, no-shows). Staff can confirm, seat, complete, cancel, or mark no-show with one click.
 - **Reservations page**: Browse by date, filter by status, search by guest name/phone, sort by time/name/party/status. Click a reservation for the detail panel to edit. Create new reservations with the + button.
 - **Waitlist**: When fully booked, add guests to waitlist. When a table opens, offer it to the next person. They get 15 minutes to accept. If declined, moves to next in line.

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Add JWT-based authentication to the Sable Fastify API. All routes except public endpoints require a valid Bearer token. The dashboard gains a login page that stores the JWT and attaches it to every API request. A seeded admin user is created during database setup so operators can log in immediately after deployment.
+Add JWT-based authentication to the OpenSeat Fastify API. All routes except public endpoints require a valid Bearer token. The dashboard gains a login page that stores the JWT and attaches it to every API request. A seeded admin user is created during database setup so operators can log in immediately after deployment.
 
 ## Requirements
 

@@ -4,7 +4,7 @@ import type { TableStatusItem } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useToast } from "../components/Toast.js";
 import { useLang } from "../i18n.js";
-import type { Reservation, Table } from "@sable/domain";
+import type { Reservation, Table } from "@openseat/domain";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800",

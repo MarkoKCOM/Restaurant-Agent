@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useGuests } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useLang } from "../i18n.js";
-import type { Guest } from "@sable/domain";
+import type { Guest } from "@openseat/domain";
 
 export function GuestsPage() {
   const { restaurant } = useCurrentRestaurant();

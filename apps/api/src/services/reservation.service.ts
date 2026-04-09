@@ -9,7 +9,7 @@ import type {
   AvailabilitySlot,
   CreateReservationInput,
   Reservation as DomainReservation,
-} from "@sable/domain";
+} from "@openseat/domain";
 import { findOrCreateGuest, toDomainGuest, type GuestRow } from "./guest.service.js";
 import {
   getActiveTablesForRestaurant,

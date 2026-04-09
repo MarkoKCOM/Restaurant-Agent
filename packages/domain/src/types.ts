@@ -28,9 +28,39 @@ export interface WidgetConfig {
   welcomeText?: string;
 }
 
-export interface DashboardConfig {
-  accentColor?: string;
+export interface DashboardPalette {
+  /** Primary brand color — buttons, active nav items, key accents. */
+  primary?: string;
+  /** Sidebar background color. */
+  sidebar?: string;
+  /** Sidebar text/icon color. */
+  sidebarText?: string;
+  /** Surface/card accent background (e.g. stat cards). */
+  surface?: string;
+  /** Secondary accent (e.g. badges, hover states). */
+  accent?: string;
+}
+
+export interface DashboardBranding {
+  /** Square logo / icon URL shown in sidebar header. */
   logo?: string;
+  /** Text-based wordmark URL shown in sidebar (optional). */
+  wordmark?: string;
+  /** Short tagline shown beneath restaurant name in sidebar. */
+  tagline?: string;
+}
+
+export interface DashboardConfig {
+  // ── Legacy fields — kept for backward compatibility ──
+  /** @deprecated Use palette.primary instead. */
+  accentColor?: string;
+  /** @deprecated Use branding.logo instead. */
+  logo?: string;
+
+  // ── Structured brand kit ──
+  palette?: DashboardPalette;
+  branding?: DashboardBranding;
+
   language?: "he" | "en";
   visiblePages?: string[];
   features?: {

@@ -56,7 +56,7 @@ function plusDays(days) {
 }
 
 const runId = `smoke-${Date.now()}`;
-const reservationDate = plusDays(1);
+let reservationDate = plusDays(10);
 const visitDate = plusDays(0);
 
 const report = { baseUrl, runId, steps: [] };
@@ -75,25 +75,49 @@ const restaurantId = login.restaurant.id;
 const restaurants = await request("/api/v1/restaurants");
 record("restaurants.list", { count: restaurants.length });
 
-const availability = await request(`/api/v1/reservations/availability?restaurantId=${restaurantId}&date=${reservationDate}&partySize=2`);
-if (!availability.slots?.length) throw new Error("No availability slots returned");
-const slot = availability.slots[0];
-record("reservations.availability", { slotCount: availability.slots.length, chosenSlot: slot.time });
+let availability;
+let slot;
+for (let offset = 10; offset < 40; offset += 1) {
+  const candidateDate = plusDays(offset);
+  const candidateAvailability = await request(`/api/v1/reservations/availability?restaurantId=${restaurantId}&date=${candidateDate}&partySize=2`);
+  if (candidateAvailability.slots?.length) {
+    reservationDate = candidateDate;
+    availability = candidateAvailability;
+    slot = candidateAvailability.slots[0];
+    break;
+  }
+}
+if (!availability?.slots?.length || !slot) throw new Error("No availability slots returned");
+record("reservations.availability", { date: reservationDate, slotCount: availability.slots.length, chosenSlot: slot.time });
+
+async function createReservationUsingAvailableSlot(body) {
+  let lastError;
+  for (const candidate of availability.slots) {
+    try {
+      return await request("/api/v1/reservations", {
+        method: "POST",
+        body: {
+          ...body,
+          date: reservationDate,
+          timeStart: candidate.time,
+          partySize: 2,
+        },
+      });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError ?? new Error("Unable to create reservation using available slots");
+}
 
 const guestPhone = `050${String(Date.now()).slice(-7)}`;
 const guestName = `Smoke Test ${runId}`;
-const created = await request("/api/v1/reservations", {
-  method: "POST",
-  body: {
-    restaurantId,
-    guestName,
-    guestPhone,
-    date: reservationDate,
-    timeStart: slot.time,
-    partySize: 2,
-    notes: runId,
-    source: "web",
-  },
+const created = await createReservationUsingAvailableSlot({
+  restaurantId,
+  guestName,
+  guestPhone,
+  notes: runId,
+  source: "web",
 });
 const reservation = created.reservation;
 record("reservations.create", { reservationId: reservation.id, guestId: reservation.guestId, status: reservation.status });

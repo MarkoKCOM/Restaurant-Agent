@@ -205,13 +205,51 @@ export async function evaluateTier(guestId: string): Promise<TierEvaluation | nu
 
 export async function listRewards(
   restaurantId: string,
+  includeInactive = false,
 ): Promise<RewardRow[]> {
   return db
     .select()
     .from(rewards)
     .where(
-      and(eq(rewards.restaurantId, restaurantId), eq(rewards.isActive, true)),
-    );
+      includeInactive
+        ? eq(rewards.restaurantId, restaurantId)
+        : and(eq(rewards.restaurantId, restaurantId), eq(rewards.isActive, true)),
+    )
+    .orderBy(rewards.pointsCost);
+}
+
+export async function updateReward(
+  rewardId: string,
+  restaurantId: string,
+  data: {
+    nameHe?: string;
+    nameEn?: string;
+    description?: string;
+    pointsCost?: number;
+    isActive?: boolean;
+  },
+): Promise<RewardRow | null> {
+  const [existing] = await db
+    .select()
+    .from(rewards)
+    .where(and(eq(rewards.id, rewardId), eq(rewards.restaurantId, restaurantId)))
+    .limit(1);
+
+  if (!existing) return null;
+
+  const [updated] = await db
+    .update(rewards)
+    .set({
+      ...(data.nameHe !== undefined ? { nameHe: data.nameHe } : {}),
+      ...(data.nameEn !== undefined ? { nameEn: data.nameEn } : {}),
+      ...(data.description !== undefined ? { description: data.description } : {}),
+      ...(data.pointsCost !== undefined ? { pointsCost: data.pointsCost } : {}),
+      ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+    })
+    .where(and(eq(rewards.id, rewardId), eq(rewards.restaurantId, restaurantId)))
+    .returning();
+
+  return updated ?? null;
 }
 
 export async function createReward(data: {

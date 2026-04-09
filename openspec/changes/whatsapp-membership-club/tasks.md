@@ -1,7 +1,7 @@
 ## 1. Product model and package boundaries
 - [x] 1.1 Define the member-facing membership summary model from existing guest/loyalty/challenge data
-- [ ] 1.2 Define Growth-package gating for membership club capabilities and upgrade behavior
-- [ ] 1.3 Align product copy around "membership club" / חבר מועדון rather than generic gamification terminology
+- [x] 1.2 Define Growth-package gating for membership club capabilities and upgrade behavior
+- [x] 1.3 Align product copy around "membership club" / חבר מועדון rather than generic gamification terminology
 
 ## 2. Agent/API tooling for WhatsApp membership flows
 - [x] 2.1 Add or normalize endpoints/tools for membership summary retrieval
@@ -16,9 +16,11 @@
 - [ ] 3.3 Add repair/retry visibility for post-visit membership processing failures
 
 ## 4. Owner/staff product surfaces
-- [ ] 4.1 Add owner/admin reward and club management surfaces
-- [ ] 4.2 Surface member signals and active claims in reservation/guest operational views
-- [ ] 4.3 Allow employee role to verify/honor rewards without owner-level access
+- [x] 4.1 Add owner/admin reward and club management surfaces
+- [x] 4.2 Surface member signals and active claims in reservation/guest operational views
+- [x] 4.3 Allow employee role to verify/honor rewards without owner-level access
+- [x] 4.4 Surface special-attention guest signals (birthday, celebration, VIP, regular, owner friend, house-comp)
+- [ ] 4.5 Let owners/staff record hospitality context that should appear on future arrivals
 
 ## 5. WhatsApp journeys and automation
 - [ ] 5.1 Define guest WhatsApp flows for balance, tier, rewards, referrals, and club questions

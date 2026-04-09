@@ -1,1 +1,9 @@
 @import "tailwindcss";
+
+:root {
+  --brand-primary: #d97706;
+  --brand-sidebar: #ffffff;
+  --brand-sidebar-text: #374151;
+  --brand-surface: #fffbeb;
+  --brand-accent: #f59e0b;
+}

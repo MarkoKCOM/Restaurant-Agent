@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useGuest, useUpdateGuest, useUpdateGuestPreferences, useLoyaltyBalance, useLoyaltyHistory, useVisitInsights } from "../hooks/api.js";
+import { useGuest, useUpdateGuest, useUpdateGuestPreferences, useLoyaltyBalance, useLoyaltyHistory, useVisitInsights, useMembershipSummary } from "../hooks/api.js";
 import type { LoyaltyTransaction, GuestPreferences } from "../hooks/api.js";
 import { useToast } from "../components/Toast.js";
 import { useLang } from "../i18n.js";
+import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
+import { isFeatureEnabled } from "@openseat/domain";
 import type { Reservation } from "@openseat/domain";
 
 const TIER_COLORS: Record<string, string> = {
@@ -21,14 +23,45 @@ const STATUS_COLORS: Record<string, string> = {
   no_show: "bg-red-100 text-red-800",
 };
 
+const HOSPITALITY_SIGNAL_STYLES: Record<string, string> = {
+  birthday: "bg-pink-50 text-pink-700 border-pink-200",
+  celebration: "bg-purple-50 text-purple-700 border-purple-200",
+  vip: "bg-amber-50 text-amber-700 border-amber-200",
+  regular: "bg-blue-50 text-blue-700 border-blue-200",
+  owner_friend: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  house_comp: "bg-rose-50 text-rose-700 border-rose-200",
+};
+
+function getHospitalitySignals(guest: { tags?: string[]; notes?: string; preferences?: unknown }) {
+  const tags = (guest.tags ?? []).map((tag) => tag.toLowerCase());
+  const notes = (guest.notes ?? "").toLowerCase();
+  const prefNotes = typeof guest.preferences === "object" && guest.preferences && "notes" in (guest.preferences as Record<string, unknown>)
+    ? String((guest.preferences as Record<string, unknown>).notes ?? "").toLowerCase()
+    : "";
+  const haystack = `${tags.join(" ")} ${notes} ${prefNotes}`;
+
+  return [
+    ["birthday", /birthday|יום הולדת/],
+    ["celebration", /celebrat|anniversary|חוגג|חגיג|יום נישואין/],
+    ["vip", /\bvip\b/],
+    ["regular", /regular|לקוח קבוע|קבוע/],
+    ["owner_friend", /owner friend|friend of owner|חבר בעלים/],
+    ["house_comp", /house comp|free stuff|comped|צ׳ופר|כבוד הבית/],
+  ].filter(([, pattern]) => (pattern as RegExp).test(haystack)).map(([key]) => key as string);
+}
+
 export function GuestDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data, isLoading } = useGuest(id);
+  const { restaurant } = useCurrentRestaurant();
   const updateGuestMutation = useUpdateGuest();
   const updatePrefsMutation = useUpdateGuestPreferences();
-  const { data: loyaltyBalance } = useLoyaltyBalance(id);
-  const { data: loyaltyHistory } = useLoyaltyHistory(id);
+  const loyaltyEnabled = isFeatureEnabled("loyalty", restaurant?.dashboardConfig);
+  const guestNotesEnabled = isFeatureEnabled("guestNotes", restaurant?.dashboardConfig);
+  const { data: loyaltyBalance } = useLoyaltyBalance(loyaltyEnabled ? id : undefined);
+  const { data: loyaltyHistory } = useLoyaltyHistory(loyaltyEnabled ? id : undefined);
+  const { data: membershipSummary } = useMembershipSummary(loyaltyEnabled ? id : undefined);
   const { data: visitInsights } = useVisitInsights(id);
   const { showToast } = useToast();
   const { t, lang } = useLang();
@@ -63,6 +96,7 @@ export function GuestDetailPage() {
   }
 
   const { guest, reservations } = data;
+  const hospitalitySignals = getHospitalitySignals(guest);
 
   function startEditNotes() {
     setNotesValue(guest.notes ?? "");
@@ -192,6 +226,15 @@ export function GuestDetailPage() {
               <span className="font-mono">{guest.phone}</span>
               {guest.email && <span>{guest.email}</span>}
             </div>
+            {hospitalitySignals.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {hospitalitySignals.map((signal) => (
+                  <span key={signal} className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${HOSPITALITY_SIGNAL_STYLES[signal] ?? "bg-gray-50 text-gray-700 border-gray-200"}`}>
+                    {t.guestDetail[`signal${signal.charAt(0).toUpperCase()}${signal.slice(1).replace(/_(.)/g, (_, ch) => ch.toUpperCase())}` as keyof typeof t.guestDetail] ?? signal}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <span
             className={`px-3 py-1 rounded-full text-sm font-medium border ${TIER_COLORS[guest.tier] ?? "bg-gray-100"}`}
@@ -218,6 +261,7 @@ export function GuestDetailPage() {
       </div>
 
       {/* Preferences Section */}
+      {guestNotesEnabled && (
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">{t.guestDetail.preferences}</h3>
@@ -370,9 +414,72 @@ export function GuestDetailPage() {
           </div>
         )}
       </div>
+      )}
+
+      {/* Membership Club Panel */}
+      {loyaltyEnabled && membershipSummary?.summary && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+          <h3 className="text-lg font-semibold mb-4">{t.guestDetail.memberPanel}</h3>
+          <div className="grid md:grid-cols-4 gap-3 mb-4">
+            <div className="rounded-lg p-4 text-center bg-amber-50">
+              <p className="text-xs text-amber-700 font-medium">{t.guestDetail.points}</p>
+              <p className="text-2xl font-bold text-amber-800 mt-1">{membershipSummary.summary.loyalty.pointsBalance}</p>
+            </div>
+            <div className="rounded-lg p-4 text-center bg-purple-50">
+              <p className="text-xs text-purple-700 font-medium">{t.guestDetail.tier}</p>
+              <p className="text-lg font-bold text-purple-800 mt-1">{membershipSummary.summary.loyalty.tier}</p>
+            </div>
+            <div className="rounded-lg p-4 text-center bg-blue-50">
+              <p className="text-xs text-blue-700 font-medium">{t.guestDetail.memberReferrals}</p>
+              <p className="text-2xl font-bold text-blue-800 mt-1">{membershipSummary.summary.referrals.referralCount}</p>
+            </div>
+            <div className="rounded-lg p-4 text-center bg-green-50">
+              <p className="text-xs text-green-700 font-medium">{t.guestDetail.memberStreak}</p>
+              <p className="text-2xl font-bold text-green-800 mt-1">{membershipSummary.summary.streak.current}</p>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="rounded-xl border border-gray-200 p-4">
+              <h4 className="font-medium text-gray-900 mb-3">{t.guestDetail.memberActiveClaims}</h4>
+              {membershipSummary.summary.claims.active.length === 0 ? (
+                <p className="text-sm text-gray-500">{t.guestDetail.memberNoActiveClaims}</p>
+              ) : (
+                <div className="space-y-2">
+                  {membershipSummary.summary.claims.active.map((claim) => (
+                    <div key={claim.id} className="rounded-lg bg-gray-50 px-3 py-2">
+                      <p className="text-sm font-medium text-gray-900">{claim.rewardName}</p>
+                      <p className="text-xs text-gray-500">{t.guestDetail.memberClaimCode}: {claim.claimCode}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="rounded-xl border border-gray-200 p-4">
+              <h4 className="font-medium text-gray-900 mb-3">{t.guestDetail.memberAvailableRewards}</h4>
+              <div className="space-y-2">
+                {membershipSummary.summary.rewards.available.slice(0, 4).map((reward) => (
+                  <div key={reward.id} className="rounded-lg bg-gray-50 px-3 py-2 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{reward.nameHe}</p>
+                      <p className="text-xs text-gray-500">{reward.pointsCost} pts</p>
+                    </div>
+                    {!reward.claimable && reward.pointsShortfall > 0 ? (
+                      <span className="text-xs text-gray-500">-{reward.pointsShortfall}</span>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+              {membershipSummary.summary.referrals.referralCode && (
+                <p className="mt-3 text-xs text-gray-500">{t.guestDetail.memberReferralCode}: {membershipSummary.summary.referrals.referralCode}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Loyalty Section */}
-      {loyaltyBalance && (
+      {loyaltyEnabled && loyaltyBalance && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
           <h3 className="text-lg font-semibold mb-4">{t.guestDetail.loyalty}</h3>
           <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">

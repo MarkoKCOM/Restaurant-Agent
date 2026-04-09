@@ -9,7 +9,9 @@ import { WaitlistPage } from "./pages/WaitlistPage.js";
 import { GuestDetailPage } from "./pages/GuestDetailPage.js";
 import { LoginPage } from "./pages/LoginPage.js";
 import { AuthProvider, useAuth } from "./hooks/useAuth.js";
+import { useCurrentRestaurant } from "./hooks/useCurrentRestaurant.js";
 import type { DashboardPageKey } from "@openseat/domain";
+import { isFeatureEnabled, isPageVisible } from "@openseat/domain";
 import { LangProvider } from "./i18n.js";
 import { HelpPage } from "./pages/HelpPage.js";
 import { RestaurantPickerPage } from "./pages/RestaurantPickerPage.js";
@@ -45,11 +47,25 @@ function PageAccessRoute({
   page: DashboardPageKey;
   children: React.ReactNode;
 }) {
-  const { canAccess, dashboardAccess, isSuperAdmin } = useAuth();
-  if (!canAccess(page)) {
-    const fallbackPage = dashboardAccess.pages[0] ?? (isSuperAdmin ? "restaurants" : null);
+  const { canAccess, dashboardAccess, isSuperAdmin, role } = useAuth();
+  const { restaurant } = useCurrentRestaurant();
+  const config = restaurant?.dashboardConfig;
+
+  const isVisible = role
+    ? isPageVisible(page, dashboardAccess, config, role)
+    : canAccess(page);
+  const featureAllowed = page === "waitlist" ? isFeatureEnabled("waitlist", config) : true;
+
+  if (!canAccess(page) || !isVisible || !featureAllowed) {
+    const fallbackPage = dashboardAccess.pages.find((candidate) => {
+      if (!role) return true;
+      if (!isPageVisible(candidate, dashboardAccess, config, role)) return false;
+      if (candidate === "waitlist" && !isFeatureEnabled("waitlist", config)) return false;
+      return true;
+    }) ?? (isSuperAdmin ? "restaurants" : null);
     return <Navigate to={fallbackPage ? `/${fallbackPage}` : "/login"} replace />;
   }
+
   return <>{children}</>;
 }
 

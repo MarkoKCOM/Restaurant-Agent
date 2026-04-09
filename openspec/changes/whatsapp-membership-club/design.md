@@ -132,12 +132,17 @@ Owner/admin needs:
 - see who redeemed what
 - see member growth and retention signals
 - create seasonal challenges
+- know when a birthday guest, anniversary table, or celebration booking is coming in
+- know when a guest is a long-term regular, owner friend, VIP, or house-comp guest
+- make sure those relationship-based guests get special attention at service time
 
 Employee/staff needs:
 - view member status on reservation/guest record
 - see whether guest has active reward or VIP tier
 - honor redemption code
 - mark reward as redeemed / consumed
+- see birthday / celebration / special-attention signals before service
+- understand why a guest needs special attention, not just that they have points
 - not access owner-level strategy/configuration screens
 
 ## Tooling / API Preparation

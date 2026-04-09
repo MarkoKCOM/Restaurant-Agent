@@ -45,9 +45,43 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
   let noShowGuestId = "";
   let patchNoShowReservationId = "";
   let patchNoShowGuestId = "";
+  let availabilitySlots: string[] = [];
   const guestPhone = `050${String(Date.now()).slice(-7)}`;
-  const reservationDate = plusDays(1);
+  let reservationDate = plusDays(10);
   const today = plusDays(0);
+
+  function requireSlot(index = 0): string {
+    const slot = availabilitySlots[index] ?? availabilitySlots[availabilitySlots.length - 1];
+    if (!slot) throw new Error("No availability slot cached");
+    return slot;
+  }
+
+  async function createReservationUsingAvailableSlot(input: {
+    guestName: string;
+    guestPhone: string;
+    notes: string;
+    source: string;
+  }) {
+    let lastError: unknown = null;
+    const candidateSlots = availabilitySlots.length > 0 ? availabilitySlots : [requireSlot(0)];
+    for (const timeStart of candidateSlots) {
+      try {
+        return await api.createReservation({
+          restaurantId: RESTAURANT_ID,
+          guestName: input.guestName,
+          guestPhone: input.guestPhone,
+          date: reservationDate,
+          timeStart,
+          partySize: 2,
+          notes: input.notes,
+          source: input.source,
+        });
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw lastError ?? new Error("Unable to create reservation using available slots");
+  }
 
   // 1. Health check
   results.push(await runTest("Health Check", async () => {
@@ -64,21 +98,25 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
 
   // 3. Check availability
   results.push(await runTest("Check Availability", async () => {
-    const data = await api.getAvailability(RESTAURANT_ID, reservationDate, 2);
-    const slots = (data as any).slots as Array<unknown>;
-    if (!slots?.length) throw new Error("No slots returned");
-    return `${slots.length} slots available`;
+    for (let offset = 10; offset < 40; offset += 1) {
+      const candidateDate = plusDays(offset);
+      const data = await api.getAvailability(RESTAURANT_ID, candidateDate, 2);
+      const slots = (data as any).slots as Array<{ time?: string }>;
+      const nextSlots = slots?.map((slot) => slot.time).filter((time): time is string => !!time) ?? [];
+      if (nextSlots.length >= 3) {
+        reservationDate = candidateDate;
+        availabilitySlots = nextSlots;
+        return `${availabilitySlots.length} slots available on ${reservationDate}`;
+      }
+    }
+    throw new Error("No suitable availability date returned");
   }));
 
   // 4. Create reservation
   results.push(await runTest("Create Reservation", async () => {
-    const data = await api.createReservation({
-      restaurantId: RESTAURANT_ID,
+    const data = await createReservationUsingAvailableSlot({
       guestName: `E2E ${runId}`,
       guestPhone,
-      date: reservationDate,
-      timeStart: "19:00",
-      partySize: 2,
       notes: runId,
       source: "web",
     });
@@ -111,13 +149,9 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
 
   // 7. Create and mark no-show
   results.push(await runTest("Create Reservation for No-Show", async () => {
-    const data = await api.createReservation({
-      restaurantId: RESTAURANT_ID,
+    const data = await createReservationUsingAvailableSlot({
       guestName: `No Show ${runId}`,
       guestPhone: `052${String(Date.now()).slice(-7)}`,
-      date: reservationDate,
-      timeStart: "20:00",
-      partySize: 2,
       notes: `${runId}-no-show`,
       source: "phone",
     });
@@ -148,13 +182,9 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
   }));
 
   results.push(await runTest("Create Reservation for PATCH No-Show", async () => {
-    const data = await api.createReservation({
-      restaurantId: RESTAURANT_ID,
+    const data = await createReservationUsingAvailableSlot({
       guestName: `Patch No Show ${runId}`,
       guestPhone: `055${String(Date.now()).slice(-7)}`,
-      date: reservationDate,
-      timeStart: "20:30",
-      partySize: 2,
       notes: `${runId}-patch-no-show`,
       source: "phone",
     });
@@ -310,8 +340,8 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
       guestName: `WL ${runId}`,
       guestPhone: `051${String(Date.now()).slice(-7)}`,
       date: reservationDate,
-      preferredTimeStart: "19:00",
-      preferredTimeEnd: "21:00",
+      preferredTimeStart: requireSlot(0),
+      preferredTimeEnd: requireSlot(Math.min(2, availabilitySlots.length - 1)),
       partySize: 3,
     });
     const entry = (data as any).waitlistEntry || (data as any).entry || (data as any).waitlist;

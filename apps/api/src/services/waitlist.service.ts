@@ -106,17 +106,18 @@ export async function listWaitlist(
   }
 
   const rows = await db
-    .select()
+    .select({
+      waitlist: waitlist,
+      guest: guestsTable,
+    })
     .from(waitlist)
+    .leftJoin(guestsTable, eq(waitlist.guestId, guestsTable.id))
     .where(and(...conditions))
     .orderBy(waitlist.createdAt);
 
-  const entries: WaitlistEntry[] = [];
-  for (const row of rows) {
-    const guest = await resolveGuest(row.guestId);
-    if (guest) entries.push(toWaitlistEntry(row, guest));
-  }
-  return entries;
+  return rows
+    .filter((row) => row.guest != null)
+    .map((row) => toWaitlistEntry(row.waitlist, row.guest!));
 }
 
 export async function matchWaitlist(

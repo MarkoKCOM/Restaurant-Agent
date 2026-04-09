@@ -61,40 +61,35 @@ try {
   const engagementWorker = createEngagementWorker();
   console.log("BullMQ workers started: reminder, summary, engagement");
 
-  // Schedule daily summary for BFF Ra'anana (repeating cron job)
-  const [bffRestaurant] = await db
-    .select()
-    .from(restaurants)
-    .where(eq(restaurants.slug, "bff-raanana"))
-    .limit(1);
+  // Schedule recurring jobs for all active restaurants
+  const allRestaurants = await db.select().from(restaurants);
 
-  if (bffRestaurant) {
+  for (const restaurant of allRestaurants) {
     await summaryQueue.add(
       "daily-summary",
-      { restaurantId: bffRestaurant.id },
+      { restaurantId: restaurant.id },
       {
         repeat: {
           pattern: "0 23 * * *",
           tz: "Asia/Jerusalem",
         },
-        jobId: `daily-summary-${bffRestaurant.id}`,
+        jobId: `daily-summary-${restaurant.id}`,
       },
     );
-    console.log(`Scheduled daily summary for BFF Ra'anana (${bffRestaurant.id}) at 23:00 Asia/Jerusalem`);
 
-    // Schedule daily win-back check at 10:00 Asia/Jerusalem
     await engagementQueue.add(
       "win-back-check",
-      { type: "win_back_cron", restaurantId: bffRestaurant.id },
+      { type: "win_back_cron", restaurantId: restaurant.id },
       {
         repeat: {
           pattern: "0 10 * * *",
           tz: "Asia/Jerusalem",
         },
-        jobId: `win-back-cron-${bffRestaurant.id}`,
+        jobId: `win-back-cron-${restaurant.id}`,
       },
     );
-    console.log(`Scheduled daily win-back check for BFF Ra'anana (${bffRestaurant.id}) at 10:00 Asia/Jerusalem`);
+
+    console.log(`Scheduled cron jobs for ${restaurant.name} (${restaurant.id})`);
   }
 
   // Graceful shutdown

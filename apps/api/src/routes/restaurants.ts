@@ -316,7 +316,7 @@ export async function restaurantRoutes(app: FastifyInstance) {
         guestName: guests.name,
       })
       .from(reservations)
-      .leftJoin(guests as any, eq(reservations.guestId, guests.id))
+      .leftJoin(guests, eq(reservations.guestId, guests.id))
       .where(
         and(
           eq(reservations.restaurantId, id),

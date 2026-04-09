@@ -132,15 +132,24 @@ export async function gamificationRoutes(app: FastifyInstance) {
   });
 
   app.post("/challenges", async (request, reply) => {
-    const body = createChallengeSchema.parse(request.body);
+    const parsed = createChallengeSchema.parse(request.body);
 
-    const err = enforceTenant(request.user!, body.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    const err = enforceTenant(request.user!, parsed.restaurantId!) ?? requireRestaurantAdmin(request.user!);
     if (err) {
       return reply.status(403).send({ error: err });
     }
 
     try {
-      const challenge = await createChallenge(body);
+      const challenge = await createChallenge({
+        restaurantId: parsed.restaurantId!,
+        name: parsed.name!,
+        description: parsed.description,
+        type: parsed.type!,
+        target: parsed.target!,
+        reward: parsed.reward!,
+        startDate: parsed.startDate,
+        endDate: parsed.endDate,
+      });
       reply.code(201);
       return { challenge };
     } catch (err: any) {

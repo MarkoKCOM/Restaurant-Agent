@@ -530,7 +530,7 @@ export async function listReservations(params: {
 }): Promise<DomainReservation[]> {
   const { restaurantId, date } = params;
 
-  const conditions = [] as unknown[];
+  const conditions: ReturnType<typeof eq>[] = [];
 
   if (restaurantId) {
     conditions.push(eq(reservations.restaurantId, restaurantId));

@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "tsx src/test-runner.ts",
+    "test:extended": "tsx src/test-extended.ts",
+    "test:all": "tsx src/test-runner.ts && tsx src/test-extended.ts",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {

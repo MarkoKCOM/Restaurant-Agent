@@ -21,7 +21,7 @@ export async function getDailySummary(
   restaurantId: string,
   date: string,
 ): Promise<DailySummary> {
-  const dayReservations = await db
+  const reservationRows = await db
     .select()
     .from(reservations)
     .where(
@@ -32,60 +32,59 @@ export async function getDailySummary(
     )
     .orderBy(reservations.timeStart);
 
-  // Fetch guests for these reservations
-  const guestIds = [...new Set(dayReservations.map((r) => r.guestId))];
-  const guestRows: GuestRow[] = [];
-  for (const gid of guestIds) {
-    const [g] = await db.select().from(guestsTable).where(eq(guestsTable.id, gid)).limit(1);
-    if (g) guestRows.push(g);
-  }
-  const guestMap = new Map(guestRows.map((g) => [g.id, g]));
+  const guestRows = await db
+    .select()
+    .from(guestsTable)
+    .where(eq(guestsTable.restaurantId, restaurantId));
+  const guestMap = new Map(guestRows.map((guest) => [guest.id, guest]));
+
+  const dayReservations = reservationRows.map((reservation) => ({
+    reservation,
+    guest: guestMap.get(reservation.guestId) ?? null,
+  }));
 
   const activeStatuses = ["pending", "confirmed", "seated", "completed"];
-  const activeReservations = dayReservations.filter((r) =>
-    activeStatuses.includes(r.status),
+  const activeReservations = dayReservations.filter(({ reservation }) =>
+    activeStatuses.includes(reservation.status),
   );
 
   const totalReservations = activeReservations.length;
   const totalCovers = activeReservations.reduce(
-    (sum, r) => sum + r.partySize,
+    (sum, { reservation }) => sum + reservation.partySize,
     0,
   );
 
   const completedCount = dayReservations.filter(
-    (r) => r.status === "completed",
+    ({ reservation }) => reservation.status === "completed",
   ).length;
   const cancelledCount = dayReservations.filter(
-    (r) => r.status === "cancelled",
+    ({ reservation }) => reservation.status === "cancelled",
   ).length;
   const noShowCount = dayReservations.filter(
-    (r) => r.status === "no_show",
+    ({ reservation }) => reservation.status === "no_show",
   ).length;
 
   // Top guests: guests with most visits who have reservations today
   const guestVisitMap = new Map<string, { name: string; visits: number }>();
-  for (const res of dayReservations) {
-    const guest = guestMap.get(res.guestId);
+  for (const { reservation, guest } of dayReservations) {
     if (!guest) continue;
-    if (!activeStatuses.includes(res.status)) continue;
+    if (!activeStatuses.includes(reservation.status)) continue;
     const existing = guestVisitMap.get(guest.id);
     if (!existing || guest.visitCount > existing.visits) {
-      guestVisitMap.set(guest.id, {
-        name: guest.name,
-        visits: guest.visitCount,
-      });
+      guestVisitMap.set(guest.id, { name: guest.name, visits: guest.visitCount });
     }
   }
+
   const topGuests = Array.from(guestVisitMap.values())
     .sort((a, b) => b.visits - a.visits)
     .slice(0, 5);
 
   // Occupancy peak: find the 30-min slot with the most covers
   const slotCovers = new Map<string, number>();
-  for (const res of activeReservations) {
-    const [startH, startM] = res.timeStart.split(":").map(Number);
+  for (const { reservation } of activeReservations) {
+    const [startH, startM] = reservation.timeStart.split(":").map(Number);
     const resStart = startH * 60 + startM;
-    const resEndStr = res.timeEnd;
+    const resEndStr = reservation.timeEnd;
     let resEnd: number;
     if (resEndStr) {
       const [endH, endM] = resEndStr.split(":").map(Number);
@@ -100,7 +99,7 @@ export async function getDailySummary(
       const h = Math.floor(t / 60);
       const m = t % 60;
       const slotKey = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
-      slotCovers.set(slotKey, (slotCovers.get(slotKey) ?? 0) + res.partySize);
+      slotCovers.set(slotKey, (slotCovers.get(slotKey) ?? 0) + reservation.partySize);
     }
   }
 

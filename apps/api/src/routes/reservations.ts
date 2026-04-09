@@ -45,10 +45,18 @@ export async function reservationRoutes(app: FastifyInstance) {
 
   // POST / — create reservation
   app.post("/", async (request, reply) => {
-    const body = createReservationSchema.parse(request.body) as Parameters<typeof createReservation>[0];
-
+    const parsed = createReservationSchema.parse(request.body);
     try {
-      const reservation = await createReservation(body);
+      const reservation = await createReservation({
+        restaurantId: parsed.restaurantId!,
+        guestName: parsed.guestName!,
+        guestPhone: parsed.guestPhone!,
+        date: parsed.date!,
+        timeStart: parsed.timeStart!,
+        partySize: parsed.partySize!,
+        source: parsed.source,
+        notes: parsed.notes,
+      });
       reply.code(201);
       return { reservation };
     } catch (err) {

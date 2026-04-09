@@ -144,18 +144,31 @@ export async function getFullGuestProfile(guestId: string) {
   ]);
 
   // Get active challenges progress
-  const guestChallenges = await db
-    .select({
-      challengeName: challenges.name,
-      challengeType: challenges.type,
-      targetValue: challenges.targetValue,
-      currentValue: challengeProgress.currentValue,
-      status: challengeProgress.status,
-      completedAt: challengeProgress.completedAt,
-    })
+  const guestChallengeProgress = await db
+    .select()
     .from(challengeProgress)
-    .innerJoin(challenges as any, eq(challengeProgress.challengeId, challenges.id))
     .where(eq(challengeProgress.guestId, guestId));
+
+  const restaurantChallenges = await db
+    .select()
+    .from(challenges)
+    .where(eq(challenges.restaurantId, guest.restaurantId));
+  const challengeById = new Map(restaurantChallenges.map((challenge) => [challenge.id, challenge]));
+
+  const guestChallenges = guestChallengeProgress
+    .map((progress) => {
+      const challenge = challengeById.get(progress.challengeId);
+      if (!challenge) return null;
+      return {
+        challengeName: challenge.name,
+        challengeType: challenge.type,
+        targetValue: challenge.targetValue,
+        currentValue: progress.currentValue,
+        status: progress.status,
+        completedAt: progress.completedAt,
+      };
+    })
+    .filter((challenge): challenge is NonNullable<typeof challenge> => challenge !== null);
 
   // Compute loyalty status
   const loyaltyStatus = {

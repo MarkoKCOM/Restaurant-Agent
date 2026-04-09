@@ -227,19 +227,19 @@ export async function loyaltyRoutes(app: FastifyInstance) {
 
   // POST /rewards — create a reward
   app.post("/rewards", async (request, reply) => {
-    const body = createRewardSchema.parse(request.body) as {
-      restaurantId: string;
-      nameHe: string;
-      nameEn?: string;
-      description?: string;
-      pointsCost: number;
-    };
-    const err = enforceTenant(request.user!, body.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    const parsed = createRewardSchema.parse(request.body);
+    const err = enforceTenant(request.user!, parsed.restaurantId!) ?? requireRestaurantAdmin(request.user!);
     if (err) {
       return reply.status(403).send({ error: err });
     }
 
-    const reward = await createReward(body);
+    const reward = await createReward({
+      restaurantId: parsed.restaurantId!,
+      nameHe: parsed.nameHe!,
+      nameEn: parsed.nameEn,
+      description: parsed.description,
+      pointsCost: parsed.pointsCost!,
+    });
     reply.code(201);
     return { reward };
   });

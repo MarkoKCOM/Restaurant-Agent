@@ -1,5 +1,49 @@
 # Progress Log
 
+## 2026-04-09 (Codebase review, cleanup, and conventions)
+
+### Added
+- `CONVENTIONS.md` — Comprehensive coding standards covering TypeScript rules, validation (Zod), auth patterns, DB query patterns (JOINs), error handling, multi-tenancy, security checklist, git workflow
+- `.editorconfig` — Consistent formatting (2-space indent, LF, UTF-8)
+- `eslint.config.js` — ESLint flat config with TypeScript rules (warns on `any`, non-null assertions)
+- ESLint dependencies added to root workspace
+
+### Fixed (Security)
+- Auth middleware: tokens with missing/invalid role now rejected (was defaulting to `admin` — privilege escalation risk)
+- Feedback routes: `GET /feedback/summary` now requires auth + tenant enforcement; `POST /feedback` properly registered as public route
+- Chat route: no longer leaks raw API error details to clients
+
+### Fixed (Performance)
+- N+1 query in `listReservations`: replaced per-row guest lookup with single `LEFT JOIN`
+- N+1 query in `listWaitlist`: replaced per-row guest lookup with single `LEFT JOIN`
+
+### Fixed (Code Quality)
+- `db/index.ts`: uses validated `env.DATABASE_URL` instead of `process.env!`, added connection pool settings
+- `env.ts`: added `OPENROUTER_API_KEY`, `AGENT_MODEL`, `CHAT_MODEL` to Zod schema
+- `agent.service.ts`: uses validated env, added 30s LLM timeout, proper response typing
+- `chat.ts`: added Zod input validation, 30s timeout, configurable model via env
+- `gamification.ts`: replaced unsafe `as {}` type casts with Zod schemas
+- `queue/index.ts`: extracted shared `defaultJobOptions`, fixed Redis password URL-decoding
+- `restaurants.ts`: removed `as any` cast on LEFT JOIN
+- `index.ts`: cron job scheduling now dynamic (iterates all restaurants, not hardcoded slug)
+- `.env.example`: documented all variables including seed accounts and AI config
+
+### Removed
+- Legacy "Sable" references from booking widget (`data-sable-booking`, `window.SableBooking`)
+
+### Hermes Agent (MarkoKCOM/Hermes-Agent)
+- Synced workspace to GitHub: 7 new OpenSeat skills, updated config, cron jobs, memories
+- Updated `.gitignore` to exclude runtime state (SQLite, caches, locks)
+
+### Verified
+- `pnpm --filter @openseat/domain build` — clean
+- `pnpm --filter @openseat/api build` — clean
+- `pnpm --filter @openseat/dashboard build` — clean
+- `pnpm --filter @openseat/booking-widget build` — clean
+- API service restarted and running
+
+---
+
 ## 2026-04-08 (Restaurant staff access + role-based dashboard)
 
 ### Added

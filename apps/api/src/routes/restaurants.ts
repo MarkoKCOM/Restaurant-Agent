@@ -316,7 +316,12 @@ export async function restaurantRoutes(app: FastifyInstance) {
         guestName: guests.name,
       })
       .from(reservations)
-      .leftJoin(guests, eq(reservations.guestId, guests.id))
+      // drizzle-orm 0.43.x can hit a protected-member type mismatch on Vercel's
+      // production builder here; the explicit cast keeps the runtime join intact.
+      .leftJoin(
+        guests as any,
+        and(eq(reservations.guestId, guests.id), eq(guests.restaurantId, id)),
+      )
       .where(
         and(
           eq(reservations.restaurantId, id),

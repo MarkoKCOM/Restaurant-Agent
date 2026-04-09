@@ -60,11 +60,30 @@ const submitFeedbackSchema = z.object({
 export async function visitRoutes(app: FastifyInstance) {
   // POST /api/v1/visits — log a visit
   app.post("/", async (request, reply) => {
-    const body = logVisitSchema.parse(request.body);
-    const visit = await logVisit(body);
+    const parsed = logVisitSchema.parse(request.body);
+    const visit = await logVisit({
+      guestId: parsed.guestId!,
+      restaurantId: parsed.restaurantId!,
+      reservationId: parsed.reservationId,
+      date: parsed.date!,
+      partySize: parsed.partySize,
+      totalSpend: parsed.totalSpend,
+      feedback: parsed.feedback,
+      rating: parsed.rating,
+      occasion: parsed.occasion,
+      dietaryNotes: parsed.dietaryNotes,
+      staffNotes: parsed.staffNotes,
+      items: parsed.items?.map((item) => ({
+        name: item.name!,
+        category: item.category!,
+        price: item.price,
+        rating: item.rating,
+      })),
+      channel: parsed.channel,
+    });
 
     // Auto-tag guest after visit
-    await autoTagGuest(body.guestId).catch(() => {});
+    await autoTagGuest(parsed.guestId!).catch(() => {});
 
     reply.code(201);
     return { visit };
@@ -89,11 +108,18 @@ export async function visitRoutes(app: FastifyInstance) {
 export async function feedbackRoutes(app: FastifyInstance) {
   // POST /api/v1/feedback — submit feedback
   app.post("/", async (request, reply) => {
-    const body = submitFeedbackSchema.parse(request.body);
-    const result = await submitFeedback(body);
+    const parsed = submitFeedbackSchema.parse(request.body);
+    const result = await submitFeedback({
+      guestId: parsed.guestId!,
+      restaurantId: parsed.restaurantId!,
+      reservationId: parsed.reservationId,
+      rating: parsed.rating!,
+      feedback: parsed.feedback,
+      channel: parsed.channel!,
+    });
 
     // Auto-tag guest after feedback
-    await autoTagGuest(body.guestId).catch(() => {});
+    await autoTagGuest(parsed.guestId!).catch(() => {});
 
     reply.code(201);
     return { visit: result };

@@ -59,8 +59,15 @@ export async function guestRoutes(app: FastifyInstance) {
 
   // POST / — create or find guest
   app.post("/", async (request, reply) => {
-    const body = createGuestSchema.parse(request.body);
-    const row = await findOrCreateGuest(body);
+    const parsed = createGuestSchema.parse(request.body);
+    const row = await findOrCreateGuest({
+      restaurantId: parsed.restaurantId!,
+      name: parsed.name!,
+      phone: parsed.phone!,
+      email: parsed.email,
+      language: parsed.language,
+      source: parsed.source,
+    });
     reply.code(201);
     return { guest: toDomainGuest(row) };
   });

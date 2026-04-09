@@ -17,10 +17,9 @@ export async function getDailySummary(
   restaurantId: string,
   date: string,
 ): Promise<DailySummary> {
-  const dayReservations = await db
-    .select({ reservation: reservations, guest: guestsTable })
+  const reservationRows = await db
+    .select()
     .from(reservations)
-    .leftJoin(guestsTable, eq(guestsTable.id, reservations.guestId))
     .where(
       and(
         eq(reservations.restaurantId, restaurantId),
@@ -28,6 +27,17 @@ export async function getDailySummary(
       ),
     )
     .orderBy(reservations.timeStart);
+
+  const guestRows = await db
+    .select()
+    .from(guestsTable)
+    .where(eq(guestsTable.restaurantId, restaurantId));
+  const guestMap = new Map(guestRows.map((guest) => [guest.id, guest]));
+
+  const dayReservations = reservationRows.map((reservation) => ({
+    reservation,
+    guest: guestMap.get(reservation.guestId) ?? null,
+  }));
 
   const activeStatuses = ["pending", "confirmed", "seated", "completed"];
   const activeReservations = dayReservations.filter((r) =>

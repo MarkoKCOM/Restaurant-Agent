@@ -22,8 +22,16 @@ const addToWaitlistSchema = z.object({
 export async function waitlistRoutes(app: FastifyInstance) {
   // POST / — add to waitlist
   app.post("/", async (request, reply) => {
-    const body = addToWaitlistSchema.parse(request.body);
-    const entry = await addToWaitlist(body);
+    const parsed = addToWaitlistSchema.parse(request.body);
+    const entry = await addToWaitlist({
+      restaurantId: parsed.restaurantId!,
+      guestName: parsed.guestName!,
+      guestPhone: parsed.guestPhone!,
+      date: parsed.date!,
+      preferredTimeStart: parsed.preferredTimeStart!,
+      preferredTimeEnd: parsed.preferredTimeEnd!,
+      partySize: parsed.partySize!,
+    });
     reply.code(201);
     return { waitlistEntry: entry };
   });

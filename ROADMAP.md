@@ -1,68 +1,74 @@
 # OpenSeat — Product Roadmap
 
-## Phase 1: Starter MVP (Web-First) — ✅ DONE
+## Phase 1: Starter MVP (Web-First) — DONE
 Core reservation product — API, dashboard, booking widget, marketing site.
 
 | Deliverable | Status |
 |-------------|--------|
-| Monorepo scaffold (Turborepo) | Done |
+| Monorepo scaffold (Turborepo + pnpm) | Done |
 | Architecture + MVP scope docs | Done |
-| DB schema (Drizzle) + migrations | Done |
+| DB schema (Drizzle, 21 tables) + 8 migrations | Done |
 | Fastify API — reservations, guests, tables, availability | Done |
-| Dashboard — Today, Reservations, Guests, Settings | Done |
-| Booking Widget — embeddable Preact bundle | Done |
+| Dashboard — Today, Reservations, Guests, Settings, Waitlist | Done |
+| Booking Widget — embeddable Preact bundle (<25KB) | Done |
 | Marketing Site — bilingual landing page | Done |
 | BFF Raanana pilot data loaded | Done |
 
-## Phase 1.5: Pilot-Ready Polish — ✅ DONE (Sprint 3)
+## Phase 1.5: Pilot-Ready Polish — DONE (Sprint 3)
 
 | Deliverable | Status |
 |-------------|--------|
 | JWT authentication on all API routes | Done |
-| Settings hours editor (editable per day) | Done |
-| Settings table editor (add/edit/delete) | Done |
-| Reservation detail panel (slide-over edit) | Done |
-| Widget branding (dynamic colors/logo) | Done |
-| Widget phone validation (Israeli format) | Done |
-| Past-date rejection on reservations | Done |
+| Role-based access (admin/employee/super_admin) | Done |
+| Multi-tenant enforcement + super-admin context switching | Done |
+| Settings hours/table/branding editor | Done |
+| Reservation lifecycle (confirm/seat/complete/cancel/no-show) | Done |
 | Waitlist service + auto-match on cancellation | Done |
-| Guest preference editor (tags, notes, insights) | Done |
-| Guest auto-tagging by visit count | Done |
-| Dashboard login page + auth wrapper | Done |
-| E2E test runner (15 tests, full flow) | Done |
+| Guest CRM — profiles, tags, notes, insights | Done |
+| Dashboard white-label (palette, branding, feature toggles) | Done |
+| E2E test runner (21 tests, full flow) | Done |
 | CI/CD workflows (type-check, smoke, deploy) | Done |
 | SSL/HTTPS | Blocked (needs domain) |
 
-## Phase 1b: WhatsApp + AI Agent
-Add Baileys WhatsApp gateway and AI conversation agent.
+## Phase 1b: AI Agent + Telegram — IN PROGRESS
 
-- Baileys connection + session management
-- Agent loop: message → intent classify → tool call → respond
-- Reservation tools wired to existing API
-- Language detection (Hebrew/English/Arabic)
-- Owner alerts + daily summary via WhatsApp
-- Conversation context in Redis (24h TTL)
+| Deliverable | Status |
+|-------------|--------|
+| Hermes Agent framework on VPS | Done |
+| Agent service with tool-calling loop | Done |
+| Reservation tools (check, create, cancel, list) | Done |
+| Language detection (Hebrew/English/Arabic) | Done |
+| Conversation context in Redis (24h TTL) | Done |
+| Telegram group configured (General/Owner/Reports) | Done |
+| Dashboard help chat (OpenRouter) | Done |
+| Cron jobs (daily summary, win-back) | Done |
+| Customer-facing Telegram bot | In Progress |
+| WhatsApp gateway (Baileys) | Parked |
 
-## Phase 2: Standard Package (CRM + Loyalty + Automation)
-Full guest relationship management.
+## Phase 2: Growth Package (CRM + Loyalty + Automation) — MOSTLY DONE
 
-- Guest CRM — full profiles, history, preferences, segmentation
-- Loyalty engine — stamps, points, tiers (Bronze/Silver/Gold), rewards
-- Gamification — streaks, challenges, referrals, VIP progression
-- Engagement automation — thank-you, review solicitation, birthday, win-back
-- Campaign manager — audience segments, templates, scheduling, stats
-- Analytics dashboard — retention, CLV, campaign ROI
+| Deliverable | Status |
+|-------------|--------|
+| Loyalty engine — points, stamps, tiers (Bronze/Silver/Gold) | Done |
+| Rewards catalog + claim codes + redemption | Done |
+| Gamification — streaks, challenges, referrals | Done |
+| Membership club UX (חבר מועדון) | Done |
+| Visit logging + guest insights | Done |
+| Feedback collection + sentiment summary | Done |
+| Engagement automation — thank-you, review, birthday, win-back | Done |
+| Campaign manager — audience segments, templates, scheduling | Not started |
+| Analytics dashboard — retention, CLV, campaign ROI | Not started |
 
 ## Phase 3: Scale + Monetize
-Multi-restaurant, billing, onboarding.
 
 - Row-level security for tenant isolation
-- Package enforcement middleware (Starter vs Standard)
+- Package enforcement middleware (Starter vs Growth)
 - Restaurant onboarding wizard
 - Billing — PayPlus (Israel) + Stripe (international)
 - Central admin console
 
 ## Future
+
 - Voice/phone reservation handling
 - POS integration (Tabit, others)
 - Instagram DM intake

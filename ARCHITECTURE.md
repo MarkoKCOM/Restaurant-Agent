@@ -5,109 +5,226 @@
 Turborepo + pnpm workspaces. Each app is independently buildable and deployable.
 
 ```text
-sable/
+openseat/
 ├── package.json              # Root — Turborepo scripts
 ├── pnpm-workspace.yaml
 ├── turbo.json
 ├── tsconfig.base.json        # Shared TS config
 ├── .env.example
+├── CONVENTIONS.md            # Coding standards & rules
+├── eslint.config.js          # ESLint flat config
+├── .editorconfig
 │
 ├── apps/
 │   ├── api/                  # Backend — Fastify + Drizzle + BullMQ
 │   │   ├── src/
-│   │   │   ├── index.ts      # Server entry
+│   │   │   ├── index.ts      # Server entry + BullMQ workers + cron scheduling
 │   │   │   ├── env.ts        # Zod-validated env config
 │   │   │   ├── db/
-│   │   │   │   ├── schema.ts # Full Drizzle schema (core + growth tables)
-│   │   │   │   └── index.ts  # DB connection
-│   │   │   ├── routes/
-│   │   │   │   ├── reservations.ts
-│   │   │   │   ├── guests.ts
-│   │   │   │   ├── tables.ts
-│   │   │   │   └── restaurants.ts
-│   │   │   └── services/     # Domain logic (TODO)
-│   │   └── drizzle.config.ts
+│   │   │   │   ├── schema.ts # Full Drizzle schema (21 tables, 11 enums)
+│   │   │   │   ├── index.ts  # DB connection (pooled)
+│   │   │   │   └── seed.ts   # BFF Ra'anana seed data
+│   │   │   ├── middleware/
+│   │   │   │   └── auth.ts   # JWT + multi-tenant enforcement + role guards
+│   │   │   ├── routes/       # 13 route files
+│   │   │   │   ├── auth.ts           # Login, JWT generation
+│   │   │   │   ├── reservations.ts   # CRUD + availability + walk-in
+│   │   │   │   ├── guests.ts         # CRM profiles + full-profile
+│   │   │   │   ├── tables.ts         # Table management
+│   │   │   │   ├── restaurants.ts    # Settings + dashboard snapshot + table map
+│   │   │   │   ├── loyalty.ts        # Points, stamps, tiers, rewards, claims
+│   │   │   │   ├── gamification.ts   # Challenges, referrals, streaks
+│   │   │   │   ├── waitlist.ts       # Queue + auto-match + offer/accept
+│   │   │   │   ├── visits.ts         # Visit logging + insights
+│   │   │   │   ├── engagement.ts     # Win-back campaigns
+│   │   │   │   ├── chat.ts           # Dashboard help assistant (OpenRouter)
+│   │   │   │   ├── agent.ts          # AI agent message/reset endpoints
+│   │   │   │   └── admin.ts          # Super-admin multi-tenant ops
+│   │   │   ├── services/     # 15 domain service files
+│   │   │   │   ├── reservation.service.ts
+│   │   │   │   ├── guest.service.ts
+│   │   │   │   ├── loyalty.service.ts
+│   │   │   │   ├── waitlist.service.ts
+│   │   │   │   ├── challenge.service.ts
+│   │   │   │   ├── engagement.service.ts
+│   │   │   │   ├── visit.service.ts
+│   │   │   │   ├── feedback.service.ts
+│   │   │   │   ├── reward-claims.service.ts
+│   │   │   │   ├── referral.service.ts
+│   │   │   │   ├── membership-summary.service.ts
+│   │   │   │   ├── table.service.ts
+│   │   │   │   ├── summary.service.ts
+│   │   │   │   ├── agent.service.ts   # AI agent loop (context + LLM + tools)
+│   │   │   │   └── agent-tools.ts     # Tool definitions for AI agent
+│   │   │   └── queue/
+│   │   │       ├── index.ts           # BullMQ queue definitions (3 queues)
+│   │   │       ├── reminder.worker.ts
+│   │   │       ├── summary.worker.ts
+│   │   │       └── engagement.worker.ts
+│   │   └── drizzle/          # 8 migrations
 │   │
-│   ├── dashboard/            # Owner dashboard — React + Vite + Tailwind + shadcn/ui
+│   ├── dashboard/            # Owner dashboard — React + Vite + Tailwind
 │   │   └── src/
-│   │       ├── App.tsx       # Router: Today, Reservations, Guests, Settings
-│   │       ├── components/
-│   │       │   └── Layout.tsx  # RTL sidebar + main content
+│   │       ├── App.tsx       # Router + route guards (role-based)
+│   │       ├── i18n.tsx      # Hebrew/English translations
+│   │       ├── hooks/
+│   │       │   ├── useAuth.ts             # Auth state + role checks
+│   │       │   └── useCurrentRestaurant.ts
 │   │       └── pages/
-│   │           ├── TodayPage.tsx
-│   │           ├── ReservationsPage.tsx
-│   │           ├── GuestsPage.tsx
-│   │           └── SettingsPage.tsx
+│   │           ├── TodayPage.tsx           # Live ops dashboard
+│   │           ├── ReservationsPage.tsx    # Full reservation management
+│   │           ├── GuestDetailPage.tsx     # CRM + loyalty + membership
+│   │           ├── GuestsPage.tsx          # Guest directory
+│   │           ├── WaitlistPage.tsx        # Waitlist management
+│   │           ├── SettingsPage.tsx        # Restaurant config + tables + branding
+│   │           ├── HelpPage.tsx            # Guided help + AI chat
+│   │           ├── LoginPage.tsx           # Auth
+│   │           └── RestaurantPickerPage.tsx # Super-admin restaurant selector
 │   │
-│   ├── booking-widget/       # Embeddable widget — Preact (IIFE bundle)
+│   ├── booking-widget/       # Embeddable widget — Preact (IIFE bundle, <25KB)
 │   │   └── src/
 │   │       ├── main.tsx      # Auto-mount + OpenSeatBooking.mount()
 │   │       └── BookingWidget.tsx
 │   │
-│   └── marketing-site/       # Landing page — React + Vite + Tailwind
+│   ├── marketing-site/       # Landing page — React + Vite + Tailwind
+│   │   └── src/
+│   │       └── LandingPage.tsx  # Bilingual (Hebrew/English/Arabic)
+│   │
+│   └── e2e/                  # End-to-end test runner
 │       └── src/
-│           └── LandingPage.tsx
+│           ├── test-runner.ts
+│           └── api-client.ts
 │
 ├── packages/
-│   └── domain/               # Shared types, Zod schemas, API helpers
+│   └── domain/               # Shared types, Zod schemas, access rules
 │       └── src/
-│           ├── types.ts      # Restaurant, Table, Guest, Reservation, etc.
-│           └── schemas.ts    # Validation schemas (shared between API + widget)
+│           ├── types.ts           # All domain interfaces
+│           ├── schemas.ts         # Zod validation schemas
+│           ├── dashboard-access.ts # Role-based page access matrix
+│           └── index.ts           # Barrel export
 │
 ├── openspec/                 # Product specs (source of truth for requirements)
-└── research/                 # Market & pilot research
+│   └── changes/              # 7 completed change proposals
+├── scripts/                  # Deploy & test scripts
+├── docs/                     # User-facing guides (owner, customer)
+├── research/                 # Market & pilot research
+└── skills/                   # Custom AI skills for Hermes agent
 ```
 
 ## Tech Stack
 
-| Layer | Tech | Why |
-|-------|------|-----|
-| Language | TypeScript | Full-stack type safety |
-| Backend | Fastify | Lighter than NestJS for this scope |
-| ORM | Drizzle | Type-safe, migration-first, PostgreSQL-native |
-| Database | PostgreSQL 16 | Relational data fits perfectly, RLS for multi-tenant |
-| Cache/Queue | Redis + BullMQ | Async jobs (reminders, engagement, campaigns) |
-| Dashboard | React 19 + Vite + Tailwind + shadcn/ui | Modern, fast, great component library |
-| Widget | Preact | Tiny bundle (<30KB), embeddable as IIFE |
-| Marketing | React + Vite + Tailwind | Same stack as dashboard, quick to build |
-| Monorepo | Turborepo + pnpm | Fast builds, workspace protocol |
+| Layer | Tech | Version |
+|-------|------|---------|
+| Language | TypeScript | 5.8+ |
+| Monorepo | Turborepo + pnpm | 2.5+ / 10.30+ |
+| Backend | Fastify | 5.3 |
+| ORM | Drizzle ORM | 0.43 |
+| Database | PostgreSQL | 16 |
+| Cache/Queue | Redis + BullMQ | 5.40 |
+| Auth | JWT + bcrypt | jsonwebtoken 9.0 |
+| Validation | Zod | 3.24 |
+| Dashboard | React 19 + Vite 6 + Tailwind 4 | |
+| Data Fetching | TanStack React Query | 5.75 |
+| Routing | React Router | 7.5 |
+| Widget | Preact | 10.25 |
+| Marketing | React + Vite + Tailwind | Same as dashboard |
+| Node.js | v22 LTS | |
 
 ## Data Flow
 
 ```
-Guest → [Widget / WhatsApp] → API → PostgreSQL
-                                 ↓
-                              BullMQ → Reminders, Engagement, Campaigns
-                                 ↓
-Owner → Dashboard ← API (REST)
+Guest → [Widget / Telegram / WhatsApp] → API (REST) → PostgreSQL
+                                            ↓
+                                         BullMQ Workers
+                                    (reminders, summaries, engagement)
+                                            ↓
+Owner → Dashboard ← API (REST) ← PostgreSQL
+         ↑
+    AI Help Chat (OpenRouter)
 ```
+
+## AI Agent Architecture
+
+```
+Customer message (Telegram/WhatsApp)
+         ↓
+    Hermes Agent (gpt-5.4 via Codex)
+         ↓
+    Agent Service → LLM with tools → Tool execution loop
+         ↓                                    ↓
+    Redis (conversation context)     Service layer (reservations, guests, etc.)
+         ↓
+    Response → Customer
+```
+
+**Tools available to the agent:** check_availability, create_reservation, cancel_reservation, get_reservations, join_waitlist, get_restaurant_info, get_guest_profile
 
 ## Multi-Tenant Model
 
-Shared database with `restaurant_id` FK on every table. PostgreSQL RLS policies scope all queries. Phase 1 is single-tenant (BFF Raanana), but schema is multi-tenant from day one.
+Shared database with `restaurant_id` FK on every table. Auth middleware enforces tenant isolation on every request. Three roles:
 
-## API Design
+| Role | Scope | Access |
+|------|-------|--------|
+| `admin` | Single restaurant | Full access to their restaurant |
+| `employee` | Single restaurant | Today, Reservations, Waitlist only |
+| `super_admin` | All restaurants | Platform-wide, can switch context via `x-restaurant-id` header |
 
-REST, JSON, versioned (`/api/v1/*`). Key endpoints:
+## Deployment
 
+| Component | Host | Details |
+|-----------|------|---------|
+| API | VPS (204.168.227.45) | Port 3001, systemd `openseat-api`, behind Nginx |
+| Dashboard | Vercel | SPA, API proxied to VPS |
+| Booking Widget | Vercel | Static IIFE bundle |
+| Marketing Site | Vercel | SPA |
+| Hermes Agent | VPS | Python gateway on port 8642 |
+| PostgreSQL | VPS | Local, user `openseat`, db `openseat_db` |
+| Redis | VPS | localhost:6379 |
+
+## API Endpoints
+
+### Public (no auth required)
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/reservations/availability` | Open slots for date/party_size |
-| POST | `/api/v1/reservations` | Create reservation |
-| PATCH | `/api/v1/reservations/:id` | Modify reservation |
-| DELETE | `/api/v1/reservations/:id` | Cancel reservation |
-| GET | `/api/v1/reservations` | List (filter by date, status) |
-| GET | `/api/v1/guests` | List guests |
-| GET | `/api/v1/guests/:id` | Guest profile + history |
-| POST | `/api/v1/guests` | Create guest |
-| GET | `/api/v1/tables` | List tables |
-| POST | `/api/v1/tables` | Create table |
-| GET | `/api/v1/restaurants/:id/dashboard` | Dashboard snapshot |
+| GET | `/health`, `/api/v1/health` | Health check |
+| GET | `/api/v1/reservations/availability` | Available time slots |
+| GET | `/api/v1/restaurants`, `/api/v1/restaurants/:id` | Restaurant info |
+| POST | `/api/v1/reservations` | Guest booking |
+| POST | `/api/v1/waitlist` | Join waitlist |
+| POST | `/api/v1/waitlist/:id/accept` | Accept offered slot |
+| POST | `/api/v1/agent/*` | AI agent endpoints |
+| POST | `/api/v1/feedback` | Guest feedback submission |
 
-## Future Extensions
+### Protected (JWT required)
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/auth/login` | Get JWT token |
+| GET/POST/PATCH/DELETE | `/api/v1/reservations/*` | Reservation management |
+| GET/POST/PATCH | `/api/v1/guests/*` | Guest CRM |
+| GET/POST/PATCH | `/api/v1/tables/*` | Table management |
+| PATCH | `/api/v1/restaurants/:id` | Update settings |
+| GET/POST | `/api/v1/loyalty/*` | Points, rewards, claims |
+| GET/POST | `/api/v1/gamification/*` | Challenges, referrals, streaks |
+| POST | `/api/v1/engagement/*` | Win-back campaigns |
+| GET/POST | `/api/v1/visits/*` | Visit logging + insights |
+| GET | `/api/v1/feedback/summary` | Feedback analytics |
+| POST | `/api/v1/chat` | Dashboard AI help |
+| GET/POST | `/api/v1/admin/*` | Super-admin operations |
 
-- **WhatsApp gateway** (Phase 1b): Baileys module under api, same domain services
-- **AI agent** (Phase 1b): Claude Sonnet/Haiku, tool-use pattern
-- **Loyalty/Gamification** (Phase 2): Growth tables already in schema
-- **Campaigns/Engagement** (Phase 2): BullMQ workers
-- **Multi-restaurant admin** (Phase 3): Separate admin app or role-gated in dashboard
+## Database Schema (21 tables)
+
+**Core:** restaurants, admin_users, tables, guests, reservations, waitlist, conversations
+**Loyalty:** loyalty_transactions, rewards, reward_claims
+**Gamification:** challenges, challenge_progress, referral_claims
+**Engagement:** campaigns, engagement_jobs
+**Tracking:** visit_logs
+
+**11 PostgreSQL enums:** package, reservation_status, reservation_source, waitlist_status, guest_source, language, tier, admin_role, conversation_status, feedback_channel, reward_claim_status
+
+## Queue System (BullMQ)
+
+| Queue | Purpose | Schedule |
+|-------|---------|----------|
+| `reservation-reminders` | Pre-reservation reminders | On booking |
+| `daily-summary` | Daily stats for each restaurant | 23:00 Asia/Jerusalem |
+| `engagement` | Win-back, thank-you, birthday, review | 10:00 + on events |

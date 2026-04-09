@@ -8,6 +8,7 @@ import {
   type WaitlistEntry,
 } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
+import { ModalPortal } from "../components/ModalPortal.js";
 import { useLang } from "../i18n.js";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -126,7 +127,7 @@ export function WaitlistPage() {
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
           <button
@@ -154,7 +155,7 @@ export function WaitlistPage() {
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
         </div>
@@ -439,26 +440,26 @@ function AddToWaitlistModal({
   }
 
   return (
-    <>
+    <ModalPortal>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-black bg-opacity-30"
+        className="fixed inset-0 z-[100] bg-black/30"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[101] flex items-center justify-center p-4">
         <div
-          className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md"
+          className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between mb-5">
+          <div className="mb-5 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900">{t.waitlist.newEntry}</h3>
             <button
               onClick={onClose}
-              className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              className="p-1 text-gray-400 transition-colors hover:text-gray-600"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -467,73 +468,73 @@ function AddToWaitlistModal({
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Guest Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.waitlist.guestName}</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">{t.waitlist.guestName}</label>
               <input
                 type="text"
                 required
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 placeholder={t.waitlist.fullName}
               />
             </div>
 
             {/* Phone */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.waitlist.guestPhone}</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">{t.waitlist.guestPhone}</label>
               <input
                 type="tel"
                 required
                 value={guestPhone}
                 onChange={(e) => setGuestPhone(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 placeholder="050-1234567"
               />
             </div>
 
             {/* Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.waitlist.preferredDate}</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">{t.waitlist.preferredDate}</label>
               <input
                 type="date"
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
               />
             </div>
 
             {/* Time Range */}
             <div className="flex gap-3">
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t.waitlist.preferredTimeStart}</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">{t.waitlist.preferredTimeStart}</label>
                 <input
                   type="time"
                   required
                   value={preferredTimeStart}
                   onChange={(e) => setPreferredTimeStart(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t.waitlist.preferredTimeEnd}</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">{t.waitlist.preferredTimeEnd}</label>
                 <input
                   type="time"
                   required
                   value={preferredTimeEnd}
                   onChange={(e) => setPreferredTimeEnd(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 />
               </div>
             </div>
 
             {/* Party Size */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.waitlist.partySizeLabel}</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">{t.waitlist.partySizeLabel}</label>
               <select
                 value={partySize}
                 onChange={(e) => setPartySize(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
               >
                 {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
                   <option key={n} value={n}>{n}</option>
@@ -543,20 +544,20 @@ function AddToWaitlistModal({
 
             {/* Error */}
             {error && (
-              <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
             )}
 
             {/* Submit */}
             <button
               type="submit"
               disabled={addMutation.isPending}
-              className="w-full px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
+              className="w-full rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
             >
               {addMutation.isPending ? t.waitlist.creating : t.waitlist.addBtn}
             </button>
           </form>
         </div>
       </div>
-    </>
+    </ModalPortal>
   );
 }

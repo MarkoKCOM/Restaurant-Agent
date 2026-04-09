@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useLang } from "../i18n.js";
 import { Tooltip } from "./Tooltip.js";
 
@@ -116,10 +117,12 @@ export function ChatWidget() {
     ? { position: "fixed", left: position.x, top: position.y, bottom: "auto", right: "auto" }
     : {};
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <>
       {/* Floating button */}
-      <Tooltip content={isOpen ? closeLabel : openLabel} className={`fixed bottom-4 md:bottom-6 ${buttonSide} z-50`}>
+      <Tooltip content={isOpen ? closeLabel : openLabel} className={`fixed bottom-4 md:bottom-6 ${buttonSide} z-[90]`}>
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="flex h-11 w-11 items-center justify-center gap-2 rounded-full bg-amber-600 px-3 text-white shadow-md ring-1 ring-black/5 transition-all hover:-translate-y-0.5 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300 md:h-10 md:w-auto"
@@ -143,13 +146,13 @@ export function ChatWidget() {
       {isOpen && (
         <div
           ref={panelRef}
-          className={`${position ? "" : `fixed bottom-[4.5rem] md:bottom-20 ${panelSide}`} z-50 flex max-h-[26rem] w-[min(21rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl`}
+          className={`${position ? "" : `fixed bottom-[4.5rem] md:bottom-20 ${panelSide}`} z-[90] flex max-h-[26rem] w-[min(21rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl`}
           style={panelStyle}
           dir={dir}
         >
           {/* Header — drag handle */}
           <div
-            className={`flex items-start justify-between gap-3 bg-amber-600 px-4 py-2.5 text-white select-none ${isDragging ? "cursor-grabbing" : "cursor-grab"}`}
+            className={`select-none flex items-start justify-between gap-3 bg-amber-600 px-4 py-2.5 text-white ${isDragging ? "cursor-grabbing" : "cursor-grab"}`}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -176,7 +179,7 @@ export function ChatWidget() {
           {/* Messages */}
           <div className="min-h-[160px] max-h-[280px] flex-1 space-y-3 overflow-y-auto p-4">
             {messages.length === 0 && (
-              <p className="text-sm text-gray-400 text-center mt-8">
+              <p className="mt-8 text-center text-sm text-gray-400">
                 {t.chat.emptyState}
               </p>
             )}
@@ -198,7 +201,7 @@ export function ChatWidget() {
             ))}
             {loading && (
               <div className="flex justify-start">
-                <div className="bg-gray-100 rounded-xl px-3 py-2 text-sm text-gray-500">
+                <div className="rounded-xl bg-gray-100 px-3 py-2 text-sm text-gray-500">
                   {t.chat.thinking}
                 </div>
               </div>
@@ -207,7 +210,7 @@ export function ChatWidget() {
           </div>
 
           {/* Input */}
-          <div className="border-t border-gray-200 p-3 flex gap-2">
+          <div className="flex gap-2 border-t border-gray-200 p-3">
             <input
               ref={inputRef}
               type="text"
@@ -221,7 +224,7 @@ export function ChatWidget() {
             <button
               onClick={handleSend}
               disabled={loading || !input.trim()}
-              className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50 transition-colors"
+              className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
               title={t.chat.send}
               aria-label={t.chat.send}
             >
@@ -230,6 +233,7 @@ export function ChatWidget() {
           </div>
         </div>
       )}
-    </>
+    </>,
+    document.body,
   );
 }

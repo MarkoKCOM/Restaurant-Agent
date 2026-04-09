@@ -12,6 +12,7 @@ import {
   useUpdateReward,
 } from "../hooks/api.js";
 import { useToast } from "../components/Toast.js";
+import { ModalPortal } from "../components/ModalPortal.js";
 import { useLang } from "../i18n.js";
 import { useAuth } from "../hooks/useAuth.js";
 import type { Table, DashboardConfig } from "@openseat/domain";
@@ -805,38 +806,38 @@ export function SettingsPage() {
 
           {/* Confirmation dialog */}
           {showResetConfirm && (
-            <>
+            <ModalPortal>
               <div
-                className="fixed inset-0 z-40 bg-black bg-opacity-30"
+                className="fixed inset-0 z-[100] bg-black/30"
                 onClick={() => setShowResetConfirm(false)}
               />
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="fixed inset-0 z-[101] flex items-center justify-center p-4">
                 <div
-                  className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm border-2 border-red-300"
+                  className="w-full max-w-sm rounded-xl border-2 border-red-300 bg-white p-6 shadow-xl"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <h4 className="text-lg font-semibold text-red-700 mb-2">{t.settings.resetConfirm}</h4>
-                  <p className="text-sm text-gray-600 mb-4">
+                  <h4 className="mb-2 text-lg font-semibold text-red-700">{t.settings.resetConfirm}</h4>
+                  <p className="mb-4 text-sm text-gray-600">
                     {t.settings.resetConfirmDesc}
                   </p>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={handleResetReservations}
                       disabled={resetMutation.isPending}
-                      className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                      className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
                     >
                       {resetMutation.isPending ? t.settings.resetting : t.settings.resetConfirmBtn}
                     </button>
                     <button
                       onClick={() => setShowResetConfirm(false)}
-                      className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                      className="flex-1 rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
                     >
                       {t.settings.cancel}
                     </button>
                   </div>
                 </div>
               </div>
-            </>
+            </ModalPortal>
           )}
         </section>
       </div>

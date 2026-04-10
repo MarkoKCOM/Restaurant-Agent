@@ -9,6 +9,7 @@ import {
   useVerifyClaimCode,
   useRedeemClaim,
 } from "../hooks/api.js";
+import type { RewardClaimVerified } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useToast } from "../components/Toast.js";
 import { ModalPortal } from "../components/ModalPortal.js";
@@ -98,6 +99,17 @@ function getActionLabel(status: ReservationStatus, t: ReturnType<typeof useLang>
     default:
       return t.status[status as keyof typeof t.status] ?? status;
   }
+}
+
+function getClaimFeedbackMessage(
+  error: unknown,
+  t: ReturnType<typeof useLang>["t"],
+  fallback: string,
+): string {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("already redeemed")) return t.today.claimAlreadyRedeemed;
+  if (message.includes("not found")) return t.today.claimNotFound;
+  return fallback;
 }
 
 function getLifecycleTimestampLabel(timestamp: string, lang: string) {
@@ -656,6 +668,7 @@ function ReservationDetailPanel({
   const [saved, setSaved] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [claimCode, setClaimCode] = useState("");
+  const [verifiedClaim, setVerifiedClaim] = useState<RewardClaimVerified | null>(null);
   const verifyClaimMutation = useVerifyClaimCode();
   const redeemClaimMutation = useRedeemClaim();
 
@@ -747,18 +760,30 @@ function ReservationDetailPanel({
   }
 
   function handleVerifyClaim() {
-    if (!claimCode.trim()) return;
-    verifyClaimMutation.mutate(claimCode.trim(), {
-      onError: () => showToast(t.today.claimVerifyError, "error"),
+    const normalizedCode = claimCode.trim();
+    if (!normalizedCode) return;
+    verifyClaimMutation.mutate(normalizedCode, {
+      onSuccess: ({ claim }) => {
+        setVerifiedClaim(claim);
+        showToast(claim.status === "redeemed" ? t.today.claimAlreadyRedeemed : t.today.claimVerified);
+      },
+      onError: (error) => {
+        setVerifiedClaim(null);
+        showToast(getClaimFeedbackMessage(error, t, t.today.claimVerifyError), "error");
+      },
     });
   }
 
   function handleRedeemClaim() {
-    const claimId = verifyClaimMutation.data?.claim?.id;
+    const claimId = verifiedClaim?.id;
     if (!claimId) return;
     redeemClaimMutation.mutate(claimId, {
-      onSuccess: () => showToast(t.today.claimRedeemed),
-      onError: () => showToast(t.today.claimRedeemError, "error"),
+      onSuccess: ({ claim }) => {
+        setVerifiedClaim(claim);
+        setClaimCode("");
+        showToast(t.today.claimRedeemed);
+      },
+      onError: (error) => showToast(getClaimFeedbackMessage(error, t, t.today.claimRedeemError), "error"),
     });
   }
 
@@ -834,20 +859,34 @@ function ReservationDetailPanel({
                 <input
                   type="text"
                   value={claimCode}
-                  onChange={(e) => setClaimCode(e.target.value)}
+                  onChange={(e) => {
+                    setClaimCode(e.target.value);
+                    setVerifiedClaim(null);
+                  }}
                   placeholder={t.today.claimCodePlaceholder}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
                 />
-                <button onClick={handleVerifyClaim} className="px-3 py-2 rounded-lg text-white text-sm font-medium" style={{ backgroundColor: "var(--brand-primary)" }}>
+                <button
+                  type="button"
+                  onClick={handleVerifyClaim}
+                  disabled={verifyClaimMutation.isPending || !claimCode.trim()}
+                  className="px-3 py-2 rounded-lg text-white text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: "var(--brand-primary)" }}
+                >
                   {t.today.claimVerifyBtn}
                 </button>
               </div>
-              {verifyClaimMutation.data?.claim && (
+              {verifiedClaim && (
                 <div className="rounded-lg bg-gray-50 px-3 py-3 text-sm text-gray-700">
-                  <p>{t.today.claimRewardLabel}: {verifyClaimMutation.data.claim.rewardName}</p>
-                  {verifyClaimMutation.data.claim.guestName ? <p>{t.today.claimGuestLabel}: {verifyClaimMutation.data.claim.guestName}</p> : null}
-                  {verifyClaimMutation.data.claim.status === "active" ? (
-                    <button onClick={handleRedeemClaim} className="mt-2 px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-medium">
+                  <p>{t.today.claimRewardLabel}: {verifiedClaim.rewardName}</p>
+                  {verifiedClaim.guestName ? <p>{t.today.claimGuestLabel}: {verifiedClaim.guestName}</p> : null}
+                  {verifiedClaim.status === "active" ? (
+                    <button
+                      type="button"
+                      onClick={handleRedeemClaim}
+                      disabled={redeemClaimMutation.isPending}
+                      className="mt-2 px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
                       {t.today.claimRedeemBtn}
                     </button>
                   ) : null}

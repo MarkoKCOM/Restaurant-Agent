@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useDashboard, useReservations, useTableStatus, useUpdateReservation, useMarkNoShow, useTables, useVerifyClaimCode, useRedeemClaim } from "../hooks/api.js";
-import type { TableStatusItem } from "../hooks/api.js";
+import type { RewardClaimVerified, TableStatusItem } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useToast } from "../components/Toast.js";
 import { useLang } from "../i18n.js";
@@ -88,6 +88,17 @@ function formatCountdown(minutesUntil: number, t: ReturnType<typeof useLang>["t"
   return hours === 1
     ? t.today.inHourAndMinutes.replace("{n}", String(mins))
     : t.today.inHoursAndMinutes.replace("{h}", String(hours)).replace("{m}", String(mins));
+}
+
+function getClaimFeedbackMessage(
+  error: unknown,
+  t: ReturnType<typeof useLang>["t"],
+  fallback: string,
+): string {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("already redeemed")) return t.today.claimAlreadyRedeemed;
+  if (message.includes("not found")) return t.today.claimNotFound;
+  return fallback;
 }
 
 function OccupancyHeatmap({
@@ -224,6 +235,7 @@ export function TodayPage() {
   const { showToast } = useToast();
   const { t, lang } = useLang();
   const [claimCode, setClaimCode] = useState("");
+  const [verifiedClaim, setVerifiedClaim] = useState<RewardClaimVerified | null>(null);
 
   const textAlign = lang === "he" ? "text-right" : "text-left";
 
@@ -291,21 +303,30 @@ export function TodayPage() {
   }
 
   function handleVerifyClaim() {
-    if (!claimCode.trim()) return;
-    verifyClaimMutation.mutate(claimCode.trim(), {
-      onError: () => showToast(t.today.claimVerifyError, "error"),
+    const normalizedCode = claimCode.trim();
+    if (!normalizedCode) return;
+    verifyClaimMutation.mutate(normalizedCode, {
+      onSuccess: ({ claim }) => {
+        setVerifiedClaim(claim);
+        showToast(claim.status === "redeemed" ? t.today.claimAlreadyRedeemed : t.today.claimVerified);
+      },
+      onError: (error) => {
+        setVerifiedClaim(null);
+        showToast(getClaimFeedbackMessage(error, t, t.today.claimVerifyError), "error");
+      },
     });
   }
 
   function handleRedeemClaim() {
-    const claimId = verifyClaimMutation.data?.claim?.id;
+    const claimId = verifiedClaim?.id;
     if (!claimId) return;
     redeemClaimMutation.mutate(claimId, {
-      onSuccess: () => {
-        showToast(t.today.claimRedeemed);
+      onSuccess: ({ claim }) => {
+        setVerifiedClaim(claim);
         setClaimCode("");
+        showToast(t.today.claimRedeemed);
       },
-      onError: () => showToast(t.today.claimRedeemError, "error"),
+      onError: (error) => showToast(getClaimFeedbackMessage(error, t, t.today.claimRedeemError), "error"),
     });
   }
 
@@ -354,23 +375,37 @@ export function TodayPage() {
             <input
               type="text"
               value={claimCode}
-              onChange={(e) => setClaimCode(e.target.value)}
+              onChange={(e) => {
+                setClaimCode(e.target.value);
+                setVerifiedClaim(null);
+              }}
               placeholder={t.today.claimCodePlaceholder}
               className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
             />
-            <button onClick={handleVerifyClaim} className="px-4 py-2 rounded-lg text-white text-sm font-medium" style={{ backgroundColor: "var(--brand-primary)" }}>
+            <button
+              type="button"
+              onClick={handleVerifyClaim}
+              disabled={verifyClaimMutation.isPending || !claimCode.trim()}
+              className="px-4 py-2 rounded-lg text-white text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+              style={{ backgroundColor: "var(--brand-primary)" }}
+            >
               {t.today.claimVerifyBtn}
             </button>
-            {verifyClaimMutation.data?.claim?.status === "active" && (
-              <button onClick={handleRedeemClaim} className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium">
+            {verifiedClaim?.status === "active" && (
+              <button
+                type="button"
+                onClick={handleRedeemClaim}
+                disabled={redeemClaimMutation.isPending}
+                className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+              >
                 {t.today.claimRedeemBtn}
               </button>
             )}
           </div>
-          {verifyClaimMutation.data?.claim && (
+          {verifiedClaim && (
             <div className="mt-3 rounded-lg bg-gray-50 px-3 py-3 text-sm text-gray-700">
-              <p>{t.today.claimRewardLabel}: {verifyClaimMutation.data.claim.rewardName}</p>
-              {verifyClaimMutation.data.claim.guestName ? <p>{t.today.claimGuestLabel}: {verifyClaimMutation.data.claim.guestName}</p> : null}
+              <p>{t.today.claimRewardLabel}: {verifiedClaim.rewardName}</p>
+              {verifiedClaim.guestName ? <p>{t.today.claimGuestLabel}: {verifiedClaim.guestName}</p> : null}
             </div>
           )}
         </div>

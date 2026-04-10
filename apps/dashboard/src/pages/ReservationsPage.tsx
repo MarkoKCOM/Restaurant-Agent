@@ -9,8 +9,10 @@ import {
   useVerifyClaimCode,
   useRedeemClaim,
 } from "../hooks/api.js";
+import type { RewardClaimVerified } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useToast } from "../components/Toast.js";
+import { ModalPortal } from "../components/ModalPortal.js";
 import { useLang } from "../i18n.js";
 import {
   getAllowedReservationActions,
@@ -97,6 +99,17 @@ function getActionLabel(status: ReservationStatus, t: ReturnType<typeof useLang>
     default:
       return t.status[status as keyof typeof t.status] ?? status;
   }
+}
+
+function getClaimFeedbackMessage(
+  error: unknown,
+  t: ReturnType<typeof useLang>["t"],
+  fallback: string,
+): string {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("already redeemed")) return t.today.claimAlreadyRedeemed;
+  if (message.includes("not found")) return t.today.claimNotFound;
+  return fallback;
 }
 
 function getLifecycleTimestampLabel(timestamp: string, lang: string) {
@@ -359,7 +372,7 @@ export function ReservationsPage() {
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
           <button
@@ -387,7 +400,7 @@ export function ReservationsPage() {
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
         </div>
@@ -655,6 +668,7 @@ function ReservationDetailPanel({
   const [saved, setSaved] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [claimCode, setClaimCode] = useState("");
+  const [verifiedClaim, setVerifiedClaim] = useState<RewardClaimVerified | null>(null);
   const verifyClaimMutation = useVerifyClaimCode();
   const redeemClaimMutation = useRedeemClaim();
 
@@ -746,18 +760,30 @@ function ReservationDetailPanel({
   }
 
   function handleVerifyClaim() {
-    if (!claimCode.trim()) return;
-    verifyClaimMutation.mutate(claimCode.trim(), {
-      onError: () => showToast(t.today.claimVerifyError, "error"),
+    const normalizedCode = claimCode.trim();
+    if (!normalizedCode) return;
+    verifyClaimMutation.mutate(normalizedCode, {
+      onSuccess: ({ claim }) => {
+        setVerifiedClaim(claim);
+        showToast(claim.status === "redeemed" ? t.today.claimAlreadyRedeemed : t.today.claimVerified);
+      },
+      onError: (error) => {
+        setVerifiedClaim(null);
+        showToast(getClaimFeedbackMessage(error, t, t.today.claimVerifyError), "error");
+      },
     });
   }
 
   function handleRedeemClaim() {
-    const claimId = verifyClaimMutation.data?.claim?.id;
+    const claimId = verifiedClaim?.id;
     if (!claimId) return;
     redeemClaimMutation.mutate(claimId, {
-      onSuccess: () => showToast(t.today.claimRedeemed),
-      onError: () => showToast(t.today.claimRedeemError, "error"),
+      onSuccess: ({ claim }) => {
+        setVerifiedClaim(claim);
+        setClaimCode("");
+        showToast(t.today.claimRedeemed);
+      },
+      onError: (error) => showToast(getClaimFeedbackMessage(error, t, t.today.claimRedeemError), "error"),
     });
   }
 
@@ -833,20 +859,34 @@ function ReservationDetailPanel({
                 <input
                   type="text"
                   value={claimCode}
-                  onChange={(e) => setClaimCode(e.target.value)}
+                  onChange={(e) => {
+                    setClaimCode(e.target.value);
+                    setVerifiedClaim(null);
+                  }}
                   placeholder={t.today.claimCodePlaceholder}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
                 />
-                <button onClick={handleVerifyClaim} className="px-3 py-2 rounded-lg text-white text-sm font-medium" style={{ backgroundColor: "var(--brand-primary)" }}>
+                <button
+                  type="button"
+                  onClick={handleVerifyClaim}
+                  disabled={verifyClaimMutation.isPending || !claimCode.trim()}
+                  className="px-3 py-2 rounded-lg text-white text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: "var(--brand-primary)" }}
+                >
                   {t.today.claimVerifyBtn}
                 </button>
               </div>
-              {verifyClaimMutation.data?.claim && (
+              {verifiedClaim && (
                 <div className="rounded-lg bg-gray-50 px-3 py-3 text-sm text-gray-700">
-                  <p>{t.today.claimRewardLabel}: {verifyClaimMutation.data.claim.rewardName}</p>
-                  {verifyClaimMutation.data.claim.guestName ? <p>{t.today.claimGuestLabel}: {verifyClaimMutation.data.claim.guestName}</p> : null}
-                  {verifyClaimMutation.data.claim.status === "active" ? (
-                    <button onClick={handleRedeemClaim} className="mt-2 px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-medium">
+                  <p>{t.today.claimRewardLabel}: {verifiedClaim.rewardName}</p>
+                  {verifiedClaim.guestName ? <p>{t.today.claimGuestLabel}: {verifiedClaim.guestName}</p> : null}
+                  {verifiedClaim.status === "active" ? (
+                    <button
+                      type="button"
+                      onClick={handleRedeemClaim}
+                      disabled={redeemClaimMutation.isPending}
+                      className="mt-2 px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
                       {t.today.claimRedeemBtn}
                     </button>
                   ) : null}
@@ -1062,37 +1102,37 @@ function CreateReservationModal({
   }
 
   return (
-    <>
+    <ModalPortal>
       <div
-        className="fixed inset-0 z-40 bg-black bg-opacity-30"
+        className="fixed inset-0 z-[100] bg-black/30"
         onClick={onClose}
       />
 
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[101] flex items-center justify-center p-4">
         <div
-          className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md"
+          className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between mb-5">
+          <div className="mb-5 flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
                 {isWalkIn ? t.res.walkInModalTitle : t.res.newReservation}
               </h3>
               {isWalkIn && (
-                <p className="text-sm text-gray-500 mt-1">{t.res.walkInHelper}</p>
+                <p className="mt-1 text-sm text-gray-500">{t.res.walkInHelper}</p>
               )}
             </div>
             <button
               onClick={onClose}
-              className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              className="p-1 text-gray-400 transition-colors hover:text-gray-600"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
 
-          <div className="mb-4 flex items-center gap-2 flex-wrap text-[11px]">
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-[11px]">
             <span className={`inline-flex rounded-full px-2 py-0.5 font-medium ${getReservationSourceTone(isWalkIn ? "walk_in" : "phone")}`}>
               {getSourceLabel(isWalkIn ? "walk_in" : "phone", t)}
             </span>
@@ -1100,19 +1140,19 @@ function CreateReservationModal({
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.guestName}</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">{t.res.guestName}</label>
               <input
                 type="text"
                 required
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 placeholder={t.res.fullName}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="mb-1 block text-sm font-medium text-gray-700">
                 {isWalkIn ? t.res.guestPhoneOptional : t.res.guestPhone}
               </label>
               <input
@@ -1120,39 +1160,39 @@ function CreateReservationModal({
                 required={!isWalkIn}
                 value={guestPhone}
                 onChange={(e) => setGuestPhone(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 placeholder="050-1234567"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.date}</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">{t.res.date}</label>
               <input
                 type="date"
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.timeStart}</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">{t.res.timeStart}</label>
               <input
                 type="time"
                 required
                 value={timeStart}
                 onChange={(e) => setTimeStart(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.partySize}</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">{t.res.partySize}</label>
               <select
                 value={partySize}
                 onChange={(e) => setPartySize(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
               >
                 {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
                   <option key={n} value={n}>{n}</option>
@@ -1161,24 +1201,24 @@ function CreateReservationModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.res.notes}</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">{t.res.notes}</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none"
+                className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 placeholder={t.res.notesOptional}
               />
             </div>
 
             {error && (
-              <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
             )}
 
             <button
               type="submit"
               disabled={activeMutation.isPending}
-              className="w-full px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
+              className="w-full rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
             >
               {activeMutation.isPending
                 ? t.res.creating
@@ -1187,6 +1227,6 @@ function CreateReservationModal({
           </form>
         </div>
       </div>
-    </>
+    </ModalPortal>
   );
 }

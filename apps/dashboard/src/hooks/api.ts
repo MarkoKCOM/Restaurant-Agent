@@ -568,13 +568,26 @@ export function useVerifyClaimCode() {
 }
 
 export function useRedeemClaim() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (claimId: string) => {
       const res = await fetchWithAuth(`${API}/loyalty/claims/${claimId}/redeem`, {
         method: "POST",
       });
       if (!res.ok) throw new Error(await getErrorMessage(res));
-      return res.json();
+      return res.json() as Promise<{ claim: RewardClaimVerified }>;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["reservations"] });
+      qc.invalidateQueries({ queryKey: ["rewards"] });
+      qc.invalidateQueries({ queryKey: ["guests"] });
+      if (data.claim?.guestId) {
+        qc.invalidateQueries({ queryKey: ["guest", data.claim.guestId] });
+        qc.invalidateQueries({ queryKey: ["membership-summary", data.claim.guestId] });
+        qc.invalidateQueries({ queryKey: ["loyalty-balance", data.claim.guestId] });
+        qc.invalidateQueries({ queryKey: ["loyalty-history", data.claim.guestId] });
+      }
     },
   });
 }

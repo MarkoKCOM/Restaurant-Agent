@@ -1,5 +1,30 @@
 # Progress Log
 
+## 2026-04-13 (Dashboard loyalty view)
+
+### Added
+- Dedicated dashboard loyalty page at `/loyalty` with its own sidebar entry for admin and super-admin users.
+- New reusable `LoyaltyRewardsManager` component shared between the loyalty page and Settings.
+- Loyalty dashboard overview cards for member count, VIP count, active rewards, and repeat guests.
+- Loyalty dashboard drill-down panels for top members and reward-program health.
+
+### Changed
+- Reward management is no longer buried as a tiny settings block; Settings now links into the dedicated loyalty dashboard while still exposing the reward manager inline.
+- Dashboard access/page handling now recognizes `loyalty` as a first-class page.
+- Loyalty page visibility is feature-driven so older `visiblePages` configs do not accidentally hide the new page.
+- Hebrew and English dashboard copy now includes a full loyalty section.
+
+### Verified
+- `pnpm --filter @openseat/domain build`
+- `pnpm --filter @openseat/dashboard build`
+- `pnpm build`
+- Browser-verified local dashboard rendering:
+  - new `מועדון` sidebar item appears
+  - `/loyalty` renders stats, top members, and reward management
+  - Settings page shows a shortcut into the loyalty dashboard
+
+---
+
 ## 2026-04-09 (Codebase review, cleanup, and conventions)
 
 ### Added

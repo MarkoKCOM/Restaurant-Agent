@@ -7,6 +7,7 @@ export type DashboardPageKey =
   | "today"
   | "reservations"
   | "waitlist"
+  | "loyalty"
   | "guests"
   | "settings"
   | "help";
@@ -22,6 +23,7 @@ export const DEFAULT_VISIBLE_PAGES: DashboardPageKey[] = [
   "today",
   "reservations",
   "waitlist",
+  "loyalty",
   "guests",
   "settings",
   "help",
@@ -50,6 +52,8 @@ export function isPageVisible(
 ): boolean {
   // Role must allow the page first.
   if (!access.pages.includes(page)) return false;
+  // Loyalty is feature-driven so old visiblePages configs don't hide the new page.
+  if (page === "loyalty") return isFeatureEnabled("loyalty", config);
   // Super-admin bypasses tenant-level visibility.
   if (role === "super_admin") return true;
   // If restaurant has configured visiblePages, intersect with that list.
@@ -73,7 +77,7 @@ export function isFeatureEnabled(
 
 export const DASHBOARD_ACCESS_BY_ROLE: Record<DashboardRole, DashboardAccess> = {
   admin: {
-    pages: ["today", "reservations", "waitlist", "guests", "settings", "help"],
+    pages: ["today", "reservations", "waitlist", "loyalty", "guests", "settings", "help"],
     actions: [
       "reservation.manage",
       "walkin.create",
@@ -91,7 +95,7 @@ export const DASHBOARD_ACCESS_BY_ROLE: Record<DashboardRole, DashboardAccess> = 
     actions: ["reservation.manage", "walkin.create", "waitlist.manage", "loyalty.verify", "loyalty.redeem"],
   },
   super_admin: {
-    pages: ["restaurants", "today", "reservations", "waitlist", "guests", "settings", "help"],
+    pages: ["restaurants", "today", "reservations", "waitlist", "loyalty", "guests", "settings", "help"],
     actions: [
       "reservation.manage",
       "walkin.create",

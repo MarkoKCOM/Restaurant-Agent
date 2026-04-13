@@ -7,16 +7,13 @@ import {
   useUpdateTable,
   useDeleteTable,
   useResetReservations,
-  useRewards,
-  useCreateReward,
-  useUpdateReward,
 } from "../hooks/api.js";
 import { useToast } from "../components/Toast.js";
 import { ModalPortal } from "../components/ModalPortal.js";
 import { useLang } from "../i18n.js";
-import { useAuth } from "../hooks/useAuth.js";
 import type { Table, DashboardConfig } from "@openseat/domain";
 import { resolveTheme } from "../lib/dashboardTheme.js";
+import { LoyaltyRewardsManager } from "../components/LoyaltyRewardsManager.js";
 
 const DAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
@@ -41,11 +38,7 @@ const FEATURE_KEYS = ["waitlist", "loyalty", "guestNotes", "occupancyHeatmap", "
 function DashboardCustomization({ restaurant, updateMutation }: { restaurant: any; updateMutation: any }) {
   const { t } = useLang();
   const { showToast } = useToast();
-  const { canDo } = useAuth();
   const config: DashboardConfig = restaurant?.dashboardConfig ?? {};
-  const { data: rewardsData } = useRewards(restaurant?.id, true);
-  const createRewardMutation = useCreateReward();
-  const updateRewardMutation = useUpdateReward();
 
   const [primaryColor, setPrimaryColor] = useState(config.palette?.primary ?? config.accentColor ?? "#d97706");
   const [sidebarColor, setSidebarColor] = useState(config.palette?.sidebar ?? "#ffffff");
@@ -59,10 +52,6 @@ function DashboardCustomization({ restaurant, updateMutation }: { restaurant: an
   const [features, setFeatures] = useState(config.features ?? {
     waitlist: true, loyalty: true, guestNotes: true, occupancyHeatmap: true, tableMap: true,
   });
-  const [rewardNameHe, setRewardNameHe] = useState("");
-  const [rewardNameEn, setRewardNameEn] = useState("");
-  const [rewardPoints, setRewardPoints] = useState(120);
-  const [rewardDescription, setRewardDescription] = useState("");
 
   useEffect(() => {
     const c = (restaurant?.dashboardConfig ?? {}) as DashboardConfig;
@@ -126,38 +115,6 @@ function DashboardCustomization({ restaurant, updateMutation }: { restaurant: an
     );
   }
 
-  function handleCreateReward() {
-    if (!restaurant?.id || !rewardNameHe.trim()) return;
-    createRewardMutation.mutate(
-      {
-        restaurantId: restaurant.id,
-        nameHe: rewardNameHe.trim(),
-        nameEn: rewardNameEn.trim() || undefined,
-        description: rewardDescription.trim() || undefined,
-        pointsCost: rewardPoints,
-      },
-      {
-        onSuccess: () => {
-          setRewardNameHe("");
-          setRewardNameEn("");
-          setRewardDescription("");
-          setRewardPoints(120);
-          showToast(t.settings.membership_toastRewardCreated);
-        },
-        onError: () => showToast(t.settings.membership_toastError, "error"),
-      },
-    );
-  }
-
-  function handleToggleReward(id: string, isActive: boolean) {
-    updateRewardMutation.mutate(
-      { id, data: { isActive: !isActive } },
-      {
-        onSuccess: () => showToast(t.settings.membership_toastRewardUpdated),
-        onError: () => showToast(t.settings.membership_toastError, "error"),
-      },
-    );
-  }
 
   const pageLabels: Record<string, string> = {
     today: t.nav.today,
@@ -315,57 +272,7 @@ function DashboardCustomization({ restaurant, updateMutation }: { restaurant: an
             </div>
           </div>
 
-          <div className="bg-gray-50 rounded-xl border border-gray-200 p-5">
-            <h4 className="text-base font-semibold mb-1">{t.settings.membership_title}</h4>
-            {restaurant?.package !== "growth" ? (
-              <div>
-                <p className="text-sm text-gray-500 mb-3">{t.settings.membership_lockedDesc}</p>
-                <span className="inline-flex rounded-full px-3 py-1 text-xs font-semibold bg-amber-100 text-amber-800">{t.settings.membership_lockedTitle}</span>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-700 mb-2">{t.settings.membership_rewards}</p>
-                  <div className="space-y-2">
-                    {(rewardsData?.rewards ?? []).length === 0 ? (
-                      <p className="text-sm text-gray-500">{t.settings.membership_noRewards}</p>
-                    ) : (
-                      (rewardsData?.rewards ?? []).map((reward) => (
-                        <div key={reward.id} className="rounded-lg border border-gray-200 bg-white px-3 py-3 flex items-center justify-between gap-3">
-                          <div>
-                            <p className="font-medium text-gray-900">{reward.nameHe}</p>
-                            <p className="text-xs text-gray-500">{reward.pointsCost} pts • {reward.description || reward.nameEn || "—"}</p>
-                          </div>
-                          {canDo("loyalty.reward.manage") ? (
-                            <button
-                              onClick={() => handleToggleReward(reward.id, reward.isActive)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-medium ${reward.isActive ? "bg-red-50 text-red-600" : "bg-green-50 text-green-700"}`}
-                            >
-                              {reward.isActive ? t.settings.membership_deactivate : t.settings.membership_reactivate}
-                            </button>
-                          ) : null}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {canDo("loyalty.reward.manage") ? (
-                  <div className="grid sm:grid-cols-2 gap-3 rounded-xl border border-gray-200 bg-white p-4">
-                    <input value={rewardNameHe} onChange={(e) => setRewardNameHe(e.target.value)} placeholder={t.settings.membership_rewardNameHe} className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-                    <input value={rewardNameEn} onChange={(e) => setRewardNameEn(e.target.value)} placeholder={t.settings.membership_rewardNameEn} className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-                    <input type="number" min={1} value={rewardPoints} onChange={(e) => setRewardPoints(Number(e.target.value) || 1)} placeholder={t.settings.membership_rewardPoints} className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-                    <input value={rewardDescription} onChange={(e) => setRewardDescription(e.target.value)} placeholder={t.settings.membership_rewardDesc} className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-                    <div className="sm:col-span-2">
-                      <button onClick={handleCreateReward} disabled={createRewardMutation.isPending} className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: primaryColor }}>
-                        {t.settings.membership_createReward}
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            )}
-          </div>
+          <LoyaltyRewardsManager restaurant={restaurant} actionColor={primaryColor} showDashboardLink />
         </div>
       </div>
     </section>

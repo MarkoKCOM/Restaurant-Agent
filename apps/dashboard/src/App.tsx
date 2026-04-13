@@ -6,6 +6,7 @@ import { ReservationsPage } from "./pages/ReservationsPage.js";
 import { GuestsPage } from "./pages/GuestsPage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
 import { WaitlistPage } from "./pages/WaitlistPage.js";
+import { LoyaltyPage } from "./pages/LoyaltyPage.js";
 import { GuestDetailPage } from "./pages/GuestDetailPage.js";
 import { LoginPage } from "./pages/LoginPage.js";
 import { AuthProvider, useAuth } from "./hooks/useAuth.js";
@@ -115,6 +116,16 @@ function AppRoutes() {
             <RequireRestaurantContext>
               <PageAccessRoute page="waitlist">
                 <WaitlistPage />
+              </PageAccessRoute>
+            </RequireRestaurantContext>
+          }
+        />
+        <Route
+          path="/loyalty"
+          element={
+            <RequireRestaurantContext>
+              <PageAccessRoute page="loyalty">
+                <LoyaltyPage />
               </PageAccessRoute>
             </RequireRestaurantContext>
           }

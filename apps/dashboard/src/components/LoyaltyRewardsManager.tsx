@@ -4,108 +4,19 @@ import { useRewards, useCreateReward, useUpdateReward } from "../hooks/api.js";
 import { useToast } from "./Toast.js";
 import { useLang } from "../i18n.js";
 import { useAuth } from "../hooks/useAuth.js";
-import type { Restaurant } from "@openseat/domain";
+import {
+  BFF_REWARD_TEMPLATES,
+  REWARD_MOMENT_LABELS,
+  getRewardTemplateById,
+  type Restaurant,
+  type RewardTemplateDefinition,
+} from "@openseat/domain";
 
 interface LoyaltyRewardsManagerProps {
   restaurant: Restaurant | null | undefined;
   actionColor?: string;
   showDashboardLink?: boolean;
 }
-
-type RewardTemplate = {
-  id: string;
-  title: { he: string; en: string };
-  moment: { he: string; en: string };
-  offer: { he: string; en: string };
-  why: { he: string; en: string };
-  pitch: { he: string; en: string };
-  rewardNameHe: string;
-  rewardNameEn: string;
-  rewardDescriptionHe: string;
-  rewardDescriptionEn: string;
-  pointsCost: number;
-};
-
-const BFF_REWARD_TEMPLATES: RewardTemplate[] = [
-  {
-    id: "dessert-next-visit",
-    title: { he: "חוזר מתוק", en: "Sweet comeback" },
-    moment: { he: "לאורח חוזר שצריך עוד דחיפה קטנה", en: "For a returning guest who needs one small nudge" },
-    offer: { he: "קינוח עלינו בביקור הבא", en: "Dessert on the next visit" },
-    why: { he: "ברור, כיפי, ובדרך כלל זול יחסית למסעדה.", en: "Clear, generous, and usually margin-friendly for the restaurant." },
-    pitch: { he: "בביקור הבא הקינוח עלינו.", en: "On your next visit, dessert is on us." },
-    rewardNameHe: "קינוח עלינו בביקור הבא",
-    rewardNameEn: "Dessert on your next visit",
-    rewardDescriptionHe: "מעולה לאורח חוזר שצריך עוד סיבה טובה לקפוץ שוב.",
-    rewardDescriptionEn: "Great for returning guests who just need a small reason to come back soon.",
-    pointsCost: 80,
-  },
-  {
-    id: "midweek-discount",
-    title: { he: "אמצע שבוע חכם", en: "Midweek mover" },
-    moment: { he: "לימים חלשים או לאורח שנעלם קצת", en: "For softer nights or a guest who has gone quiet" },
-    offer: { he: "10% הנחה לאמצע שבוע", en: "10% off on a midweek visit" },
-    why: { he: "ממלא ימים חלשים בלי לפגוע בסופ״ש החזק.", en: "Helps fill quieter nights without touching your strongest weekend demand." },
-    pitch: { he: "אם בא לך לקפוץ באמצע שבוע, שמרתי לך 10% הנחה.", en: "If you feel like dropping by midweek, I saved you 10% off." },
-    rewardNameHe: "10% הנחה לאמצע שבוע",
-    rewardNameEn: "10% off midweek",
-    rewardDescriptionHe: "הטבה חכמה להחזרת אורחים באמצע שבוע בלי לשרוף מבצעים על הימים החזקים.",
-    rewardDescriptionEn: "A smart comeback offer for quieter nights without discounting peak days.",
-    pointsCost: 120,
-  },
-  {
-    id: "starter-for-table",
-    title: { he: "פותחים שולחן", en: "Table starter" },
-    moment: { he: "לחבר מביא חבר או לקבוצה קטנה", en: "For referrals or a small social group" },
-    offer: { he: "מנה ראשונה לשולחן עלינו", en: "A starter for the table" },
-    why: { he: "מרגיש נדיב ומעודד להזמין עוד אנשים.", en: "Feels generous and pushes guests to bring more people." },
-    pitch: { he: "תבואו כמה חבר׳ה ויש לכם מנה ראשונה לשולחן עלינו.", en: "Come with a few friends and the table gets a starter on us." },
-    rewardNameHe: "מנה ראשונה לשולחן עלינו",
-    rewardNameEn: "Starter for the table",
-    rewardDescriptionHe: "מעולה להזמנות חברתיות, מביאי חבר, וערבים שרוצים למלא שולחנות.",
-    rewardDescriptionEn: "Great for social bookings, referrals, and nights where you want fuller tables.",
-    pointsCost: 140,
-  },
-  {
-    id: "birthday-table-treat",
-    title: { he: "יום הולדת כמו שצריך", en: "Birthday table treat" },
-    moment: { he: "לימי הולדת וחגיגות", en: "For birthdays and celebration tables" },
-    offer: { he: "צ׳ופר יום הולדת לשולחן", en: "Birthday treat for the table" },
-    why: { he: "יוצר רגע זכיר ונותן לצוות משהו קל וברור להגיש.", en: "Creates a memorable moment and gives staff something easy to honor." },
-    pitch: { he: "ביום הולדת אצלנו דואגים לכם לצ׳ופר קטן לשולחן.", en: "For birthdays with us, the table gets a little treat from the house." },
-    rewardNameHe: "צ׳ופר יום הולדת לשולחן",
-    rewardNameEn: "Birthday table treat",
-    rewardDescriptionHe: "מושלם ליום הולדת, יום נישואין, או כל שולחן חגיגי שצריך להרגיש מיוחד.",
-    rewardDescriptionEn: "Perfect for birthdays, anniversaries, or any celebration table that should feel special.",
-    pointsCost: 180,
-  },
-  {
-    id: "referral-dessert",
-    title: { he: "חבר מביא חבר", en: "Bring-a-friend" },
-    moment: { he: "כשבא לך לעודד המלצות טבעיות", en: "When you want easy word-of-mouth growth" },
-    offer: { he: "קינוח עלינו לחבר מביא חבר", en: "Dessert on us for a referral" },
-    why: { he: "פשוט להסביר, מרגיש הוגן, ועובד טוב בלי בירוקרטיה.", en: "Simple to explain, fair for both sides, and easy to honor." },
-    pitch: { he: "תביא חבר חדש, ונדאג לכם לקינוח עלינו.", en: "Bring a new friend in and we’ll take care of dessert." },
-    rewardNameHe: "קינוח עלינו לחבר מביא חבר",
-    rewardNameEn: "Referral dessert on us",
-    rewardDescriptionHe: "הטבה קלילה לעידוד המלצות אמיתיות בלי לסבך את השיחה.",
-    rewardDescriptionEn: "A light, easy referral reward that keeps the message clean and natural.",
-    pointsCost: 120,
-  },
-  {
-    id: "host-perk",
-    title: { he: "מארח שמביא שולחן", en: "Host perk" },
-    moment: { he: "לקבוצות 6+ או אורח שתמיד מארגן את החבורה", en: "For 6+ groups or the guest who always organizes the crew" },
-    offer: { he: "צ׳ופר למארח קבוצה", en: "Host perk for a group booking" },
-    why: { he: "נותן לאדם אחד סיבה טובה לאסוף את כולם דווקא אליך.", en: "Gives one person a real reason to gather everyone at your place." },
-    pitch: { he: "על קבוצה יפה אצלנו, יש צ׳ופר קטן למארח.", en: "For a proper group booking, the host gets a little extra from us." },
-    rewardNameHe: "צ׳ופר למארח קבוצה",
-    rewardNameEn: "Host perk for group booking",
-    rewardDescriptionHe: "מעולה ליצירת הזמנות קבוצתיות ולחיזוק האורח שמביא את כל החבורה.",
-    rewardDescriptionEn: "Great for group bookings and for rewarding the person who brings everyone together.",
-    pointsCost: 220,
-  },
-];
 
 export function LoyaltyRewardsManager({
   restaurant,
@@ -123,10 +34,16 @@ export function LoyaltyRewardsManager({
   const [rewardNameEn, setRewardNameEn] = useState("");
   const [rewardPoints, setRewardPoints] = useState(120);
   const [rewardDescription, setRewardDescription] = useState("");
+  const [rewardTemplateKey, setRewardTemplateKey] = useState("");
+  const [rewardRecommendedMoments, setRewardRecommendedMoments] = useState<string[]>([]);
+  const [rewardPitchHe, setRewardPitchHe] = useState("");
+  const [rewardPitchEn, setRewardPitchEn] = useState("");
 
   const rewards = rewardsData?.rewards ?? [];
   const activeRewards = useMemo(() => rewards.filter((reward) => reward.isActive), [rewards]);
   const inactiveRewards = useMemo(() => rewards.filter((reward) => !reward.isActive), [rewards]);
+
+  const selectedTemplate = rewardTemplateKey ? getRewardTemplateById(rewardTemplateKey) : undefined;
 
   function handleCreateReward() {
     if (!restaurant?.id || !rewardNameHe.trim()) return;
@@ -137,6 +54,10 @@ export function LoyaltyRewardsManager({
         nameEn: rewardNameEn.trim() || undefined,
         description: rewardDescription.trim() || undefined,
         pointsCost: rewardPoints,
+        templateKey: rewardTemplateKey || undefined,
+        recommendedMoments: rewardRecommendedMoments.length > 0 ? rewardRecommendedMoments : undefined,
+        pitchHe: rewardPitchHe.trim() || undefined,
+        pitchEn: rewardPitchEn.trim() || undefined,
       },
       {
         onSuccess: () => {
@@ -144,6 +65,10 @@ export function LoyaltyRewardsManager({
           setRewardNameEn("");
           setRewardDescription("");
           setRewardPoints(120);
+          setRewardTemplateKey("");
+          setRewardRecommendedMoments([]);
+          setRewardPitchHe("");
+          setRewardPitchEn("");
           showToast(t.settings.membership_toastRewardCreated);
         },
         onError: () => showToast(t.settings.membership_toastError, "error"),
@@ -161,11 +86,15 @@ export function LoyaltyRewardsManager({
     );
   }
 
-  function handleUseTemplate(template: RewardTemplate) {
+  function handleUseTemplate(template: RewardTemplateDefinition) {
     setRewardNameHe(template.rewardNameHe);
     setRewardNameEn(template.rewardNameEn);
     setRewardDescription(lang === "he" ? template.rewardDescriptionHe : template.rewardDescriptionEn);
     setRewardPoints(template.pointsCost);
+    setRewardTemplateKey(template.id);
+    setRewardRecommendedMoments(template.recommendedMoments);
+    setRewardPitchHe(template.pitch.he);
+    setRewardPitchEn(template.pitch.en);
   }
 
   function RewardList({ title, items }: { title: string; items: typeof rewards }) {
@@ -182,41 +111,66 @@ export function LoyaltyRewardsManager({
           <p className="text-sm text-gray-500">{t.settings.membership_noRewards}</p>
         ) : (
           <div className="space-y-3">
-            {items.map((reward) => (
-              <div key={reward.id} className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-gray-900">{reward.nameHe}</p>
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                          reward.isActive ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"
+            {items.map((reward) => {
+              const rewardTemplate = getRewardTemplateById(reward.templateKey);
+              const savedPitch = (lang === "he" ? reward.pitchHe : reward.pitchEn) || reward.pitchHe || reward.pitchEn;
+              const momentLabels = (reward.recommendedMoments ?? [])
+                .map((moment) => REWARD_MOMENT_LABELS[moment as keyof typeof REWARD_MOMENT_LABELS]?.[lang] ?? moment)
+                .join(" • ");
+
+              return (
+                <div key={reward.id} className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-gray-900">{reward.nameHe}</p>
+                        {rewardTemplate ? (
+                          <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                            {rewardTemplate.title[lang]}
+                          </span>
+                        ) : null}
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            reward.isActive ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"
+                          }`}
+                        >
+                          {reward.isActive ? t.settings.membership_active : t.settings.membership_inactive}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {reward.pointsCost} pts
+                        {reward.description ? ` • ${reward.description}` : reward.nameEn ? ` • ${reward.nameEn}` : ""}
+                      </p>
+                      {momentLabels ? (
+                        <p className="mt-2 text-xs text-gray-500">
+                          <span className="font-semibold text-gray-600">{t.loyalty.templateMoment}: </span>
+                          {momentLabels}
+                        </p>
+                      ) : null}
+                      {savedPitch ? (
+                        <p className="mt-1 text-xs text-gray-500">
+                          <span className="font-semibold text-gray-600">{t.loyalty.templatePitch}: </span>
+                          {savedPitch}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    {canDo("loyalty.reward.manage") ? (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleReward(reward.id, reward.isActive)}
+                        disabled={updateRewardMutation.isPending}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-60 ${
+                          reward.isActive ? "bg-red-50 text-red-600" : "bg-green-50 text-green-700"
                         }`}
                       >
-                        {reward.isActive ? t.settings.membership_active : t.settings.membership_inactive}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-sm text-gray-500">
-                      {reward.pointsCost} pts
-                      {reward.description ? ` • ${reward.description}` : reward.nameEn ? ` • ${reward.nameEn}` : ""}
-                    </p>
+                        {reward.isActive ? t.settings.membership_deactivate : t.settings.membership_reactivate}
+                      </button>
+                    ) : null}
                   </div>
-
-                  {canDo("loyalty.reward.manage") ? (
-                    <button
-                      type="button"
-                      onClick={() => handleToggleReward(reward.id, reward.isActive)}
-                      disabled={updateRewardMutation.isPending}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-60 ${
-                        reward.isActive ? "bg-red-50 text-red-600" : "bg-green-50 text-green-700"
-                      }`}
-                    >
-                      {reward.isActive ? t.settings.membership_deactivate : t.settings.membership_reactivate}
-                    </button>
-                  ) : null}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -347,6 +301,21 @@ export function LoyaltyRewardsManager({
                   placeholder={t.settings.membership_rewardDesc}
                   className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 />
+                {selectedTemplate ? (
+                  <div className="sm:col-span-2 rounded-xl border border-dashed border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    <p className="font-semibold">{selectedTemplate.title[lang]}</p>
+                    <p className="mt-1 text-amber-800">
+                      <span className="font-semibold">{t.loyalty.templateMoment}: </span>
+                      {selectedTemplate.recommendedMoments
+                        .map((moment) => REWARD_MOMENT_LABELS[moment][lang])
+                        .join(" • ")}
+                    </p>
+                    <p className="mt-1 text-amber-800">
+                      <span className="font-semibold">{t.loyalty.templatePitch}: </span>
+                      {(lang === "he" ? rewardPitchHe : rewardPitchEn) || rewardPitchHe || rewardPitchEn}
+                    </p>
+                  </div>
+                ) : null}
                 <div className="sm:col-span-2">
                   <button
                     type="button"

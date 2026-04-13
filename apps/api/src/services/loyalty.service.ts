@@ -226,6 +226,10 @@ export async function updateReward(
     nameEn?: string;
     description?: string;
     pointsCost?: number;
+    templateKey?: string | null;
+    recommendedMoments?: string[] | null;
+    pitchHe?: string | null;
+    pitchEn?: string | null;
     isActive?: boolean;
   },
 ): Promise<RewardRow | null> {
@@ -244,6 +248,10 @@ export async function updateReward(
       ...(data.nameEn !== undefined ? { nameEn: data.nameEn } : {}),
       ...(data.description !== undefined ? { description: data.description } : {}),
       ...(data.pointsCost !== undefined ? { pointsCost: data.pointsCost } : {}),
+      ...(data.templateKey !== undefined ? { templateKey: data.templateKey } : {}),
+      ...(data.recommendedMoments !== undefined ? { recommendedMoments: data.recommendedMoments } : {}),
+      ...(data.pitchHe !== undefined ? { pitchHe: data.pitchHe } : {}),
+      ...(data.pitchEn !== undefined ? { pitchEn: data.pitchEn } : {}),
       ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
     })
     .where(and(eq(rewards.id, rewardId), eq(rewards.restaurantId, restaurantId)))
@@ -258,6 +266,10 @@ export async function createReward(data: {
   nameEn?: string;
   description?: string;
   pointsCost: number;
+  templateKey?: string | null;
+  recommendedMoments?: string[] | null;
+  pitchHe?: string | null;
+  pitchEn?: string | null;
 }): Promise<RewardRow> {
   const [row] = await db
     .insert(rewards)
@@ -267,6 +279,10 @@ export async function createReward(data: {
       nameEn: data.nameEn ?? null,
       description: data.description ?? null,
       pointsCost: data.pointsCost,
+      templateKey: data.templateKey ?? null,
+      recommendedMoments: data.recommendedMoments ?? null,
+      pitchHe: data.pitchHe ?? null,
+      pitchEn: data.pitchEn ?? null,
     })
     .returning();
 

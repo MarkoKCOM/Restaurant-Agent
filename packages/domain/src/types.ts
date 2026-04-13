@@ -1,3 +1,5 @@
+import type { RewardMomentKey } from "./reward-templates.js";
+
 // Core domain types shared across all apps
 
 export interface Restaurant {
@@ -173,6 +175,10 @@ export interface RewardCatalogItem {
   pointsCost: number;
   claimable: boolean;
   pointsShortfall: number;
+  templateKey?: string | null;
+  recommendedMoments?: RewardMomentKey[] | null;
+  pitchHe?: string | null;
+  pitchEn?: string | null;
 }
 
 export interface RewardClaim {

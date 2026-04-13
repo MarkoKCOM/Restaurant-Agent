@@ -35,6 +35,10 @@ const createRewardSchema = z.object({
   nameEn: z.string().optional(),
   description: z.string().optional(),
   pointsCost: z.coerce.number().int().min(1),
+  templateKey: z.string().min(1).optional(),
+  recommendedMoments: z.array(z.string().min(1)).optional(),
+  pitchHe: z.string().optional(),
+  pitchEn: z.string().optional(),
 });
 
 const updateRewardSchema = z.object({
@@ -42,6 +46,10 @@ const updateRewardSchema = z.object({
   nameEn: z.string().optional(),
   description: z.string().optional(),
   pointsCost: z.coerce.number().int().min(1).optional(),
+  templateKey: z.string().min(1).nullable().optional(),
+  recommendedMoments: z.array(z.string().min(1)).nullable().optional(),
+  pitchHe: z.string().nullable().optional(),
+  pitchEn: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -239,6 +247,10 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       nameEn: parsed.nameEn,
       description: parsed.description,
       pointsCost: parsed.pointsCost!,
+      templateKey: parsed.templateKey,
+      recommendedMoments: parsed.recommendedMoments,
+      pitchHe: parsed.pitchHe,
+      pitchEn: parsed.pitchEn,
     });
     reply.code(201);
     return { reward };

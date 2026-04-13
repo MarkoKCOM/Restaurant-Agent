@@ -217,6 +217,10 @@ export const rewards = pgTable("rewards", {
   nameEn: varchar("name_en", { length: 255 }),
   pointsCost: integer("points_cost").notNull(),
   description: text("description"),
+  templateKey: varchar("template_key", { length: 100 }),
+  recommendedMoments: jsonb("recommended_moments").$type<string[]>(),
+  pitchHe: text("pitch_he"),
+  pitchEn: text("pitch_en"),
   isActive: boolean("is_active").notNull().default(true),
 });
 

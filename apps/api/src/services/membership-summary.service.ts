@@ -29,6 +29,10 @@ export interface MembershipSummary {
       pointsCost: number;
       claimable: boolean;
       pointsShortfall: number;
+      templateKey: string | null;
+      recommendedMoments: string[] | null;
+      pitchHe: string | null;
+      pitchEn: string | null;
     }>;
   };
   claims: {
@@ -90,6 +94,10 @@ export async function getMembershipSummary(
     pointsCost: r.pointsCost,
     claimable: guest.pointsBalance >= r.pointsCost,
     pointsShortfall: Math.max(0, r.pointsCost - guest.pointsBalance),
+    templateKey: r.templateKey ?? null,
+    recommendedMoments: r.recommendedMoments ?? null,
+    pitchHe: r.pitchHe ?? null,
+    pitchEn: r.pitchEn ?? null,
   }));
 
   const activeClaims = allClaims

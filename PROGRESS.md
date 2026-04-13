@@ -1,5 +1,27 @@
 # Progress Log
 
+## 2026-04-13 (Loyalty reward metadata + agent guidance)
+
+### Added
+- OpenSpec change `openspec/changes/loyalty-reward-templates/` with proposal, design, tasks, and capability specs for first-class reward templates and member reward guidance.
+- Shared reward-template catalog in `packages/domain/src/reward-templates.ts` with stable template keys and normalized moment tags.
+- Reward metadata fields on `rewards`: `templateKey`, `recommendedMoments`, `pitchHe`, and `pitchEn`.
+
+### Changed
+- Loyalty reward create/update/list flows now preserve template guidance instead of throwing it away after the owner clicks a template.
+- Membership summary now exposes reward guidance metadata so Jake can see which live rewards fit birthday, comeback, referral, milestone, group, and host moments.
+- Loyalty dashboard reward lists now show saved template badges, recommended moments, and guest-facing pitch copy for configured rewards.
+
+### Verified
+- `pnpm --filter @openseat/domain build`
+- `pnpm --filter @openseat/api build`
+- `pnpm --filter @openseat/dashboard build`
+- `set -a && source /home/jake/openseat/.env && set +a && pnpm --filter @openseat/api db:migrate`
+- Backend smoke test with temporary reward creation + cleanup confirmed metadata round-trips through `listRewards()` and `getMembershipSummary()`.
+- Browser-verified local `/loyalty` dashboard shows the dedicated `מועדון` sidebar entry, the reward-template library, and saved reward guidance context (`מתי להשתמש`, `איך ג׳ייק מציע את זה`).
+
+---
+
 ## 2026-04-13 (BFF loyalty templates + Telegram flow prep)
 
 ### Added

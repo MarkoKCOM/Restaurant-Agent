@@ -449,6 +449,10 @@ export interface Reward {
   nameEn?: string;
   description?: string;
   pointsCost: number;
+  templateKey?: string | null;
+  recommendedMoments?: string[] | null;
+  pitchHe?: string | null;
+  pitchEn?: string | null;
   isActive: boolean;
   createdAt: string;
 }
@@ -480,7 +484,20 @@ export interface MembershipSummaryData {
       earned: number;
     } | null;
   };
-  rewards: { available: { id: string; nameHe: string; nameEn?: string; pointsCost: number; claimable: boolean; pointsShortfall: number }[] };
+  rewards: {
+    available: {
+      id: string;
+      nameHe: string;
+      nameEn?: string;
+      pointsCost: number;
+      claimable: boolean;
+      pointsShortfall: number;
+      templateKey?: string | null;
+      recommendedMoments?: string[] | null;
+      pitchHe?: string | null;
+      pitchEn?: string | null;
+    }[];
+  };
   claims: {
     active: { id: string; rewardId: string; rewardName: string; claimCode: string; status: string; claimedAt: string }[];
     past: { id: string; rewardId: string; rewardName: string; claimCode: string; status: string; claimedAt: string; redeemedAt?: string }[];
@@ -511,6 +528,10 @@ export function useCreateReward() {
       nameEn?: string;
       description?: string;
       pointsCost: number;
+      templateKey?: string;
+      recommendedMoments?: string[];
+      pitchHe?: string;
+      pitchEn?: string;
     }) => {
       const res = await fetchWithAuth(`${API}/loyalty/rewards`, {
         method: "POST",
@@ -533,7 +554,17 @@ export function useUpdateReward() {
       data,
     }: {
       id: string;
-      data: { nameHe?: string; nameEn?: string; description?: string; pointsCost?: number; isActive?: boolean };
+      data: {
+        nameHe?: string;
+        nameEn?: string;
+        description?: string;
+        pointsCost?: number;
+        templateKey?: string | null;
+        recommendedMoments?: string[] | null;
+        pitchHe?: string | null;
+        pitchEn?: string | null;
+        isActive?: boolean;
+      };
     }) => {
       const res = await fetchWithAuth(`${API}/loyalty/rewards/${id}`, {
         method: "PATCH",

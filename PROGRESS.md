@@ -1,5 +1,24 @@
 # Progress Log
 
+## 2026-04-13 (BFF loyalty templates + Telegram flow prep)
+
+### Added
+- `docs/BFF-BOT-PERSONA.md` — live BFF customer voice/playbook for WhatsApp + Telegram, including loyalty flow examples and test prompts.
+- `docs/BFF-REWARD-TEMPLATES.md` — owner-facing reward template library for BFF offer strategy.
+- Loyalty dashboard reward-template library with one-click prefills for owner/admin reward creation.
+
+### Changed
+- Loyalty dashboard now teaches the owner what to offer, not just how to CRUD rewards.
+- WhatsApp/Telegram customer persona guidance now explicitly covers reward selection, pacing, birthday/referral/comeback flows, and BFF-specific tone.
+- OpenSpec `whatsapp-membership-club` tasks updated to reflect defined guest-member flows and Hebrew-first copy readiness.
+
+### Verified
+- `pnpm --filter @openseat/dashboard build`
+- Local dashboard browser verification of the new reward-template section and reward-management flow.
+- Hermes customer-agent guidance updated for Telegram General / WhatsApp loyalty testing.
+
+---
+
 ## 2026-04-13 (Dashboard loyalty view)
 
 ### Added

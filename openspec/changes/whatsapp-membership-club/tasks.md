@@ -17,16 +17,17 @@
 
 ## 4. Owner/staff product surfaces
 - [x] 4.1 Add owner/admin reward and club management surfaces
+- [x] 4.1a Add reward-template guidance so owners know what kind of offers to create and when to use them
 - [x] 4.2 Surface member signals and active claims in reservation/guest operational views
 - [x] 4.3 Allow employee role to verify/honor rewards without owner-level access
 - [x] 4.4 Surface special-attention guest signals (birthday, celebration, VIP, regular, owner friend, house-comp)
 - [ ] 4.5 Let owners/staff record hospitality context that should appear on future arrivals
 
 ## 5. WhatsApp journeys and automation
-- [ ] 5.1 Define guest WhatsApp flows for balance, tier, rewards, referrals, and club questions
+- [x] 5.1 Define guest WhatsApp flows for balance, tier, rewards, referrals, and club questions
 - [x] 5.2 Reframe automated loyalty/retention messages as membership-club interactions
 - [ ] 5.3 Enforce pacing, opt-out handling, and transactional-vs-promotional separation
-- [ ] 5.4 Ensure Hebrew-first copy quality with English fallback
+- [x] 5.4 Ensure Hebrew-first copy quality with English fallback
 
 ## 6. Verification
 - [x] 6.1 Add API tests for membership summary, reward claims, referrals, and redemption workflow

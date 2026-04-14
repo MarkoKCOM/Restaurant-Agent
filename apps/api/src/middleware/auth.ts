@@ -28,6 +28,7 @@ const PUBLIC_ROUTES: Array<{
   { path: "/health" },
   { path: "/api/v1/health" },
   { path: "/api/v1/auth/login" },
+  { path: "/api/v1/auth/signup" },
   { method: "GET", path: "/api/v1/reservations/availability" },
   { method: "GET", path: "/api/v1/restaurants" },
   { method: "GET", pattern: /^\/api\/v1\/restaurants\/[^/]+$/ },

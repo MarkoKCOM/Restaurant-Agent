@@ -1,28 +1,31 @@
 # Pilot Onboarding Checklist
 
-This is the current zero-to-onboarding path for OpenSeat pilots.
+This is the current pilot onboarding map for OpenSeat.
 
-It is not fully self-serve yet.
-The first step is still assisted by an operator.
-That is fine for the pilot — just be honest about it.
+There are now two real paths:
+- self-serve onboarding in the dashboard for a net-new restaurant
+- assisted sandbox provisioning for demos, resets, and guided pilot testing
 
 ## 1. Entry point today
 
-Current public entry is:
+Current public entry points are:
+- dashboard `/signup` self-serve onboarding wizard
 - marketing site demo / contact CTA
 
-Current gap:
-- there is no self-serve restaurant signup + tenant creation wizard yet
-- there is no public `create restaurant` product flow yet
+Use the path that fits the moment.
 
-So the real pilot flow today is:
-1. prospect lands on marketing site
-2. prospect asks for a demo / contact
-3. operator provisions a sandbox tenant
-4. operator sends dashboard credentials
-5. owner runs first setup + test flows
+### Self-serve product path
+1. prospect opens the dashboard signup flow
+2. owner creates the restaurant, account, hours, and initial tables
+3. owner lands directly inside the new dashboard workspace
 
-## 2. Provision sandbox tenant
+### Assisted pilot / sandbox path
+1. prospect lands on marketing site or asks for a guided setup
+2. operator provisions a sandbox tenant when a clean demo or reset is better than a blank production workspace
+3. operator sends dashboard credentials
+4. owner runs first setup + test flows
+
+## 2. Provision sandbox tenant when you need a guided demo or reset
 
 From repo root:
 
@@ -77,11 +80,11 @@ Use the super-admin login to verify:
 
 ## 6. What should be built next
 
-This checklist is the interim bridge, not the end state.
+Self-serve onboarding now exists, so the next slice is about making it deeper.
 
-The next real onboarding slice should add:
-- restaurant signup / creation endpoint
-- first-run onboarding wizard
-- owner account creation inside the product
-- setup steps for hours, tables, branding, widget, and WhatsApp
-- "launch test mode" so a new client can simulate the first week without manual operator provisioning
+Next improvements should add:
+- branding and widget setup inside onboarding
+- WhatsApp connection/setup
+- loyalty starter templates turned on during onboarding
+- optional sample data / launch test mode so a new client can simulate the first week fast
+- marketing-site CTA wiring directly into dashboard signup

@@ -11,6 +11,7 @@ import {
   type DashboardAccess,
   type DashboardPageKey,
   type DashboardRole,
+  type SelfServeSignupInput,
 } from "@openseat/domain";
 
 const TOKEN_KEY = "openseat_token";
@@ -32,6 +33,10 @@ interface LoginResult {
   dashboardAccess: DashboardAccess;
 }
 
+interface AuthApiResponse extends LoginResult {
+  token: string;
+}
+
 interface AuthContextValue {
   token: string | null;
   role: AuthRole | null;
@@ -42,6 +47,7 @@ interface AuthContextValue {
   isRestaurantAdmin: boolean;
   isEmployee: boolean;
   login: (email: string, password: string) => Promise<LoginResult>;
+  signup: (payload: SelfServeSignupInput) => Promise<LoginResult>;
   logout: () => void;
   switchRestaurant: (restaurant: AuthRestaurant | null) => void;
   canAccess: (page: DashboardPageKey) => boolean;
@@ -149,30 +155,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = "/login";
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await fetch(`${API}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!res.ok) {
-      if (res.status === 401) {
-        throw new Error("INVALID_CREDENTIALS");
-      }
-      throw new Error(`API error: ${res.status}`);
-    }
-
-    const data = await res.json();
-    const newToken = data.token as string;
-    const newRole = normalizeRole(data.role as string | null) ?? "admin";
-    const newRestaurant = (data.restaurant as AuthRestaurant | null | undefined) ?? null;
+  const persistAuthResponse = useCallback((data: AuthApiResponse) => {
+    const newRole = normalizeRole(data.role) ?? "admin";
+    const newRestaurant = data.restaurant ?? null;
     const newDashboardAccess = normalizeDashboardAccess(data.dashboardAccess, newRole);
 
-    localStorage.setItem(TOKEN_KEY, newToken);
+    localStorage.setItem(TOKEN_KEY, data.token);
     localStorage.setItem(ROLE_KEY, newRole);
     localStorage.setItem(DASHBOARD_ACCESS_KEY, JSON.stringify(newDashboardAccess));
-    setToken(newToken);
+    setToken(data.token);
     setRole(newRole);
     setDashboardAccess(newDashboardAccess);
 
@@ -193,6 +184,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dashboardAccess: newDashboardAccess,
     } satisfies LoginResult;
   }, []);
+
+  const login = useCallback(async (email: string, password: string) => {
+    const res = await fetch(`${API}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        throw new Error("INVALID_CREDENTIALS");
+      }
+      throw new Error(`API error: ${res.status}`);
+    }
+
+    const data = await res.json() as AuthApiResponse;
+    return persistAuthResponse(data);
+  }, [persistAuthResponse]);
+
+  const signup = useCallback(async (payload: SelfServeSignupInput) => {
+    const res = await fetch(`${API}/auth/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const apiError = await res.json().catch(() => null) as { error?: string } | null;
+      throw new Error(apiError?.error ?? `API error: ${res.status}`);
+    }
+
+    const data = await res.json() as AuthApiResponse;
+    return persistAuthResponse(data);
+  }, [persistAuthResponse]);
 
   useEffect(() => {
     const handler = (e: StorageEvent) => {
@@ -239,6 +264,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isRestaurantAdmin,
         isEmployee,
         login,
+        signup,
         logout,
         switchRestaurant,
         canAccess,

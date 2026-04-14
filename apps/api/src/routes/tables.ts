@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
+import { selfServeSignupTableBaseSchema, selfServeSignupTableSchema } from "@openseat/domain";
 import {
   createTable,
   deactivateTable,
@@ -11,19 +12,37 @@ import { db } from "../db/index.js";
 import { tables } from "../db/schema.js";
 import { enforceTenant, requireOperationalRole, requireRestaurantAdmin, resolveRestaurantId } from "../middleware/auth.js";
 
-const createTableSchema = z.object({
+const createTableSchema = selfServeSignupTableBaseSchema.extend({
   restaurantId: z.string().uuid(),
-  name: z.string().min(1),
-  minSeats: z.coerce.number().int().min(1).default(1),
-  maxSeats: z.coerce.number().int().min(1),
-  zone: z.string().optional(),
   combinableWith: z.array(z.string().uuid()).optional(),
+}).superRefine((table, ctx) => {
+  const result = selfServeSignupTableSchema.safeParse(table);
+  if (!result.success) {
+    for (const issue of result.error.issues) {
+      ctx.addIssue(issue);
+    }
+  }
 });
 
-const updateTableSchema = createTableSchema
-  .omit({ restaurantId: true })
+const updateTableSchema = selfServeSignupTableBaseSchema
   .extend({ isActive: z.boolean().optional() })
-  .partial();
+  .partial()
+  .superRefine((table, ctx) => {
+    const seatValidationTarget = {
+      name: table.name ?? "temp",
+      minSeats: table.minSeats ?? 1,
+      maxSeats: table.maxSeats ?? table.minSeats ?? 1,
+      zone: table.zone,
+    };
+    const result = selfServeSignupTableSchema.safeParse(seatValidationTarget);
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        if (issue.path[0] === "maxSeats" || issue.path[0] === "minSeats") {
+          ctx.addIssue(issue);
+        }
+      }
+    }
+  });
 
 export async function tableRoutes(app: FastifyInstance) {
   // GET / — list tables for restaurant

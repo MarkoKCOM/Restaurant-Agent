@@ -1,5 +1,35 @@
 # Progress Log
 
+## 2026-04-14 (Self-serve dashboard onboarding)
+
+### Added
+- Public self-serve signup flow at `POST /api/v1/auth/signup` that provisions a restaurant tenant, owner admin, and initial tables in one transaction.
+- Shared onboarding payload schemas/types in `@openseat/domain` for owner details, restaurant details, operating hours, and initial tables.
+- Dashboard onboarding wizard at `/signup` with owner, restaurant, hours, and repeatable table steps plus auto-login into the new workspace.
+- Dedicated onboarding verification script at `apps/e2e/src/test-self-serve-onboarding.ts` and package script `pnpm --filter @openseat/e2e test:onboarding`.
+
+### Changed
+- Login page now includes a clear CTA for new restaurants to start self-serve onboarding.
+- Signup and login now share the same auth session response shape so the existing dashboard localStorage model can be reused unchanged.
+- Restaurant slugs are now generated from the submitted restaurant name and auto-suffixed on collision.
+- Table create/update validation now reuses the same seat-range rules as onboarding.
+
+### Verified
+- `pnpm --filter @openseat/domain build`
+- `pnpm --filter @openseat/api build`
+- `pnpm --filter @openseat/dashboard build`
+- `pnpm --filter @openseat/e2e type-check`
+- `OPENSEAT_API_URL=http://localhost:3104 pnpm --filter @openseat/e2e test:onboarding`
+  - confirmed signup returns an authenticated admin session
+  - confirmed initial tables exist for the new tenant
+  - confirmed the new owner can log back in
+  - confirmed the super-admin restaurant list includes the new tenant
+- `sudo systemctl restart openseat-api`
+- Browser-verified local dashboard onboarding from `/login` → `/signup` → auto-login into a fresh restaurant workspace on `/today`
+- Browser-verified newly created owner can log out and log back in with the new credentials
+
+---
+
 ## 2026-04-14 (Pilot sandbox tenant + assisted onboarding runbook)
 
 ### Added

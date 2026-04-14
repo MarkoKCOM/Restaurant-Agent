@@ -9,6 +9,7 @@ import { WaitlistPage } from "./pages/WaitlistPage.js";
 import { LoyaltyPage } from "./pages/LoyaltyPage.js";
 import { GuestDetailPage } from "./pages/GuestDetailPage.js";
 import { LoginPage } from "./pages/LoginPage.js";
+import { SignupPage } from "./pages/SignupPage.js";
 import { AuthProvider, useAuth } from "./hooks/useAuth.js";
 import { useCurrentRestaurant } from "./hooks/useCurrentRestaurant.js";
 import type { DashboardPageKey } from "@openseat/domain";
@@ -74,6 +75,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
       <Route
         element={
           <ProtectedRoute>

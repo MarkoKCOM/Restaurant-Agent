@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
 import { useLang } from "../i18n.js";
 
@@ -107,6 +107,17 @@ export function LoginPage() {
               {loading ? "..." : t.login.submit}
             </button>
           </form>
+
+          <div className="mt-6 rounded-lg border border-amber-100 bg-amber-50 p-4 text-center">
+            <p className="text-sm font-medium text-gray-800">{t.login.newRestaurantTitle}</p>
+            <p className="mt-1 text-sm text-gray-600">{t.login.newRestaurantBody}</p>
+            <Link
+              to="/signup"
+              className="mt-3 inline-flex items-center justify-center rounded-lg border border-amber-300 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100"
+            >
+              {t.login.signupCta}
+            </Link>
+          </div>
         </div>
       </div>
     </div>

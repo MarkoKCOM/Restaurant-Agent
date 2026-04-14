@@ -2,6 +2,7 @@
  * OpenSeat API client — used by E2E tests and agent integrations.
  */
 
+import { createHmac, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,8 +17,11 @@ if (existsSync(envFile)) {
 const BASE_URL = process.env.OPENSEAT_API_URL || "http://localhost:3001";
 const ADMIN_EMAIL = process.env.OPENSEAT_ADMIN_EMAIL || "admin@bff.co.il";
 const ADMIN_PASSWORD = process.env.OPENSEAT_ADMIN_PASSWORD || process.env.ADMIN_SEED_PASSWORD || "";
+const SUPER_ADMIN_EMAIL = process.env.OPENSEAT_SUPER_ADMIN_EMAIL || process.env.SUPER_ADMIN_SEED_EMAIL || "";
+const SUPER_ADMIN_PASSWORD = process.env.OPENSEAT_SUPER_ADMIN_PASSWORD || process.env.SUPER_ADMIN_SEED_PASSWORD || "";
 
 let cachedToken: string | null = null;
+let cachedSuperAdminToken: string | null = null;
 
 async function request(path: string, opts: { method?: string; token?: string; body?: unknown; retry?: boolean } = {}) {
   const { method = "GET", token, body, retry = true } = opts;
@@ -52,20 +56,87 @@ async function request(path: string, opts: { method?: string; token?: string; bo
   return data as Record<string, unknown>;
 }
 
+export async function loginWithCredentials(email: string, password: string) {
+  return request("/api/v1/auth/login", {
+    method: "POST",
+    body: { email, password },
+    retry: false,
+  });
+}
+
 export async function getToken(): Promise<string> {
   if (cachedToken) return cachedToken;
 
-  const result = await request("/api/v1/auth/login", {
-    method: "POST",
-    body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
-    retry: false,
-  });
-
+  const result = await loginWithCredentials(ADMIN_EMAIL, ADMIN_PASSWORD);
   cachedToken = result.token as string;
   return cachedToken;
 }
 
+function base64Url(value: string): string {
+  return Buffer.from(value)
+    .toString("base64")
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+}
+
+function createSignedSuperAdminToken(): string {
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    throw new Error("Missing JWT_SECRET for synthetic super-admin token");
+  }
+
+  const header = base64Url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+  const now = Math.floor(Date.now() / 1000);
+  const payload = base64Url(JSON.stringify({
+    id: randomUUID(),
+    email: "synthetic-super-admin@openseat.local",
+    restaurantId: null,
+    role: "super_admin",
+    iat: now,
+    exp: now + 60 * 60,
+  }));
+  const signature = createHmac("sha256", jwtSecret)
+    .update(`${header}.${payload}`)
+    .digest("base64")
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+
+  return `${header}.${payload}.${signature}`;
+}
+
+export async function getSuperAdminToken(): Promise<string> {
+  if (cachedSuperAdminToken) return cachedSuperAdminToken;
+
+  if (SUPER_ADMIN_EMAIL && SUPER_ADMIN_PASSWORD) {
+    const result = await loginWithCredentials(SUPER_ADMIN_EMAIL, SUPER_ADMIN_PASSWORD);
+    cachedSuperAdminToken = result.token as string;
+    return cachedSuperAdminToken;
+  }
+
+  cachedSuperAdminToken = createSignedSuperAdminToken();
+  return cachedSuperAdminToken;
+}
+
 // ── Public endpoints (no auth) ──────────────────────
+
+export async function signupRestaurant(data: {
+  owner: { name: string; email: string; password: string };
+  restaurant: {
+    name: string;
+    cuisineType?: string;
+    phone?: string;
+    address?: string;
+    package: "starter" | "growth";
+    locale: "he" | "en";
+    timezone: string;
+    operatingHours: Record<string, { open: string; close: string } | null>;
+  };
+  tables: Array<{ name: string; minSeats: number; maxSeats: number; zone?: string }>;
+}) {
+  return request("/api/v1/auth/signup", { method: "POST", body: data, retry: false });
+}
 
 export async function healthCheck() {
   return request("/api/v1/health");
@@ -282,9 +353,18 @@ export async function autoTagGuest(guestId: string) {
   return request(`/api/v1/guests/${guestId}/auto-tag`, { method: "POST", token });
 }
 
+export async function listAdminRestaurants() {
+  const token = await getSuperAdminToken();
+  return request("/api/v1/admin/restaurants", { token });
+}
+
 export async function listTables(restaurantId: string) {
   const token = await getToken();
   return request(`/api/v1/tables?restaurantId=${restaurantId}`, { token });
+}
+
+export async function listTablesWithToken(restaurantId: string, token: string) {
+  return request(`/api/v1/tables?restaurantId=${restaurantId}`, { token, retry: false });
 }
 
 export async function createTable(data: { restaurantId: string; name: string; minSeats: number; maxSeats: number }) {

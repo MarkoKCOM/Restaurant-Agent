@@ -6,6 +6,7 @@
   "scripts": {
     "test": "tsx src/test-runner.ts",
     "test:extended": "tsx src/test-extended.ts",
+    "test:onboarding": "tsx src/test-self-serve-onboarding.ts",
     "test:all": "tsx src/test-runner.ts && tsx src/test-extended.ts",
     "type-check": "tsc --noEmit"
   },

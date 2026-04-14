@@ -1,5 +1,25 @@
 # Progress Log
 
+## 2026-04-14 (Pilot sandbox tenant + assisted onboarding runbook)
+
+### Added
+- OpenSpec change `openspec/changes/pilot-sandbox-onboarding/` with proposal, design, tasks, and capability specs for sandbox provisioning and the current assisted onboarding path.
+- Reusable sandbox provisioner at `apps/api/scripts/provision-pilot-sandbox.mjs` plus API package script `pnpm --filter @openseat/api provision:sandbox`.
+- `docs/PILOT-ONBOARDING-CHECKLIST.md` documenting the current zero-to-onboarding pilot flow, credentials handoff, and first-run checks.
+
+### Changed
+- Pilot operations can now create a clean second tenant from the BFF baseline without copying live operational data.
+- Super-admin demo flow is now backed by a real second restaurant (`BFF v2`) instead of a single-tenant demo.
+- Onboarding expectations are now explicit: marketing/demo entry exists, but tenant creation is still assisted rather than self-serve.
+
+### Verified
+- Provisioned `BFF v2` sandbox tenant with isolated empty operational data and baseline table/config clone.
+- Verified API login for both super-admin and sandbox admin.
+- Verified live dashboard switching between `BFF Ra'anana` and `BFF v2`.
+- Verified current public onboarding entry is still marketing/demo/contact, not self-serve tenant creation.
+
+---
+
 ## 2026-04-14 (Referral-first loyalty visibility + membership docs)
 
 ### Added

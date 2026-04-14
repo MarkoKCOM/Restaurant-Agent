@@ -1,5 +1,26 @@
 # Progress Log
 
+## 2026-04-14 (Referral-first loyalty visibility + membership docs)
+
+### Added
+- OpenSpec change `openspec/changes/loyalty-referral-visibility/` with proposal, design, tasks, and capability specs for referral-first loyalty visibility, reusable membership docs, and stronger backend coverage.
+- `docs/MEMBERSHIP-FAQ.md` — general membership Q&A for reuse across restaurants.
+- `docs/MEMBERSHIP-OPERATIONS-GUIDE.md` — operator/admin playbook for running loyalty, referrals, rewards, and messaging responsibly.
+
+### Changed
+- Loyalty dashboard `/loyalty` now treats referrals / bring-a-friend as a first-class surface with top-level referral stats, advocate visibility, referred-member visibility, and referral-ready reward context.
+- Guest payloads now expose `referralCode` and `referredBy` end-to-end so dashboard loyalty views can show referral attribution without extra per-guest summary fetches.
+- `docs/OWNER-GUIDE.md` now points operators to the new general membership FAQ and operations guide and better frames the loyalty dashboard workflow.
+- `apps/e2e` coverage now asserts reward metadata create/update/summary round-trip, referral persistence/summary correctness, and messaging-preference persistence/restoration.
+
+### Verified
+- `pnpm --filter @openseat/domain build`
+- `pnpm --filter @openseat/api build`
+- `pnpm --filter @openseat/dashboard build`
+- `pnpm --filter @openseat/e2e type-check`
+
+---
+
 ## 2026-04-13 (Loyalty reward metadata + agent guidance)
 
 ### Added

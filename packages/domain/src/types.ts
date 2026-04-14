@@ -107,6 +107,8 @@ export interface Guest {
   tags?: string[];
   notes?: string;
   optedOutCampaigns?: boolean;
+  referralCode?: string;
+  referredBy?: string;
 }
 
 export interface Reservation {

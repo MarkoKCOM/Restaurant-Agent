@@ -274,18 +274,58 @@ export async function runExtendedTests(): Promise<{ results: TestResult[]; summa
     const r = await api.generateReferralCode(guestId) as Record<string, unknown>;
     referralCode = r.referralCode as string;
     if (!referralCode) throw new Error("No code");
+    const guestResponse = await api.getGuest(guestId) as Record<string, unknown>;
+    const guest = (guestResponse.guest ?? guestResponse) as Record<string, unknown>;
+    if (guest.referralCode !== referralCode) {
+      throw new Error(`Guest API did not persist referralCode ${referralCode}`);
+    }
     return `code=${referralCode}`;
   }));
 
   results.push(await runTest("Apply referral", async () => {
     const r = await api.applyReferral({ guestId: guest2Id, referralCode }) as Record<string, unknown>;
     if (!r.success) throw new Error("Not applied");
+
+    const referredGuestResponse = await api.getGuest(guest2Id) as Record<string, unknown>;
+    const referredGuest = (referredGuestResponse.guest ?? referredGuestResponse) as Record<string, unknown>;
+    if (referredGuest.referredBy !== guestId) {
+      throw new Error(`Expected referredBy=${guestId}, got ${referredGuest.referredBy}`);
+    }
+
     return `applied`;
   }));
 
   results.push(await runTest("Referral stats", async () => {
-    await api.getReferralStats(guestId);
-    return `ok`;
+    const stats = await api.getReferralStats(guestId) as Record<string, unknown>;
+    if (stats.referralCount !== 1) {
+      throw new Error(`Expected referralCount=1, got ${stats.referralCount}`);
+    }
+    if (stats.totalPointsEarned !== 50) {
+      throw new Error(`Expected totalPointsEarned=50, got ${stats.totalPointsEarned}`);
+    }
+    return `count=${stats.referralCount} points=${stats.totalPointsEarned}`;
+  }));
+
+  results.push(await runTest("Membership summary reflects referrals", async () => {
+    const referrerSummaryResponse = await api.getMembershipSummary(guestId) as Record<string, unknown>;
+    const referrerSummary = referrerSummaryResponse.summary as Record<string, any>;
+    if (referrerSummary?.referrals?.referralCode !== referralCode) {
+      throw new Error(`Expected summary referralCode=${referralCode}, got ${referrerSummary?.referrals?.referralCode}`);
+    }
+    if (referrerSummary?.referrals?.referralCount !== 1) {
+      throw new Error(`Expected summary referralCount=1, got ${referrerSummary?.referrals?.referralCount}`);
+    }
+    if (referrerSummary?.referrals?.totalReferralPoints !== 50) {
+      throw new Error(`Expected summary totalReferralPoints=50, got ${referrerSummary?.referrals?.totalReferralPoints}`);
+    }
+
+    const referredSummaryResponse = await api.getMembershipSummary(guest2Id) as Record<string, unknown>;
+    const referredSummary = referredSummaryResponse.summary as Record<string, any>;
+    if (referredSummary?.referrals?.referredBy !== guestId) {
+      throw new Error(`Expected referred guest summary to point at ${guestId}, got ${referredSummary?.referrals?.referredBy}`);
+    }
+
+    return `code=${referrerSummary.referrals.referralCode} count=${referrerSummary.referrals.referralCount}`;
   }));
 
   // ── Gamification: Challenges ─────────────────────────

@@ -41,6 +41,10 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
   let rewardId = "";
   let rewardClaimId = "";
   let rewardClaimCode = "";
+  let rewardTemplateKey = "referral-dessert";
+  let rewardRecommendedMoments = ["referral"];
+  let rewardPitchHe = `תביא חבר חדש ונפנק אתכם בקינוח. ${runId}`;
+  let rewardPitchEn = `Bring a new friend and we will cover dessert. ${runId}`;
   let noShowReservationId = "";
   let noShowGuestId = "";
   let patchNoShowReservationId = "";
@@ -228,9 +232,52 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
       nameHe: `Reward ${runId}`,
       description: `Reward for ${runId}`,
       pointsCost: 10,
+      templateKey: rewardTemplateKey,
+      recommendedMoments: rewardRecommendedMoments,
+      pitchHe: rewardPitchHe,
+      pitchEn: rewardPitchEn,
     });
-    rewardId = (data as any).reward.id;
-    return `rewardId=${rewardId.slice(0, 8)}... cost=${(data as any).reward.pointsCost}`;
+    const reward = (data as any).reward;
+    rewardId = reward.id;
+    if (reward.templateKey !== rewardTemplateKey) {
+      throw new Error(`Expected templateKey ${rewardTemplateKey}, got ${reward.templateKey}`);
+    }
+    if (!Array.isArray(reward.recommendedMoments) || !reward.recommendedMoments.includes("referral")) {
+      throw new Error(`Expected referral moment on created reward, got ${JSON.stringify(reward.recommendedMoments)}`);
+    }
+    if (reward.pitchHe !== rewardPitchHe || reward.pitchEn !== rewardPitchEn) {
+      throw new Error("Reward pitch metadata did not persist on create");
+    }
+    return `rewardId=${rewardId.slice(0, 8)}... template=${reward.templateKey}`;
+  }));
+
+  results.push(await runTest("Update Reward Metadata", async () => {
+    if (!rewardId) throw new Error("No reward to update");
+    rewardTemplateKey = "starter-for-table";
+    rewardRecommendedMoments = ["referral", "group"];
+    rewardPitchHe = `תבואו עם חברים ויש לכם מנה ראשונה עלינו. ${runId}`;
+    rewardPitchEn = `Bring a few friends and the table gets a starter on us. ${runId}`;
+
+    const data = await api.updateReward(rewardId, {
+      templateKey: rewardTemplateKey,
+      recommendedMoments: rewardRecommendedMoments,
+      pitchHe: rewardPitchHe,
+      pitchEn: rewardPitchEn,
+    });
+    const reward = (data as any).reward;
+    if (reward.templateKey !== rewardTemplateKey) {
+      throw new Error(`Expected updated templateKey ${rewardTemplateKey}, got ${reward.templateKey}`);
+    }
+    if (!Array.isArray(reward.recommendedMoments) || reward.recommendedMoments.length !== 2) {
+      throw new Error(`Expected updated recommended moments, got ${JSON.stringify(reward.recommendedMoments)}`);
+    }
+    if (!reward.recommendedMoments.includes("referral") || !reward.recommendedMoments.includes("group")) {
+      throw new Error(`Updated recommended moments missing expected values: ${JSON.stringify(reward.recommendedMoments)}`);
+    }
+    if (reward.pitchHe !== rewardPitchHe || reward.pitchEn !== rewardPitchEn) {
+      throw new Error("Reward pitch metadata did not persist on update");
+    }
+    return `template=${reward.templateKey} moments=${reward.recommendedMoments.join(",")}`;
   }));
 
   // 10. Membership summary
@@ -241,7 +288,20 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
     if (!summary?.loyalty || !summary?.rewards || !summary?.referrals || !summary?.streak) {
       throw new Error("Membership summary missing expected sections");
     }
-    return `points=${summary.loyalty.pointsBalance} rewards=${summary.rewards.available.length} optedOut=${summary.optedOutCampaigns}`;
+    const reward = (summary.rewards.available as Array<any>).find((item) => item.id === rewardId);
+    if (!reward) {
+      throw new Error("Created reward missing from membership summary");
+    }
+    if (reward.templateKey !== rewardTemplateKey) {
+      throw new Error(`Expected summary templateKey ${rewardTemplateKey}, got ${reward.templateKey}`);
+    }
+    if (!Array.isArray(reward.recommendedMoments) || !reward.recommendedMoments.includes("referral")) {
+      throw new Error(`Expected summary reward moments to include referral, got ${JSON.stringify(reward.recommendedMoments)}`);
+    }
+    if (reward.pitchHe !== rewardPitchHe || reward.pitchEn !== rewardPitchEn) {
+      throw new Error("Summary reward pitch metadata mismatch");
+    }
+    return `points=${summary.loyalty.pointsBalance} template=${reward.templateKey} optedOut=${summary.optedOutCampaigns}`;
   }));
 
   // 11. Claim reward
@@ -287,6 +347,35 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
     if (!guest?.optedOutCampaigns) {
       throw new Error("Expected optedOutCampaigns to be true");
     }
+    const summary = await api.getMembershipSummary(guestId);
+    const updatedSummary = (summary as any).summary;
+    if (!updatedSummary?.optedOutCampaigns) {
+      throw new Error("Membership summary did not reflect messaging opt-out");
+    }
+
+    const guestProfile = await api.getGuest(guestId);
+    const updatedGuest = ((guestProfile as any).guest ?? guestProfile) as { optedOutCampaigns?: boolean };
+    if (!updatedGuest.optedOutCampaigns) {
+      throw new Error("Guest API did not reflect messaging opt-out");
+    }
+
+    return `optedOut=${guest.optedOutCampaigns} summaryOptedOut=${updatedSummary.optedOutCampaigns}`;
+  }));
+
+  results.push(await runTest("Restore Messaging Preferences", async () => {
+    if (!guestId) throw new Error("No guest");
+    const data = await api.updateMessagingPreferences(guestId, false);
+    const guest = (data as any).guest;
+    if (guest?.optedOutCampaigns) {
+      throw new Error("Expected optedOutCampaigns to be false after restore");
+    }
+
+    const summary = await api.getMembershipSummary(guestId);
+    const updatedSummary = (summary as any).summary;
+    if (updatedSummary?.optedOutCampaigns) {
+      throw new Error("Membership summary still shows optedOutCampaigns=true after restore");
+    }
+
     return `optedOut=${guest.optedOutCampaigns}`;
   }));
 

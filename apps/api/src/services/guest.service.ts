@@ -24,6 +24,8 @@ export function toDomainGuest(row: GuestRow): DomainGuest {
     tags: (row.tags as string[] | null) ?? undefined,
     notes: row.notes ?? undefined,
     optedOutCampaigns: row.optedOutCampaigns,
+    referralCode: row.referralCode ?? undefined,
+    referredBy: row.referredBy ?? undefined,
   };
 }
 

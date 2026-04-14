@@ -187,9 +187,18 @@ export async function createReward(data: {
   nameEn?: string;
   description?: string;
   pointsCost: number;
+  templateKey?: string;
+  recommendedMoments?: string[];
+  pitchHe?: string;
+  pitchEn?: string;
 }) {
   const token = await getToken();
   return request("/api/v1/loyalty/rewards", { method: "POST", token, body: data });
+}
+
+export async function updateReward(rewardId: string, data: Record<string, unknown>) {
+  const token = await getToken();
+  return request(`/api/v1/loyalty/rewards/${rewardId}`, { method: "PATCH", token, body: data });
 }
 
 export async function claimReward(guestId: string, rewardId: string, body: { reservationId?: string } = {}) {

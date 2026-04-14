@@ -1,5 +1,5 @@
-# OpenSeat - Owner Guide
-## BFF Ra'anana Dashboard & Management
+# OpenSeat Owner Guide
+## Dashboard & day-to-day restaurant operations
 
 ---
 
@@ -11,7 +11,12 @@
 2. Enter your email and password
 3. You'll land on the **Today** page
 
-> Default admin: `admin@bff.co.il` — contact your admin for the password.
+> Your restaurant admin email/password are created during onboarding. Use the credentials assigned to your restaurant.
+
+### Related membership docs
+
+- `docs/MEMBERSHIP-FAQ.md` — member-facing answers you can reuse in chat, onboarding, or help content
+- `docs/MEMBERSHIP-OPERATIONS-GUIDE.md` — operator playbook for running loyalty, referrals, and messaging responsibly
 
 ---
 
@@ -137,6 +142,11 @@ The system automatically tags guests based on:
 
 Points are earned automatically when you mark a reservation as "Complete".
 
+The main places to manage it are:
+- **Loyalty dashboard** — program snapshot, referral performance, active rewards, and reward strategy
+- **Guest profile** — member balance, reward claims, streaks, and referral details for one guest
+- **Settings / reward management** — reward catalog and feature toggles
+
 **Points per visit:**
 | Tier | Visits Required | Points Multiplier |
 |------|----------------|-------------------|
@@ -147,6 +157,13 @@ Points are earned automatically when you mark a reservation as "Complete".
 **Stamp Card:** 10-stamp card. Every completed visit = 1 stamp. Full card = 50 bonus points.
 
 **Rewards:** You can create rewards in the system (e.g., "Free dessert" for 50 points, "10% off" for 100 points). Guests redeem through the agent or at the restaurant.
+
+**Referrals / bring-a-friend:**
+- Members can get a referral code
+- New guests can be attributed to the member who brought them in
+- The loyalty dashboard highlights referral advocates, referred guests, and referral-ready rewards so this flow is visible to operators
+
+For the full playbook, see `docs/MEMBERSHIP-OPERATIONS-GUIDE.md`.
 
 ---
 

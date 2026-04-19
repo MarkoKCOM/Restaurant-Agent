@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from "react";
 
 type Lang = "he" | "en" | "ar";
-type Theme = "warm" | "indigo" | "navy" | "teal";
+type Theme = "warm" | "indigo" | "navy" | "teal" | "red";
 
 interface Module {
   icon: string;
@@ -104,6 +104,29 @@ const palettes = {
     shadow: "rgba(13,94,94,0.2)",
     inputFocus: "#D4A053",
     secondaryHover: "rgba(240,245,244,0.8)",
+  },
+  red: {
+    accent: "#C41E3A",
+    accentHover: "#A01830",
+    accentLight: "#FEF2F2",
+    accentLighter: "#FEE2E2",
+    accentBorder: "#F87171",
+    accentText: "#991B1B",
+    stat: "#C41E3A",
+    mint: "#C41E3A",
+    gradientStart: "#FEF2F2",
+    launchBg: "#FFF7ED",
+    launchBorder: "#FDBA74",
+    launchAccent: "#C41E3A",
+    launchHover: "#A01830",
+    popularBadge: "#C41E3A",
+    compHighlight: "rgba(196,30,58,0.05)",
+    compHeader: "#FEF2F2",
+    bullet: "#F87171",
+    iconBg: "#FEE2E2",
+    shadow: "rgba(196,30,58,0.2)",
+    inputFocus: "#C41E3A",
+    secondaryHover: "rgba(254,242,242,0.8)",
   },
 };
 
@@ -1280,12 +1303,13 @@ const moduleAccent: Record<string, string> = {
 };
 
 /* ── Theme Toggle ── */
-const themeOrder: Theme[] = ["warm", "indigo", "navy", "teal"];
+const themeOrder: Theme[] = ["warm", "indigo", "navy", "teal", "red"];
 const themeLabels: Record<Theme, { icon: string; label: string }> = {
   warm: { icon: "🔥", label: "Warm" },
   indigo: { icon: "🎨", label: "Indigo" },
   navy: { icon: "⚓", label: "Navy" },
   teal: { icon: "💎", label: "Teal" },
+  red: { icon: "🍷", label: "Red" },
 };
 
 function ThemeToggle({ theme, setTheme, pal }: { theme: Theme; setTheme: (t: Theme) => void; pal: typeof palettes.warm }) {

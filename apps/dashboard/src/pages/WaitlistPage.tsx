@@ -111,7 +111,7 @@ export function WaitlistPage() {
           onClick={() => setShowAddModal(true)}
           title={t.waitlist.addToWaitlist}
           aria-label={t.waitlist.addToWaitlist}
-          className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
+          className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
         >
           {t.waitlist.addToWaitlist}
         </button>
@@ -136,7 +136,7 @@ export function WaitlistPage() {
             aria-label={t.waitlist.today}
             className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
               isToday
-                ? "bg-amber-50 border-amber-300 text-amber-700"
+                ? "bg-red-50 border-red-300 text-red-700"
                 : "border-gray-300 hover:bg-gray-50 text-gray-700"
             }`}
           >
@@ -194,7 +194,7 @@ export function WaitlistPage() {
                       onClick={() => setShowAddModal(true)}
                       title={t.waitlist.addToWaitlist}
                       aria-label={t.waitlist.addToWaitlist}
-                      className="mt-1 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
+                      className="mt-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
                     >
                       {t.waitlist.addToWaitlist}
                     </button>
@@ -272,7 +272,7 @@ export function WaitlistPage() {
                           href="/reservations"
                           title={t.waitlist.viewReservation}
                           aria-label={t.waitlist.viewReservation}
-                          className="text-xs text-amber-600 hover:underline"
+                          className="text-xs text-red-600 hover:underline"
                         >
                           {t.waitlist.viewReservation}
                         </a>
@@ -299,7 +299,7 @@ export function WaitlistPage() {
                 onClick={() => setShowAddModal(true)}
                 title={t.waitlist.addToWaitlist}
                 aria-label={t.waitlist.addToWaitlist}
-                className="mt-1 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
+                className="mt-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
               >
                 {t.waitlist.addToWaitlist}
               </button>
@@ -376,7 +376,7 @@ export function WaitlistPage() {
                   </>
                 )}
                 {entry.status === "accepted" && (
-                  <a href="/reservations" className="text-xs font-medium text-amber-600 hover:underline">
+                  <a href="/reservations" className="text-xs font-medium text-red-600 hover:underline">
                     {t.waitlist.viewReservation}
                   </a>
                 )}
@@ -551,7 +551,7 @@ function AddToWaitlistModal({
             <button
               type="submit"
               disabled={addMutation.isPending}
-              className="w-full rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+              className="w-full rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
             >
               {addMutation.isPending ? t.waitlist.creating : t.waitlist.addBtn}
             </button>

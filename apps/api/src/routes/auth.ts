@@ -113,7 +113,7 @@ async function generateUniqueRestaurantSlug(
 
 function buildWidgetConfig(restaurantName: string, locale: "he" | "en") {
   return {
-    primaryColor: "#d97706",
+    primaryColor: "#C41E3A",
     welcomeText:
       locale === "he"
         ? `הזמנת שולחן ל-${restaurantName}`

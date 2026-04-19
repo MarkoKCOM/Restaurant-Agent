@@ -40,11 +40,11 @@ function DashboardCustomization({ restaurant, updateMutation }: { restaurant: an
   const { showToast } = useToast();
   const config: DashboardConfig = restaurant?.dashboardConfig ?? {};
 
-  const [primaryColor, setPrimaryColor] = useState(config.palette?.primary ?? config.accentColor ?? "#d97706");
+  const [primaryColor, setPrimaryColor] = useState(config.palette?.primary ?? config.accentColor ?? "#C41E3A");
   const [sidebarColor, setSidebarColor] = useState(config.palette?.sidebar ?? "#ffffff");
   const [sidebarTextColor, setSidebarTextColor] = useState(config.palette?.sidebarText ?? "#374151");
-  const [surfaceColor, setSurfaceColor] = useState(config.palette?.surface ?? "#fffbeb");
-  const [accentColor, setAccentColor] = useState(config.palette?.accent ?? config.accentColor ?? "#f59e0b");
+  const [surfaceColor, setSurfaceColor] = useState(config.palette?.surface ?? "#FEF2F2");
+  const [accentColor, setAccentColor] = useState(config.palette?.accent ?? config.accentColor ?? "#F87171");
   const [logoUrl, setLogoUrl] = useState(config.branding?.logo ?? config.logo ?? "");
   const [wordmarkUrl, setWordmarkUrl] = useState(config.branding?.wordmark ?? "");
   const [tagline, setTagline] = useState(config.branding?.tagline ?? "");
@@ -55,11 +55,11 @@ function DashboardCustomization({ restaurant, updateMutation }: { restaurant: an
 
   useEffect(() => {
     const c = (restaurant?.dashboardConfig ?? {}) as DashboardConfig;
-    setPrimaryColor(c.palette?.primary ?? c.accentColor ?? "#d97706");
+    setPrimaryColor(c.palette?.primary ?? c.accentColor ?? "#C41E3A");
     setSidebarColor(c.palette?.sidebar ?? "#ffffff");
     setSidebarTextColor(c.palette?.sidebarText ?? "#374151");
-    setSurfaceColor(c.palette?.surface ?? "#fffbeb");
-    setAccentColor(c.palette?.accent ?? c.accentColor ?? "#f59e0b");
+    setSurfaceColor(c.palette?.surface ?? "#FEF2F2");
+    setAccentColor(c.palette?.accent ?? c.accentColor ?? "#F87171");
     setLogoUrl(c.branding?.logo ?? c.logo ?? "");
     setWordmarkUrl(c.branding?.wordmark ?? "");
     setTagline(c.branding?.tagline ?? "");
@@ -76,11 +76,11 @@ function DashboardCustomization({ restaurant, updateMutation }: { restaurant: an
   }
 
   function resetBranding() {
-    setPrimaryColor("#d97706");
+    setPrimaryColor("#C41E3A");
     setSidebarColor("#ffffff");
     setSidebarTextColor("#374151");
-    setSurfaceColor("#fffbeb");
-    setAccentColor("#f59e0b");
+    setSurfaceColor("#FEF2F2");
+    setAccentColor("#F87171");
     setLogoUrl("");
     setWordmarkUrl("");
     setTagline("");
@@ -469,7 +469,7 @@ export function SettingsPage() {
           <button
             onClick={handleSave}
             disabled={updateMutation.isPending}
-            className="mt-4 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
           >
             {updateMutation.isPending ? t.settings.saving : t.settings.save}
           </button>
@@ -491,7 +491,7 @@ export function SettingsPage() {
                       type="checkbox"
                       checked={isOpen}
                       onChange={() => toggleDay(day)}
-                      className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                      className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                     />
                     <span className={isOpen ? "text-gray-700" : "text-gray-400"}>
                       {isOpen ? t.settings.open : t.settings.closed}
@@ -522,7 +522,7 @@ export function SettingsPage() {
             <button
               onClick={handleHoursSave}
               disabled={!hoursDirty || updateMutation.isPending}
-              className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
             >
               {updateMutation.isPending ? t.settings.saving : t.settings.saveHours}
             </button>
@@ -536,7 +536,7 @@ export function SettingsPage() {
             <h3 className="text-lg font-semibold">{t.settings.tables}</h3>
             <button
               onClick={() => setShowAddTable(!showAddTable)}
-              className="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
+              className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
             >
               {showAddTable ? t.settings.cancel : t.settings.addTable}
             </button>
@@ -544,7 +544,7 @@ export function SettingsPage() {
 
           {/* Add table form */}
           {showAddTable && (
-            <div className="mb-4 p-4 border border-amber-200 bg-amber-50 rounded-lg">
+            <div className="mb-4 p-4 border border-red-200 bg-red-50 rounded-lg">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">{t.settings.tableName}</label>
@@ -590,7 +590,7 @@ export function SettingsPage() {
               <button
                 onClick={handleAddTable}
                 disabled={createTableMutation.isPending || !tableForm.name.trim()}
-                className="mt-3 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
+                className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
               >
                 {createTableMutation.isPending ? t.settings.saving : t.guestDetail.add}
               </button>
@@ -605,7 +605,7 @@ export function SettingsPage() {
                 editingTableId === tbl.id ? (
                   <div
                     key={tbl.id}
-                    className="border-2 border-amber-400 rounded-lg p-3 bg-amber-50"
+                    className="border-2 border-red-400 rounded-lg p-3 bg-red-50"
                   >
                     <input
                       type="text"
@@ -646,7 +646,7 @@ export function SettingsPage() {
                       <button
                         onClick={handleSaveTable}
                         disabled={updateTableMutation.isPending}
-                        className="text-xs px-2 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50"
+                        className="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
                       >
                         {t.settings.save}
                       </button>

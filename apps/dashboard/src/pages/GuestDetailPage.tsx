@@ -9,9 +9,9 @@ import { isFeatureEnabled } from "@openseat/domain";
 import type { Reservation } from "@openseat/domain";
 
 const TIER_COLORS: Record<string, string> = {
-  bronze: "bg-orange-100 text-orange-700 border-orange-200",
+  bronze: "bg-red-100 text-red-700 border-red-200",
   silver: "bg-gray-200 text-gray-700 border-gray-300",
-  gold: "bg-amber-100 text-amber-700 border-amber-200",
+  gold: "bg-red-100 text-red-700 border-red-200",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -26,7 +26,7 @@ const STATUS_COLORS: Record<string, string> = {
 const HOSPITALITY_SIGNAL_STYLES: Record<string, string> = {
   birthday: "bg-pink-50 text-pink-700 border-pink-200",
   celebration: "bg-purple-50 text-purple-700 border-purple-200",
-  vip: "bg-amber-50 text-amber-700 border-amber-200",
+  vip: "bg-red-50 text-red-700 border-red-200",
   regular: "bg-blue-50 text-blue-700 border-blue-200",
   owner_friend: "bg-emerald-50 text-emerald-700 border-emerald-200",
   house_comp: "bg-rose-50 text-rose-700 border-rose-200",
@@ -268,7 +268,7 @@ export function GuestDetailPage() {
           {!editingPrefs && (
             <button
               onClick={startEditPrefs}
-              className="text-sm text-amber-600 hover:text-amber-700"
+              className="text-sm text-red-600 hover:text-red-700"
             >
               {t.guestDetail.edit}
             </button>
@@ -285,7 +285,7 @@ export function GuestDetailPage() {
                     key={opt}
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition-colors ${
                       prefDietary.includes(opt)
-                        ? "bg-amber-100 border-amber-300 text-amber-800"
+                        ? "bg-red-100 border-red-300 text-red-800"
                         : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
                     }`}
                   >
@@ -350,7 +350,7 @@ export function GuestDetailPage() {
               <button
                 onClick={savePreferences}
                 disabled={updatePrefsMutation.isPending}
-                className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
               >
                 {updatePrefsMutation.isPending ? t.guestDetail.saving : t.guestDetail.savePreferences}
               </button>
@@ -421,9 +421,9 @@ export function GuestDetailPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
           <h3 className="text-lg font-semibold mb-4">{t.guestDetail.memberPanel}</h3>
           <div className="grid md:grid-cols-4 gap-3 mb-4">
-            <div className="rounded-lg p-4 text-center bg-amber-50">
-              <p className="text-xs text-amber-700 font-medium">{t.guestDetail.points}</p>
-              <p className="text-2xl font-bold text-amber-800 mt-1">{membershipSummary.summary.loyalty.pointsBalance}</p>
+            <div className="rounded-lg p-4 text-center bg-red-50">
+              <p className="text-xs text-red-700 font-medium">{t.guestDetail.points}</p>
+              <p className="text-2xl font-bold text-red-800 mt-1">{membershipSummary.summary.loyalty.pointsBalance}</p>
             </div>
             <div className="rounded-lg p-4 text-center bg-purple-50">
               <p className="text-xs text-purple-700 font-medium">{t.guestDetail.tier}</p>
@@ -483,16 +483,16 @@ export function GuestDetailPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
           <h3 className="text-lg font-semibold mb-4">{t.guestDetail.loyalty}</h3>
           <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
-            <div className="rounded-lg bg-amber-50 p-3 sm:p-4 text-center">
-              <p className="text-xs sm:text-sm text-amber-600 font-medium">{t.guestDetail.points}</p>
-              <p className="text-xl sm:text-2xl font-bold text-amber-700 mt-1">{loyaltyBalance.points}</p>
+            <div className="rounded-lg bg-red-50 p-3 sm:p-4 text-center">
+              <p className="text-xs sm:text-sm text-red-600 font-medium">{t.guestDetail.points}</p>
+              <p className="text-xl sm:text-2xl font-bold text-red-700 mt-1">{loyaltyBalance.points}</p>
             </div>
             <div className="rounded-lg bg-purple-50 p-3 sm:p-4 text-center">
               <p className="text-xs sm:text-sm text-purple-600 font-medium">{t.guestDetail.tier}</p>
               <p className={`text-lg font-bold mt-1 ${
-                loyaltyBalance.tier === "gold" ? "text-amber-600" :
+                loyaltyBalance.tier === "gold" ? "text-red-600" :
                 loyaltyBalance.tier === "silver" ? "text-gray-600" :
-                "text-orange-600"
+                "text-red-600"
               }`}>
                 {t.status[loyaltyBalance.tier as keyof typeof t.status] ?? loyaltyBalance.tier}
               </p>
@@ -513,7 +513,7 @@ export function GuestDetailPage() {
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3">
               <div
-                className="bg-amber-500 h-3 rounded-full transition-all duration-500"
+                className="bg-red-500 h-3 rounded-full transition-all duration-500"
                 style={{
                   width: `${Math.min(100, (loyaltyBalance.stampCard.visits / Math.max(1, loyaltyBalance.stampCard.stampsNeeded)) * 100)}%`,
                 }}
@@ -565,7 +565,7 @@ export function GuestDetailPage() {
                 className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
                   auto
                     ? "bg-gray-100 text-gray-600"
-                    : "bg-amber-100 text-amber-700"
+                    : "bg-red-100 text-red-700"
                 }`}
               >
                 {tag}
@@ -594,7 +594,7 @@ export function GuestDetailPage() {
           <button
             onClick={addTag}
             disabled={!newTag.trim() || updateGuestMutation.isPending}
-            className="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
+            className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
           >
             {t.guestDetail.add}
           </button>
@@ -608,7 +608,7 @@ export function GuestDetailPage() {
           {!editingNotes && (
             <button
               onClick={startEditNotes}
-              className="text-sm text-amber-600 hover:text-amber-700"
+              className="text-sm text-red-600 hover:text-red-700"
             >
               {t.guestDetail.edit}
             </button>
@@ -627,7 +627,7 @@ export function GuestDetailPage() {
               <button
                 onClick={saveNotes}
                 disabled={updateGuestMutation.isPending}
-                className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
               >
                 {updateGuestMutation.isPending ? t.guestDetail.saving : t.guestDetail.saveNotes}
               </button>

@@ -35,9 +35,9 @@ const TABLE_STATUS_STYLES: Record<
     dot: "bg-green-500",
   },
   reserved: {
-    bg: "bg-amber-50",
-    border: "border-amber-300",
-    dot: "bg-amber-500",
+    bg: "bg-red-50",
+    border: "border-red-300",
+    dot: "bg-red-500",
   },
   occupied: {
     bg: "bg-red-50",
@@ -69,10 +69,10 @@ function generateSlots(open: string, close: string): string[] {
 function heatmapColor(covers: number, max: number): string {
   if (covers === 0 || max === 0) return "bg-gray-100";
   const ratio = covers / max;
-  if (ratio < 0.25) return "bg-amber-100";
-  if (ratio < 0.5) return "bg-amber-300";
-  if (ratio < 0.75) return "bg-amber-500 text-white";
-  return "bg-amber-700 text-white";
+  if (ratio < 0.25) return "bg-red-100";
+  if (ratio < 0.5) return "bg-red-300";
+  if (ratio < 0.75) return "bg-red-500 text-white";
+  return "bg-red-700 text-white";
 }
 
 function formatCountdown(minutesUntil: number, t: ReturnType<typeof useLang>["t"]): string {
@@ -141,10 +141,10 @@ function OccupancyHeatmap({
         <span>{t.today.empty}</span>
         <div className="flex gap-0.5">
           <div className="w-4 h-3 rounded bg-gray-100" />
-          <div className="w-4 h-3 rounded bg-amber-100" />
-          <div className="w-4 h-3 rounded bg-amber-300" />
-          <div className="w-4 h-3 rounded bg-amber-500" />
-          <div className="w-4 h-3 rounded bg-amber-700" />
+          <div className="w-4 h-3 rounded bg-red-100" />
+          <div className="w-4 h-3 rounded bg-red-300" />
+          <div className="w-4 h-3 rounded bg-red-500" />
+          <div className="w-4 h-3 rounded bg-red-700" />
         </div>
         <span>{t.today.full}</span>
       </div>
@@ -338,7 +338,7 @@ export function TodayPage() {
   const statCards = [
     { label: t.today.reservations, value: stats?.reservations ?? 0, color: "bg-blue-50 text-blue-700" },
     { label: t.today.covers, value: stats?.covers ?? 0, color: "bg-green-50 text-green-700" },
-    { label: t.today.cancellations, value: stats?.cancellations ?? 0, color: "bg-amber-50 text-amber-700" },
+    { label: t.today.cancellations, value: stats?.cancellations ?? 0, color: "bg-red-50 text-red-700" },
     { label: t.today.noShows, value: stats?.noShows ?? 0, color: "bg-red-50 text-red-700" },
   ];
 
@@ -413,9 +413,9 @@ export function TodayPage() {
 
       {/* Next up countdown */}
       {nextUpId && (
-        <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3">
-          <span className="text-amber-600 font-bold text-lg">&#9201;</span>
-          <span className="text-sm font-medium text-amber-800">
+        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+          <span className="text-red-600 font-bold text-lg">&#9201;</span>
+          <span className="text-sm font-medium text-red-800">
             {t.today.nextUp} {formatCountdown(minutesUntilNext, t)}
           </span>
         </div>
@@ -449,12 +449,12 @@ export function TodayPage() {
                 return (
                   <tr
                     key={r.id}
-                    className={`border-b border-gray-100 ${rowTint} ${isNextUp ? "ring-2 ring-amber-400 ring-inset" : ""}`}
+                    className={`border-b border-gray-100 ${rowTint} ${isNextUp ? "ring-2 ring-red-400 ring-inset" : ""}`}
                   >
                     <td className="px-4 py-3 font-mono">
                       {r.timeStart?.slice(0, 5)}
                       {isNextUp && (
-                        <span className="mr-2 text-xs text-amber-600 font-medium">&#8592; {t.today.next}</span>
+                        <span className="mr-2 text-xs text-red-600 font-medium">&#8592; {t.today.next}</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -521,7 +521,7 @@ export function TodayPage() {
                             onClick={() => handleNoShow(r.id)}
                             title={t.today.markNoShow}
                             aria-label={t.today.markNoShow}
-                            className="text-xs px-2 py-1 rounded bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
+                            className="text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
                           >
                             {t.today.markNoShow}
                           </button>
@@ -542,13 +542,13 @@ export function TodayPage() {
               return (
                 <div
                   key={r.id}
-                  className={`p-4 ${rowTint} ${isNextUp ? "ring-2 ring-amber-400 ring-inset rounded-lg" : ""}`}
+                  className={`p-4 ${rowTint} ${isNextUp ? "ring-2 ring-red-400 ring-inset rounded-lg" : ""}`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="font-mono font-medium">{r.timeStart?.slice(0, 5)}</span>
                       {isNextUp && (
-                        <span className="text-xs text-amber-600 font-medium">&#8592; {t.today.next}</span>
+                        <span className="text-xs text-red-600 font-medium">&#8592; {t.today.next}</span>
                       )}
                     </div>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-gray-100"}`}>
@@ -611,7 +611,7 @@ export function TodayPage() {
                         onClick={() => handleNoShow(r.id)}
                         title={t.today.markNoShow}
                         aria-label={t.today.markNoShow}
-                        className="text-xs px-2 py-1 rounded bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
+                        className="text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
                       >
                         {t.today.markNoShow}
                       </button>

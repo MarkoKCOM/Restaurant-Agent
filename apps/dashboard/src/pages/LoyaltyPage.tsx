@@ -175,7 +175,7 @@ export function LoyaltyPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {[
           { label: t.loyalty.overviewMembers, value: stats.members, tone: "bg-blue-50 text-blue-700" },
-          { label: t.loyalty.overviewVip, value: stats.vipGuests, tone: "bg-amber-50 text-amber-700" },
+          { label: t.loyalty.overviewVip, value: stats.vipGuests, tone: "bg-red-50 text-red-700" },
           { label: t.loyalty.overviewRepeatGuests, value: stats.repeatGuests, tone: "bg-purple-50 text-purple-700" },
           { label: t.loyalty.overviewAdvocates, value: stats.advocates, tone: "bg-cyan-50 text-cyan-700" },
           { label: t.loyalty.overviewReferred, value: stats.referredMembers, tone: "bg-indigo-50 text-indigo-700" },
@@ -291,17 +291,17 @@ export function LoyaltyPage() {
           </div>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-amber-100 bg-amber-50 p-5">
+        <div className="mt-6 rounded-2xl border border-red-100 bg-red-50 p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h4 className="text-base font-semibold text-amber-900">{t.loyalty.referralReadyRewards}</h4>
-              <p className="mt-1 text-sm text-amber-800">{t.loyalty.referralReadyRewardsHelp}</p>
+              <h4 className="text-base font-semibold text-red-900">{t.loyalty.referralReadyRewards}</h4>
+              <p className="mt-1 text-sm text-red-800">{t.loyalty.referralReadyRewardsHelp}</p>
             </div>
           </div>
 
           <div className="mt-4 space-y-3">
             {referralRewards.length === 0 ? (
-              <p className="text-sm text-amber-900">{t.loyalty.noReferralReadyRewards}</p>
+              <p className="text-sm text-red-900">{t.loyalty.noReferralReadyRewards}</p>
             ) : (
               referralRewards.map((reward) => (
                 <div key={reward.id} className="rounded-xl bg-white px-4 py-3">
@@ -313,7 +313,7 @@ export function LoyaltyPage() {
                       ) : null}
                     </div>
                     <div className="flex flex-wrap gap-2 text-sm">
-                      <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-800">
+                      <span className="inline-flex rounded-full bg-red-100 px-2.5 py-1 font-medium text-red-800">
                         {reward.pointsCost} pts
                       </span>
                       {(reward.recommendedMoments ?? []).includes("referral") ? (
@@ -365,7 +365,7 @@ export function LoyaltyPage() {
                     <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 font-medium text-gray-700">
                       {guest.visitCount} {t.loyalty.visitsLabel}
                     </span>
-                    <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-700">
+                    <span className="inline-flex rounded-full bg-red-50 px-2.5 py-1 font-medium text-red-700">
                       {formatTier(guest.tier)}
                     </span>
                     {guest.tags?.slice(0, 2).map((tag) => (

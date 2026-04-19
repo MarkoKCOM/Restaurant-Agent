@@ -47,7 +47,7 @@ async function seedBffRaanana() {
         locale: "he",
         operatingHours,
         widgetConfig: {
-          primaryColor: "#d97706",
+          primaryColor: "#C41E3A",
           welcomeText: "הזמנת שולחן ל-BFF רעננה",
         },
       })

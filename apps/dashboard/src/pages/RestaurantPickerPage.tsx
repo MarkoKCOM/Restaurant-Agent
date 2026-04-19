@@ -42,14 +42,14 @@ export function RestaurantPickerPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t.superAdmin.searchPlaceholder}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
             dir={lang === "he" ? "rtl" : "ltr"}
           />
         </div>
       </div>
 
       {activeRestaurant ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
           {t.superAdmin.currentPrefix} {activeRestaurant.name}
         </div>
       ) : null}
@@ -76,7 +76,7 @@ export function RestaurantPickerPage() {
                 type="button"
                 onClick={() => handleSelect(restaurant)}
                 className={`rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
-                  isActive ? "border-amber-500 ring-2 ring-amber-200" : "border-gray-200"
+                  isActive ? "border-red-500 ring-2 ring-red-200" : "border-gray-200"
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -85,7 +85,7 @@ export function RestaurantPickerPage() {
                     <p className="text-xs text-gray-500 mt-1">/{restaurant.slug}</p>
                   </div>
                   {isActive ? (
-                    <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
+                    <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-800">
                       {t.superAdmin.activeBadge}
                     </span>
                   ) : null}
@@ -103,7 +103,7 @@ export function RestaurantPickerPage() {
                   <p className="min-h-[40px]">{restaurant.address ?? t.superAdmin.noAddress}</p>
                 </div>
 
-                <div className="mt-4 inline-flex items-center text-sm font-medium text-amber-700">
+                <div className="mt-4 inline-flex items-center text-sm font-medium text-red-700">
                   {t.superAdmin.openButton}
                 </div>
               </button>

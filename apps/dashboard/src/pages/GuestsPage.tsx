@@ -64,7 +64,7 @@ export function GuestsPage() {
                     <td className="px-4 py-3 font-mono text-gray-500">{g.phone}</td>
                     <td className="px-4 py-3">{g.visitCount}</td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
                         {g.tier}
                       </span>
                     </td>
@@ -88,7 +88,7 @@ export function GuestsPage() {
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-medium text-gray-900">{g.name}</span>
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">{g.tier}</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">{g.tier}</span>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-gray-500">
                     <span className="font-mono">{g.phone}</span>

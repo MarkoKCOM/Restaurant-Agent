@@ -125,7 +125,7 @@ export function LoyaltyRewardsManager({
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-semibold text-gray-900">{reward.nameHe}</p>
                         {rewardTemplate ? (
-                          <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                          <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-800">
                             {rewardTemplate.title[lang]}
                           </span>
                         ) : null}
@@ -197,7 +197,7 @@ export function LoyaltyRewardsManager({
       {restaurant?.package !== "growth" ? (
         <div>
           <p className="mb-3 text-sm text-gray-500">{t.settings.membership_lockedDesc}</p>
-          <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+          <span className="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-800">
             {t.settings.membership_lockedTitle}
           </span>
         </div>
@@ -228,7 +228,7 @@ export function LoyaltyRewardsManager({
                         <h5 className="text-base font-semibold text-gray-900">{copy.title}</h5>
                         <p className="mt-1 text-sm text-gray-500">{copy.offer}</p>
                       </div>
-                      <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                      <span className="inline-flex rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-800">
                         {template.pointsCost} pts
                       </span>
                     </div>
@@ -302,15 +302,15 @@ export function LoyaltyRewardsManager({
                   className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 />
                 {selectedTemplate ? (
-                  <div className="sm:col-span-2 rounded-xl border border-dashed border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  <div className="sm:col-span-2 rounded-xl border border-dashed border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
                     <p className="font-semibold">{selectedTemplate.title[lang]}</p>
-                    <p className="mt-1 text-amber-800">
+                    <p className="mt-1 text-red-800">
                       <span className="font-semibold">{t.loyalty.templateMoment}: </span>
                       {selectedTemplate.recommendedMoments
                         .map((moment) => REWARD_MOMENT_LABELS[moment][lang])
                         .join(" • ")}
                     </p>
-                    <p className="mt-1 text-amber-800">
+                    <p className="mt-1 text-red-800">
                       <span className="font-semibold">{t.loyalty.templatePitch}: </span>
                       {(lang === "he" ? rewardPitchHe : rewardPitchEn) || rewardPitchHe || rewardPitchEn}
                     </p>

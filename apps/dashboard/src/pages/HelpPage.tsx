@@ -45,7 +45,7 @@ export function HelpPage() {
               onClick={() => toggleSection(i)}
               className="w-full flex items-center gap-3 px-6 py-4 text-left hover:bg-gray-50 transition-colors"
             >
-              <span className="flex-shrink-0 w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+              <span className="flex-shrink-0 w-9 h-9 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
                 {sectionIcons[i] ?? sectionIcons[0]}
               </span>
               <span className="flex-1 text-base font-semibold text-gray-900">
@@ -70,7 +70,7 @@ export function HelpPage() {
                 <ul className="space-y-2.5 ms-12">
                   {section.items.map((item, j) => (
                     <li key={j} className="flex items-start gap-2 text-sm text-gray-600">
-                      <span className="mt-1.5 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-amber-400" />
+                      <span className="mt-1.5 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-red-400" />
                       {item}
                     </li>
                   ))}
@@ -91,7 +91,7 @@ export function HelpPage() {
               className="group bg-white rounded-xl border border-gray-200 overflow-hidden"
             >
               <summary className="flex items-center gap-3 px-6 py-4 cursor-pointer select-none hover:bg-gray-50 transition-colors list-none [&::-webkit-details-marker]:hidden">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-bold">
                   ?
                 </span>
                 <span className="flex-1 text-sm font-medium text-gray-900">

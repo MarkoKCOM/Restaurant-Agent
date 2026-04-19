@@ -1,7 +1,6 @@
 import { useState, useEffect, type FormEvent } from "react";
 
 type Lang = "he" | "en" | "ar";
-type Theme = "warm" | "indigo" | "navy" | "teal" | "red";
 
 interface Module {
   icon: string;
@@ -11,123 +10,29 @@ interface Module {
   features: string[];
 }
 
-/* ── Color Palettes ── */
-const palettes = {
-  warm: {
-    accent: "#d97706",
-    accentHover: "#b45309",
-    accentLight: "#fffbeb",
-    accentLighter: "#fef3c7",
-    accentBorder: "#fcd34d",
-    accentText: "#b45309",
-    stat: "#d97706",
-    mint: "#d97706",
-    gradientStart: "#fffbeb",
-    launchBg: "#fef2f2",
-    launchBorder: "#fecaca",
-    launchAccent: "#dc2626",
-    launchHover: "#b91c1c",
-    popularBadge: "#d97706",
-    compHighlight: "rgba(255,251,235,0.5)",
-    compHeader: "#fffbeb",
-    bullet: "#f59e0b",
-    iconBg: "#fef3c7",
-    shadow: "rgba(217,119,6,0.2)",
-    inputFocus: "#d97706",
-    secondaryHover: "rgba(255,251,235,0.8)",
-  },
-  indigo: {
-    accent: "#2E3192",
-    accentHover: "#252880",
-    accentLight: "#eef2ff",
-    accentLighter: "#e0e7ff",
-    accentBorder: "#00D1B2",
-    accentText: "#2E3192",
-    stat: "#00D1B2",
-    mint: "#00D1B2",
-    gradientStart: "#eef2ff",
-    launchBg: "#ecfdf5",
-    launchBorder: "#a7f3d0",
-    launchAccent: "#00D1B2",
-    launchHover: "#00b89c",
-    popularBadge: "#2E3192",
-    compHighlight: "rgba(238,242,255,0.5)",
-    compHeader: "#eef2ff",
-    bullet: "#00D1B2",
-    iconBg: "#e0e7ff",
-    shadow: "rgba(46,49,146,0.2)",
-    inputFocus: "#00D1B2",
-    secondaryHover: "rgba(238,242,255,0.8)",
-  },
-  navy: {
-    accent: "#1E2A4A",
-    accentHover: "#162040",
-    accentLight: "#F8F7F4",
-    accentLighter: "#F1F5F9",
-    accentBorder: "#E08A24",
-    accentText: "#1E2A4A",
-    stat: "#E08A24",
-    mint: "#E08A24",
-    gradientStart: "#F8F7F4",
-    launchBg: "#FEF7EC",
-    launchBorder: "#FCD99E",
-    launchAccent: "#E08A24",
-    launchHover: "#C47520",
-    popularBadge: "#1E2A4A",
-    compHighlight: "rgba(30,42,74,0.05)",
-    compHeader: "#F1F5F9",
-    bullet: "#E08A24",
-    iconBg: "#E8E0D4",
-    shadow: "rgba(30,42,74,0.2)",
-    inputFocus: "#E08A24",
-    secondaryHover: "rgba(241,245,249,0.8)",
-  },
-  teal: {
-    accent: "#0D5E5E",
-    accentHover: "#094A4A",
-    accentLight: "#FAF9F6",
-    accentLighter: "#F0F5F4",
-    accentBorder: "#D4A053",
-    accentText: "#0D5E5E",
-    stat: "#D4A053",
-    mint: "#D4A053",
-    gradientStart: "#FAF9F6",
-    launchBg: "#FBF5EB",
-    launchBorder: "#E8CD9E",
-    launchAccent: "#D4A053",
-    launchHover: "#B8873F",
-    popularBadge: "#0D5E5E",
-    compHighlight: "rgba(13,94,94,0.05)",
-    compHeader: "#F0F5F4",
-    bullet: "#D4A053",
-    iconBg: "#D5E8E8",
-    shadow: "rgba(13,94,94,0.2)",
-    inputFocus: "#D4A053",
-    secondaryHover: "rgba(240,245,244,0.8)",
-  },
-  red: {
-    accent: "#C41E3A",
-    accentHover: "#A01830",
-    accentLight: "#FEF2F2",
-    accentLighter: "#FEE2E2",
-    accentBorder: "#F87171",
-    accentText: "#991B1B",
-    stat: "#C41E3A",
-    mint: "#C41E3A",
-    gradientStart: "#FEF2F2",
-    launchBg: "#FFF7ED",
-    launchBorder: "#FDBA74",
-    launchAccent: "#C41E3A",
-    launchHover: "#A01830",
-    popularBadge: "#C41E3A",
-    compHighlight: "rgba(196,30,58,0.05)",
-    compHeader: "#FEF2F2",
-    bullet: "#F87171",
-    iconBg: "#FEE2E2",
-    shadow: "rgba(196,30,58,0.2)",
-    inputFocus: "#C41E3A",
-    secondaryHover: "rgba(254,242,242,0.8)",
-  },
+/* ── Brand Palette (Red) ── */
+const pal = {
+  accent: "#C41E3A",
+  accentHover: "#A01830",
+  accentLight: "#FEF2F2",
+  accentLighter: "#FEE2E2",
+  accentBorder: "#F87171",
+  accentText: "#991B1B",
+  stat: "#C41E3A",
+  mint: "#C41E3A",
+  gradientStart: "#FEF2F2",
+  launchBg: "#FFF7ED",
+  launchBorder: "#FDBA74",
+  launchAccent: "#C41E3A",
+  launchHover: "#A01830",
+  popularBadge: "#C41E3A",
+  compHighlight: "rgba(196,30,58,0.05)",
+  compHeader: "#FEF2F2",
+  bullet: "#F87171",
+  iconBg: "#FEE2E2",
+  shadow: "rgba(196,30,58,0.2)",
+  inputFocus: "#C41E3A",
+  secondaryHover: "rgba(254,242,242,0.8)",
 };
 
 const t = {
@@ -726,7 +631,7 @@ const RESTAURANT_ID = "c3c22e37-a309-4fde-aa6c-6e714212a3bc";
 const a11yStorageKey = "openseat-accessibility-settings";
 const a11yDefaults = { fontScale: 1, contrast: false, links: false, readableFont: false, reducedMotion: false };
 
-function AccessibilityWidget({ lang, pal }: { lang: Lang; pal: typeof palettes.warm }) {
+function AccessibilityWidget({ lang }: { lang: Lang }) {
   const [open, setOpen] = useState(false);
   const [settings, setSettings] = useState(a11yDefaults);
 
@@ -831,7 +736,7 @@ function AccessibilityWidget({ lang, pal }: { lang: Lang; pal: typeof palettes.w
 const FORMSPREE_URL = "https://formspree.io/f/xdapylqr";
 const CAL_LINK = "https://cal.com/openseat/intro";
 
-function ContactForm({ lang, pal }: { lang: Lang; pal: typeof palettes.warm }) {
+function ContactForm({ lang }: { lang: Lang }) {
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
   const labels = {
@@ -980,7 +885,7 @@ function isValidIsraeliPhone(phone: string): boolean {
 
 const seatingIcons: Record<Seating, string> = { indoor: "🏠", outdoor: "🌿", bar: "🍷" };
 
-function DemoWidget({ lang, pal }: { lang: Lang; pal: typeof palettes.warm }) {
+function DemoWidget({ lang }: { lang: Lang }) {
   const w = t[lang].widget;
   const [step, setStep] = useState<WidgetStep>("date");
   const [date, setDate] = useState("");
@@ -1302,46 +1207,12 @@ const moduleAccent: Record<string, string> = {
   "🟣": "text-purple-700",
 };
 
-/* ── Theme Toggle ── */
-const themeOrder: Theme[] = ["warm", "indigo", "navy", "teal", "red"];
-const themeLabels: Record<Theme, { icon: string; label: string }> = {
-  warm: { icon: "🔥", label: "Warm" },
-  indigo: { icon: "🎨", label: "Indigo" },
-  navy: { icon: "⚓", label: "Navy" },
-  teal: { icon: "💎", label: "Teal" },
-  red: { icon: "🍷", label: "Red" },
-};
-
-function ThemeToggle({ theme, setTheme, pal }: { theme: Theme; setTheme: (t: Theme) => void; pal: typeof palettes.warm }) {
-  return (
-    <div className="flex items-center gap-1">
-      {themeOrder.map((t) => (
-        <button
-          key={t}
-          onClick={() => setTheme(t)}
-          className="flex items-center gap-1 px-2 py-1.5 rounded-lg border text-sm font-medium transition hover:shadow-sm"
-          style={{
-            borderColor: theme === t ? pal.accentBorder : "#e5e7eb",
-            color: theme === t ? pal.accentText : "#6b7280",
-            background: theme === t ? pal.accentLight : "transparent",
-          }}
-          title={`Switch to ${themeLabels[t].label} theme`}>
-          <span className="text-base">{themeLabels[t].icon}</span>
-          <span className="hidden sm:inline">{themeLabels[t].label}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
 /* ── Main Page ── */
 export function LandingPage() {
   const [lang, setLang] = useState<Lang>("he");
-  const [theme, setTheme] = useState<Theme>("warm");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [expandedModule, setExpandedModule] = useState<number | null>(null);
   const c = t[lang];
-  const pal = palettes[theme];
   const dir = lang === "en" ? "ltr" : "rtl";
   const pm = lang === "he" ? "/חודש" : lang === "ar" ? "/شهر" : "/mo";
 
@@ -1356,7 +1227,7 @@ export function LandingPage() {
             <a href="#modules" className="text-gray-600 hover:text-gray-900">{c.nav.modules}</a>
             <a href="#pricing" className="text-gray-600 hover:text-gray-900">{c.nav.pricing}</a>
             <a href="#contact" className="text-gray-600 hover:text-gray-900">{c.nav.contact}</a>
-            <ThemeToggle theme={theme} setTheme={setTheme} pal={pal} />
+
             <div className="relative inline-block">
               <select value={lang} onChange={(e) => setLang(e.target.value as Lang)}
                 className="appearance-none px-3 py-1 pe-7 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition text-sm cursor-pointer">
@@ -1370,7 +1241,7 @@ export function LandingPage() {
             </div>
           </div>
           <div className="flex items-center gap-3 md:hidden">
-            <ThemeToggle theme={theme} setTheme={setTheme} pal={pal} />
+
             <div className="relative inline-block">
               <select value={lang} onChange={(e) => setLang(e.target.value as Lang)}
                 className="appearance-none px-2 py-1 pe-6 border border-gray-300 rounded-lg bg-white text-sm cursor-pointer">
@@ -1450,7 +1321,7 @@ export function LandingPage() {
       <section id="demo" className="px-6 py-20" style={{ background: `linear-gradient(to bottom, white, ${pal.gradientStart})` }}>
         <h2 className="text-3xl font-bold text-center mb-2">{c.demoTitle}</h2>
         <p className="text-center text-gray-500 mb-10">{c.demoSubtitle}</p>
-        <DemoWidget lang={lang} pal={pal} />
+        <DemoWidget lang={lang} />
       </section>
 
       {/* Why OpenSeat */}
@@ -1615,7 +1486,7 @@ export function LandingPage() {
 
       {/* Contact */}
       <section id="contact" className="px-6 py-20" style={{ background: `linear-gradient(to bottom, white, ${pal.gradientStart})` }}>
-        <ContactForm lang={lang} pal={pal} />
+        <ContactForm lang={lang} />
       </section>
 
       {/* Footer */}
@@ -1624,7 +1495,7 @@ export function LandingPage() {
       </footer>
 
       {/* Accessibility Widget */}
-      <AccessibilityWidget lang={lang} pal={pal} />
+      <AccessibilityWidget lang={lang} />
     </div>
   );
 }

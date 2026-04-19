@@ -296,13 +296,13 @@ export function SignupPage() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8">
             <div className="mb-8 flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-amber-600 mb-2">OpenSeat</p>
+                <p className="text-sm font-medium text-red-600 mb-2">OpenSeat</p>
                 <h1 className="text-3xl font-bold text-gray-900">{t.signup.title}</h1>
                 <p className="mt-2 text-sm text-gray-500">{t.signup.subtitle}</p>
               </div>
               <Link
                 to="/login"
-                className="text-sm font-medium text-gray-600 hover:text-amber-700"
+                className="text-sm font-medium text-gray-600 hover:text-red-700"
               >
                 {t.signup.backToLogin}
               </Link>
@@ -317,7 +317,7 @@ export function SignupPage() {
                     key={stepKey}
                     className={`rounded-xl border px-3 py-3 text-sm ${
                       isActive
-                        ? "border-amber-500 bg-amber-50 text-amber-900"
+                        ? "border-red-500 bg-red-50 text-red-900"
                         : isComplete
                           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                           : "border-gray-200 bg-white text-gray-500"
@@ -551,7 +551,7 @@ export function SignupPage() {
                   <button
                     type="button"
                     onClick={addTable}
-                    className="rounded-lg border border-amber-300 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50"
+                    className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
                   >
                     {t.signup.addTable}
                   </button>
@@ -574,7 +574,7 @@ export function SignupPage() {
                   <button
                     type="button"
                     onClick={handleNext}
-                    className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
+                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
                   >
                     {t.signup.next}
                   </button>
@@ -582,7 +582,7 @@ export function SignupPage() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
                   >
                     {loading ? t.signup.submitting : t.signup.submit}
                   </button>

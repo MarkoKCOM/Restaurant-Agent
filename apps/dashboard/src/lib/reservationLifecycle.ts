@@ -52,7 +52,7 @@ export function getLatestReservationLifecycleEvent(
 export function getReservationSourceTone(source: ReservationSource): string {
   switch (source) {
     case "walk_in":
-      return "bg-amber-100 text-amber-800 border border-amber-200";
+      return "bg-red-100 text-red-800 border border-red-200";
     case "phone":
       return "bg-sky-100 text-sky-800 border border-sky-200";
     case "telegram":

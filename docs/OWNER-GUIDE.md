@@ -28,7 +28,7 @@ Your real-time command center for the day.
 
 **What you see:**
 - **Stats bar** — total reservations, covers (guests), cancellations, and no-shows for today
-- **Occupancy heatmap** — visual 30-minute grid showing how full you are throughout the evening. Darker amber = busier
+- **Occupancy heatmap** — visual 30-minute grid showing how full you are throughout the evening. Darker red = busier
 - **Table map** — each table with its current status (available / reserved / occupied)
 - **Next up** — countdown to the closest upcoming reservation
 - **Reservation list** — every booking for today with quick action buttons
@@ -130,7 +130,7 @@ The system automatically tags guests based on:
 - Active/inactive toggle
 
 **Widget Branding** — customize the booking widget:
-- Primary color (default: amber #d97706)
+- Primary color (default: red #C41E3A)
 - Logo URL
 - Welcome text
 

@@ -313,7 +313,7 @@ export function ReservationsPage() {
             onClick={() => openCreateModal("walk_in")}
             title={t.res.walkIn}
             aria-label={t.res.walkIn}
-            className="px-4 py-2 bg-white text-amber-700 border border-amber-300 rounded-lg text-sm font-medium hover:bg-amber-50 transition-colors"
+            className="px-4 py-2 bg-white text-red-700 border border-red-300 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors"
           >
             {t.res.walkIn}
           </button>
@@ -321,7 +321,7 @@ export function ReservationsPage() {
             onClick={() => openCreateModal("reservation")}
             title={t.res.create}
             aria-label={t.res.create}
-            className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
+            className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
           >
             {t.res.create}
           </button>
@@ -381,7 +381,7 @@ export function ReservationsPage() {
             aria-label={t.res.today}
             className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
               isToday
-                ? "bg-amber-50 border-amber-300 text-amber-700"
+                ? "bg-red-50 border-red-300 text-red-700"
                 : "border-gray-300 hover:bg-gray-50 text-gray-700"
             }`}
           >
@@ -472,7 +472,7 @@ export function ReservationsPage() {
                 onClick={() => openCreateModal("reservation")}
                 title={t.res.create}
                 aria-label={t.res.create}
-                className="mt-1 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
+                className="mt-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
               >
                 {t.res.create}
               </button>
@@ -846,7 +846,7 @@ function ReservationDetailPanel({
               {reservation.guestId && (
                 <a
                   href={`/guests/${reservation.guestId}`}
-                  className="text-xs text-amber-600 hover:underline inline-block"
+                  className="text-xs text-red-600 hover:underline inline-block"
                 >
                   {t.res.viewGuestProfile}
                 </a>
@@ -1006,7 +1006,7 @@ function ReservationDetailPanel({
               <button
                 onClick={handleSave}
                 disabled={updateMutation.isPending}
-                className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
               >
                 {updateMutation.isPending ? t.res.saving : t.res.save}
               </button>
@@ -1218,7 +1218,7 @@ function CreateReservationModal({
             <button
               type="submit"
               disabled={activeMutation.isPending}
-              className="w-full rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+              className="w-full rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
             >
               {activeMutation.isPending
                 ? t.res.creating

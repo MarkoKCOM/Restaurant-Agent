@@ -55,9 +55,9 @@ export function BookingWidget({ restaurantId, apiUrl }: Props) {
     (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_WIDGET_API_URL) ||
     window.location.origin;
 
-  const accent = widgetConfig.primaryColor || "#d97706";
-  const accentHover = "#b45309";
-  const accentLight = "#fffbeb";
+  const accent = widgetConfig.primaryColor || "#C41E3A";
+  const accentHover = "#A01830";
+  const accentLight = "#FEF2F2";
   const headerText = widgetConfig.welcomeText || "הזמנת שולחן";
 
   const steps: Step[] = ["date", "time", "preferences", "details", "confirm"];

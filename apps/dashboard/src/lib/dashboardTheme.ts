@@ -8,11 +8,11 @@ export interface ResolvedTheme {
 }
 
 export const PLATFORM_PALETTE: Required<DashboardPalette> = {
-  primary: "#d97706",
+  primary: "#C41E3A",
   sidebar: "#ffffff",
   sidebarText: "#374151",
-  surface: "#fffbeb",
-  accent: "#f59e0b",
+  surface: "#FEF2F2",
+  accent: "#F87171",
 };
 
 export function resolveTheme(

@@ -1,664 +1,517 @@
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent, type CSSProperties } from "react";
 
 type Lang = "he" | "en" | "ar";
 
-interface Module {
-  icon: string;
-  name: string;
-  tagline: string;
-  desc: string;
-  features: string[];
-}
-
-/* ── Brand Palette (Red) ── */
-const pal = {
-  accent: "#C41E3A",
-  accentHover: "#A01830",
-  accentLight: "#FEF2F2",
-  accentLighter: "#FEE2E2",
-  accentBorder: "#F87171",
-  accentText: "#991B1B",
-  stat: "#C41E3A",
-  mint: "#C41E3A",
-  gradientStart: "#FEF2F2",
-  launchBg: "#FFF7ED",
-  launchBorder: "#FDBA74",
-  launchAccent: "#C41E3A",
-  launchHover: "#A01830",
-  popularBadge: "#C41E3A",
-  compHighlight: "rgba(196,30,58,0.05)",
-  compHeader: "#FEF2F2",
-  bullet: "#F87171",
-  iconBg: "#FEE2E2",
-  shadow: "rgba(196,30,58,0.2)",
-  inputFocus: "#C41E3A",
-  secondaryHover: "rgba(254,242,242,0.8)",
-};
-
-const t = {
+/* ═══════════════════════════════════════════════════════════
+   I18N — trilingual copy (HE primary, EN, AR)
+   ═══════════════════════════════════════════════════════════ */
+const I18N = {
   he: {
-    nav: { modules: "מודולים", pricing: "מחירון", demo: "דמו חי", contact: "צור קשר" },
+    dir: "rtl" as const, code: "HE",
+    nav: { modules: "מודולים", how: "איך זה עובד", pricing: "מחירון", demo: "דמו חי", contact: "צור קשר", cta: "דברו איתנו" },
     hero: {
-      title: "OpenSeat",
-      subtitle: "חבר הצוות הכי חכם של המסעדה שלך",
-      desc: "הזמנות אונליין + מועדון חברים בוואטסאפ. OpenSeat מרכז הזמנות, קשר עם אורחים ודשבורד לבעלים במערכת אחת שעובדת באתר שלך ועל כל טאבלט.",
-      cta1: "ראה מחירים",
-      cta2: "ראה דמו חי",
-      trusted: "מופעל ע״י AI - עובד 24/7 בלי הפסקות",
+      badge: "פיילוט · 5 מסעדות ראשונות · ₪299/חודש",
+      title1: "חבר הצוות", title2: "הכי חכם", title3: "של המסעדה.",
+      desc: "הזמנות אונליין ומועדון חברים בוואטסאפ. OpenSeat מרכז הזמנות, קשר עם אורחים, ודשבורד לבעלים — במערכת אחת שרצה על האתר שלך ועל כל טאבלט.",
+      cta1: "ראה דמו חי", cta2: "ראה מחירים",
+      trust: "עובד 24/7 · מופעל ע״י AI · עברית, אנגלית, ערבית",
     },
+    tape: ["הזמנות אונליין", "בוט וואטסאפ AI", "מועדון חברים", "CRM אורחים", "ווידג׳ט לאתר", "דשבורד בעלים"],
     stats: [
-      { value: "24/7", label: "AI פעיל" },
-      { value: "1-2 שעות", label: "חיסכון יומי" },
-      { value: "וואטסאפ + אתר", label: "עובד איפה שהאורחים כבר נמצאים" },
-      { value: "3×", label: "יותר אורחים חוזרים" },
+      { k: "24/7", v: "AI פעיל, בלי הפסקות" },
+      { k: "1-2 שעות", v: "חיסכון יומי לכל משמרת" },
+      { k: "3×", v: "יותר אורחים חוזרים" },
+      { k: "100%", v: "האתר והמותג נשארים שלך" },
     ],
-    modulesTitle: "שלושה מודולים. מערכת שלמה.",
-    modulesSubtitle: "מתחילים בהזמנות ובמועדון חברים. CRM אורחים, וואטסאפ ודשבורד יושבים באותה מערכת.",
+    modulesTitle: "שלושה מודולים.", modulesTitle2: "מערכת אחת שלמה.",
+    modulesSub: "מתחילים מההזמנות ומהמועדון. ה-CRM, הוואטסאפ והדשבורד יושבים באותה מערכת — בלי שילובים שבירים ובלי עוד אפליקציה לצוות.",
     modules: [
-      {
-        icon: "🟢",
-        name: "OpenSeat Live",
-        tagline: "מנוע ההזמנות",
-        desc: "שיבוץ שולחנות חכם, רשימת המתנה, דשבורד בעלים, ווידג׳ט לאתר - הכל בזמן אמת ועל כל טאבלט.",
-        features: [
-          "שיבוץ שולחנות אוטומטי לפי גודל קבוצה",
-          "בדיקת זמינות בזמן אמת לפי שעות פעילות",
-          "ניהול שעות פעילות ותאריכים מיוחדים",
-          "רשימת המתנה אוטומטית עם התאמה חכמה",
-          "הצעת מקום עם ספירה לאחור של 15 דקות",
-          "דשבורד בעלים עם תמונת מצב יומית ומפת תפוסה",
-          "יצירת הזמנה מהדשבורד לשיחות טלפון",
-          "ווידג׳ט הזמנות לאתר - מובייל-first, RTL, שורת קוד אחת",
-          "תזכורות אוטומטיות לפני ההגעה",
-          "מעקב no-show ודיווח על אי-הגעות",
-        ],
-      },
-      {
-        icon: "🔵",
-        name: "OpenSeat Connect",
-        tagline: "קשר עם האורחים",
-        desc: "CRM אורחים, זיהוי לקוחות חוזרים, בוט וואטסאפ AI ונראות לבעלים - כדי לנהל קשר טוב יותר בלי עוד אפליקציה.",
-        features: [
-          "CRM אורחים - פרופיל מלא שנוצר אוטומטית מהזמנה ראשונה",
-          "היסטוריית ביקורים מלאה עם העדפות והערות לצוות",
-          "העדפות תזונתיות, אלרגיות ואירועים מיוחדים",
-          "תגיות אוטומטיות: VIP, חוזר, חדש, בסיכון, מארח שולחנות גדולים",
-          "ניתוח סנטימנט והבנה מי דורש תשומת לב",
-          "תודה אוטומטית אחרי ביקור",
-          "בקשת ביקורת רק כשזה מרגיש נכון",
-          "ברכות יום הולדת וחגיגות עם הטבה רלוונטית",
-          "הודעות חזרה לאורחים שלא ביקרו הרבה זמן",
-          "בוט וואטסאפ AI - הזמנות, שאלות, סטטוס חבר מועדון בשיחה טבעית",
-          "זיהוי שפה אוטומטי - עברית, אנגלית, ערבית",
-          "סיכום יומי לבעלים בוואטסאפ",
-        ],
-      },
-      {
-        icon: "🟣",
-        name: "OpenSeat Club",
-        tagline: "מועדון החברים של המסעדה",
-        desc: "נקודות, הטבות, דרגות VIP והפניות - מועדון חברים שנותן לאורחים סיבה אמיתית לחזור שוב ושוב.",
-        features: [
-          "נקודות על ביקורים והזמנות לפי הכללים של המסעדה",
-          "דרגות VIP אוטומטיות לפי תדירות והיקף ביקורים",
-          "קטלוג הטבות עם מימוש פשוט לצוות",
-          "הטבות יום הולדת, אירועים מיוחדים וביקורי milestone",
-          "הפניות חבר מביא חבר עם תגמול לשני הצדדים",
-          "האורח בודק יתרה וסטטוס בוואטסאפ ומקבל תשובה מיידית",
-          "המארח רואה מי חבר מועדון, מי VIP ומי קרוב להטבה הבאה",
-          "הופך ביקור חד-פעמי לקשר ארוך טווח עם המסעדה",
-        ],
-      },
-    ] as Module[],
+      { id: "live", tag: "Live", name: "מנוע ההזמנות", color: "#16A34A", icon: "📅",
+        desc: "שיבוץ שולחנות חכם, רשימת המתנה, דשבורד בעלים וווידג׳ט לאתר — בזמן אמת, על כל טאבלט.",
+        features: ["שיבוץ אוטומטי לפי גודל קבוצה", "רשימת המתנה עם התאמה חכמה", "ווידג׳ט לאתר בשורת קוד אחת", "תזכורות ודיווחי no-show"] },
+      { id: "connect", tag: "Connect", name: "שכבת הקשר עם האורחים", color: "#2563EB", icon: "💬",
+        desc: "CRM אורחים, זיהוי לקוחות חוזרים, בוט וואטסאפ AI ונראות לבעלים — בלי עוד אפליקציה.",
+        features: ["CRM שנבנה אוטומטית מההזמנה הראשונה", "תגיות VIP, חוזר, בסיכון, מארח גדול", "בוט וואטסאפ בעברית, אנגלית וערבית", "סיכום יומי לבעלים ב-WhatsApp"] },
+      { id: "club", tag: "Club", name: "מועדון החברים של המסעדה", color: "#9333EA", icon: "🎟️",
+        desc: "נקודות, דרגות VIP והפניות — מועדון שנותן לאורחים סיבה אמיתית לחזור שוב ושוב.",
+        features: ["נקודות על ביקורים לפי הכללים שלך", "הטבות יום הולדת ואירועים", "חבר מביא חבר עם תגמול לשניהם", "האורח בודק יתרה בוואטסאפ"] },
+    ],
     howTitle: "איך זה עובד",
+    howSub: "ארבעה צעדים. אותו לולאה שמייצרת קשר ארוך טווח עם האורח.",
     howSteps: [
-      { num: "1", title: "הזמנה נכנסת", desc: "האורח מזמין דרך וואטסאפ, האתר שלך או הטלפון - והכל נכנס למקום אחד" },
-      { num: "2", title: "OpenSeat מאשר", desc: "המערכת משבצת שולחן, שולחת אישור ומסדרת לצוות יום הרבה יותר רגוע" },
-      { num: "3", title: "מזהים את האורח", desc: "הצוות רואה אם זה אורח חוזר, חבר מועדון, VIP ומה חשוב לדעת לפני ההושבה" },
-      { num: "4", title: "מחזירים אותו שוב", desc: "אחרי הביקור יוצאות נקודות, הטבה או הודעת חזרה - והקשר עם האורח ממשיך" },
+      { n: "01", t: "הזמנה נכנסת", d: "דרך וואטסאפ, האתר שלך, או הטלפון — הכל נוחת במקום אחד.", icon: "📥" },
+      { n: "02", t: "OpenSeat מאשר", d: "המערכת משבצת שולחן, שולחת אישור וסידור למשמרת.", icon: "✅" },
+      { n: "03", t: "מזהים את האורח", d: "הצוות רואה אם זה חבר מועדון, VIP ומה חשוב לפני ההושבה.", icon: "👀" },
+      { n: "04", t: "מחזירים אותו שוב", d: "נקודות, הטבה או הודעת חזרה — והקשר עם האורח ממשיך.", icon: "🔁" },
     ],
-    whyTitle: "למה OpenSeat",
+    whyTitle: "למה מסעדות בוחרות ב-OpenSeat",
     whyPoints: [
-      { icon: "⏰", title: "חוסך 1-2 שעות ביום", desc: "פחות טלפונים, פחות הקלדות ידניות, פחות בלגן בין וואטסאפ, אתר ודף נייר." },
-      { icon: "🤝", title: "משפר את הקשר עם האורחים", desc: "כל ההיסטוריה, ההעדפות והרגעים החשובים של האורח במקום אחד - בלי לנחש." },
-      { icon: "📈", title: "מגדיל שימור וחזרות", desc: "מועדון חברים, הטבות ותקשורת נכונה גורמים ליותר אורחים לחזור שוב." },
-      { icon: "💬", title: "וואטסאפ + כל טאבלט", desc: "האורחים נשארים בוואטסאפ. הצוות עובד מכל טאבלט או דפדפן שכבר יש במסעדה." },
-      { icon: "🎨", title: "White-label + הדשבורד שלך", desc: "מיתוג משלך, ווידג׳ט משלך ודשבורד בעלים משלך - בלי להיראות כמו עוד פלטפורמה גנרית." },
-      { icon: "₪", title: "מחיר חודשי נגיש", desc: "מחיר ברור שמתאים למסעדות עצמאיות - בלי חומרה יקרה ובלי עלויות שמנפחות את העסק." },
+      { t: "חוסך 1–2 שעות ביום", d: "פחות טלפונים, פחות הקלדות, פחות בלגן בין וואטסאפ, אתר ונייר.", accent: "time" },
+      { t: "משפר את הקשר עם האורחים", d: "היסטוריה, העדפות ורגעים חשובים — במקום אחד. בלי לנחש.", accent: "heart" },
+      { t: "מגדיל שימור וחזרות", d: "מועדון, הטבות ותקשורת מדויקת — יותר אורחים חוזרים.", accent: "trend" },
+      { t: "וואטסאפ + כל טאבלט", d: "האורחים נשארים בוואטסאפ. הצוות עובד מכל דפדפן.", accent: "chat" },
+      { t: "White-label מלא", d: "המיתוג שלך, הווידג׳ט שלך, הדשבורד שלך — לא עוד פלטפורמה גנרית.", accent: "brush" },
+      { t: "מחיר נגיש וברור", d: "חבילות חודשיות למסעדות עצמאיות, בלי חומרה יקרה.", accent: "coin" },
     ],
-    comparisonTitle: "השוואה",
-    comparison: {
-      headers: ["", "OpenSeat", "Ontopo", "Tabit", "SevenRooms"],
-      rows: [
-        ["הזמנות אונליין", "v", "v", "v", "v"],
-        ["בוט וואטסאפ AI", "v", "x", "x", "x"],
-        ["CRM אורחים", "v", "x", "~", "v"],
-        ["מועדון חברים", "v", "x", "x", "~"],
-        ["ווידג׳ט לאתר", "v", "x", "v", "v"],
-        ["דשבורד בעלים", "v", "~", "v", "v"],
-        ["מיתוג משלך", "v", "x", "~", "~"],
-        ["בעלות על הנתונים", "v", "x", "~", "~"],
-        ["מחיר רגיל", "מ-₪499", "חינם", "₪800+", "$500+"],
-      ],
-    },
-    launch: {
-      title: "מחיר השקה לפיילוט - 5 מסעדות ראשונות",
-      desc: "חבילת Growth המלאה ב-₪299 לחודש ל-5 המסעדות הראשונות. זה מחיר חודשי קבוע לפיילוט, לא תשלום חד-פעמי.",
-      cta: "דברו איתנו",
-      note: "אחרי 5 המקומות הראשונים חוזרים למחירון Growth הרגיל.",
-    },
-    pricing: {
-      title: "מחירון",
-      subtitle: "חבילות חודשיות לפי גודל המסעדה. יש הנחה שנתית, ובמסלול חודשי אפשר לבטל מתי שרוצים.",
-    },
+    cmpTitle: "השוואה ישירה", cmpSub: "מה באמת יש לכל מערכת — לא מה שהאתר מבטיח.",
+    cmpHeaders: ["", "OpenSeat", "Ontopo", "Tabit", "SevenRooms"],
+    cmpRows: [
+      ["הזמנות אונליין", "v", "v", "v", "v"],
+      ["בוט וואטסאפ AI", "v", "x", "x", "x"],
+      ["CRM אורחים", "v", "x", "~", "v"],
+      ["מועדון חברים", "v", "x", "x", "~"],
+      ["ווידג׳ט לאתר", "v", "x", "v", "v"],
+      ["דשבורד בעלים", "v", "~", "v", "v"],
+      ["מיתוג משלך", "v", "x", "~", "~"],
+      ["בעלות על הנתונים", "v", "x", "~", "~"],
+      ["מחיר רגיל", "מ-₪499", "חינם", "₪800+", "$500+"],
+    ],
+    launchTitle: "מחיר השקה לפיילוט", launchKicker: "5 מסעדות ראשונות",
+    launchDesc: "חבילת Growth המלאה ב-₪299/חודש ל-5 המסעדות הראשונות. מחיר חודשי קבוע לפיילוט, לא תשלום חד-פעמי.",
+    launchCta: "הבטיחו את המקום שלכם", launchNote: "אחרי 5 המקומות — מחירון Growth הרגיל",
+    pricingTitle: "מחירון שקוף",
+    pricingSub: "חבילות חודשיות לפי גודל המסעדה. הנחה שנתית (10 חודשים במחיר של 12). ביטול מתי שרוצים.",
+    pricingTierLabel: "בחר גודל מסעדה",
+    tiers: [
+      { id: "80", label: "עד 80 מושבים" }, { id: "150", label: "עד 150" },
+      { id: "200", label: "עד 200" }, { id: "200+", label: "200+" },
+    ],
     plans: [
-      {
-        name: "Live",
-        desc: "הזמנות + ווידג׳ט + דשבורד",
-        module: "OpenSeat Live",
-        tiers: [
-          { seats: "עד 80", price: 499 },
-          { seats: "עד 150", price: 699 },
-          { seats: "עד 200", price: 999 },
-          { seats: "200+", price: 1399 },
-        ],
-      },
-      {
-        name: "Growth",
-        desc: "Live + Connect + Club - הזמנות, CRM ומועדון חברים",
-        module: "OpenSeat Live + Connect + Club",
-        popular: true,
-        tiers: [
-          { seats: "עד 80", price: 799 },
-          { seats: "עד 150", price: 1099 },
-          { seats: "עד 200", price: 1499 },
-          { seats: "200+", price: 1999 },
-        ],
-      },
+      { name: "Live", desc: "הזמנות + ווידג׳ט + דשבורד", module: "OpenSeat Live",
+        prices: { "80": 499, "150": 699, "200": 999, "200+": 1399 } as Record<string, number>,
+        includes: ["מנוע הזמנות חכם", "רשימת המתנה", "ווידג׳ט לאתר", "דשבורד בעלים"] },
+      { name: "Growth", desc: "Live + Connect + Club", module: "OpenSeat Live + Connect + Club", popular: true,
+        prices: { "80": 799, "150": 1099, "200": 1499, "200+": 1999 } as Record<string, number>,
+        includes: ["הכל ב-Live", "CRM אורחים מלא", "בוט וואטסאפ AI", "מועדון חברים + הטבות"] },
     ],
-    annual: "הנחה שנתית: שלם 10 חודשים, קבל 12. במסלול חודשי אפשר לבטל בכל עת.",
-    addons: {
-      title: "תוספות",
-      items: [
-        { name: "הדרכות עובדים", price: "₪29/חודש", desc: "הדרכות צוות, נהלי שירות והכשרה שוטפת במקום אחד" },
-        { name: "ניהול ספקים", price: "₪39/חודש", desc: "ספקים, הזמנות רכש ותיאום תפעולי מהדשבורד" },
-        { name: "ניהול מלאי", price: "₪39/חודש", desc: "מלאי, חוסרים ותזכורות לפי קצב העבודה של המטבח והבר" },
-        { name: "ניהול תפריט", price: "₪19/חודש", desc: "עדכון מנות, מחירים וזמינות תפריט ממקום אחד" },
-        { name: "דשבורד אנליטיקס", price: "₪19/חודש", desc: "מבט מהיר על ביצועים, שימור, שעות עומס ותמונת מצב עסקית" },
-      ],
-    },
-    faq: {
-      title: "שאלות נפוצות",
-      items: [
-        { q: "האם צריך ידע טכני?", a: "לא. הווידג׳ט מוטמע בשורת קוד אחת, הדשבורד עובד מהדפדפן, ווואטסאפ עובד לבד." },
-        { q: "יש הנחה שנתית ואפשר לבטל מתי שרוצים?", a: "כן. בהתחייבות שנתית משלמים 10 חודשים ומקבלים 12. במסלול חודשי אפשר לבטל בכל עת." },
-        { q: "זה עובד על הטאבלט שכבר יש לי?", a: "כן. כל המערכת מבוססת דפדפן ועובדת על כל טאבלט או מחשב רגיל." },
-        { q: "אפשר לשים את המיתוג של המסעדה שלי?", a: "כן. הווידג׳ט, הדשבורד והחוויה נבנים סביב המותג שלך." },
-        { q: "באילו שפות המערכת עובדת?", a: "עברית, אנגלית וערבית. זיהוי שפה אוטומטי לאורח." },
-        { q: "הנתונים שלי באמת שלי?", a: "כן. אתה הבעלים של כל נתוני האורחים וה-CRM שלך." },
-      ],
-    },
+    addonsTitle: "תוספות אופציונליות", addonsSub: "הוסף רק מה שאתה צריך. בלי חבילות חובה.",
+    addons: [
+      { t: "הדרכות עובדים", p: "₪29/חודש", d: "הדרכות צוות, נהלי שירות והכשרה שוטפת." },
+      { t: "ניהול ספקים", p: "₪39/חודש", d: "ספקים, הזמנות רכש ותיאום תפעולי." },
+      { t: "ניהול מלאי", p: "₪39/חודש", d: "מלאי, חוסרים ותזכורות מטבח/בר." },
+      { t: "ניהול תפריט", p: "₪19/חודש", d: "עדכון מנות, מחירים וזמינות ממקום אחד." },
+      { t: "דשבורד אנליטיקס", p: "₪19/חודש", d: "ביצועים, שימור ושעות עומס." },
+    ],
+    faqTitle: "שאלות נפוצות",
+    faq: [
+      { q: "האם צריך ידע טכני?", a: "לא. הווידג׳ט נכנס בשורת קוד, הדשבורד עובד מהדפדפן, ווואטסאפ עובד לבד." },
+      { q: "יש הנחה שנתית? אפשר לבטל מתי שרוצים?", a: "בהתחייבות שנתית משלמים 10 חודשים ומקבלים 12. במסלול חודשי אפשר לבטל בכל עת." },
+      { q: "זה עובד על הטאבלט שכבר יש לי?", a: "כן. כל המערכת בדפדפן — על כל טאבלט או מחשב רגיל." },
+      { q: "אפשר לשים את המיתוג של המסעדה?", a: "כן. הווידג׳ט, הדשבורד והחוויה נבנים סביב המותג שלך." },
+      { q: "באילו שפות המערכת עובדת?", a: "עברית, אנגלית וערבית, עם זיהוי שפה אוטומטי לאורח." },
+      { q: "הנתונים שלי באמת שלי?", a: "כן. אתה הבעלים של כל נתוני האורחים וה-CRM." },
+    ],
     demoTitle: "דמו הזמנה חי",
-    demoSubtitle: "כך נראה תהליך ההזמנה באתר שלך - מהיר, נקי ועובד על כל טאבלט.",
-    widget: {
-      title: "הזמנת שולחן",
-      restaurant: "BFF Ra'anana",
-      dateLabel: "תאריך",
-      partySizeLabel: "מספר סועדים",
-      continue: "המשך",
-      slotsFor: "שעות פנויות ל-",
-      diners: "סועדים",
-      loadingSlots: "טוען שעות פנויות...",
-      noSlots: "אין שעות פנויות לתאריך זה",
-      back: "חזרה",
-      seatingTitle: "איזור ישיבה",
-      indoor: "בפנים",
-      outdoor: "בחוץ",
-      bar: "בר",
-      smokingTitle: "עישון",
-      noSmoking: "ללא עישון",
-      smoking: "אזור עישון",
-      allergiesTitle: "אלרגיות",
-      allergyOptions: ["אגוזים", "חלב", "גלוטן", "פירות ים", "ביצים", "סויה"],
-      noAllergies: "ללא",
-      nameLabel: "שם",
-      phoneLabel: "טלפון",
-      specialLabel: "בקשות מיוחדות",
-      specialPlaceholder: "כסא תינוק, יום הולדת, וכו׳...",
-      phoneError: "מספר טלפון לא תקין",
-      submit: "אישור הזמנה",
-      submitting: "שולח...",
-      confirmed: "ההזמנה התקבלה!",
-      confirmNote: "אישור יישלח אליך בוואטסאפ",
-      at: "בשעה",
+    demoSub: "כך נראה תהליך ההזמנה באתר שלך — מהיר, נקי ועובד על כל טאבלט.",
+    contactTitle: "דברו איתנו",
+    contactSub: "שיחה של 15 דקות. מקבלים דמו חי על המסעדה שלך בוואטסאפ.",
+    contactLeft: [
+      { t: "15 דקות, בלי בלבולים", d: "שיחה קצרה, תשובות אמיתיות." },
+      { t: "התסריטים שלך, לא שלנו", d: "ספר על המסעדה ונראה לך תוצאות רלוונטיות." },
+      { t: "הדגמה חיה בוואטסאפ", d: "ראה בדיוק מה האורחים שלך יחוו." },
+    ],
+    footer: {
+      tagline: "חבר הצוות הכי חכם של המסעדה שלך.",
+      cols: [
+        { t: "מוצר", items: ["OpenSeat Live", "OpenSeat Connect", "OpenSeat Club", "תוספות", "מחירון"] },
+        { t: "חברה", items: ["מי אנחנו", "פיילוט", "בלוג", "צור קשר"] },
+        { t: "משאבים", items: ["מרכז עזרה", "מדריך הקמה", "סטטוס מערכת", "תנאי שימוש", "פרטיות"] },
+      ],
+      contact: "milhemsione@gmail.com",
+      rights: "OpenSeat \u00A9 2026 \u00B7 נבנה באהבה בראש העין",
     },
+    widget: {
+      title: "הזמנת שולחן", restaurant: "BFF Ra'anana", subtitle: "פתוח · מוכן לאורחים",
+      dateLabel: "מתי?", partyLabel: "לכמה אנשים?", timeLabel: "בחר שעה",
+      seatingLabel: "איזור ישיבה", seating: { indoor: "פנים", outdoor: "חוץ", bar: "בר" },
+      nameLabel: "שם", phoneLabel: "טלפון", phoneHint: "לאישור בוואטסאפ",
+      submit: "אשר הזמנה", submitted: "נשלח ✓", confirmedTitle: "ההזמנה התקבלה",
+      confirmedSub: "אישור יישלח לוואטסאפ שלך תוך רגע", confirmedAnother: "הזמן עוד שולחן",
+      back: "חזרה", continue: "המשך",
+    },
+    steps: ["תאריך", "שעה", "פרטים", "אישור"],
+    monthlyLabel: "חודשי", annualLabel: "שנתי",
+    annualNote: "בחיוב שנתי · 10 חודשים בשנה", monthlyNote: "ביטול מתי שרוצים",
+    perMonth: "חודש", startWith: (n: string) => `התחל עם ${n}`,
+    mostPopular: "הכי פופולרי", pilotLabel: "פיילוט",
+    pilotPrice: "לחודש · 5 ראשונות", everythingIncluded: "הכל כולל",
+    eyebrows: { system: "המערכת", loop: "הלולאה", value: "הערך", compare: "השוואה", pricing: "מחירון", demo: "הדגמה חיה", talk: "בוא נדבר" },
+    allSystems: "כל המערכות פעילות",
+    guests: "סועדים",
+    autoAssign: "המערכת שיבצה אוטומטית שולחן לפי הגודל",
+    loopingDemo: "הדגמה חוזרת", paused: "עצור על hover",
+    waConfirm: "היי דני! שולחן ל-4 בשעה 20:00 ביום שישי. נתראה! 🌿",
+    dateFull: "שישי, 24.4", dateRelative: "היום + 4 ימים",
+    demoName: "דני ל.",
+    repeatGuests: "אורחים חוזרים", waAutoConfirm: "WhatsApp · אישור אוטומטי", aiTyping: "AI מקליד תשובה",
+    embedLabel: "EMBED ON YOUR SITE",
+    formName: "שם מלא", formEmail: "Email", formRestaurant: "שם המסעדה",
+    formPhone: "טלפון", formSeats: "גודל מסעדה", formSend: "שלח בקשה", formSending: "...", formSent: "נשלח ✓",
+    cmpLegend: { yes: "יש", partial: "חלקי", no: "אין" },
   },
   en: {
-    nav: { modules: "Modules", pricing: "Pricing", demo: "Live demo", contact: "Contact" },
+    dir: "ltr" as const, code: "EN",
+    nav: { modules: "Modules", how: "How it works", pricing: "Pricing", demo: "Live demo", contact: "Contact", cta: "Talk to us" },
     hero: {
-      title: "OpenSeat",
-      subtitle: "Your restaurant's smartest team member",
-      desc: "Reservations + membership club on WhatsApp. OpenSeat gives restaurants bookings, guest relationships, and their own white-label dashboard in one system that runs on their website and any tablet.",
-      cta1: "See pricing",
-      cta2: "See live demo",
-      trusted: "Powered by AI - works 24/7 without breaks",
+      badge: "Pilot \u00B7 First 5 restaurants \u00B7 \u20AA299/mo",
+      title1: "Your restaurant's", title2: "smartest", title3: "team member.",
+      desc: "Reservations + membership club on WhatsApp. OpenSeat gives restaurants bookings, guest relationships and their own white-label dashboard \u2014 one system that runs on your site and any tablet.",
+      cta1: "See live demo", cta2: "See pricing",
+      trust: "Works 24/7 \u00B7 AI powered \u00B7 Hebrew, English, Arabic",
     },
+    tape: ["Online reservations", "WhatsApp AI bot", "Membership club", "Guest CRM", "Website widget", "Owner dashboard"],
     stats: [
-      { value: "24/7", label: "AI assistant active" },
-      { value: "1-2 hrs", label: "saved daily" },
-      { value: "WhatsApp + site", label: "where guests already are" },
-      { value: "3×", label: "repeat visits" },
+      { k: "24/7", v: "AI on, never sleeps" },
+      { k: "1\u20132 hrs", v: "saved every shift" },
+      { k: "3\u00D7", v: "more repeat guests" },
+      { k: "100%", v: "your brand, your site" },
     ],
-    modulesTitle: "Three modules. One complete system.",
-    modulesSubtitle: "Start with reservations and a membership club. Guest CRM, WhatsApp, and your dashboard sit in the same system.",
+    modulesTitle: "Three modules.", modulesTitle2: "One complete system.",
+    modulesSub: "Start with reservations and a membership club. Guest CRM, WhatsApp and the owner dashboard live in the same system \u2014 no brittle integrations, no second app for staff.",
     modules: [
-      {
-        icon: "🟢",
-        name: "OpenSeat Live",
-        tagline: "Reservations engine",
-        desc: "Smart table assignment, waitlist, owner dashboard, and website widget - all real-time, on any tablet.",
-        features: [
-          "Automatic table assignment by party size",
-          "Real-time availability based on operating hours",
-          "Operating hours and special dates management",
-          "Auto-waitlist with smart matching",
-          "15-minute countdown to accept an opened slot",
-          "Owner dashboard with daily snapshot and occupancy view",
-          "Create reservations from the dashboard for phone calls",
-          "Website booking widget - mobile-first, RTL, one line of code",
-          "Automatic reminders before arrival",
-          "No-show tracking and reporting",
-        ],
-      },
-      {
-        icon: "🔵",
-        name: "OpenSeat Connect",
-        tagline: "Guest relationship layer",
-        desc: "Guest CRM, repeat-guest recognition, WhatsApp AI, and owner visibility - better guest relationships without another app.",
-        features: [
-          "Guest CRM - full profile auto-created from the first booking",
-          "Complete visit history with preferences and staff notes",
-          "Dietary preferences, allergies, and celebration moments",
-          "Auto-tags: VIP, returning, new, at-risk, big-table organizer",
-          "Sentiment analysis to surface who needs attention",
-          "Automatic thank-you after a visit",
-          "Review request only when it makes sense",
-          "Birthday and celebration offers with the right perk",
-          "Comeback messages for guests who have gone quiet",
-          "WhatsApp AI for bookings, questions, and membership status",
-          "Automatic language detection - Hebrew, English, Arabic",
-          "Daily owner summary on WhatsApp",
-        ],
-      },
-      {
-        icon: "🟣",
-        name: "OpenSeat Club",
-        tagline: "Membership club layer",
-        desc: "Points, VIP tiers, rewards, and referrals - a membership club that gives guests a real reason to come back.",
-        features: [
-          "Points on visits and orders based on your restaurant rules",
-          "Automatic VIP tiers by visit frequency and value",
-          "Reward catalog with simple staff redemption flow",
-          "Birthday perks, celebration moments, and visit milestones",
-          "Member-get-member referrals with rewards for both sides",
-          "Guests can check balance and status on WhatsApp instantly",
-          "Hosts see who is a member, who is VIP, and who is close to the next reward",
-          "Turns one-time diners into long-term regulars",
-        ],
-      },
-    ] as Module[],
+      { id: "live", tag: "Live", name: "Reservations engine", color: "#16A34A", icon: "📅",
+        desc: "Smart table assignment, waitlist, owner dashboard and website widget \u2014 real-time, any tablet.",
+        features: ["Auto table assignment by party size", "Waitlist with smart matching", "One-line embed widget", "Reminders & no-show tracking"] },
+      { id: "connect", tag: "Connect", name: "Guest relationship layer", color: "#2563EB", icon: "💬",
+        desc: "Guest CRM, repeat recognition, WhatsApp AI and owner visibility \u2014 no second app.",
+        features: ["CRM auto-built from first booking", "Auto tags: VIP, returning, at-risk", "WhatsApp bot in HE / EN / AR", "Daily owner summary on WhatsApp"] },
+      { id: "club", tag: "Club", name: "Membership club layer", color: "#9333EA", icon: "🎟️",
+        desc: "Points, VIP tiers and referrals \u2014 a real reason for guests to come back.",
+        features: ["Points on visits by your rules", "Birthday & milestone perks", "Member-get-member referrals", "Balance check on WhatsApp"] },
+    ],
     howTitle: "How it works",
+    howSub: "Four steps. One loop that builds a long-term relationship with every guest.",
     howSteps: [
-      { num: "1", title: "Reservation comes in", desc: "Guests book via WhatsApp, your website, or phone - everything lands in one place" },
-      { num: "2", title: "OpenSeat confirms", desc: "The system assigns the table, sends confirmation, and gives the team a calmer service flow" },
-      { num: "3", title: "Guest gets recognized", desc: "Staff sees if this is a returning guest, member, or VIP and what matters before seating" },
-      { num: "4", title: "You bring them back", desc: "After the visit, points, rewards, or comeback messages keep the relationship moving" },
+      { n: "01", t: "Reservation comes in", d: "WhatsApp, your site or phone \u2014 it all lands in one place.", icon: "📥" },
+      { n: "02", t: "OpenSeat confirms", d: "Assigns a table, sends confirmation, calms the shift.", icon: "✅" },
+      { n: "03", t: "Guest is recognized", d: "Staff sees member/VIP status and what matters before seating.", icon: "👀" },
+      { n: "04", t: "You bring them back", d: "Points, perks or a comeback message keep the relationship moving.", icon: "🔁" },
     ],
-    whyTitle: "Why OpenSeat",
+    whyTitle: "Why restaurants pick OpenSeat",
     whyPoints: [
-      { icon: "⏰", title: "Save 1-2 hours a day", desc: "Fewer calls, fewer manual updates, and less chaos between WhatsApp, the website, and paper notes." },
-      { icon: "🤝", title: "Better guest relationships", desc: "Guest history, preferences, and important moments stay in one place so service feels personal." },
-      { icon: "📈", title: "Higher retention", desc: "Membership, rewards, and the right follow-up give more guests a reason to return." },
-      { icon: "💬", title: "WhatsApp + any tablet", desc: "Guests stay on WhatsApp. Staff works from any tablet or browser already in the restaurant." },
-      { icon: "🎨", title: "White-label + your own dashboard", desc: "Your brand, your widget, your owner dashboard - not another generic platform experience." },
-      { icon: "₪", title: "Affordable monthly pricing", desc: "Clear pricing built for independents, without expensive hardware or bloated enterprise costs." },
+      { t: "Save 1\u20132 hours a day", d: "Fewer calls, less typing, no chaos between WhatsApp, site and paper.", accent: "time" },
+      { t: "Better guest relationships", d: "History, preferences and key moments \u2014 one place. No guessing.", accent: "heart" },
+      { t: "Higher retention", d: "Membership, perks and precise follow-up bring more guests back.", accent: "trend" },
+      { t: "WhatsApp + any tablet", d: "Guests stay on WhatsApp. Staff works from any browser.", accent: "chat" },
+      { t: "Full white-label", d: "Your brand, widget and dashboard \u2014 not another generic platform.", accent: "brush" },
+      { t: "Clear monthly pricing", d: "Built for independents. No expensive hardware, no enterprise bloat.", accent: "coin" },
     ],
-    comparisonTitle: "Comparison",
-    comparison: {
-      headers: ["", "OpenSeat", "Ontopo", "Tabit", "SevenRooms"],
-      rows: [
-        ["Online reservations", "v", "v", "v", "v"],
-        ["WhatsApp AI assistant", "v", "x", "x", "x"],
-        ["Guest CRM", "v", "x", "~", "v"],
-        ["Membership club", "v", "x", "x", "~"],
-        ["Website widget", "v", "x", "v", "v"],
-        ["Owner dashboard", "v", "~", "v", "v"],
-        ["White-label branding", "v", "x", "~", "~"],
-        ["Data ownership", "v", "x", "~", "~"],
-        ["Standard price", "from ₪499", "Free", "₪800+", "$500+"],
-      ],
-    },
-    launch: {
-      title: "Pilot launch price - First 5 restaurants",
-      desc: "Full Growth package for ₪299/mo for the first 5 restaurants. This is a monthly launch price, not a one-time payment.",
-      cta: "Talk to us",
-      note: "After the first 5 spots, standard Growth pricing applies.",
-    },
-    pricing: {
-      title: "Pricing",
-      subtitle: "Monthly plans by restaurant size. Annual discount available, and you can cancel anytime on monthly plans.",
-    },
+    cmpTitle: "Side-by-side", cmpSub: "What each system actually has \u2014 not what the landing page promises.",
+    cmpHeaders: ["", "OpenSeat", "Ontopo", "Tabit", "SevenRooms"],
+    cmpRows: [
+      ["Online reservations", "v", "v", "v", "v"],
+      ["WhatsApp AI bot", "v", "x", "x", "x"],
+      ["Guest CRM", "v", "x", "~", "v"],
+      ["Membership club", "v", "x", "x", "~"],
+      ["Website widget", "v", "x", "v", "v"],
+      ["Owner dashboard", "v", "~", "v", "v"],
+      ["White-label", "v", "x", "~", "~"],
+      ["Data ownership", "v", "x", "~", "~"],
+      ["Standard price", "from \u20AA499", "Free", "\u20AA800+", "$500+"],
+    ],
+    launchTitle: "Pilot launch price", launchKicker: "First 5 restaurants",
+    launchDesc: "Full Growth package at \u20AA299/mo for the first 5 restaurants. Monthly launch price, not a one-time payment.",
+    launchCta: "Reserve your slot", launchNote: "After the first 5 \u2014 standard Growth pricing",
+    pricingTitle: "Transparent pricing",
+    pricingSub: "Monthly plans by restaurant size. Annual discount (10 months for 12). Cancel anytime.",
+    pricingTierLabel: "Pick your size",
+    tiers: [
+      { id: "80", label: "Up to 80 seats" }, { id: "150", label: "Up to 150" },
+      { id: "200", label: "Up to 200" }, { id: "200+", label: "200+" },
+    ],
     plans: [
-      {
-        name: "Live",
-        desc: "Reservations + Widget + Dashboard",
-        module: "OpenSeat Live",
-        tiers: [
-          { seats: "Up to 80", price: 499 },
-          { seats: "Up to 150", price: 699 },
-          { seats: "Up to 200", price: 999 },
-          { seats: "200+", price: 1399 },
-        ],
-      },
-      {
-        name: "Growth",
-        desc: "Live + Connect + Club - reservations, CRM, and membership club",
-        module: "OpenSeat Live + Connect + Club",
-        popular: true,
-        tiers: [
-          { seats: "Up to 80", price: 799 },
-          { seats: "Up to 150", price: 1099 },
-          { seats: "Up to 200", price: 1499 },
-          { seats: "200+", price: 1999 },
-        ],
-      },
+      { name: "Live", desc: "Reservations + Widget + Dashboard", module: "OpenSeat Live",
+        prices: { "80": 499, "150": 699, "200": 999, "200+": 1399 } as Record<string, number>,
+        includes: ["Smart reservations engine", "Waitlist", "Website widget", "Owner dashboard"] },
+      { name: "Growth", desc: "Live + Connect + Club", module: "OpenSeat Live + Connect + Club", popular: true,
+        prices: { "80": 799, "150": 1099, "200": 1499, "200+": 1999 } as Record<string, number>,
+        includes: ["Everything in Live", "Full guest CRM", "WhatsApp AI bot", "Membership club + perks"] },
     ],
-    annual: "Annual discount: pay 10 months, get 12. Monthly plans can be cancelled anytime.",
-    addons: {
-      title: "Add-ons",
-      items: [
-        { name: "Employee training", price: "₪29/mo", desc: "Staff training, service standards, and onboarding in one place" },
-        { name: "Supplier management", price: "₪39/mo", desc: "Suppliers, purchase flow, and operational coordination from the dashboard" },
-        { name: "Inventory management", price: "₪39/mo", desc: "Stock levels, shortages, and reminders tied to kitchen and bar rhythm" },
-        { name: "Menu management", price: "₪19/mo", desc: "Update dishes, pricing, and menu availability from one place" },
-        { name: "Analytics dashboard", price: "₪19/mo", desc: "Quick view of performance, retention, peak hours, and business health" },
-      ],
-    },
-    faq: {
-      title: "FAQ",
-      items: [
-        { q: "Do I need technical knowledge?", a: "No. The widget embeds in one line, the dashboard runs in your browser, and WhatsApp works on its own." },
-        { q: "Is there an annual discount and can I cancel anytime?", a: "Yes. Annual plans give you 12 months for the price of 10, and monthly plans can be cancelled anytime." },
-        { q: "Will it run on the tablet I already have?", a: "Yes. The whole system is browser-based and works on any normal tablet or computer." },
-        { q: "Can I use my own branding?", a: "Yes. The widget, dashboard, and guest experience can all match your brand." },
-        { q: "What languages does it support?", a: "Hebrew, English, and Arabic with automatic guest language detection." },
-        { q: "Do I really own my data?", a: "Yes. Your restaurant owns the guest data and CRM." },
-      ],
-    },
+    addonsTitle: "Optional add-ons", addonsSub: "Add only what you need. No mandatory bundles.",
+    addons: [
+      { t: "Employee training", p: "\u20AA29/mo", d: "Staff training, service standards, onboarding." },
+      { t: "Supplier management", p: "\u20AA39/mo", d: "Suppliers, purchase flow, ops coordination." },
+      { t: "Inventory management", p: "\u20AA39/mo", d: "Stock, shortages, kitchen/bar reminders." },
+      { t: "Menu management", p: "\u20AA19/mo", d: "Update dishes, pricing and availability." },
+      { t: "Analytics dashboard", p: "\u20AA19/mo", d: "Performance, retention and peak hours." },
+    ],
+    faqTitle: "Frequently asked",
+    faq: [
+      { q: "Do I need technical knowledge?", a: "No. The widget embeds in one line, the dashboard runs in the browser, WhatsApp works on its own." },
+      { q: "Annual discount? Can I cancel anytime?", a: "Annual plans give 12 months for the price of 10. Monthly plans can be cancelled anytime." },
+      { q: "Will it run on my existing tablet?", a: "Yes. Browser-based \u2014 any normal tablet or computer works." },
+      { q: "Can I use my own branding?", a: "Yes. Widget, dashboard and guest experience all carry your brand." },
+      { q: "Which languages does it support?", a: "Hebrew, English and Arabic, with auto-detection for guests." },
+      { q: "Do I really own my data?", a: "Yes. You own the guest data and CRM fully." },
+    ],
     demoTitle: "Live booking demo",
-    demoSubtitle: "This is how booking looks on your website - fast, clean, and built for real guests.",
-    widget: {
-      title: "Reserve a Table",
-      restaurant: "BFF Ra'anana",
-      dateLabel: "Date",
-      partySizeLabel: "Party Size",
-      continue: "Continue",
-      slotsFor: "Available times for ",
-      diners: "guests",
-      loadingSlots: "Loading available times...",
-      noSlots: "No available times for this date",
-      back: "Back",
-      seatingTitle: "Seating Area",
-      indoor: "Indoor",
-      outdoor: "Outdoor",
-      bar: "Bar",
-      smokingTitle: "Smoking",
-      noSmoking: "Non-smoking",
-      smoking: "Smoking area",
-      allergiesTitle: "Allergies",
-      allergyOptions: ["Nuts", "Dairy", "Gluten", "Seafood", "Eggs", "Soy"],
-      noAllergies: "None",
-      nameLabel: "Name",
-      phoneLabel: "Phone",
-      specialLabel: "Special requests",
-      specialPlaceholder: "High chair, birthday, etc...",
-      phoneError: "Invalid phone number",
-      submit: "Confirm Reservation",
-      submitting: "Submitting...",
-      confirmed: "Reservation Confirmed!",
-      confirmNote: "Confirmation will be sent via WhatsApp",
-      at: "at",
+    demoSub: "This is what booking looks like on your site \u2014 fast, clean, made for real guests.",
+    contactTitle: "Talk to us",
+    contactSub: "A 15-minute call. Get a live WhatsApp demo for your own restaurant.",
+    contactLeft: [
+      { t: "15 minutes, no fluff", d: "Quick call, real answers." },
+      { t: "Your scenarios, not ours", d: "Tell us about your restaurant, we'll show relevant results." },
+      { t: "Live WhatsApp walkthrough", d: "See exactly what your guests will experience." },
+    ],
+    footer: {
+      tagline: "Your restaurant's smartest team member.",
+      cols: [
+        { t: "Product", items: ["OpenSeat Live", "OpenSeat Connect", "OpenSeat Club", "Add-ons", "Pricing"] },
+        { t: "Company", items: ["About", "Pilot", "Blog", "Contact"] },
+        { t: "Resources", items: ["Help center", "Setup guide", "Status", "Terms", "Privacy"] },
+      ],
+      contact: "milhemsione@gmail.com",
+      rights: "OpenSeat \u00A9 2026 \u00B7 Built with love in Rosh HaAyin",
     },
+    widget: {
+      title: "Reserve a table", restaurant: "BFF Ra'anana", subtitle: "Open \u00B7 Ready for guests",
+      dateLabel: "When?", partyLabel: "How many?", timeLabel: "Pick a time",
+      seatingLabel: "Seating", seating: { indoor: "Indoor", outdoor: "Outdoor", bar: "Bar" },
+      nameLabel: "Name", phoneLabel: "Phone", phoneHint: "For WhatsApp confirmation",
+      submit: "Confirm reservation", submitted: "Sent \u2713", confirmedTitle: "Reservation confirmed",
+      confirmedSub: "A confirmation is on its way to your WhatsApp", confirmedAnother: "Book another table",
+      back: "Back", continue: "Continue",
+    },
+    steps: ["Date", "Time", "Details", "Confirm"],
+    monthlyLabel: "Monthly", annualLabel: "Annual",
+    annualNote: "Billed annually \u00B7 10 months", monthlyNote: "Cancel anytime",
+    perMonth: "mo", startWith: (n: string) => `Start with ${n}`,
+    mostPopular: "MOST POPULAR", pilotLabel: "Pilot",
+    pilotPrice: "per month \u00B7 first 5", everythingIncluded: "Everything included",
+    eyebrows: { system: "The system", loop: "The loop", value: "The value", compare: "Compare", pricing: "Pricing", demo: "Live demo", talk: "Let's talk" },
+    allSystems: "All systems operational",
+    guests: "guests",
+    autoAssign: "Auto-assigned a table by party size",
+    loopingDemo: "looping demo", paused: "paused",
+    waConfirm: "Hi Danny! Table for 4 at 20:00 Fri. See you! 🌿",
+    dateFull: "Fri, Apr 24", dateRelative: "Today + 4 days",
+    demoName: "Danny L.",
+    repeatGuests: "repeat guests", waAutoConfirm: "WhatsApp \u00B7 auto-confirm", aiTyping: "AI typing\u2026",
+    embedLabel: "EMBED ON YOUR SITE",
+    formName: "Full name", formEmail: "Email", formRestaurant: "Restaurant",
+    formPhone: "Phone", formSeats: "Seats", formSend: "Send request", formSending: "...", formSent: "Sent \u2713",
+    cmpLegend: { yes: "Included", partial: "Partial", no: "Missing" },
   },
   ar: {
-    nav: { modules: "الوحدات", pricing: "الأسعار", demo: "عرض حي", contact: "تواصل" },
+    dir: "rtl" as const, code: "AR",
+    nav: { modules: "الوحدات", how: "كيف يعمل", pricing: "الأسعار", demo: "عرض حي", contact: "تواصل", cta: "تحدث معنا" },
     hero: {
-      title: "OpenSeat",
-      subtitle: "أذكى عضو في فريق مطعمك",
-      desc: "الحجوزات + نادي الأعضاء على واتساب. OpenSeat يجمع الحجوزات، العلاقة مع الضيوف، ولوحة المالك في نظام واحد يعمل على موقعك وعلى أي تابلت.",
-      cta1: "شاهد الأسعار",
-      cta2: "شاهد العرض الحي",
-      trusted: "مدعوم بالذكاء الاصطناعي - يعمل 24/7 بدون توقف",
+      badge: "بايلوت · أول 5 مطاعم · ₪299/شهر",
+      title1: "أذكى عضو", title2: "في فريق", title3: "مطعمك.",
+      desc: "حجوزات + نادي أعضاء على واتساب. OpenSeat يجمع الحجوزات، العلاقة مع الضيوف، ولوحة المالك — نظام واحد على موقعك وعلى أي تابلت.",
+      cta1: "شاهد العرض الحي", cta2: "شاهد الأسعار",
+      trust: "يعمل 24/7 · مدعوم بالذكاء الاصطناعي · عربي، عبري، إنجليزي",
     },
+    tape: ["حجوزات أونلاين", "بوت واتساب AI", "نادي أعضاء", "CRM ضيوف", "ودجة للموقع", "لوحة مالك"],
     stats: [
-      { value: "24/7", label: "مساعد AI نشط" },
-      { value: "1-2 ساعة", label: "توفير يومي" },
-      { value: "واتساب + موقع", label: "حيث الضيوف موجودون أصلًا" },
-      { value: "3×", label: "زيارات متكررة" },
+      { k: "24/7", v: "AI نشط بدون توقف" },
+      { k: "1\u20132 ساعة", v: "توفير في كل وردية" },
+      { k: "3\u00D7", v: "زيارات متكررة أكثر" },
+      { k: "100%", v: "علامتك وموقعك يبقيان لك" },
     ],
-    modulesTitle: "ثلاث وحدات. نظام متكامل.",
-    modulesSubtitle: "ابدأ بالحجوزات ونادي الأعضاء. CRM الضيوف، واتساب، ولوحة التحكم موجودة كلها في نفس النظام.",
+    modulesTitle: "ثلاث وحدات.", modulesTitle2: "نظام متكامل واحد.",
+    modulesSub: "ابدأ بالحجوزات ونادي الأعضاء. CRM الضيوف، واتساب ولوحة المالك في نفس النظام — بدون تكاملات هشّة وبدون تطبيق إضافي.",
     modules: [
-      {
-        icon: "🟢",
-        name: "OpenSeat Live",
-        tagline: "محرك الحجوزات",
-        desc: "تعيين طاولات ذكي، قائمة انتظار، لوحة مالك، وودجة للموقع - كل شيء لحظي وعلى أي تابلت.",
-        features: [
-          "تعيين طاولات تلقائي حسب حجم المجموعة",
-          "توفر فوري حسب ساعات العمل",
-          "إدارة ساعات العمل والتواريخ الخاصة",
-          "قائمة انتظار تلقائية مع مطابقة ذكية",
-          "عد تنازلي 15 دقيقة لقبول المكان المفتوح",
-          "لوحة مالك مع ملخص يومي ونظرة على الإشغال",
-          "إنشاء حجوزات من لوحة التحكم للمكالمات الهاتفية",
-          "ودجة حجز للموقع - موبايل أولًا، RTL، وسطر كود واحد",
-          "تذكيرات تلقائية قبل الوصول",
-          "تتبع عدم الحضور والتقارير",
-        ],
-      },
-      {
-        icon: "🔵",
-        name: "OpenSeat Connect",
-        tagline: "طبقة العلاقة مع الضيوف",
-        desc: "CRM الضيوف، معرفة الزبون العائد، واتساب AI، ورؤية واضحة للمالك - علاقة أفضل مع الضيف بدون تطبيق إضافي.",
-        features: [
-          "CRM ضيوف - ملف كامل يُنشأ تلقائيًا من أول حجز",
-          "سجل زيارات كامل مع التفضيلات وملاحظات الطاقم",
-          "تفضيلات غذائية، حساسيات، ومناسبات خاصة",
-          "وسوم تلقائية: VIP، عائد، جديد، معرض للخطر، منظم طاولات كبيرة",
-          "تحليل مشاعر لمعرفة من يحتاج اهتمامًا",
-          "رسالة شكر تلقائية بعد الزيارة",
-          "طلب تقييم فقط عندما يكون التوقيت مناسبًا",
-          "عروض عيد ميلاد واحتفالات مع الامتياز المناسب",
-          "رسائل عودة للضيوف الذين انقطعوا لفترة",
-          "واتساب AI للحجوزات، الأسئلة، وحالة العضوية",
-          "كشف لغة تلقائي - عبري، إنجليزي، عربي",
-          "ملخص يومي للمالك على واتساب",
-        ],
-      },
-      {
-        icon: "🟣",
-        name: "OpenSeat Club",
-        tagline: "طبقة نادي الأعضاء",
-        desc: "نقاط، درجات VIP، مكافآت، وإحالات - نادي أعضاء يعطي الضيف سببًا حقيقيًا للعودة مرة بعد مرة.",
-        features: [
-          "نقاط على الزيارات والطلبات حسب قواعد مطعمك",
-          "درجات VIP تلقائية حسب تكرار الزيارة وقيمتها",
-          "كتالوج مكافآت مع استبدال بسيط للطاقم",
-          "امتيازات عيد الميلاد، المناسبات، ومحطات الزيارة المهمة",
-          "إحالات عضو يجلب عضو مع مكافأة للطرفين",
-          "الضيف يفحص الرصيد والحالة على واتساب فورًا",
-          "المضيف يرى من هو عضو، من هو VIP، ومن اقترب من المكافأة التالية",
-          "يحوّل الزائر لمرة واحدة إلى زبون دائم",
-        ],
-      },
-    ] as Module[],
+      { id: "live", tag: "Live", name: "محرك الحجوزات", color: "#16A34A", icon: "📅",
+        desc: "تعيين طاولات ذكي، قائمة انتظار، لوحة مالك وودجة للموقع — لحظي وعلى أي تابلت.",
+        features: ["تعيين تلقائي حسب حجم المجموعة", "قائمة انتظار بمطابقة ذكية", "ودجة بسطر كود واحد", "تذكيرات وتتبع عدم الحضور"] },
+      { id: "connect", tag: "Connect", name: "طبقة العلاقة مع الضيوف", color: "#2563EB", icon: "💬",
+        desc: "CRM ضيوف، معرفة الزبون العائد، واتساب AI ورؤية للمالك — بدون تطبيق ثانٍ.",
+        features: ["CRM يُبنى تلقائيًا", "وسوم VIP، عائد، معرض للخطر", "واتساب AI بـ 3 لغات", "ملخص يومي للمالك على واتساب"] },
+      { id: "club", tag: "Club", name: "نادي الأعضاء", color: "#9333EA", icon: "🎟️",
+        desc: "نقاط، درجات VIP وإحالات — سبب حقيقي ليعود الضيف.",
+        features: ["نقاط على الزيارات", "امتيازات عيد الميلاد", "عضو يجلب عضو", "فحص الرصيد على واتساب"] },
+    ],
     howTitle: "كيف يعمل",
+    howSub: "أربع خطوات. حلقة واحدة تبني علاقة طويلة مع كل ضيف.",
     howSteps: [
-      { num: "1", title: "الحجز يدخل", desc: "الضيف يحجز عبر واتساب، موقعك، أو الهاتف - وكل شيء يدخل إلى مكان واحد" },
-      { num: "2", title: "OpenSeat يؤكد", desc: "النظام يعيّن الطاولة، يرسل التأكيد، ويعطي الفريق خدمة أهدأ وأسهل" },
-      { num: "3", title: "التعرّف على الضيف", desc: "الطاقم يرى هل هذا ضيف عائد أو عضو أو VIP وما المهم قبل جلوسه" },
-      { num: "4", title: "إعادته مرة أخرى", desc: "بعد الزيارة، النقاط أو المكافآت أو رسائل العودة تواصل العلاقة مع الضيف" },
+      { n: "01", t: "الحجز يدخل", d: "واتساب، موقعك أو الهاتف — كله يدخل لمكان واحد.", icon: "📥" },
+      { n: "02", t: "OpenSeat يؤكد", d: "يعيّن الطاولة، يرسل التأكيد ويهدئ الوردية.", icon: "✅" },
+      { n: "03", t: "تتعرف على الضيف", d: "الطاقم يرى حالة العضو/VIP وما المهم قبل الجلوس.", icon: "👀" },
+      { n: "04", t: "تعيده مرة أخرى", d: "نقاط، امتيازات أو رسالة عودة تواصل العلاقة.", icon: "🔁" },
     ],
-    whyTitle: "لماذا OpenSeat",
+    whyTitle: "لماذا يختار المطاعم OpenSeat",
     whyPoints: [
-      { icon: "⏰", title: "يوفر 1-2 ساعة يوميًا", desc: "مكالمات أقل، تحديثات يدوية أقل، وفوضى أقل بين واتساب والموقع والورق." },
-      { icon: "🤝", title: "علاقة أفضل مع الضيوف", desc: "تاريخ الضيف وتفضيلاته ولحظاته المهمة تبقى في مكان واحد فيصبح التعامل شخصيًا أكثر." },
-      { icon: "📈", title: "احتفاظ أعلى", desc: "العضوية والمكافآت والمتابعة الصحيحة تعطى الضيوف سببًا إضافيًا للعودة." },
-      { icon: "💬", title: "واتساب + أي تابلت", desc: "الضيوف يبقون على واتساب، والطاقم يعمل من أي تابلت أو متصفح موجود في المطعم." },
-      { icon: "🎨", title: "White-label + لوحة التحكم الخاصة بك", desc: "علامتك، ودجتك، ولوحة المالك الخاصة بك - وليس تجربة منصة عامة." },
-      { icon: "₪", title: "سعر شهري مناسب", desc: "تسعير واضح للمطاعم المستقلة بدون أجهزة باهظة أو تكاليف منتفخة." },
+      { t: "يوفّر 1\u20132 ساعة يوميًا", d: "مكالمات أقل، طباعة أقل، فوضى أقل بين واتساب والموقع والورق.", accent: "time" },
+      { t: "علاقة أفضل مع الضيوف", d: "التاريخ والتفضيلات واللحظات المهمة — مكان واحد.", accent: "heart" },
+      { t: "احتفاظ أعلى", d: "العضوية والمكافآت والمتابعة تعيد المزيد من الضيوف.", accent: "trend" },
+      { t: "واتساب + أي تابلت", d: "الضيوف على واتساب، والطاقم من أي متصفح.", accent: "chat" },
+      { t: "White-label كامل", d: "علامتك، ودجتك ولوحة التحكم الخاصة بك.", accent: "brush" },
+      { t: "تسعير شهري واضح", d: "مبني للمستقلين. بدون أجهزة باهظة.", accent: "coin" },
     ],
-    comparisonTitle: "المقارنة",
-    comparison: {
-      headers: ["", "OpenSeat", "Ontopo", "Tabit", "SevenRooms"],
-      rows: [
-        ["حجوزات أونلاين", "v", "v", "v", "v"],
-        ["مساعد واتساب AI", "v", "x", "x", "x"],
-        ["CRM ضيوف", "v", "x", "~", "v"],
-        ["نادي الأعضاء", "v", "x", "x", "~"],
-        ["ودجة للموقع", "v", "x", "v", "v"],
-        ["لوحة مالك", "v", "~", "v", "v"],
-        ["علامتك الخاصة", "v", "x", "~", "~"],
-        ["ملكية البيانات", "v", "x", "~", "~"],
-        ["السعر العادي", "من ₪499", "مجاني", "₪800+", "$500+"],
-      ],
-    },
-    launch: {
-      title: "سعر إطلاق البايلوت - أول 5 مطاعم",
-      desc: "حزمة Growth الكاملة بـ ₪299 شهريًا لأول 5 مطاعم. هذا سعر شهري للإطلاق وليس دفعة لمرة واحدة.",
-      cta: "تحدث معنا",
-      note: "بعد امتلاء أول 5 أماكن، يعود السعر العادي لخطة Growth.",
-    },
-    pricing: {
-      title: "الأسعار",
-      subtitle: "خطط شهرية حسب حجم المطعم. يوجد خصم سنوي، ويمكن الإلغاء في أي وقت على الخطة الشهرية.",
-    },
+    cmpTitle: "مقارنة مباشرة", cmpSub: "ما يوجد فعلاً في كل نظام.",
+    cmpHeaders: ["", "OpenSeat", "Ontopo", "Tabit", "SevenRooms"],
+    cmpRows: [
+      ["حجوزات أونلاين", "v", "v", "v", "v"],
+      ["بوت واتساب AI", "v", "x", "x", "x"],
+      ["CRM ضيوف", "v", "x", "~", "v"],
+      ["نادي أعضاء", "v", "x", "x", "~"],
+      ["ودجة موقع", "v", "x", "v", "v"],
+      ["لوحة مالك", "v", "~", "v", "v"],
+      ["White-label", "v", "x", "~", "~"],
+      ["ملكية البيانات", "v", "x", "~", "~"],
+      ["السعر العادي", "من ₪499", "مجاني", "₪800+", "$500+"],
+    ],
+    launchTitle: "سعر إطلاق البايلوت", launchKicker: "أول 5 مطاعم",
+    launchDesc: "حزمة Growth الكاملة بـ ₪299/شهر لأول 5 مطاعم. سعر شهري للإطلاق.",
+    launchCta: "احجز مكانك", launchNote: "بعد أول 5 — يعود السعر الاعتيادي لـ Growth",
+    pricingTitle: "تسعير شفاف",
+    pricingSub: "خطط شهرية حسب حجم المطعم. خصم سنوي (10 بسعر 12). إلغاء في أي وقت.",
+    pricingTierLabel: "اختر الحجم",
+    tiers: [
+      { id: "80", label: "حتى 80 مقعد" }, { id: "150", label: "حتى 150" },
+      { id: "200", label: "حتى 200" }, { id: "200+", label: "200+" },
+    ],
     plans: [
-      {
-        name: "Live",
-        desc: "حجوزات + ودجة + لوحة تحكم",
-        module: "OpenSeat Live",
-        tiers: [
-          { seats: "حتى 80", price: 499 },
-          { seats: "حتى 150", price: 699 },
-          { seats: "حتى 200", price: 999 },
-          { seats: "200+", price: 1399 },
-        ],
-      },
-      {
-        name: "Growth",
-        desc: "Live + Connect + Club - حجوزات وCRM ونادي أعضاء",
-        module: "OpenSeat Live + Connect + Club",
-        popular: true,
-        tiers: [
-          { seats: "حتى 80", price: 799 },
-          { seats: "حتى 150", price: 1099 },
-          { seats: "حتى 200", price: 1499 },
-          { seats: "200+", price: 1999 },
-        ],
-      },
+      { name: "Live", desc: "حجوزات + ودجة + لوحة", module: "OpenSeat Live",
+        prices: { "80": 499, "150": 699, "200": 999, "200+": 1399 } as Record<string, number>,
+        includes: ["محرك حجوزات ذكي", "قائمة انتظار", "ودجة للموقع", "لوحة مالك"] },
+      { name: "Growth", desc: "Live + Connect + Club", module: "OpenSeat Live + Connect + Club", popular: true,
+        prices: { "80": 799, "150": 1099, "200": 1499, "200+": 1999 } as Record<string, number>,
+        includes: ["كل ما في Live", "CRM ضيوف كامل", "بوت واتساب AI", "نادي أعضاء + امتيازات"] },
     ],
-    annual: "خصم سنوي: ادفع 10 أشهر واحصل على 12. ويمكن إلغاء الخطة الشهرية في أي وقت.",
-    addons: {
-      title: "إضافات",
-      items: [
-        { name: "تدريب الموظفين", price: "₪29/شهر", desc: "تدريب الطاقم ومعايير الخدمة والتأهيل في مكان واحد" },
-        { name: "إدارة الموردين", price: "₪39/شهر", desc: "الموردون وطلبات الشراء والتنسيق التشغيلي من لوحة التحكم" },
-        { name: "إدارة المخزون", price: "₪39/شهر", desc: "مخزون، نواقص، وتذكيرات مرتبطة بإيقاع المطبخ والبار" },
-        { name: "إدارة القائمة", price: "₪19/شهر", desc: "تحديث الأطباق والأسعار وتوفر القائمة من مكان واحد" },
-        { name: "لوحة التحليلات", price: "₪19/شهر", desc: "نظرة سريعة على الأداء والاحتفاظ وساعات الذروة وصحة العمل" },
+    addonsTitle: "إضافات اختيارية", addonsSub: "أضف فقط ما تحتاج. بدون باقات إلزامية.",
+    addons: [
+      { t: "تدريب الموظفين", p: "₪29/شهر", d: "تدريب الطاقم ومعايير الخدمة." },
+      { t: "إدارة الموردين", p: "₪39/شهر", d: "موردون وطلبات شراء وتنسيق." },
+      { t: "إدارة المخزون", p: "₪39/شهر", d: "مخزون، نواقص وتذكيرات." },
+      { t: "إدارة القائمة", p: "₪19/شهر", d: "تحديث الأطباق والأسعار." },
+      { t: "لوحة تحليلات", p: "₪19/شهر", d: "الأداء والاحتفاظ وساعات الذروة." },
+    ],
+    faqTitle: "أسئلة شائعة",
+    faq: [
+      { q: "هل أحتاج معرفة تقنية؟", a: "لا. الودجة بسطر واحد، لوحة التحكم في المتصفح، وواتساب يعمل وحده." },
+      { q: "هل يوجد خصم سنوي وإمكانية إلغاء؟", a: "12 شهر بسعر 10 سنويًا. الإلغاء ممكن أي وقت في الخطة الشهرية." },
+      { q: "هل يعمل على تابلتي؟", a: "نعم — النظام كله في المتصفح." },
+      { q: "هل أستخدم علامتي؟", a: "نعم. الودجة، اللوحة وتجربة الضيف تحمل علامتك." },
+      { q: "ما اللغات المدعومة؟", a: "عربي، عبري وإنجليزي مع كشف تلقائي." },
+      { q: "هل بياناتي ملكي فعلًا؟", a: "نعم، أنت تملك بيانات الضيوف وCRM." },
+    ],
+    demoTitle: "عرض حجز حي",
+    demoSub: "هكذا يبدو الحجز على موقعك — سريع، نظيف ومصمم لضيوف حقيقيين.",
+    contactTitle: "تحدث معنا",
+    contactSub: "مكالمة 15 دقيقة. واحصل على عرض حي على واتساب لمطعمك.",
+    contactLeft: [
+      { t: "15 دقيقة بدون تعقيد", d: "مكالمة قصيرة، إجابات حقيقية." },
+      { t: "سيناريوهاتك، ليس سيناريوهاتنا", d: "أخبرنا عن مطعمك وسنعرض لك نتائج." },
+      { t: "عرض حي على واتساب", d: "شاهد بالضبط ما سيختبره ضيوفك." },
+    ],
+    footer: {
+      tagline: "أذكى عضو في فريق مطعمك.",
+      cols: [
+        { t: "المنتج", items: ["OpenSeat Live", "OpenSeat Connect", "OpenSeat Club", "إضافات", "الأسعار"] },
+        { t: "الشركة", items: ["من نحن", "البايلوت", "المدونة", "تواصل"] },
+        { t: "الموارد", items: ["مركز المساعدة", "دليل الإعداد", "حالة النظام", "الشروط", "الخصوصية"] },
       ],
+      contact: "milhemsione@gmail.com",
+      rights: "OpenSeat \u00A9 2026 \u00B7 مبني بحب في رأس العين",
     },
-    faq: {
-      title: "أسئلة شائعة",
-      items: [
-        { q: "هل أحتاج معرفة تقنية؟", a: "لا. الودجة تُضمّن بسطر واحد، لوحة التحكم تعمل من المتصفح، وواتساب يعمل وحده." },
-        { q: "هل يوجد خصم سنوي وهل يمكن الإلغاء في أي وقت؟", a: "نعم. في الخطة السنوية تدفع 10 أشهر وتحصل على 12، وفي الخطة الشهرية يمكنك الإلغاء في أي وقت." },
-        { q: "هل يعمل على التابلت الموجود عندي؟", a: "نعم. النظام كله يعمل من المتصفح وعلى أي تابلت أو كمبيوتر عادي." },
-        { q: "هل أستطيع استخدام علامتي التجارية؟", a: "نعم. الودجة ولوحة التحكم وتجربة الضيف يمكن أن تحمل علامتك." },
-        { q: "ما اللغات التي يدعمها؟", a: "العبرية والإنجليزية والعربية مع كشف تلقائي للغة الضيف." },
-        { q: "هل أملك بياناتي فعلًا؟", a: "نعم. مطعمك يملك بيانات الضيوف وCRM بالكامل." },
-      ],
-    },
-    demoTitle: "عرض حي للحجز",
-    demoSubtitle: "هكذا يبدو الحجز على موقعك - سريع، واضح، ومصمم لضيوف حقيقيين.",
     widget: {
-      title: "حجز طاولة",
-      restaurant: "BFF Ra'anana",
-      dateLabel: "التاريخ",
-      partySizeLabel: "عدد الضيوف",
-      continue: "متابعة",
-      slotsFor: "الأوقات المتاحة لـ ",
-      diners: "ضيوف",
-      loadingSlots: "جارٍ تحميل الأوقات...",
-      noSlots: "لا توجد أوقات متاحة لهذا التاريخ",
-      back: "رجوع",
-      seatingTitle: "منطقة الجلوس",
-      indoor: "داخلي",
-      outdoor: "خارجي",
-      bar: "بار",
-      smokingTitle: "التدخين",
-      noSmoking: "بدون تدخين",
-      smoking: "منطقة تدخين",
-      allergiesTitle: "الحساسيات",
-      allergyOptions: ["مكسرات", "حليب", "غلوتين", "مأكولات بحرية", "بيض", "صويا"],
-      noAllergies: "لا يوجد",
-      nameLabel: "الاسم",
-      phoneLabel: "الهاتف",
-      specialLabel: "طلبات خاصة",
-      specialPlaceholder: "كرسي أطفال، عيد ميلاد، إلخ...",
-      phoneError: "رقم هاتف غير صالح",
-      submit: "تأكيد الحجز",
-      submitting: "جارٍ الإرسال...",
-      confirmed: "تم تأكيد الحجز!",
-      confirmNote: "سيتم إرسال التأكيد عبر واتساب",
-      at: "الساعة",
+      title: "احجز طاولة", restaurant: "BFF رعنانا", subtitle: "مفتوح · جاهز للضيوف",
+      dateLabel: "متى؟", partyLabel: "لكم شخص؟", timeLabel: "اختر وقت",
+      seatingLabel: "منطقة الجلوس", seating: { indoor: "داخلي", outdoor: "خارجي", bar: "بار" },
+      nameLabel: "الاسم", phoneLabel: "الهاتف", phoneHint: "للتأكيد على واتساب",
+      submit: "أكد الحجز", submitted: "أُرسل ✓", confirmedTitle: "تم تأكيد الحجز",
+      confirmedSub: "التأكيد في طريقه إلى واتساب", confirmedAnother: "احجز طاولة أخرى",
+      back: "رجوع", continue: "متابعة",
     },
+    steps: ["التاريخ", "الوقت", "التفاصيل", "تأكيد"],
+    monthlyLabel: "شهري", annualLabel: "سنوي",
+    annualNote: "فوترة سنوية · 10 أشهر", monthlyNote: "إلغاء متى ما شئت",
+    perMonth: "شهر", startWith: (n: string) => `ابدأ مع ${n}`,
+    mostPopular: "الأكثر شعبية", pilotLabel: "بايلوت",
+    pilotPrice: "شهريًا · أول 5", everythingIncluded: "كل شيء مشمول",
+    eyebrows: { system: "النظام", loop: "الحلقة", value: "القيمة", compare: "مقارنة", pricing: "الأسعار", demo: "عرض حي", talk: "تواصل" },
+    allSystems: "كل الأنظمة تعمل",
+    guests: "ضيوف",
+    autoAssign: "تم تعيين طاولة تلقائيًا حسب الحجم",
+    loopingDemo: "عرض متكرر", paused: "paused",
+    waConfirm: "أهلًا دني! طاولة لـ 4 في 20:00 يوم الجمعة.",
+    dateFull: "الجمعة 24.4", dateRelative: "اليوم + 4 أيام",
+    demoName: "دني ل.",
+    repeatGuests: "عائدون", waAutoConfirm: "واتساب · تأكيد تلقائي", aiTyping: "AI يكتب...",
+    embedLabel: "EMBED ON YOUR SITE",
+    formName: "الاسم", formEmail: "البريد الإلكتروني", formRestaurant: "اسم المطعم",
+    formPhone: "هاتف", formSeats: "حجم المطعم", formSend: "أرسل", formSending: "...", formSent: "أُرسل ✓",
+    cmpLegend: { yes: "موجود", partial: "جزئي", no: "غير موجود" },
   },
 };
 
-/* ── Constants ── */
-const API_URL = "http://204.168.227.45";
-const RESTAURANT_ID = "c3c22e37-a309-4fde-aa6c-6e714212a3bc";
+type I18NData = (typeof I18N)[Lang];
 
-/* ── Accessibility Widget ── */
+/* ═══════════════════════════════════════════════════════════
+   Hooks
+   ═══════════════════════════════════════════════════════════ */
+function useReveal() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) { el.classList.add("is-in"); io.disconnect(); }
+    }, { threshold: 0.15 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return ref;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Shared components
+   ═══════════════════════════════════════════════════════════ */
+function Logo({ size = 26 }: { size?: number }) {
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+      <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="1" y="1" width="30" height="30" rx="9" fill="var(--brand)" />
+        <path d="M9 21c0-3.3 2.7-6 6-6h2c3.3 0 6 2.7 6 6v1H9v-1z" fill="white" />
+        <circle cx="16" cy="11" r="3.5" fill="white" />
+      </svg>
+      <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 20, letterSpacing: "-0.02em" }}>OpenSeat</span>
+    </div>
+  );
+}
+
+function WhyIcon({ k }: { k: string }) {
+  const common: Record<string, unknown> = { width: 24, height: 24, fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" };
+  switch (k) {
+    case "time": return <svg {...common}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>;
+    case "heart": return <svg {...common}><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" /></svg>;
+    case "trend": return <svg {...common}><path d="M3 17l6-6 4 4 8-8" /><path d="M14 7h7v7" /></svg>;
+    case "chat": return <svg {...common}><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5z" /></svg>;
+    case "brush": return <svg {...common}><path d="M19 4l-8 8" /><path d="M15 3h6v6" /><path d="M4 20s1-4 4-4 4 4 4 4" /></svg>;
+    case "coin": return <svg {...common}><circle cx="12" cy="12" r="9" /><path d="M14 9h-4a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4h-4" /><path d="M12 7v2M12 15v2" /></svg>;
+    default: return null;
+  }
+}
+
+function CmpCell({ v }: { v: string }) {
+  if (v === "v") return <span className="cmp-check yes">{"\u2713"}</span>;
+  if (v === "x") return <span className="cmp-check no">{"\u2715"}</span>;
+  if (v === "~") return <span className="cmp-check partial">~</span>;
+  return <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 600 }}>{v}</span>;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Accessibility Widget (preserved from original)
+   ═══════════════════════════════════════════════════════════ */
 const a11yStorageKey = "openseat-accessibility-settings";
 const a11yDefaults = { fontScale: 1, contrast: false, links: false, readableFont: false, reducedMotion: false };
 
 function AccessibilityWidget({ lang }: { lang: Lang }) {
   const [open, setOpen] = useState(false);
   const [settings, setSettings] = useState(a11yDefaults);
-
   const copy = {
     he: { button: "נגישות", title: "כלי נגישות", close: "סגירה", textSize: "גודל טקסט", decrease: "A-", resetSize: "איפוס", increase: "A+", contrast: "ניגודיות גבוהה", linksLabel: "קו תחתון לקישורים", readable: "פונט קריא", motion: "הפחתת תנועה", resetAll: "איפוס הכל" },
     en: { button: "Accessibility", title: "Accessibility Tools", close: "Close", textSize: "Text size", decrease: "A-", resetSize: "Reset", increase: "A+", contrast: "High contrast", linksLabel: "Underline links", readable: "Readable font", motion: "Reduce motion", resetAll: "Reset all" },
     ar: { button: "إمكانية الوصول", title: "أدوات إمكانية الوصول", close: "إغلاق", textSize: "حجم النص", decrease: "A-", resetSize: "إعادة", increase: "A+", contrast: "تباين عالي", linksLabel: "خط تحت الروابط", readable: "خط مقروء", motion: "تقليل الحركة", resetAll: "إعادة تعيين الكل" },
   }[lang];
-
   useEffect(() => {
     try {
       const raw = localStorage.getItem(a11yStorageKey);
-      if (raw) {
-        const p = JSON.parse(raw);
-        const s = { fontScale: Math.min(1.3, Math.max(0.9, Number(p.fontScale ?? 1))), contrast: !!p.contrast, links: !!p.links, readableFont: !!p.readableFont, reducedMotion: !!p.reducedMotion };
-        setSettings(s);
-        applyA11y(s);
-      }
+      if (raw) { const p = JSON.parse(raw); const s = { fontScale: Math.min(1.3, Math.max(0.9, Number(p.fontScale ?? 1))), contrast: !!p.contrast, links: !!p.links, readableFont: !!p.readableFont, reducedMotion: !!p.reducedMotion }; setSettings(s); applyA11y(s); }
     } catch { /* ignore */ }
   }, []);
-
   const applyA11y = (s: typeof a11yDefaults) => {
     const root = document.documentElement;
     root.style.fontSize = s.fontScale === 1 ? "" : `${s.fontScale * 100}%`;
@@ -667,841 +520,872 @@ function AccessibilityWidget({ lang }: { lang: Lang }) {
     root.toggleAttribute("data-a11y-readable-font", s.readableFont);
     root.toggleAttribute("data-a11y-reduced-motion", s.reducedMotion);
   };
-
   const update = (next: typeof a11yDefaults) => {
-    setSettings(next);
-    applyA11y(next);
+    setSettings(next); applyA11y(next);
     try {
       const isDefault = next.fontScale === 1 && !next.contrast && !next.links && !next.readableFont && !next.reducedMotion;
       if (isDefault) localStorage.removeItem(a11yStorageKey);
       else localStorage.setItem(a11yStorageKey, JSON.stringify(next));
     } catch { /* ignore */ }
   };
-
   const isRtl = lang !== "en";
-  const posClass = isRtl ? "left-4" : "right-4";
-  const panelAlign = isRtl ? "left-0" : "right-0";
-
   return (
-    <div className={`fixed bottom-4 ${posClass} z-[100] flex flex-col ${isRtl ? "items-start" : "items-end"}`}>
+    <div style={{ position: "fixed", bottom: 16, [isRtl ? "left" : "right"]: 16, zIndex: 100 }}>
       {open && (
-        <div className={`absolute bottom-full ${panelAlign} mb-3 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-gray-200 bg-white/95 p-4 shadow-2xl backdrop-blur`}
+        <div style={{ position: "absolute", bottom: "100%", [isRtl ? "left" : "right"]: 0, marginBottom: 12, width: "min(22rem,calc(100vw - 2rem))", borderRadius: 16, border: "1px solid var(--line)", background: "rgba(255,255,255,.95)", padding: 16, boxShadow: "0 24px 60px -24px rgba(0,0,0,.25)", backdropFilter: "blur(12px)" }}
           role="dialog" onKeyDown={(e) => e.key === "Escape" && setOpen(false)}>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">{copy.title}</h2>
-            <button onClick={() => setOpen(false)} className="text-sm text-gray-500 hover:text-gray-900">{copy.close}</button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>{copy.title}</h2>
+            <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-50)", fontSize: 13 }}>{copy.close}</button>
           </div>
-          <div className="space-y-3">
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-              <p className="mb-3 text-sm font-semibold">{copy.textSize}</p>
-              <div className="flex flex-wrap gap-2">
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ borderRadius: 12, border: "1px solid var(--line)", background: "var(--paper-2)", padding: 16 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>{copy.textSize}</p>
+              <div style={{ display: "flex", gap: 8 }}>
                 {[{ label: copy.decrease, fn: () => update({ ...settings, fontScale: Math.max(0.9, settings.fontScale - 0.1) }) },
                   { label: copy.resetSize, fn: () => update({ ...settings, fontScale: 1 }) },
                   { label: copy.increase, fn: () => update({ ...settings, fontScale: Math.min(1.3, settings.fontScale + 0.1) }) },
                 ].map((b) => (
-                  <button key={b.label} onClick={b.fn} className="min-w-[4.5rem] rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium" style={{ borderColor: undefined }}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = pal.accentBorder)}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e5e7eb")}>{b.label}</button>
+                  <button key={b.label} onClick={b.fn} style={{ minWidth: "4.5rem", borderRadius: 8, border: "1px solid var(--line)", background: "white", padding: "8px 12px", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{b.label}</button>
                 ))}
               </div>
             </div>
-            {([
-              ["contrast", copy.contrast],
-              ["links", copy.linksLabel],
-              ["readableFont", copy.readable],
-              ["reducedMotion", copy.motion],
-            ] as const).map(([key, label]) => (
-              <label key={key} className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium cursor-pointer">
-                <span>{label}</span>
-                <input type="checkbox" checked={settings[key] as boolean} onChange={(e) => update({ ...settings, [key]: e.target.checked })}
-                  className="h-5 w-5 shrink-0" style={{ accentColor: pal.accent }} />
-              </label>
-            ))}
-            <button onClick={() => update(a11yDefaults)}
-              className="w-full rounded-lg px-4 py-3 text-sm font-semibold text-white transition"
-              style={{ background: pal.accent }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = pal.accentHover)}
-              onMouseLeave={(e) => (e.currentTarget.style.background = pal.accent)}>{copy.resetAll}</button>
+            {(["contrast", "links", "readableFont", "reducedMotion"] as const).map((key, i) => {
+              const labels = [copy.contrast, copy.linksLabel, copy.readable, copy.motion];
+              return (
+                <label key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 12, border: "1px solid var(--line)", background: "var(--paper-2)", padding: "12px 16px", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+                  <span>{labels[i]}</span>
+                  <input type="checkbox" checked={settings[key] as boolean} onChange={(e) => update({ ...settings, [key]: e.target.checked })} style={{ width: 20, height: 20, accentColor: "var(--brand)" }} />
+                </label>
+              );
+            })}
+            <button onClick={() => update(a11yDefaults)} style={{ width: "100%", borderRadius: 8, padding: "12px 16px", fontSize: 13, fontWeight: 600, background: "var(--brand)", color: "white", border: "none", cursor: "pointer" }}>{copy.resetAll}</button>
           </div>
         </div>
       )}
       <button onClick={() => setOpen(!open)} aria-expanded={open} aria-label={copy.button}
-        className="inline-flex items-center gap-2 rounded-full px-3 py-3 text-white shadow-lg transition hover:-translate-y-0.5"
-        style={{ background: pal.accent, boxShadow: `0 10px 15px -3px ${pal.shadow}`, borderColor: pal.accentBorder, borderWidth: 1 }}>
-        <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 999, padding: "12px 14px", background: "var(--brand)", color: "white", border: "none", cursor: "pointer", boxShadow: "0 10px 15px -3px rgba(196,30,58,.2)", fontSize: 14, fontWeight: 600 }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
           <circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none" />
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5v4.5m0 0l-4.5 1.5m4.5-1.5l4.5 1.5M10 22l2-6 2 6m-6-3h8" />
         </svg>
-        <span className="hidden text-sm font-semibold sm:inline">{copy.button}</span>
+        <span style={{ display: "none" }} className="a11y-label">{copy.button}</span>
       </button>
     </div>
   );
 }
 
-/* ── Contact Form ── */
+/* ═══════════════════════════════════════════════════════════
+   Nav
+   ═══════════════════════════════════════════════════════════ */
+function Nav({ L, lang, setLang }: { L: I18NData; lang: Lang; setLang: (l: Lang) => void }) {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onS = () => setScrolled(window.scrollY > 8);
+    window.addEventListener("scroll", onS, { passive: true });
+    return () => window.removeEventListener("scroll", onS);
+  }, []);
+  const navLinks = [
+    { href: "#modules", label: L.nav.modules }, { href: "#how", label: L.nav.how },
+    { href: "#pricing", label: L.nav.pricing }, { href: "#demo", label: L.nav.demo },
+    { href: "#contact", label: L.nav.contact },
+  ];
+  return (
+    <header style={{
+      position: "sticky", top: 0, zIndex: 80,
+      backdropFilter: scrolled ? "blur(12px)" : "none",
+      background: scrolled ? "rgba(251,247,244,.85)" : "transparent",
+      borderBottom: scrolled ? "1px solid var(--line)" : "1px solid transparent",
+      transition: "all .25s",
+    }}>
+      <div className="container-x" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 24px" }}>
+        <a href="#top" style={{ display: "flex" }}><Logo /></a>
+        <nav className="nav-links" style={{ display: "flex", alignItems: "center", gap: 28 }}>
+          {navLinks.map(l => <a key={l.href} href={l.href} style={{ fontSize: 14, color: "var(--ink-70)", fontWeight: 500 }}>{l.label}</a>)}
+        </nav>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 2, background: "var(--paper-2)", borderRadius: 999, padding: 3, border: "1px solid var(--line)" }}>
+            {(["he", "en", "ar"] as const).map(c => (
+              <button key={c} onClick={() => setLang(c)} style={{
+                border: "none", background: lang === c ? "white" : "transparent",
+                color: lang === c ? "var(--ink)" : "var(--ink-50)",
+                padding: "6px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                boxShadow: lang === c ? "0 1px 2px rgba(0,0,0,.08)" : "none",
+              }}>{c.toUpperCase()}</button>
+            ))}
+          </div>
+          <a href="#contact" className="btn btn-primary" style={{ padding: "10px 16px", fontSize: 14 }}>
+            {L.nav.cta} <span className="arrow">{"\u2192"}</span>
+          </a>
+        </div>
+      </div>
+      <style>{`@media(max-width:900px){ .nav-links{ display:none !important; } }`}</style>
+    </header>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Hero Widget (auto-looping booking demo)
+   ═══════════════════════════════════════════════════════════ */
+function HeroWidget({ L }: { L: I18NData }) {
+  const w = L.widget;
+  const [step, setStep] = useState(0);
+  const [party, setParty] = useState(2);
+  const [time, setTime] = useState("19:30");
+  const [seating, setSeating] = useState("indoor");
+  const [auto, setAuto] = useState(true);
+
+  useEffect(() => {
+    if (!auto) return;
+    const seq = [
+      { t: 1400, fn: () => setParty(4) },
+      { t: 900, fn: () => setStep(1) },
+      { t: 1500, fn: () => setTime("20:00") },
+      { t: 900, fn: () => setStep(2) },
+      { t: 1400, fn: () => setSeating("outdoor") },
+      { t: 1200, fn: () => setStep(3) },
+      { t: 2800, fn: () => { setStep(0); setParty(2); setTime("19:30"); setSeating("indoor"); } },
+    ];
+    let i = 0;
+    let tid: ReturnType<typeof setTimeout>;
+    const run = () => {
+      tid = setTimeout(() => { seq[i].fn(); i = (i + 1) % seq.length; run(); }, seq[i].t);
+    };
+    run();
+    return () => clearTimeout(tid);
+  }, [auto]);
+
+  const times = ["18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30"];
+
+  return (
+    <div style={{ width: "100%", maxWidth: 380, background: "white", borderRadius: 24, border: "1px solid var(--line)", boxShadow: "0 40px 80px -30px rgba(196,30,58,.25), 0 8px 24px -12px rgba(0,0,0,.08)", overflow: "hidden", position: "relative" }}
+      onMouseEnter={() => setAuto(false)} onMouseLeave={() => setAuto(true)}>
+      {/* Header */}
+      <div style={{ padding: "18px 20px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--line-soft)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,#FEE2E2,#FECACA)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🍽️</div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{w.restaurant}</div>
+            <div style={{ fontSize: 11, color: "var(--ok)", display: "flex", alignItems: "center", gap: 6 }}><span className="live-dot" />{w.subtitle}</div>
+          </div>
+        </div>
+        <div className="mono-sm">{["01", "02", "03", "04"][step]}/04</div>
+      </div>
+      {/* Progress */}
+      <div style={{ display: "flex", gap: 4, padding: "12px 20px 0" }}>
+        {[0, 1, 2, 3].map(i => <div key={i} style={{ flex: 1, height: 3, borderRadius: 999, background: i <= step ? "var(--brand)" : "var(--line)", transition: "background .4s" }} />)}
+      </div>
+      {/* Steps */}
+      <div style={{ padding: 20, minHeight: 280 }}>
+        {step === 0 && (
+          <div key="s0" style={{ animation: "slide-in-up .4s both" }}>
+            <div style={{ fontSize: 12, color: "var(--ink-50)", marginBottom: 6 }}>{w.dateLabel}</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1.5px solid var(--brand)", borderRadius: 12, padding: "12px 14px", marginBottom: 18 }}>
+              <div><div style={{ fontWeight: 700, fontSize: 16 }}>{L.dateFull}</div><div style={{ fontSize: 11, color: "var(--ink-50)" }}>{L.dateRelative}</div></div>
+              <span style={{ fontSize: 20 }}>🗓️</span>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--ink-50)", marginBottom: 6 }}>{w.partyLabel}</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {[2, 3, 4, 5, 6, 7].map(n => (
+                <button key={n} onClick={() => setParty(n)} style={{ flex: 1, padding: "10px 0", borderRadius: 10, background: party === n ? "var(--brand)" : "var(--paper-2)", color: party === n ? "white" : "var(--ink)", border: `1px solid ${party === n ? "var(--brand)" : "var(--line)"}`, fontWeight: 600, fontSize: 13, cursor: "pointer", transition: "all .2s" }}>{n}</button>
+              ))}
+            </div>
+          </div>
+        )}
+        {step === 1 && (
+          <div key="s1" style={{ animation: "slide-in-up .4s both" }}>
+            <div style={{ fontSize: 12, color: "var(--ink-50)", marginBottom: 10 }}>{w.timeLabel} · {party} {L.guests}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
+              {times.map(t => (
+                <button key={t} onClick={() => setTime(t)} style={{ padding: "12px 0", borderRadius: 10, background: time === t ? "var(--brand)" : "white", color: time === t ? "white" : "var(--ink)", border: `1px solid ${time === t ? "var(--brand)" : "var(--line)"}`, fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "var(--font-mono)" }}>{t}</button>
+              ))}
+            </div>
+            <div style={{ marginTop: 14, padding: "10px 12px", background: "var(--brand-50)", borderRadius: 10, fontSize: 12, color: "var(--brand-600)", display: "flex", alignItems: "center", gap: 8 }}>
+              <span>{"\u2728"}</span><span>{L.autoAssign}</span>
+            </div>
+          </div>
+        )}
+        {step === 2 && (
+          <div key="s2" style={{ animation: "slide-in-up .4s both" }}>
+            <div style={{ fontSize: 12, color: "var(--ink-50)", marginBottom: 8 }}>{w.seatingLabel}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 14 }}>
+              {([["indoor", "🏠"], ["outdoor", "🌿"], ["bar", "🍷"]] as const).map(([k, ic]) => (
+                <button key={k} onClick={() => setSeating(k)} style={{ padding: "14px 8px", borderRadius: 10, background: seating === k ? "var(--brand-50)" : "white", border: `1px solid ${seating === k ? "var(--brand)" : "var(--line)"}`, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+                  <div style={{ fontSize: 18, marginBottom: 4 }}>{ic}</div>{w.seating[k]}
+                </button>
+              ))}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--ink-50)", marginBottom: 6 }}>{w.nameLabel}</div>
+            <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginBottom: 10, fontSize: 13, fontFamily: "var(--font-mono)" }}>{L.demoName}<span className="caret" /></div>
+            <div style={{ fontSize: 12, color: "var(--ink-50)", marginBottom: 6 }}>{w.phoneLabel} · {w.phoneHint}</div>
+            <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", fontSize: 13, fontFamily: "var(--font-mono)" }}>054-123-4567</div>
+          </div>
+        )}
+        {step === 3 && (
+          <div key="s3" style={{ animation: "slide-in-up .4s both", textAlign: "center", paddingTop: 20 }}>
+            <div style={{ width: 64, height: 64, borderRadius: 999, background: "linear-gradient(135deg,#DCFCE7,#BBF7D0)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 28, position: "relative", marginBottom: 16 }}>
+              {"\u2713"}<span style={{ position: "absolute", inset: -8, borderRadius: 999, border: "2px solid #22C55E", opacity: .3, animation: "pulse-ring 1.6s ease-out infinite" }} />
+            </div>
+            <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 6 }}>{w.confirmedTitle}</div>
+            <div style={{ fontSize: 13, color: "var(--ink-70)", marginBottom: 18 }}>{w.confirmedSub}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "#DCFCE7", borderRadius: 12, textAlign: "start", animation: "slide-in-up .5s .3s both" }}>
+              <div style={{ fontSize: 20 }}>💬</div>
+              <div style={{ fontSize: 12, color: "#166534" }}>
+                <div style={{ fontWeight: 700, marginBottom: 2 }}>WhatsApp · {w.restaurant}</div>
+                <div>{L.waConfirm}</div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      {/* Footer */}
+      <div style={{ padding: "10px 20px", borderTop: "1px solid var(--line-soft)", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 11, color: "var(--ink-50)" }}>
+        <span className="mono-sm">{auto ? L.loopingDemo : L.paused}</span>
+        <span className="mono-sm">powered by OpenSeat</span>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Hero
+   ═══════════════════════════════════════════════════════════ */
+function Hero({ L }: { L: I18NData }) {
+  const ref = useReveal();
+  return (
+    <section id="top" style={{ position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none" }}>
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, #FBF7F4 0%, #FEF2F2 60%, #FBF7F4 100%)" }} />
+        <div style={{ position: "absolute", width: 480, height: 480, borderRadius: "50%", background: "radial-gradient(circle at center, rgba(196,30,58,.22), transparent 70%)", top: -120, insetInlineEnd: -80, animation: "mesh-drift 14s ease-in-out infinite" }} />
+        <div style={{ position: "absolute", width: 360, height: 360, borderRadius: "50%", background: "radial-gradient(circle at center, rgba(253,186,116,.35), transparent 70%)", bottom: -120, insetInlineStart: -60, animation: "mesh-drift 18s ease-in-out infinite reverse" }} />
+        <div className="hero-grid-bg" style={{ position: "absolute", inset: 0 }} />
+      </div>
+      <div className="container-x" style={{ position: "relative", zIndex: 1, paddingBlock: "72px 96px" }}>
+        <div className="hero-cols" style={{ display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: 48, alignItems: "center" }}>
+          <div ref={ref} className="reveal-stagger">
+            <div className="chip" style={{ marginBottom: 20, background: "white" }}>
+              <span className="live-dot" /> <span style={{ fontWeight: 500 }}>{L.hero.badge}</span>
+            </div>
+            <h1 className="font-display" style={{ fontSize: "clamp(44px, 6vw, 84px)", lineHeight: 1.02, margin: "0 0 18px", fontWeight: 600, letterSpacing: "-0.03em" }}>
+              <span>{L.hero.title1}</span>{" "}
+              <span style={{ background: "linear-gradient(90deg, var(--brand), #F97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", fontStyle: "italic" }}>{L.hero.title2}</span>{" "}
+              <span>{L.hero.title3}</span>
+            </h1>
+            <p style={{ fontSize: 18, color: "var(--ink-70)", maxWidth: 560, margin: "0 0 28px", lineHeight: 1.6 }}>{L.hero.desc}</p>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+              <a href="#demo" className="btn btn-primary">{L.hero.cta1} <span className="arrow">{"\u2192"}</span></a>
+              <a href="#pricing" className="btn btn-secondary">{L.hero.cta2}</a>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--ink-50)" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" /><circle cx="12" cy="12" r="9" /></svg>
+              {L.hero.trust}
+            </div>
+          </div>
+          <div style={{ position: "relative", display: "flex", justifyContent: "center" }}>
+            <HeroWidget L={L} />
+            <div className="callout-chip" style={{ top: 24, insetInlineStart: -10, animation: "floaty 5s ease-in-out infinite" }}>
+              <span style={{ color: "var(--brand)", fontWeight: 700 }}>+42%</span> {L.repeatGuests}
+            </div>
+            <div className="callout-chip" style={{ bottom: 70, insetInlineEnd: -18, display: "flex", alignItems: "center", gap: 8, animation: "floaty 6s ease-in-out -2s infinite" }}>
+              <span style={{ width: 18, height: 18, borderRadius: 6, background: "#25D366", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 11 }}>💬</span>
+              {L.waAutoConfirm}
+            </div>
+            <div className="callout-chip" style={{ top: "52%", insetInlineEnd: -30, background: "var(--ink)", color: "white", border: "1px solid var(--ink)", animation: "floaty 7s ease-in-out -1s infinite" }}>
+              <span className="typing-dot" style={{ background: "var(--brand)" }} />
+              <span className="typing-dot" style={{ background: "var(--brand)" }} />
+              <span className="typing-dot" style={{ background: "var(--brand)" }} />
+              <span style={{ marginInlineStart: 8 }}>{L.aiTyping}</span>
+            </div>
+          </div>
+        </div>
+        {/* Stats */}
+        <div className="stats-grid" style={{ marginTop: 80, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)" }}>
+          {L.stats.map((s, i) => (
+            <div key={i} style={{ padding: "28px 20px", borderInlineEnd: i < 3 ? "1px solid var(--line)" : "none", animation: "count-up .7s both", animationDelay: `${i * 0.08}s` }}>
+              <div className="font-display" style={{ fontSize: "clamp(28px,3.5vw,44px)", lineHeight: 1, fontWeight: 700, color: "var(--brand)" }}>{s.k}</div>
+              <div style={{ fontSize: 13, color: "var(--ink-70)", marginTop: 8, fontWeight: 500 }}>{s.v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <style>{`
+        @media(max-width:960px){ .hero-cols{ grid-template-columns: 1fr !important; } .stats-grid{ grid-template-columns: repeat(2,1fr) !important; } .stats-grid > div:nth-child(2n){ border-inline-end: none !important; } .stats-grid > div:nth-child(-n+2){ border-bottom: 1px solid var(--line); } .callout-chip{ display: none !important; } }
+        @media(max-width:520px){ .stats-grid{ grid-template-columns: 1fr !important; } .stats-grid > div{ border-inline-end: none !important; border-bottom: 1px solid var(--line); } }
+      `}</style>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Tape Marquee
+   ═══════════════════════════════════════════════════════════ */
+function Tape({ L }: { L: I18NData }) {
+  const items = [...L.tape, ...L.tape];
+  return (
+    <div className="tape">
+      <div className="tape-inner marquee">
+        {items.map((it, i) => <span key={i} className="tape-item"><span className="tape-sep" />{it}</span>)}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Modules
+   ═══════════════════════════════════════════════════════════ */
+function Modules({ L, lang }: { L: I18NData; lang: Lang }) {
+  const ref = useReveal();
+  const [active, setActive] = useState(0);
+  return (
+    <section id="modules" style={{ padding: "120px 0" }}>
+      <div className="container-x">
+        <div ref={ref} className="reveal" style={{ marginBottom: 56, maxWidth: 760 }}>
+          <div className="eyebrow" style={{ marginBottom: 16 }}>01 · {L.eyebrows.system}</div>
+          <h2 className="font-display" style={{ fontSize: "clamp(36px,4.5vw,60px)", lineHeight: 1.05, margin: 0, fontWeight: 600, letterSpacing: "-0.03em" }}>
+            {L.modulesTitle}<br /><span style={{ color: "var(--brand)" }}>{L.modulesTitle2}</span>
+          </h2>
+          <p style={{ color: "var(--ink-70)", fontSize: 17, marginTop: 18, maxWidth: 600 }}>{L.modulesSub}</p>
+        </div>
+        <div className="mod-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 18 }}>
+          {L.modules.map((m, i) => {
+            const isOpen = active === i;
+            return (
+              <div key={m.id} className="module-card" onMouseEnter={() => setActive(i)} style={{
+                background: "white", border: "1px solid var(--line)", borderRadius: 22, padding: 26,
+                position: "relative", overflow: "hidden",
+                boxShadow: isOpen ? "0 30px 60px -30px rgba(0,0,0,.16)" : "0 2px 6px rgba(0,0,0,.02)",
+                transform: isOpen ? "translateY(-4px)" : "none",
+              }}>
+                <div style={{ position: "absolute", top: -60, insetInlineEnd: -60, width: 180, height: 180, borderRadius: "50%", background: `radial-gradient(circle, ${m.color}22, transparent 70%)`, transition: "opacity .4s", opacity: isOpen ? 1 : .5 }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, position: "relative" }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: `${m.color}15`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>{m.icon}</div>
+                  <div>
+                    <div className="mono-sm" style={{ color: m.color }}>{m.tag.toUpperCase()}</div>
+                    <div style={{ fontWeight: 700, fontSize: 16 }}>OpenSeat {m.tag}</div>
+                  </div>
+                </div>
+                <h3 className="font-display" style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 600, lineHeight: 1.2, letterSpacing: "-0.01em" }}>{m.name}</h3>
+                <p style={{ color: "var(--ink-70)", fontSize: 14, marginTop: 0, marginBottom: 18 }}>{m.desc}</p>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+                  {m.features.map((f, k) => (
+                    <li key={k} style={{ display: "flex", gap: 10, fontSize: 13.5, color: "var(--ink-70)" }}>
+                      <span style={{ marginTop: 7, width: 5, height: 5, borderRadius: 999, background: m.color, flex: "0 0 auto" }} />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <style>{`@media(max-width:960px){ .mod-grid{ grid-template-columns: 1fr !important; } }`}</style>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   How it works
+   ═══════════════════════════════════════════════════════════ */
+function How({ L }: { L: I18NData }) {
+  const ref = useReveal();
+  return (
+    <section id="how" style={{ padding: "120px 0", background: "var(--paper-2)", position: "relative", overflow: "hidden" }}>
+      <div className="container-x">
+        <div ref={ref} className="reveal" style={{ marginBottom: 56, textAlign: "center" }}>
+          <div className="eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}>02 · {L.eyebrows.loop}</div>
+          <h2 className="font-display" style={{ fontSize: "clamp(36px,4.5vw,60px)", lineHeight: 1.05, margin: 0, fontWeight: 600, letterSpacing: "-0.03em" }}>{L.howTitle}</h2>
+          <p style={{ color: "var(--ink-70)", fontSize: 17, marginTop: 14, maxWidth: 620, marginInline: "auto" }}>{L.howSub}</p>
+        </div>
+        <div style={{ position: "relative" }}>
+          <svg className="how-line" style={{ position: "absolute", top: 48, left: "5%", right: "5%", width: "90%", height: 60, pointerEvents: "none", zIndex: 0 }} viewBox="0 0 1200 60" preserveAspectRatio="none">
+            <path d="M0,30 C200,0 300,60 600,30 C900,0 1000,60 1200,30" stroke="var(--brand)" strokeWidth="2" strokeDasharray="4 6" fill="none" opacity=".4" />
+          </svg>
+          <div className="how-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 20, position: "relative", zIndex: 1 }}>
+            {L.howSteps.map((s, i) => (
+              <div key={i} style={{ background: "white", border: "1px solid var(--line)", borderRadius: 18, padding: 24, animation: "slide-in-up .6s both", animationDelay: `${i * 0.1}s` }}>
+                <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--brand)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>{s.icon}</div>
+                <div className="mono-sm" style={{ color: "var(--brand)", marginBottom: 6 }}>{s.n}</div>
+                <h3 className="font-display" style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 600 }}>{s.t}</h3>
+                <p style={{ fontSize: 14, color: "var(--ink-70)", margin: 0 }}>{s.d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <style>{`@media(max-width:960px){ .how-grid{ grid-template-columns: repeat(2,1fr) !important; } .how-line{ display:none; } } @media(max-width:560px){ .how-grid{ grid-template-columns: 1fr !important; } }`}</style>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Why
+   ═══════════════════════════════════════════════════════════ */
+function Why({ L }: { L: I18NData }) {
+  const ref = useReveal();
+  return (
+    <section style={{ padding: "120px 0" }}>
+      <div className="container-x">
+        <div ref={ref} className="reveal" style={{ marginBottom: 56, maxWidth: 720 }}>
+          <div className="eyebrow" style={{ marginBottom: 16 }}>03 · {L.eyebrows.value}</div>
+          <h2 className="font-display" style={{ fontSize: "clamp(36px,4.5vw,60px)", lineHeight: 1.05, margin: 0, fontWeight: 600, letterSpacing: "-0.03em" }}>{L.whyTitle}</h2>
+        </div>
+        <div className="why-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 1, background: "var(--line)", border: "1px solid var(--line)", borderRadius: 22, overflow: "hidden" }}>
+          {L.whyPoints.map((p, i) => (
+            <div key={i} style={{ padding: 28, background: "var(--paper)", transition: "background .25s" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "white"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--paper)"; }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--brand-50)", color: "var(--brand)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}><WhyIcon k={p.accent} /></div>
+              <h3 className="font-display" style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 600 }}>{p.t}</h3>
+              <p style={{ fontSize: 14, color: "var(--ink-70)", margin: 0 }}>{p.d}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+      <style>{`@media(max-width:900px){ .why-grid{ grid-template-columns: repeat(2,1fr) !important; } } @media(max-width:560px){ .why-grid{ grid-template-columns: 1fr !important; } }`}</style>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Comparison
+   ═══════════════════════════════════════════════════════════ */
+function Comparison({ L }: { L: I18NData }) {
+  const ref = useReveal();
+  return (
+    <section style={{ padding: "120px 0", background: "var(--paper-2)" }}>
+      <div className="container-x">
+        <div ref={ref} className="reveal" style={{ marginBottom: 40, textAlign: "center" }}>
+          <div className="eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}>04 · {L.eyebrows.compare}</div>
+          <h2 className="font-display" style={{ fontSize: "clamp(36px,4.5vw,60px)", lineHeight: 1.05, margin: 0, fontWeight: 600, letterSpacing: "-0.03em" }}>{L.cmpTitle}</h2>
+          <p style={{ color: "var(--ink-70)", fontSize: 17, marginTop: 14 }}>{L.cmpSub}</p>
+        </div>
+        <div style={{ background: "white", borderRadius: 22, border: "1px solid var(--line)", overflow: "auto", boxShadow: "0 10px 30px -20px rgba(0,0,0,.1)" }}>
+          <table className="cmp-table">
+            <thead><tr>{L.cmpHeaders.map((h, i) => <th key={i} className={i === 1 ? "cmp-col-brand" : ""} style={{ color: i === 1 ? "var(--brand)" : undefined, fontSize: i === 1 ? 14 : undefined, padding: "18px 14px" }}>{h}</th>)}</tr></thead>
+            <tbody>{L.cmpRows.map((row, i) => (
+              <tr key={i} className="cmp-row">{row.map((c, k) => <td key={k} className={(k === 0 ? "row-label" : "row-cell ") + (k === 1 ? " cmp-col-brand" : "")}>{k === 0 ? c : <CmpCell v={c} />}</td>)}</tr>
+            ))}</tbody>
+          </table>
+        </div>
+        <div style={{ marginTop: 16, display: "flex", gap: 18, justifyContent: "center", flexWrap: "wrap", fontSize: 12, color: "var(--ink-50)" }}>
+          <span><span className="cmp-check yes" style={{ width: 18, height: 18, fontSize: 11 }}>{"\u2713"}</span> {L.cmpLegend.yes}</span>
+          <span><span className="cmp-check partial" style={{ width: 18, height: 18, fontSize: 11 }}>~</span> {L.cmpLegend.partial}</span>
+          <span><span className="cmp-check no" style={{ width: 18, height: 18, fontSize: 11 }}>{"\u2715"}</span> {L.cmpLegend.no}</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Launch Banner
+   ═══════════════════════════════════════════════════════════ */
+function Launch({ L }: { L: I18NData }) {
+  const ref = useReveal();
+  return (
+    <section ref={ref} className="reveal" style={{ padding: "80px 0" }}>
+      <div className="container-x">
+        <div style={{ position: "relative", overflow: "hidden", borderRadius: 24, padding: "48px 40px", background: "linear-gradient(135deg, var(--accent-warm) 0%, #FEE2E2 100%)", border: "1px solid var(--launch-border)" }}>
+          <div style={{ position: "absolute", inset: 0, opacity: .5, backgroundImage: "repeating-linear-gradient(45deg, rgba(253,186,116,.2) 0 2px, transparent 2px 12px)", pointerEvents: "none" }} />
+          <div className="launch-grid" style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 36, alignItems: "center", position: "relative" }}>
+            <div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 12px", borderRadius: 999, background: "white", border: "1px solid var(--launch-border)", fontSize: 12, fontWeight: 600, color: "var(--brand)", marginBottom: 18 }}>
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: "var(--brand)", animation: "pulse-ring 2s infinite" }} />{L.launchKicker}
+              </div>
+              <h2 className="font-display" style={{ fontSize: "clamp(30px,3.6vw,46px)", lineHeight: 1.1, margin: "0 0 14px", fontWeight: 600, letterSpacing: "-0.02em" }}>{L.launchTitle}</h2>
+              <p style={{ color: "var(--ink-70)", fontSize: 16, margin: "0 0 24px", maxWidth: 520 }}>{L.launchDesc}</p>
+              <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+                <a href="#contact" className="btn btn-primary">{L.launchCta} <span className="arrow">{"\u2192"}</span></a>
+                <span style={{ fontSize: 12, color: "var(--ink-70)", fontFamily: "var(--font-mono)" }}>{L.launchNote}</span>
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <div style={{ background: "white", borderRadius: 20, padding: 28, textAlign: "center", border: "1px solid var(--launch-border)", boxShadow: "0 30px 60px -30px rgba(196,30,58,.3)", minWidth: 240 }}>
+                <div className="mono-sm" style={{ color: "var(--ink-50)", marginBottom: 8 }}>Growth · {L.pilotLabel}</div>
+                <div style={{ fontSize: 18, color: "var(--ink-50)", textDecoration: "line-through", marginBottom: 6 }}>{"\u20AA"}799</div>
+                <div className="font-display" style={{ fontSize: 56, lineHeight: 1, fontWeight: 700, color: "var(--brand)" }}>{"\u20AA"}299</div>
+                <div style={{ fontSize: 13, color: "var(--ink-70)", marginTop: 6 }}>{L.pilotPrice}</div>
+                <div style={{ marginTop: 18, padding: "10px 0 0", borderTop: "1px solid var(--line)", fontSize: 12, color: "var(--ink-50)" }}>{"\u2713"} {L.everythingIncluded}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <style>{`@media(max-width:780px){ .launch-grid{ grid-template-columns: 1fr !important; } }`}</style>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Pricing
+   ═══════════════════════════════════════════════════════════ */
+function Pricing({ L }: { L: I18NData }) {
+  const ref = useReveal();
+  const [tier, setTier] = useState("80");
+  const [annual, setAnnual] = useState(false);
+  const mult = annual ? 10 / 12 : 1;
+  return (
+    <section id="pricing" style={{ padding: "120px 0" }}>
+      <div className="container-x">
+        <div ref={ref} className="reveal" style={{ marginBottom: 40, textAlign: "center" }}>
+          <div className="eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}>05 · {L.eyebrows.pricing}</div>
+          <h2 className="font-display" style={{ fontSize: "clamp(36px,4.5vw,60px)", lineHeight: 1.05, margin: 0, fontWeight: 600, letterSpacing: "-0.03em" }}>{L.pricingTitle}</h2>
+          <p style={{ color: "var(--ink-70)", fontSize: 17, marginTop: 14, maxWidth: 620, marginInline: "auto" }}>{L.pricingSub}</p>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 14, justifyContent: "center", alignItems: "center", marginBottom: 40 }}>
+          <div style={{ background: "var(--paper-2)", border: "1px solid var(--line)", borderRadius: 999, padding: 4, display: "flex", gap: 2 }}>
+            {L.tiers.map(t => <button key={t.id} onClick={() => setTier(t.id)} className={"tier-pill " + (tier === t.id ? "active" : "")}>{t.label}</button>)}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--ink-70)" }}>
+            <span>{L.monthlyLabel}</span>
+            <button className="toggle" aria-pressed={annual} onClick={() => setAnnual(!annual)} />
+            <span>{L.annualLabel}</span>
+            <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: "var(--brand-50)", color: "var(--brand)", fontWeight: 600 }}>-17%</span>
+          </div>
+        </div>
+        <div className="plan-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 22 }}>
+          {L.plans.map((p) => {
+            const price = Math.round(p.prices[tier] * mult);
+            return (
+              <div key={p.name} className={"plan-card" + (p.popular ? " popular" : "")}>
+                {p.popular && <div style={{ position: "absolute", top: -14, insetInlineStart: 24, background: "var(--brand)", color: "white", fontSize: 11, fontWeight: 700, padding: "6px 14px", borderRadius: 999, letterSpacing: ".08em" }}>{L.mostPopular}</div>}
+                <div className="mono-sm" style={{ color: "var(--brand)" }}>{p.module}</div>
+                <h3 className="font-display" style={{ margin: "10px 0 6px", fontSize: 34, fontWeight: 700, letterSpacing: "-0.02em" }}>{p.name}</h3>
+                <p style={{ color: "var(--ink-70)", fontSize: 14, margin: "0 0 20px" }}>{p.desc}</p>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 8 }}>
+                  <span className="font-display" style={{ fontSize: 52, fontWeight: 700, lineHeight: 1, color: p.popular ? "var(--brand)" : "var(--ink)" }}>{"\u20AA"}{price.toLocaleString()}</span>
+                  <span style={{ fontSize: 14, color: "var(--ink-50)" }}>/{L.perMonth}</span>
+                </div>
+                <div style={{ fontSize: 12, color: "var(--ink-50)", marginBottom: 20, minHeight: 18 }}>{annual ? L.annualNote : L.monthlyNote}</div>
+                <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px", display: "flex", flexDirection: "column", gap: 10 }}>
+                  {p.includes.map((x, k) => (
+                    <li key={k} style={{ display: "flex", gap: 10, fontSize: 14 }}>
+                      <span style={{ width: 18, height: 18, borderRadius: 999, background: p.popular ? "var(--brand)" : "var(--ink)", color: "white", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10, flex: "0 0 auto", marginTop: 2 }}>{"\u2713"}</span>
+                      <span>{x}</span>
+                    </li>
+                  ))}
+                </ul>
+                <a href="#contact" className={"btn " + (p.popular ? "btn-primary" : "btn-secondary")} style={{ width: "100%", justifyContent: "center" }}>{L.startWith(p.name)}</a>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <style>{`@media(max-width:780px){ .plan-grid{ grid-template-columns: 1fr !important; } }`}</style>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Addons
+   ═══════════════════════════════════════════════════════════ */
+function Addons({ L }: { L: I18NData }) {
+  const ref = useReveal();
+  return (
+    <section style={{ padding: "40px 0 120px" }}>
+      <div className="container-x">
+        <div ref={ref} className="reveal" style={{ marginBottom: 32, textAlign: "center" }}>
+          <h3 className="font-display" style={{ fontSize: "clamp(26px,3vw,36px)", margin: "0 0 10px", fontWeight: 600 }}>{L.addonsTitle}</h3>
+          <p style={{ color: "var(--ink-70)", margin: 0 }}>{L.addonsSub}</p>
+        </div>
+        <div className="addon-grid" style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 14 }}>
+          {L.addons.map((a, i) => (
+            <div key={i} style={{ padding: 20, border: "1px solid var(--line)", borderRadius: 16, background: "white", transition: "transform .25s, border-color .25s", cursor: "default" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--brand)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "none"; (e.currentTarget as HTMLElement).style.borderColor = "var(--line)"; }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--brand)", marginBottom: 8, fontFamily: "var(--font-mono)" }}>{a.p}</div>
+              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>{a.t}</div>
+              <div style={{ fontSize: 12, color: "var(--ink-70)", lineHeight: 1.5 }}>{a.d}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <style>{`@media(max-width:1000px){ .addon-grid{ grid-template-columns: repeat(3,1fr) !important; } } @media(max-width:640px){ .addon-grid{ grid-template-columns: 1fr 1fr !important; } }`}</style>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FAQ
+   ═══════════════════════════════════════════════════════════ */
+function FAQ({ L }: { L: I18NData }) {
+  const ref = useReveal();
+  return (
+    <section style={{ padding: "120px 0", background: "var(--paper-2)" }}>
+      <div className="container-x" style={{ maxWidth: 860 }}>
+        <div ref={ref} className="reveal" style={{ marginBottom: 40, textAlign: "center" }}>
+          <div className="eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}>06 · FAQ</div>
+          <h2 className="font-display" style={{ fontSize: "clamp(36px,4.5vw,54px)", lineHeight: 1.05, margin: 0, fontWeight: 600, letterSpacing: "-0.03em" }}>{L.faqTitle}</h2>
+        </div>
+        <div style={{ background: "white", borderRadius: 22, border: "1px solid var(--line)", padding: "8px 28px" }}>
+          {L.faq.map((f, i) => (
+            <details className="faq" key={i} open={i === 0}>
+              <summary>{f.q} <span className="plus">+</span></summary>
+              <div className="answer">{f.a}</div>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Live Demo (interactive phone mockup)
+   ═══════════════════════════════════════════════════════════ */
+function LiveDemo({ L }: { L: I18NData }) {
+  const ref = useReveal();
+  const w = L.widget;
+  const [step, setStep] = useState(0);
+  const [party, setParty] = useState(2);
+  const [time, setTime] = useState("");
+  const [seating, setSeating] = useState("indoor");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const times = ["18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30"];
+  const reset = () => { setStep(0); setParty(2); setTime(""); setSeating("indoor"); setName(""); setPhone(""); };
+  const submit = () => { setSubmitting(true); setTimeout(() => { setSubmitting(false); setStep(4); }, 1200); };
+
+  return (
+    <section id="demo" style={{ padding: "120px 0" }}>
+      <div className="container-x">
+        <div ref={ref} className="reveal" style={{ marginBottom: 40, textAlign: "center" }}>
+          <div className="eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}>07 · {L.eyebrows.demo}</div>
+          <h2 className="font-display" style={{ fontSize: "clamp(36px,4.5vw,54px)", lineHeight: 1.05, margin: 0, fontWeight: 600, letterSpacing: "-0.03em" }}>{L.demoTitle}</h2>
+          <p style={{ color: "var(--ink-70)", fontSize: 17, marginTop: 14, maxWidth: 600, marginInline: "auto" }}>{L.demoSub}</p>
+        </div>
+        <div className="demo-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, alignItems: "center", maxWidth: 1040, marginInline: "auto" }}>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <div className="phone">
+              <div className="phone-screen" dir={L.dir}>
+                <div style={{ padding: "30px 20px 14px", background: "linear-gradient(135deg, var(--brand), var(--brand-600))", color: "white" }}>
+                  <div style={{ fontSize: 11, opacity: .8, fontFamily: "var(--font-mono)" }}>{w.restaurant.toUpperCase()}</div>
+                  <div style={{ fontWeight: 700, fontSize: 20, marginTop: 2 }}>{w.title}</div>
+                </div>
+                <div style={{ padding: "18px 20px 0", display: "flex", gap: 4 }}>
+                  {[0, 1, 2, 3].map(i => <div key={i} style={{ flex: 1, height: 3, borderRadius: 999, background: i <= step && step < 4 ? "var(--brand)" : (step === 4 ? "var(--ok)" : "var(--line)"), transition: "background .4s" }} />)}
+                </div>
+                <div style={{ padding: "18px 20px 20px" }}>
+                  {step === 0 && (
+                    <div style={{ animation: "slide-in-up .3s both" }}>
+                      <label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginBottom: 6 }}>{w.dateLabel}</label>
+                      <input type="date" defaultValue={today} min={today} style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--paper)", fontSize: 14, fontFamily: "var(--font-mono)" }} />
+                      <label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginTop: 14, marginBottom: 8 }}>{w.partyLabel}</label>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 6 }}>
+                        {[1, 2, 3, 4, 5, 6].map(n => (
+                          <button key={n} onClick={() => setParty(n)} style={{ padding: "10px 0", borderRadius: 8, border: `1px solid ${party === n ? "var(--brand)" : "var(--line)"}`, background: party === n ? "var(--brand)" : "white", color: party === n ? "white" : "var(--ink)", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>{n}</button>
+                        ))}
+                      </div>
+                      <button onClick={() => setStep(1)} style={{ width: "100%", marginTop: 18, padding: 12, borderRadius: 10, background: "var(--brand)", color: "white", fontWeight: 700, border: "none", cursor: "pointer" }}>{w.continue}</button>
+                    </div>
+                  )}
+                  {step === 1 && (
+                    <div style={{ animation: "slide-in-up .3s both" }}>
+                      <div style={{ fontSize: 12, color: "var(--ink-50)", marginBottom: 10 }}>{w.timeLabel}</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>
+                        {times.map(t => (
+                          <button key={t} onClick={() => setTime(t)} style={{ padding: "10px 0", borderRadius: 8, border: `1px solid ${time === t ? "var(--brand)" : "var(--line)"}`, background: time === t ? "var(--brand)" : "white", color: time === t ? "white" : "var(--ink)", fontWeight: 600, cursor: "pointer", fontSize: 12, fontFamily: "var(--font-mono)" }}>{t}</button>
+                        ))}
+                      </div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                        <button onClick={() => setStep(0)} style={{ flex: 1, padding: 12, borderRadius: 10, background: "transparent", fontWeight: 600, border: "1px solid var(--line)", cursor: "pointer" }}>{w.back}</button>
+                        <button onClick={() => time && setStep(2)} disabled={!time} style={{ flex: 2, padding: 12, borderRadius: 10, background: time ? "var(--brand)" : "var(--paper-2)", color: time ? "white" : "var(--ink-50)", fontWeight: 700, border: "none", cursor: time ? "pointer" : "not-allowed" }}>{w.continue}</button>
+                      </div>
+                    </div>
+                  )}
+                  {step === 2 && (
+                    <div style={{ animation: "slide-in-up .3s both" }}>
+                      <div style={{ fontSize: 12, color: "var(--ink-50)", marginBottom: 8 }}>{w.seatingLabel}</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6, marginBottom: 12 }}>
+                        {([["indoor", "🏠"], ["outdoor", "🌿"], ["bar", "🍷"]] as const).map(([k, ic]) => (
+                          <button key={k} onClick={() => setSeating(k)} style={{ padding: "12px 4px", borderRadius: 8, border: `1px solid ${seating === k ? "var(--brand)" : "var(--line)"}`, background: seating === k ? "var(--brand-50)" : "white", fontWeight: 600, cursor: "pointer", fontSize: 11 }}>
+                            <div style={{ fontSize: 16, marginBottom: 2 }}>{ic}</div>{w.seating[k]}
+                          </button>
+                        ))}
+                      </div>
+                      <label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginBottom: 6 }}>{w.nameLabel}</label>
+                      <input value={name} onChange={e => setName(e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--line)", marginBottom: 10, fontSize: 13 }} />
+                      <label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginBottom: 6 }}>{w.phoneLabel}</label>
+                      <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="054-..." style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--line)", fontSize: 13, fontFamily: "var(--font-mono)" }} />
+                      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                        <button onClick={() => setStep(1)} style={{ flex: 1, padding: 12, borderRadius: 10, background: "transparent", fontWeight: 600, border: "1px solid var(--line)", cursor: "pointer" }}>{w.back}</button>
+                        <button onClick={submit} disabled={!name || !phone || submitting} style={{ flex: 2, padding: 12, borderRadius: 10, background: (name && phone) ? "var(--brand)" : "var(--paper-2)", color: (name && phone) ? "white" : "var(--ink-50)", fontWeight: 700, border: "none", cursor: (name && phone) ? "pointer" : "not-allowed" }}>{submitting ? w.submitted : w.submit}</button>
+                      </div>
+                    </div>
+                  )}
+                  {step === 4 && (
+                    <div style={{ animation: "slide-in-up .4s both", textAlign: "center", paddingTop: 20 }}>
+                      <div style={{ width: 64, height: 64, borderRadius: 999, background: "#DCFCE7", color: "var(--ok)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 30, marginBottom: 14 }}>{"\u2713"}</div>
+                      <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>{w.confirmedTitle}</div>
+                      <div style={{ fontSize: 13, color: "var(--ink-70)", marginBottom: 18 }}>{w.confirmedSub}</div>
+                      <button onClick={reset} style={{ padding: "10px 16px", borderRadius: 10, background: "transparent", color: "var(--brand)", fontWeight: 600, border: "1px solid var(--brand)", cursor: "pointer", fontSize: 13 }}>{w.confirmedAnother}</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {L.steps.map((s, i) => (
+                <div key={i} style={{ padding: "18px 20px", borderRadius: 14, border: `1px solid ${(step === i || (i === 3 && step === 4)) ? "var(--brand)" : "var(--line)"}`, background: (step === i || (i === 3 && step === 4)) ? "white" : "transparent", boxShadow: (step === i || (i === 3 && step === 4)) ? "0 10px 30px -20px rgba(0,0,0,.15)" : "none", transition: "all .3s", display: "flex", gap: 16, alignItems: "center" }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 999, background: (step > i || (i === 3 && step === 4)) ? "var(--brand)" : (step === i ? "var(--brand-50)" : "var(--paper-2)"), color: (step > i || (i === 3 && step === 4)) ? "white" : (step === i ? "var(--brand)" : "var(--ink-50)"), display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 13 }}>{(step > i || (i === 3 && step === 4)) ? "\u2713" : String(i + 1).padStart(2, "0")}</div>
+                  <div style={{ fontWeight: 600, fontSize: 15 }}>{s}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 24, padding: 18, borderRadius: 14, background: "var(--ink)", color: "white" }}>
+              <div className="mono-sm" style={{ color: "var(--brand)", marginBottom: 8 }}>{L.embedLabel}</div>
+              <code style={{ display: "block", fontFamily: "var(--font-mono)", fontSize: 12, opacity: .95, lineHeight: 1.6, direction: "ltr", textAlign: "left" }}>
+                {'<script src="openseat.io/widget.js"'}<br />{'  data-restaurant="your-slug"></script>'}
+              </code>
+            </div>
+          </div>
+        </div>
+      </div>
+      <style>{`@media(max-width:900px){ .demo-grid{ grid-template-columns: 1fr !important; } }`}</style>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Contact
+   ═══════════════════════════════════════════════════════════ */
 const FORMSPREE_URL = "https://formspree.io/f/xdapylqr";
-const CAL_LINK = "https://cal.com/openseat/intro";
 
-function ContactForm({ lang }: { lang: Lang }) {
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
-
-  const labels = {
-    he: { title: "דבר איתנו", name: "שם מלא", email: "אימייל", restaurant: "שם המסעדה", phone: "טלפון", seats: "מספר מושבים", message: "הודעה (אופציונלי)", send: "שלח הודעה", sending: "שולח...", sent: "ההודעה נשלחה! נחזור אליך בהקדם.", error: "משהו השתבש. נסה שוב או שלח מייל ל-milhemsione@gmail.com", schedule: "או קבע שיחה", scheduleBtn: "קבע שיחת 15 דקות" },
-    en: { title: "Get in touch", name: "Full name", email: "Email", restaurant: "Restaurant name", phone: "Phone", seats: "Number of seats", message: "Message (optional)", send: "Send message", sending: "Sending...", sent: "Message sent! We'll get back to you shortly.", error: "Something went wrong. Try again or email milhemsione@gmail.com", schedule: "Or schedule a call", scheduleBtn: "Schedule a 15-min call" },
-    ar: { title: "تواصل معنا", name: "الاسم الكامل", email: "البريد الإلكتروني", restaurant: "اسم المطعم", phone: "الهاتف", seats: "عدد المقاعد", message: "رسالة (اختياري)", send: "أرسل رسالة", sending: "جارٍ الإرسال...", sent: "تم إرسال الرسالة! سنعود إليك قريباً.", error: "حدث خطأ. حاول مرة أخرى أو أرسل بريد إلى milhemsione@gmail.com", schedule: "أو حدد موعد مكالمة", scheduleBtn: "حدد مكالمة 15 دقيقة" },
-  };
-  const l = labels[lang];
-
+function Contact({ L }: { L: I18NData }) {
+  const ref = useReveal();
+  const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setStatus("sending");
     try {
-      const res = await fetch(FORMSPREE_URL, {
-        method: "POST",
-        body: new FormData(e.currentTarget),
-        headers: { Accept: "application/json" },
-      });
-      setStatus(res.ok ? "sent" : "error");
+      const res = await fetch(FORMSPREE_URL, { method: "POST", body: new FormData(e.currentTarget), headers: { Accept: "application/json" } });
+      setStatus(res.ok ? "sent" : "idle");
       if (res.ok) (e.target as HTMLFormElement).reset();
-    } catch {
-      setStatus("error");
-    }
+    } catch { setStatus("idle"); }
   };
-
-  const inputCls = "w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none transition";
-
+  const icons = ["\u23F1", "\u2705", "\uD83D\uDCAC"];
   return (
-    <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-start">
-      <div>
-        <h2 className="text-3xl font-bold mb-4">{l.title}</h2>
-        <div className="space-y-5">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: pal.iconBg }}>
-              <span className="text-xl">&#128337;</span>
-            </div>
-            <div>
-              <p className="font-semibold">{lang === "he" ? "15 דקות, בלי בלבולים" : lang === "ar" ? "15 دقيقة، بدون تعقيد" : "15 minutes, no fluff"}</p>
-              <p className="text-sm text-gray-500">{lang === "he" ? "שיחה קצרה, תשובות אמיתיות." : lang === "ar" ? "مكالمة قصيرة، إجابات حقيقية." : "Quick call, real answers."}</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: pal.iconBg }}>
-              <span className="text-xl">&#9989;</span>
-            </div>
-            <div>
-              <p className="font-semibold">{lang === "he" ? "התסריטים שלך, לא שלנו" : lang === "ar" ? "سيناريوهاتك، ليس سيناريوهاتنا" : "Your scenarios, not ours"}</p>
-              <p className="text-sm text-gray-500">{lang === "he" ? "ספר לנו על המסעדה ונראה לך תוצאות רלוונטיות." : lang === "ar" ? "أخبرنا عن مطعمك وسنعرض لك نتائج ذات صلة." : "Tell us about your restaurant and we'll show relevant results."}</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: pal.iconBg }}>
-              <span className="text-xl">&#128172;</span>
-            </div>
-            <div>
-              <p className="font-semibold">{lang === "he" ? "הדגמה חיה בוואטסאפ" : lang === "ar" ? "عرض مباشر على واتساب" : "Live WhatsApp walkthrough"}</p>
-              <p className="text-sm text-gray-500">{lang === "he" ? "ראה בדיוק מה האורחים שלך יחוו." : lang === "ar" ? "شاهد بالضبط ما سيختبره ضيوفك." : "See exactly what your guests will experience."}</p>
-            </div>
-          </div>
+    <section id="contact" style={{ padding: "120px 0", background: "var(--paper-2)" }}>
+      <div className="container-x">
+        <div ref={ref} className="reveal" style={{ marginBottom: 40, textAlign: "center" }}>
+          <div className="eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}>08 · {L.eyebrows.talk}</div>
+          <h2 className="font-display" style={{ fontSize: "clamp(36px,4.5vw,54px)", lineHeight: 1.05, margin: 0, fontWeight: 600, letterSpacing: "-0.03em" }}>{L.contactTitle}</h2>
+          <p style={{ color: "var(--ink-70)", fontSize: 17, marginTop: 14, maxWidth: 620, marginInline: "auto" }}>{L.contactSub}</p>
         </div>
-
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <p className="text-sm text-gray-500 mb-3">{l.schedule}</p>
-          <a href={CAL_LINK} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-6 py-3 border-2 rounded-xl font-semibold transition"
-            style={{ borderColor: pal.accent, color: pal.accentText }}>
-            <span>&#128197;</span> {l.scheduleBtn}
-          </a>
+        <div className="contact-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, maxWidth: 1040, marginInline: "auto" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {L.contactLeft.map((c, i) => (
+              <div key={i} style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--brand-50)", color: "var(--brand)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flex: "0 0 auto" }}>{icons[i]}</div>
+                <div><div style={{ fontWeight: 700, fontSize: 16, marginBottom: 2 }}>{c.t}</div><div style={{ fontSize: 14, color: "var(--ink-70)" }}>{c.d}</div></div>
+              </div>
+            ))}
+            <a href={`mailto:${L.footer.contact}`} style={{ marginTop: 8, padding: "18px 20px", borderRadius: 14, background: "white", border: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "#25D366", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>💬</div>
+              <div><div style={{ fontWeight: 700, fontSize: 15 }}>WhatsApp / Email</div><div style={{ fontSize: 13, color: "var(--ink-70)", fontFamily: "var(--font-mono)" }}>{L.footer.contact}</div></div>
+            </a>
+          </div>
+          <form onSubmit={handleSubmit} style={{ background: "white", border: "1px solid var(--line)", borderRadius: 22, padding: 28, display: "flex", flexDirection: "column", gap: 14, boxShadow: "0 20px 50px -30px rgba(0,0,0,.1)" }}>
+            {([["name", L.formName, "text"], ["email", L.formEmail, "email"], ["restaurant", L.formRestaurant, "text"]] as const).map(([k, lbl, tp]) => (
+              <div key={k}><label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginBottom: 6 }}>{lbl}</label><input type={tp} name={k} required style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 14, background: "var(--paper)" }} /></div>
+            ))}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div><label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginBottom: 6 }}>{L.formPhone}</label><input type="tel" name="phone" style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 14, background: "var(--paper)" }} /></div>
+              <div><label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginBottom: 6 }}>{L.formSeats}</label><select name="seats" style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 14, background: "var(--paper)" }}><option>1-30</option><option>31-80</option><option>81-150</option><option>151-200</option><option>200+</option></select></div>
+            </div>
+            <button type="submit" className="btn btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: 6 }}>
+              {status === "sending" ? L.formSending : status === "sent" ? L.formSent : L.formSend}
+              {status !== "sent" && <span className="arrow">{"\u2192"}</span>}
+            </button>
+          </form>
         </div>
       </div>
-
-      <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-2xl shadow-lg p-6 space-y-4">
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">{l.name}</label>
-          <input type="text" id="name" name="name" required className={inputCls} style={{ "--tw-ring-color": pal.inputFocus } as any}
-            onFocus={(e) => { e.currentTarget.style.borderColor = pal.inputFocus; e.currentTarget.style.boxShadow = `0 0 0 1px ${pal.inputFocus}`; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = "#d1d5db"; e.currentTarget.style.boxShadow = "none"; }} />
-        </div>
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">{l.email}</label>
-          <input type="email" id="email" name="email" required className={inputCls}
-            onFocus={(e) => { e.currentTarget.style.borderColor = pal.inputFocus; e.currentTarget.style.boxShadow = `0 0 0 1px ${pal.inputFocus}`; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = "#d1d5db"; e.currentTarget.style.boxShadow = "none"; }} />
-        </div>
-        <div>
-          <label htmlFor="restaurant" className="block text-sm font-medium text-gray-700 mb-1">{l.restaurant}</label>
-          <input type="text" id="restaurant" name="restaurant" required className={inputCls}
-            onFocus={(e) => { e.currentTarget.style.borderColor = pal.inputFocus; e.currentTarget.style.boxShadow = `0 0 0 1px ${pal.inputFocus}`; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = "#d1d5db"; e.currentTarget.style.boxShadow = "none"; }} />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">{l.phone}</label>
-            <input type="tel" id="phone" name="phone" className={inputCls}
-              onFocus={(e) => { e.currentTarget.style.borderColor = pal.inputFocus; e.currentTarget.style.boxShadow = `0 0 0 1px ${pal.inputFocus}`; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = "#d1d5db"; e.currentTarget.style.boxShadow = "none"; }} />
-          </div>
-          <div>
-            <label htmlFor="seats" className="block text-sm font-medium text-gray-700 mb-1">{l.seats}</label>
-            <select id="seats" name="seats" className={inputCls}
-              onFocus={(e) => { e.currentTarget.style.borderColor = pal.inputFocus; e.currentTarget.style.boxShadow = `0 0 0 1px ${pal.inputFocus}`; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = "#d1d5db"; e.currentTarget.style.boxShadow = "none"; }}>
-              <option value="">-</option>
-              <option value="1-30">1-30</option>
-              <option value="31-60">31-60</option>
-              <option value="61-100">61-100</option>
-              <option value="101-150">101-150</option>
-              <option value="150+">150+</option>
-            </select>
-          </div>
-        </div>
-        <div>
-          <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">{l.message}</label>
-          <textarea id="message" name="message" rows={3} className={inputCls}
-            onFocus={(e) => { e.currentTarget.style.borderColor = pal.inputFocus; e.currentTarget.style.boxShadow = `0 0 0 1px ${pal.inputFocus}`; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = "#d1d5db"; e.currentTarget.style.boxShadow = "none"; }} />
-        </div>
-        <button type="submit" disabled={status === "sending"}
-          className="w-full py-3 text-white rounded-xl font-semibold text-lg transition disabled:bg-gray-400"
-          style={{ background: status === "sending" ? undefined : pal.accent }}>
-          {status === "sending" ? l.sending : l.send}
-        </button>
-        {status === "sent" && <p className="text-green-600 text-sm text-center">{l.sent}</p>}
-        {status === "error" && <p className="text-red-600 text-sm text-center">{l.error}</p>}
-      </form>
-    </div>
+      <style>{`@media(max-width:900px){ .contact-grid{ grid-template-columns: 1fr !important; } }`}</style>
+    </section>
   );
 }
 
-/* ── Demo Widget ── */
-interface AvailabilitySlot {
-  time: string;
-  availableTables: number;
-  maxPartySize: number;
+/* ═══════════════════════════════════════════════════════════
+   Footer
+   ═══════════════════════════════════════════════════════════ */
+function FooterSection({ L }: { L: I18NData }) {
+  return (
+    <footer>
+      <div className="container-x" style={{ padding: "64px 24px 32px" }}>
+        <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "1.3fr repeat(3, 1fr)", gap: 40 }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <svg width={30} height={30} viewBox="0 0 32 32"><rect x="1" y="1" width="30" height="30" rx="9" fill="var(--brand)" /><path d="M9 21c0-3.3 2.7-6 6-6h2c3.3 0 6 2.7 6 6v1H9v-1z" fill="white" /><circle cx="16" cy="11" r="3.5" fill="white" /></svg>
+              <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, color: "white" }}>OpenSeat</span>
+            </div>
+            <p style={{ marginTop: 14, color: "rgba(255,255,255,.7)", fontSize: 14, maxWidth: 320 }}>{L.footer.tagline}</p>
+            <a href={`mailto:${L.footer.contact}`} style={{ display: "inline-flex", marginTop: 14, padding: "8px 14px", borderRadius: 999, background: "rgba(255,255,255,.08)", color: "white", fontFamily: "var(--font-mono)", fontSize: 12 }}>{L.footer.contact}</a>
+          </div>
+          {L.footer.cols.map((c, i) => (
+            <div key={i}>
+              <div className="mono-sm" style={{ color: "rgba(255,255,255,.6)", marginBottom: 14 }}>{c.t}</div>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+                {c.items.map((x, k) => <li key={k}><a href="#" style={{ fontSize: 14, color: "rgba(255,255,255,.75)" }}>{x}</a></li>)}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 48, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,.1)", display: "flex", justifyContent: "space-between", gap: 20, flexWrap: "wrap", fontSize: 12, color: "rgba(255,255,255,.55)" }}>
+          <span>{L.footer.rights}</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 10 }}><span className="live-dot" /> {L.allSystems}</span>
+        </div>
+      </div>
+      <style>{`@media(max-width:780px){ .footer-grid{ grid-template-columns: 1fr 1fr !important; } }`}</style>
+    </footer>
+  );
 }
 
-type WidgetStep = "date" | "time" | "preferences" | "details" | "confirm";
-type Seating = "indoor" | "outdoor" | "bar";
+/* ═══════════════════════════════════════════════════════════
+   Root
+   ═══════════════════════════════════════════════════════════ */
+export function LandingPage() {
+  const [lang, setLang] = useState<Lang>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const p = params.get("lang");
+    if (p === "en" || p === "ar") return p;
+    const nav = navigator.language?.toLowerCase() || "";
+    if (nav.startsWith("ar")) return "ar";
+    if (nav.startsWith("en")) return "en";
+    return "he";
+  });
 
-function isValidIsraeliPhone(phone: string): boolean {
-  const digits = phone.replace(/[\s\-()]/g, "");
-  if (digits.startsWith("+972")) return /^\+972\d{8,9}$/.test(digits);
-  if (digits.startsWith("0")) return /^0\d{9}$/.test(digits);
-  return false;
-}
-
-const seatingIcons: Record<Seating, string> = { indoor: "🏠", outdoor: "🌿", bar: "🍷" };
-
-function DemoWidget({ lang }: { lang: Lang }) {
-  const w = t[lang].widget;
-  const [step, setStep] = useState<WidgetStep>("date");
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
-  const [partySize, setPartySize] = useState(2);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [phoneError, setPhoneError] = useState("");
-  const [seating, setSeating] = useState<Seating>("indoor");
-  const [smoking, setSmoking] = useState(false);
-  const [allergies, setAllergies] = useState<string[]>([]);
-  const [specialRequests, setSpecialRequests] = useState("");
-  const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-
-  const steps: WidgetStep[] = ["date", "time", "preferences", "details", "confirm"];
-  const currentIdx = steps.indexOf(step);
+  const L = I18N[lang];
 
   useEffect(() => {
-    if (step !== "time" || !date) return;
-    setLoadingSlots(true);
-    setError("");
-    const params = new URLSearchParams({ restaurantId: RESTAURANT_ID, date, partySize: String(partySize) });
-    fetch(`${API_URL}/api/v1/reservations/availability?${params}`)
-      .then((res) => res.json())
-      .then((data) => { setSlots(data.slots || []); setLoadingSlots(false); })
-      .catch(() => { setError("Error loading slots"); setLoadingSlots(false); });
-  }, [step, date, partySize]);
-
-  const handleSubmit = async () => {
-    setSubmitting(true);
-    setError("");
-    try {
-      const res = await fetch(`${API_URL}/api/v1/reservations`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ restaurantId: RESTAURANT_ID, guestName: name, guestPhone: phone, date, timeStart: time, partySize, source: "web", seating, smoking, allergies, specialRequests }),
-      });
-      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || "Booking failed"); }
-      setStep("confirm");
-    } catch (e: any) { setError(e.message || "Booking failed"); }
-    finally { setSubmitting(false); }
-  };
-
-  const toggleAllergy = (a: string) => {
-    setAllergies((prev) => prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]);
-  };
-
-  const inputCls = "w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:outline-none transition text-sm";
+    document.documentElement.setAttribute("dir", L.dir);
+    document.documentElement.setAttribute("lang", lang);
+  }, [lang, L.dir]);
 
   return (
-    <div className="rounded-3xl shadow-2xl border border-gray-100 overflow-hidden max-w-md mx-auto" dir={lang === "en" ? "ltr" : "rtl"}>
-      {/* Header */}
-      <div className="px-6 pt-6 pb-4" style={{ background: `linear-gradient(135deg, ${pal.accent}, ${pal.accentHover})` }}>
-        <div className="flex items-center gap-3 mb-1">
-          <span className="text-2xl">🍽️</span>
-          <div>
-            <h3 className="text-lg font-bold text-white">{w.title}</h3>
-            <p className="text-sm text-white/70">{w.restaurant}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Progress bar */}
-      <div className="px-6 pt-4 pb-2">
-        <div className="flex gap-1.5">
-          {steps.slice(0, -1).map((_, i) => (
-            <div key={i} className="flex-1 h-1.5 rounded-full transition-all duration-300"
-              style={{ background: i <= currentIdx ? pal.accent : "#e5e7eb" }} />
-          ))}
-        </div>
-      </div>
-
-      <div className="px-6 pb-6">
-        {error && <div className="p-3 mb-4 rounded-xl bg-red-50 text-red-700 text-sm">{error}</div>}
-
-        {/* Step 1: Date & Party Size */}
-        {step === "date" && (
-          <div className="space-y-5 pt-2">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">{w.dateLabel}</label>
-              <input type="date" value={date} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setDate(e.target.value)}
-                className={inputCls}
-                onFocus={(e) => { e.currentTarget.style.borderColor = pal.inputFocus; e.currentTarget.style.background = "#fff"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.background = "#f9fafb"; }} />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">{w.partySizeLabel}</label>
-              <div className="flex items-center gap-4">
-                <button onClick={() => setPartySize(Math.max(1, partySize - 1))}
-                  className="w-10 h-10 rounded-xl border border-gray-200 bg-gray-50 text-lg font-bold text-gray-600 hover:bg-gray-100 transition flex items-center justify-center">-</button>
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold" style={{ color: pal.accent }}>{partySize}</span>
-                  <span className="text-sm text-gray-500">👤</span>
-                </div>
-                <button onClick={() => setPartySize(Math.min(20, partySize + 1))}
-                  className="w-10 h-10 rounded-xl border border-gray-200 bg-gray-50 text-lg font-bold text-gray-600 hover:bg-gray-100 transition flex items-center justify-center">+</button>
-              </div>
-            </div>
-            <button onClick={() => date && setStep("time")} disabled={!date}
-              className="w-full py-3.5 rounded-xl font-semibold text-white transition disabled:opacity-40"
-              style={{ background: pal.accent }}
-              onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.background = pal.accentHover)}
-              onMouseLeave={(e) => (e.currentTarget.style.background = pal.accent)}>
-              {w.continue} →
-            </button>
-          </div>
-        )}
-
-        {/* Step 2: Time */}
-        {step === "time" && (
-          <div className="pt-2">
-            <p className="text-sm text-gray-500 mb-4">{w.slotsFor}{date} ({partySize} {w.diners})</p>
-            {loadingSlots ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: `${pal.accent} transparent transparent transparent` }} />
-                <span className="text-sm text-gray-400 ms-3">{w.loadingSlots}</span>
-              </div>
-            ) : slots.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-8">{w.noSlots}</p>
-            ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {slots.map((slot) => {
-                  const selected = time === slot.time;
-                  return (
-                    <button key={slot.time} onClick={() => { setTime(slot.time); setStep("preferences"); }}
-                      className="py-2.5 rounded-xl border text-sm font-semibold transition"
-                      style={{
-                        background: selected ? pal.accent : "#fff",
-                        borderColor: selected ? pal.accent : "#e5e7eb",
-                        color: selected ? "#fff" : "#374151",
-                      }}
-                      onMouseEnter={(e) => { if (!selected) { e.currentTarget.style.borderColor = pal.accentBorder; e.currentTarget.style.background = pal.accentLight; } }}
-                      onMouseLeave={(e) => { if (!selected) { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.background = "#fff"; } }}>
-                      {slot.time}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            <button onClick={() => setStep("date")} className="mt-4 text-sm text-gray-500 hover:text-gray-700 transition">← {w.back}</button>
-          </div>
-        )}
-
-        {/* Step 3: Preferences */}
-        {step === "preferences" && (
-          <div className="space-y-5 pt-2">
-            {/* Seating */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">{w.seatingTitle}</label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["indoor", "outdoor", "bar"] as Seating[]).map((s) => {
-                  const selected = seating === s;
-                  const label = s === "indoor" ? w.indoor : s === "outdoor" ? w.outdoor : w.bar;
-                  return (
-                    <button key={s} onClick={() => setSeating(s)}
-                      className="flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition text-sm font-medium"
-                      style={{
-                        borderColor: selected ? pal.accent : "#e5e7eb",
-                        background: selected ? pal.accentLight : "#fff",
-                        color: selected ? pal.accentText : "#6b7280",
-                      }}>
-                      <span className="text-xl">{seatingIcons[s]}</span>
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Smoking */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">{w.smokingTitle}</label>
-              <div className="grid grid-cols-2 gap-2">
-                {[false, true].map((val) => {
-                  const selected = smoking === val;
-                  return (
-                    <button key={String(val)} onClick={() => setSmoking(val)}
-                      className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition text-sm font-medium"
-                      style={{
-                        borderColor: selected ? pal.accent : "#e5e7eb",
-                        background: selected ? pal.accentLight : "#fff",
-                        color: selected ? pal.accentText : "#6b7280",
-                      }}>
-                      <span>{val ? "🚬" : "🚭"}</span>
-                      {val ? w.smoking : w.noSmoking}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Allergies */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">{w.allergiesTitle}</label>
-              <div className="flex flex-wrap gap-2">
-                <button onClick={() => setAllergies([])}
-                  className="px-3 py-1.5 rounded-full border text-xs font-semibold transition"
-                  style={{
-                    borderColor: allergies.length === 0 ? pal.accent : "#e5e7eb",
-                    background: allergies.length === 0 ? pal.accentLight : "#fff",
-                    color: allergies.length === 0 ? pal.accentText : "#6b7280",
-                  }}>
-                  {w.noAllergies}
-                </button>
-                {w.allergyOptions.map((a) => {
-                  const selected = allergies.includes(a);
-                  return (
-                    <button key={a} onClick={() => toggleAllergy(a)}
-                      className="px-3 py-1.5 rounded-full border text-xs font-semibold transition"
-                      style={{
-                        borderColor: selected ? "#ef4444" : "#e5e7eb",
-                        background: selected ? "#fef2f2" : "#fff",
-                        color: selected ? "#dc2626" : "#6b7280",
-                      }}>
-                      {selected ? "⚠️ " : ""}{a}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <button onClick={() => setStep("details")}
-              className="w-full py-3.5 rounded-xl font-semibold text-white transition"
-              style={{ background: pal.accent }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = pal.accentHover)}
-              onMouseLeave={(e) => (e.currentTarget.style.background = pal.accent)}>
-              {w.continue} →
-            </button>
-            <button onClick={() => setStep("time")} className="text-sm text-gray-500 hover:text-gray-700 transition block">← {w.back}</button>
-          </div>
-        )}
-
-        {/* Step 4: Details */}
-        {step === "details" && (
-          <div className="space-y-4 pt-2">
-            <div className="flex flex-wrap gap-2 text-xs text-gray-500 bg-gray-50 rounded-xl p-3">
-              <span>📅 {date}</span>
-              <span>🕐 {time}</span>
-              <span>👤 {partySize}</span>
-              <span>{seatingIcons[seating]} {seating === "indoor" ? w.indoor : seating === "outdoor" ? w.outdoor : w.bar}</span>
-              {smoking && <span>🚬</span>}
-              {allergies.length > 0 && <span>⚠️ {allergies.join(", ")}</span>}
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">{w.nameLabel}</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={inputCls}
-                onFocus={(e) => { e.currentTarget.style.borderColor = pal.inputFocus; e.currentTarget.style.background = "#fff"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.background = "#f9fafb"; }} />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">{w.phoneLabel}</label>
-              <input type="tel" value={phone}
-                onChange={(e) => { setPhone(e.target.value); if (phoneError) setPhoneError(""); }}
-                onBlur={() => { if (phone && !isValidIsraeliPhone(phone)) setPhoneError(w.phoneError); }}
-                className={inputCls}
-                style={{ borderColor: phoneError ? "#ef4444" : undefined }}
-                onFocus={(e) => { if (!phoneError) { e.currentTarget.style.borderColor = pal.inputFocus; e.currentTarget.style.background = "#fff"; } }}
-              />
-              {phoneError && <p className="text-red-600 text-xs mt-1">{phoneError}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">{w.specialLabel}</label>
-              <textarea value={specialRequests} onChange={(e) => setSpecialRequests(e.target.value)}
-                placeholder={w.specialPlaceholder} rows={2} className={inputCls}
-                onFocus={(e) => { e.currentTarget.style.borderColor = pal.inputFocus; e.currentTarget.style.background = "#fff"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.background = "#f9fafb"; }} />
-            </div>
-            <button
-              onClick={() => { if (!isValidIsraeliPhone(phone)) { setPhoneError(w.phoneError); return; } handleSubmit(); }}
-              disabled={!name || !phone || submitting}
-              className="w-full py-3.5 rounded-xl font-semibold text-white transition disabled:opacity-40"
-              style={{ background: submitting ? "#9ca3af" : pal.accent }}>
-              {submitting ? w.submitting : w.submit}
-            </button>
-            <button onClick={() => setStep("preferences")} className="text-sm text-gray-500 hover:text-gray-700 transition block">← {w.back}</button>
-          </div>
-        )}
-
-        {/* Step 5: Confirmation */}
-        {step === "confirm" && (
-          <div className="text-center py-8">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: pal.accentLight }}>
-              <span className="text-3xl">✅</span>
-            </div>
-            <p className="text-xl font-bold mb-2">{w.confirmed}</p>
-            <div className="space-y-1">
-              <p className="text-sm text-gray-600">{date} {w.at} {time}</p>
-              <p className="text-sm text-gray-600">{partySize} {w.diners} - {seating === "indoor" ? w.indoor : seating === "outdoor" ? w.outdoor : w.bar}</p>
-              {allergies.length > 0 && <p className="text-sm text-gray-500">⚠️ {allergies.join(", ")}</p>}
-            </div>
-            <p className="text-xs text-gray-400 mt-4">💬 {w.confirmNote}</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ── Helpers ── */
-function ComparisonCell({ v }: { v: string }) {
-  if (v === "v") return <span className="text-green-600 font-bold text-lg">&#10003;</span>;
-  if (v === "x") return <span className="text-red-400">&#10007;</span>;
-  if (v === "~") return <span className="text-yellow-500">~</span>;
-  return <span className="text-sm font-medium">{v}</span>;
-}
-
-const moduleColors: Record<string, string> = {
-  "🟢": "border-green-300 bg-green-50",
-  "🔵": "border-blue-300 bg-blue-50",
-  "🟣": "border-purple-300 bg-purple-50",
-};
-
-const moduleAccent: Record<string, string> = {
-  "🟢": "text-green-700",
-  "🔵": "text-blue-700",
-  "🟣": "text-purple-700",
-};
-
-/* ── Main Page ── */
-export function LandingPage() {
-  const [lang, setLang] = useState<Lang>("he");
-  const [mobileMenu, setMobileMenu] = useState(false);
-  const [expandedModule, setExpandedModule] = useState<number | null>(null);
-  const c = t[lang];
-  const dir = lang === "en" ? "ltr" : "rtl";
-  const pm = lang === "he" ? "/חודש" : lang === "ar" ? "/شهر" : "/mo";
-
-  return (
-    <div dir={dir} className="min-h-screen bg-white text-gray-900" style={{ direction: dir }}>
-      {/* Nav */}
-      <nav className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-100 px-4 sm:px-6 py-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xl font-bold tracking-tight" style={{ color: pal.accentText }}>OpenSeat</span>
-          <div className="hidden md:flex items-center gap-6 text-sm">
-            <a href="#live-demo" className="text-gray-600 hover:text-gray-900">{c.nav.demo}</a>
-            <a href="#modules" className="text-gray-600 hover:text-gray-900">{c.nav.modules}</a>
-            <a href="#pricing" className="text-gray-600 hover:text-gray-900">{c.nav.pricing}</a>
-            <a href="#contact" className="text-gray-600 hover:text-gray-900">{c.nav.contact}</a>
-
-            <div className="relative inline-block">
-              <select value={lang} onChange={(e) => setLang(e.target.value as Lang)}
-                className="appearance-none px-3 py-1 pe-7 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition text-sm cursor-pointer">
-                <option value="he">עברית</option>
-                <option value="en">English</option>
-                <option value="ar">العربية</option>
-              </select>
-              <svg className="pointer-events-none absolute top-1/2 -translate-y-1/2 end-2 w-4 h-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 md:hidden">
-
-            <div className="relative inline-block">
-              <select value={lang} onChange={(e) => setLang(e.target.value as Lang)}
-                className="appearance-none px-2 py-1 pe-6 border border-gray-300 rounded-lg bg-white text-sm cursor-pointer">
-                <option value="he">עב</option>
-                <option value="en">EN</option>
-                <option value="ar">عر</option>
-              </select>
-              <svg className="pointer-events-none absolute top-1/2 -translate-y-1/2 end-1.5 w-3.5 h-3.5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <button onClick={() => setMobileMenu(!mobileMenu)} className="p-2 text-gray-600" aria-label="Menu">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                {mobileMenu
-                  ? <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  : <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />}
-              </svg>
-            </button>
-          </div>
-        </div>
-        {mobileMenu && (
-          <div className="md:hidden mt-3 pb-2 border-t border-gray-100 pt-3 flex flex-col gap-3 text-sm">
-            <a href="#live-demo" onClick={() => setMobileMenu(false)} className="text-gray-600 hover:text-gray-900">{c.nav.demo}</a>
-            <a href="#modules" onClick={() => setMobileMenu(false)} className="text-gray-600 hover:text-gray-900">{c.nav.modules}</a>
-            <a href="#pricing" onClick={() => setMobileMenu(false)} className="text-gray-600 hover:text-gray-900">{c.nav.pricing}</a>
-            <a href="#contact" onClick={() => setMobileMenu(false)} className="text-gray-600 hover:text-gray-900">{c.nav.contact}</a>
-          </div>
-        )}
-      </nav>
-
-      {/* Hero */}
-      <header className="px-4 sm:px-6 py-12 sm:py-20 text-center" style={{ background: `linear-gradient(to bottom, ${pal.gradientStart}, white)` }}>
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight">{c.hero.title}</h1>
-        <p className="text-xl sm:text-2xl md:text-3xl text-gray-700 mt-3 font-medium">{c.hero.subtitle}</p>
-        <p className="text-base sm:text-lg text-gray-500 mt-4 max-w-2xl mx-auto">{c.hero.desc}</p>
-        <div className="mt-8 flex gap-4 justify-center flex-wrap">
-          <a href="#pricing" className="px-6 py-3 text-white rounded-xl font-semibold transition"
-            style={{ background: pal.accent }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = pal.accentHover)}
-            onMouseLeave={(e) => (e.currentTarget.style.background = pal.accent)}>{c.hero.cta1}</a>
-          <a href="#live-demo" className="px-6 py-3 border-2 rounded-xl font-semibold transition"
-            style={{ borderColor: pal.accent, color: pal.accentText }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = pal.secondaryHover)}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>{c.hero.cta2}</a>
-        </div>
-        <p className="text-sm text-gray-400 mt-6">{c.hero.trusted}</p>
-      </header>
-
-      {/* Stats */}
-      <section className="border-y border-gray-100 bg-gray-50 px-6 py-10">
-        <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {c.stats.map((s) => (
-            <div key={s.label}>
-              <div className="text-3xl font-bold" style={{ color: pal.stat }}>{s.value}</div>
-              <div className="text-sm text-gray-500 mt-1">{s.label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="px-6 py-16 bg-white">
-        <h2 className="text-3xl font-bold text-center mb-12">{c.howTitle}</h2>
-        <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-          {c.howSteps.map((step) => (
-            <div key={step.num} className="text-center">
-              <div className="w-10 h-10 md:w-12 md:h-12 text-white rounded-full flex items-center justify-center text-lg md:text-xl font-bold mx-auto mb-3"
-                style={{ background: pal.accent }}>{step.num}</div>
-              <h3 className="font-bold mb-1">{step.title}</h3>
-              <p className="text-sm text-gray-600">{step.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Why OpenSeat */}
-      <section className="px-6 py-16 bg-white">
-        <h2 className="text-3xl font-bold text-center mb-12">{c.whyTitle}</h2>
-        <div className="max-w-6xl mx-auto grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {c.whyPoints.map((p) => (
-            <div key={p.title} className="border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition">
-              <span className="text-3xl">{p.icon}</span>
-              <h3 className="text-lg font-bold mt-3 mb-2">{p.title}</h3>
-              <p className="text-sm text-gray-600">{p.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Modules */}
-      <section id="modules" className="px-6 py-20 bg-gray-50">
-        <h2 className="text-3xl font-bold text-center mb-2">{c.modulesTitle}</h2>
-        <p className="text-center text-gray-500 mb-12">{c.modulesSubtitle}</p>
-        <div className="max-w-5xl mx-auto space-y-6">
-          {c.modules.map((mod, idx) => (
-            <div key={mod.name} className={`border-2 rounded-2xl overflow-hidden transition ${moduleColors[mod.icon] || "border-gray-200 bg-white"}`}>
-              <button
-                onClick={() => setExpandedModule(expandedModule === idx ? null : idx)}
-                className="w-full px-6 py-5 flex items-center gap-4 text-start"
-              >
-                <span className="text-3xl">{mod.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <h3 className="text-xl font-bold">{mod.name}</h3>
-                    <span className={`text-sm font-semibold ${moduleAccent[mod.icon] || "text-gray-600"}`}>{mod.tagline}</span>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1">{mod.desc}</p>
-                </div>
-                <span className={`text-2xl text-gray-400 transition-transform shrink-0 ${expandedModule === idx ? "rotate-45" : ""}`}>+</span>
-              </button>
-              {expandedModule === idx && (
-                <div className="px-6 pb-6">
-                  <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-2">
-                    {mod.features.map((f, i) => (
-                      <li key={i} className="text-sm text-gray-700 flex gap-2">
-                        <span className="mt-0.5 shrink-0" style={{ color: pal.bullet }}>&#9679;</span>
-                        <span>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Comparison */}
-      <section className="px-6 py-16 max-w-4xl mx-auto">
-        <h2 className="text-3xl font-bold text-center mb-8">{c.comparisonTitle}</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border border-gray-200 rounded-xl overflow-hidden">
-            <thead className="bg-gray-50">
-              <tr>
-                {c.comparison.headers.map((h, i) => (
-                  <th key={i} className={`px-4 py-3 font-semibold ${i === 0 ? "text-start" : "text-center"}`}
-                    style={{ color: i === 1 ? pal.accentText : "#4b5563", background: i === 1 ? pal.compHeader : undefined }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {c.comparison.rows.map((row, ri) => (
-                <tr key={ri} className="border-t border-gray-100">
-                  {row.map((cell, ci) => (
-                    <td key={ci} className={`px-4 py-3 ${ci === 0 ? "text-start font-medium" : "text-center"}`}
-                      style={{ background: ci === 1 ? pal.compHighlight : undefined }}>
-                      {ci === 0 ? cell : <ComparisonCell v={cell} />}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* Launch Offer */}
-      <section className="px-6 py-16 border-y-2" style={{ background: pal.launchBg, borderColor: pal.launchBorder }}>
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-4">{c.launch.title}</h2>
-          <p className="text-xl text-gray-700 mb-6">{c.launch.desc}</p>
-          <a href="#contact" className="inline-block px-8 py-4 text-white rounded-xl font-semibold text-lg transition"
-            style={{ background: pal.launchAccent }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = pal.launchHover)}
-            onMouseLeave={(e) => (e.currentTarget.style.background = pal.launchAccent)}>{c.launch.cta}</a>
-          <p className="text-sm text-gray-500 mt-4">{c.launch.note}</p>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="pricing" className="px-6 py-20 bg-gray-50">
-        <h2 className="text-3xl font-bold text-center mb-4">{c.pricing.title}</h2>
-        <p className="text-center text-gray-500 mb-12">{c.pricing.subtitle}</p>
-        <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-8">
-          {c.plans.map((plan) => (
-            <div key={plan.name} className="rounded-2xl p-8 relative"
-              style={{
-                background: plan.popular ? pal.accentLight : "#fff",
-                border: plan.popular ? `2px solid ${pal.accentBorder}` : "1px solid #e5e7eb",
-              }}>
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 text-white text-xs font-bold rounded-full"
-                  style={{ background: pal.popularBadge }}>
-                  {lang === "he" ? "הכי פופולרי" : lang === "ar" ? "الأكثر شعبية" : "Most popular"}
-                </div>
-              )}
-              <h3 className="text-2xl font-bold mb-1">{plan.name}</h3>
-              <p className="text-gray-500 text-sm mb-2">{plan.desc}</p>
-              <p className="text-xs font-semibold mb-4" style={{ color: pal.accentText }}>{plan.module}</p>
-              <div className="space-y-2 border-t border-gray-100 pt-4">
-                {plan.tiers.map((tier) => (
-                  <div key={tier.seats} className="flex justify-between text-sm">
-                    <span>{tier.seats} {lang === "he" ? "מושבים" : lang === "ar" ? "مقعد" : "seats"}</span>
-                    <span className="font-bold">&#8362;{tier.price}{pm}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="text-center text-sm text-gray-400 mt-8">{c.annual}</p>
-      </section>
-
-      {/* Live Demo Widget */}
-      <section id="live-demo" className="px-6 py-20" style={{ background: `linear-gradient(to bottom, white, ${pal.gradientStart})` }}>
-        <h2 className="text-3xl font-bold text-center mb-2">{c.demoTitle}</h2>
-        <p className="text-center text-gray-500 mb-10">{c.demoSubtitle}</p>
-        <DemoWidget lang={lang} />
-      </section>
-
-      {/* Add-ons */}
-      <section className="px-6 py-16 max-w-4xl mx-auto">
-        <h2 className="text-2xl font-bold text-center mb-8">{c.addons.title}</h2>
-        <div className="grid sm:grid-cols-2 gap-4">
-          {c.addons.items.map((a) => (
-            <div key={a.name} className="border border-gray-200 rounded-xl p-5">
-              <div className="flex justify-between items-start mb-1">
-                <span className="font-semibold">{a.name}</span>
-                <span className="font-bold text-sm" style={{ color: pal.accentText }}>{a.price}</span>
-              </div>
-              <p className="text-sm text-gray-500">{a.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="px-6 py-16 bg-gray-50">
-        <h2 className="text-2xl font-bold text-center mb-8">{c.faq.title}</h2>
-        <div className="max-w-3xl mx-auto space-y-4">
-          {c.faq.items.map((item) => (
-            <details key={item.q} className="bg-white border border-gray-200 rounded-xl p-4 group">
-              <summary className="font-medium cursor-pointer list-none flex justify-between items-center">
-                {item.q}
-                <span className="text-gray-400 group-open:rotate-45 transition-transform text-xl">+</span>
-              </summary>
-              <p className="text-sm text-gray-600 mt-3">{item.a}</p>
-            </details>
-          ))}
-        </div>
-      </section>
-
-      {/* Contact */}
-      <section id="contact" className="px-6 py-20" style={{ background: `linear-gradient(to bottom, white, ${pal.gradientStart})` }}>
-        <ContactForm lang={lang} />
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-200 px-6 py-8 text-center text-sm text-gray-400">
-        OpenSeat &copy; 2026
-      </footer>
-
-      {/* Accessibility Widget */}
+    <>
+      <Nav L={L} lang={lang} setLang={setLang} />
+      <main>
+        <Hero L={L} />
+        <Tape L={L} />
+        <Modules L={L} lang={lang} />
+        <How L={L} />
+        <Why L={L} />
+        <Comparison L={L} />
+        <Launch L={L} />
+        <Pricing L={L} />
+        <Addons L={L} />
+        <FAQ L={L} />
+        <LiveDemo L={L} />
+        <Contact L={L} />
+      </main>
+      <FooterSection L={L} />
       <AccessibilityWidget lang={lang} />
-    </div>
+    </>
   );
 }

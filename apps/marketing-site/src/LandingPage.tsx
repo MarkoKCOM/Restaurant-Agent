@@ -149,7 +149,7 @@ const t = {
     },
     pricing: {
       title: "מחירון",
-      subtitle: "חבילות חודשיות לפי גודל המסעדה. 14 ימי ניסיון חינם.",
+      subtitle: "חבילות חודשיות לפי גודל המסעדה. יש הנחה שנתית, ובמסלול חודשי אפשר לבטל מתי שרוצים.",
     },
     plans: [
       {
@@ -157,10 +157,10 @@ const t = {
         desc: "הזמנות + ווידג׳ט + דשבורד",
         module: "OpenSeat Live",
         tiers: [
-          { seats: "עד 40", price: 499 },
-          { seats: "עד 80", price: 699 },
-          { seats: "עד 150", price: 999 },
-          { seats: "150+", price: 1399 },
+          { seats: "עד 80", price: 499 },
+          { seats: "עד 150", price: 699 },
+          { seats: "עד 200", price: 999 },
+          { seats: "200+", price: 1399 },
         ],
       },
       {
@@ -169,27 +169,29 @@ const t = {
         module: "OpenSeat Live + Connect + Club",
         popular: true,
         tiers: [
-          { seats: "עד 40", price: 799 },
-          { seats: "עד 80", price: 1099 },
-          { seats: "עד 150", price: 1499 },
-          { seats: "150+", price: 1999 },
+          { seats: "עד 80", price: 799 },
+          { seats: "עד 150", price: 1099 },
+          { seats: "עד 200", price: 1499 },
+          { seats: "200+", price: 1999 },
         ],
       },
     ],
-    annual: "הנחה שנתית: שלם 10 חודשים, קבל 12.",
+    annual: "הנחה שנתית: שלם 10 חודשים, קבל 12. במסלול חודשי אפשר לבטל בכל עת.",
     addons: {
-      title: "תוספות בהמשך",
+      title: "תוספות",
       items: [
-        { name: "ניהול עובדים והדרכות", price: "בהמשך", desc: "משמרות, הרשאות, תדריכים והכשרת צוות במקום אחד" },
-        { name: "ניהול ספקים", price: "בהמשך", desc: "ספקים, הזמנות רכש ותיאום תפעולי מהדשבורד" },
-        { name: "ניהול מלאי", price: "בהמשך", desc: "מלאי, חוסרים ותזכורות לפי קצב העבודה של המטבח והבר" },
+        { name: "הדרכות עובדים", price: "₪29/חודש", desc: "הדרכות צוות, נהלי שירות והכשרה שוטפת במקום אחד" },
+        { name: "ניהול ספקים", price: "₪39/חודש", desc: "ספקים, הזמנות רכש ותיאום תפעולי מהדשבורד" },
+        { name: "ניהול מלאי", price: "₪39/חודש", desc: "מלאי, חוסרים ותזכורות לפי קצב העבודה של המטבח והבר" },
+        { name: "ניהול תפריט", price: "₪19/חודש", desc: "עדכון מנות, מחירים וזמינות תפריט ממקום אחד" },
+        { name: "דשבורד אנליטיקס", price: "₪19/חודש", desc: "מבט מהיר על ביצועים, שימור, שעות עומס ותמונת מצב עסקית" },
       ],
     },
     faq: {
       title: "שאלות נפוצות",
       items: [
         { q: "האם צריך ידע טכני?", a: "לא. הווידג׳ט מוטמע בשורת קוד אחת, הדשבורד עובד מהדפדפן, ווואטסאפ עובד לבד." },
-        { q: "מה קורה אחרי תקופת הניסיון?", a: "בוחרים חבילה ומתחילים לשלם. בלי הפתעות ובלי אותיות קטנות." },
+        { q: "יש הנחה שנתית ואפשר לבטל מתי שרוצים?", a: "כן. בהתחייבות שנתית משלמים 10 חודשים ומקבלים 12. במסלול חודשי אפשר לבטל בכל עת." },
         { q: "זה עובד על הטאבלט שכבר יש לי?", a: "כן. כל המערכת מבוססת דפדפן ועובדת על כל טאבלט או מחשב רגיל." },
         { q: "אפשר לשים את המיתוג של המסעדה שלי?", a: "כן. הווידג׳ט, הדשבורד והחוויה נבנים סביב המותג שלך." },
         { q: "באילו שפות המערכת עובדת?", a: "עברית, אנגלית וערבית. זיהוי שפה אוטומטי לאורח." },
@@ -344,7 +346,7 @@ const t = {
     },
     pricing: {
       title: "Pricing",
-      subtitle: "Monthly plans by restaurant size. 14-day free trial.",
+      subtitle: "Monthly plans by restaurant size. Annual discount available, and you can cancel anytime on monthly plans.",
     },
     plans: [
       {
@@ -352,10 +354,10 @@ const t = {
         desc: "Reservations + Widget + Dashboard",
         module: "OpenSeat Live",
         tiers: [
-          { seats: "Up to 40", price: 499 },
-          { seats: "Up to 80", price: 699 },
-          { seats: "Up to 150", price: 999 },
-          { seats: "150+", price: 1399 },
+          { seats: "Up to 80", price: 499 },
+          { seats: "Up to 150", price: 699 },
+          { seats: "Up to 200", price: 999 },
+          { seats: "200+", price: 1399 },
         ],
       },
       {
@@ -364,27 +366,29 @@ const t = {
         module: "OpenSeat Live + Connect + Club",
         popular: true,
         tiers: [
-          { seats: "Up to 40", price: 799 },
-          { seats: "Up to 80", price: 1099 },
-          { seats: "Up to 150", price: 1499 },
-          { seats: "150+", price: 1999 },
+          { seats: "Up to 80", price: 799 },
+          { seats: "Up to 150", price: 1099 },
+          { seats: "Up to 200", price: 1499 },
+          { seats: "200+", price: 1999 },
         ],
       },
     ],
-    annual: "Annual discount: pay 10 months, get 12.",
+    annual: "Annual discount: pay 10 months, get 12. Monthly plans can be cancelled anytime.",
     addons: {
-      title: "Later add-ons",
+      title: "Add-ons",
       items: [
-        { name: "Employee management & training", price: "Later", desc: "Shifts, permissions, onboarding, and staff training in one place" },
-        { name: "Supplier management", price: "Later", desc: "Suppliers, purchase flow, and operational coordination from the dashboard" },
-        { name: "Inventory management", price: "Later", desc: "Stock levels, shortages, and reminders tied to kitchen and bar rhythm" },
+        { name: "Employee training", price: "₪29/mo", desc: "Staff training, service standards, and onboarding in one place" },
+        { name: "Supplier management", price: "₪39/mo", desc: "Suppliers, purchase flow, and operational coordination from the dashboard" },
+        { name: "Inventory management", price: "₪39/mo", desc: "Stock levels, shortages, and reminders tied to kitchen and bar rhythm" },
+        { name: "Menu management", price: "₪19/mo", desc: "Update dishes, pricing, and menu availability from one place" },
+        { name: "Analytics dashboard", price: "₪19/mo", desc: "Quick view of performance, retention, peak hours, and business health" },
       ],
     },
     faq: {
       title: "FAQ",
       items: [
         { q: "Do I need technical knowledge?", a: "No. The widget embeds in one line, the dashboard runs in your browser, and WhatsApp works on its own." },
-        { q: "What happens after the trial?", a: "You choose a plan and keep going. No surprises and no small print." },
+        { q: "Is there an annual discount and can I cancel anytime?", a: "Yes. Annual plans give you 12 months for the price of 10, and monthly plans can be cancelled anytime." },
         { q: "Will it run on the tablet I already have?", a: "Yes. The whole system is browser-based and works on any normal tablet or computer." },
         { q: "Can I use my own branding?", a: "Yes. The widget, dashboard, and guest experience can all match your brand." },
         { q: "What languages does it support?", a: "Hebrew, English, and Arabic with automatic guest language detection." },
@@ -539,7 +543,7 @@ const t = {
     },
     pricing: {
       title: "الأسعار",
-      subtitle: "خطط شهرية حسب حجم المطعم. 14 يوم تجربة مجانية.",
+      subtitle: "خطط شهرية حسب حجم المطعم. يوجد خصم سنوي، ويمكن الإلغاء في أي وقت على الخطة الشهرية.",
     },
     plans: [
       {
@@ -547,10 +551,10 @@ const t = {
         desc: "حجوزات + ودجة + لوحة تحكم",
         module: "OpenSeat Live",
         tiers: [
-          { seats: "حتى 40", price: 499 },
-          { seats: "حتى 80", price: 699 },
-          { seats: "حتى 150", price: 999 },
-          { seats: "150+", price: 1399 },
+          { seats: "حتى 80", price: 499 },
+          { seats: "حتى 150", price: 699 },
+          { seats: "حتى 200", price: 999 },
+          { seats: "200+", price: 1399 },
         ],
       },
       {
@@ -559,27 +563,29 @@ const t = {
         module: "OpenSeat Live + Connect + Club",
         popular: true,
         tiers: [
-          { seats: "حتى 40", price: 799 },
-          { seats: "حتى 80", price: 1099 },
-          { seats: "حتى 150", price: 1499 },
-          { seats: "150+", price: 1999 },
+          { seats: "حتى 80", price: 799 },
+          { seats: "حتى 150", price: 1099 },
+          { seats: "حتى 200", price: 1499 },
+          { seats: "200+", price: 1999 },
         ],
       },
     ],
-    annual: "خصم سنوي: ادفع 10 أشهر، احصل على 12.",
+    annual: "خصم سنوي: ادفع 10 أشهر واحصل على 12. ويمكن إلغاء الخطة الشهرية في أي وقت.",
     addons: {
-      title: "إضافات لاحقًا",
+      title: "إضافات",
       items: [
-        { name: "إدارة الموظفين والتدريب", price: "لاحقًا", desc: "مناوبات، صلاحيات، وتأهيل الفريق في مكان واحد" },
-        { name: "إدارة الموردين", price: "لاحقًا", desc: "الموردون وطلبات الشراء والتنسيق التشغيلي من لوحة التحكم" },
-        { name: "إدارة المخزون", price: "لاحقًا", desc: "مخزون، نواقص، وتذكيرات مرتبطة بإيقاع المطبخ والبار" },
+        { name: "تدريب الموظفين", price: "₪29/شهر", desc: "تدريب الطاقم ومعايير الخدمة والتأهيل في مكان واحد" },
+        { name: "إدارة الموردين", price: "₪39/شهر", desc: "الموردون وطلبات الشراء والتنسيق التشغيلي من لوحة التحكم" },
+        { name: "إدارة المخزون", price: "₪39/شهر", desc: "مخزون، نواقص، وتذكيرات مرتبطة بإيقاع المطبخ والبار" },
+        { name: "إدارة القائمة", price: "₪19/شهر", desc: "تحديث الأطباق والأسعار وتوفر القائمة من مكان واحد" },
+        { name: "لوحة التحليلات", price: "₪19/شهر", desc: "نظرة سريعة على الأداء والاحتفاظ وساعات الذروة وصحة العمل" },
       ],
     },
     faq: {
       title: "أسئلة شائعة",
       items: [
         { q: "هل أحتاج معرفة تقنية؟", a: "لا. الودجة تُضمّن بسطر واحد، لوحة التحكم تعمل من المتصفح، وواتساب يعمل وحده." },
-        { q: "ماذا يحدث بعد التجربة؟", a: "تختار الخطة المناسبة وتكمل. بدون مفاجآت وبدون تفاصيل مخفية." },
+        { q: "هل يوجد خصم سنوي وهل يمكن الإلغاء في أي وقت؟", a: "نعم. في الخطة السنوية تدفع 10 أشهر وتحصل على 12، وفي الخطة الشهرية يمكنك الإلغاء في أي وقت." },
         { q: "هل يعمل على التابلت الموجود عندي؟", a: "نعم. النظام كله يعمل من المتصفح وعلى أي تابلت أو كمبيوتر عادي." },
         { q: "هل أستطيع استخدام علامتي التجارية؟", a: "نعم. الودجة ولوحة التحكم وتجربة الضيف يمكن أن تحمل علامتك." },
         { q: "ما اللغات التي يدعمها؟", a: "العبرية والإنجليزية والعربية مع كشف تلقائي للغة الضيف." },

@@ -1398,10 +1398,7 @@ export function LandingPage() {
   const [lang, setLang] = useState<Lang>(() => {
     const params = new URLSearchParams(window.location.search);
     const p = params.get("lang");
-    if (p === "en" || p === "ar") return p;
-    const nav = navigator.language?.toLowerCase() || "";
-    if (nav.startsWith("ar")) return "ar";
-    if (nav.startsWith("en")) return "en";
+    if (p === "he" || p === "en" || p === "ar") return p;
     return "he";
   });
 

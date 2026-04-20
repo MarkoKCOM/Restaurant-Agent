@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, type FormEvent, type CSSProperties } from 
 type Lang = "he" | "en" | "ar";
 
 /* ═══════════════════════════════════════════════════════════
-   I18N — trilingual copy (HE primary, EN, AR)
+   I18N -trilingual copy (HE primary, EN, AR)
    ═══════════════════════════════════════════════════════════ */
 const I18N = {
   he: {
@@ -12,7 +12,7 @@ const I18N = {
     hero: {
       badge: "פיילוט · 5 מסעדות ראשונות · ₪299/חודש",
       title1: "חבר הצוות", title2: "הכי חכם", title3: "של המסעדה.",
-      desc: "הזמנות אונליין ומועדון חברים בוואטסאפ. OpenSeat מרכז הזמנות, קשר עם אורחים, ודשבורד לבעלים — במערכת אחת שרצה על האתר שלך ועל כל טאבלט.",
+      desc: "הזמנות אונליין ומועדון חברים בוואטסאפ. OpenSeat מרכז הזמנות, קשר עם אורחים, ודשבורד לבעלים -במערכת אחת שרצה על האתר שלך ועל כל טאבלט.",
       cta1: "ראה דמו חי", cta2: "ראה מחירים",
       trust: "עובד 24/7 · מופעל ע״י AI · עברית, אנגלית, ערבית",
     },
@@ -24,36 +24,36 @@ const I18N = {
       { k: "100%", v: "האתר והמותג נשארים שלך" },
     ],
     modulesTitle: "שלושה מודולים.", modulesTitle2: "מערכת אחת שלמה.",
-    modulesSub: "מתחילים מההזמנות ומהמועדון. ה-CRM, הוואטסאפ והדשבורד יושבים באותה מערכת — בלי שילובים שבירים ובלי עוד אפליקציה לצוות.",
+    modulesSub: "מתחילים מההזמנות ומהמועדון. ה-CRM, הוואטסאפ והדשבורד יושבים באותה מערכת -בלי שילובים שבירים ובלי עוד אפליקציה לצוות.",
     modules: [
       { id: "live", tag: "Live", name: "מנוע ההזמנות", color: "#16A34A", icon: "📅",
-        desc: "שיבוץ שולחנות חכם, רשימת המתנה, דשבורד בעלים וווידג׳ט לאתר — בזמן אמת, על כל טאבלט.",
+        desc: "שיבוץ שולחנות חכם, רשימת המתנה, דשבורד בעלים וווידג׳ט לאתר -בזמן אמת, על כל טאבלט.",
         features: ["שיבוץ אוטומטי לפי גודל קבוצה", "רשימת המתנה עם התאמה חכמה", "ווידג׳ט לאתר בשורת קוד אחת", "תזכורות ודיווחי no-show"] },
       { id: "connect", tag: "Connect", name: "שכבת הקשר עם האורחים", color: "#2563EB", icon: "💬",
-        desc: "CRM אורחים, זיהוי לקוחות חוזרים, בוט וואטסאפ AI ונראות לבעלים — בלי עוד אפליקציה.",
+        desc: "CRM אורחים, זיהוי לקוחות חוזרים, בוט וואטסאפ AI ונראות לבעלים -בלי עוד אפליקציה.",
         features: ["CRM שנבנה אוטומטית מההזמנה הראשונה", "תגיות VIP, חוזר, בסיכון, מארח גדול", "בוט וואטסאפ בעברית, אנגלית וערבית", "סיכום יומי לבעלים ב-WhatsApp"] },
       { id: "club", tag: "Club", name: "מועדון החברים של המסעדה", color: "#9333EA", icon: "🎟️",
-        desc: "נקודות, דרגות VIP והפניות — מועדון שנותן לאורחים סיבה אמיתית לחזור שוב ושוב.",
+        desc: "נקודות, דרגות VIP והפניות -מועדון שנותן לאורחים סיבה אמיתית לחזור שוב ושוב.",
         features: ["נקודות על ביקורים לפי הכללים שלך", "הטבות יום הולדת ואירועים", "חבר מביא חבר עם תגמול לשניהם", "האורח בודק יתרה בוואטסאפ"] },
     ],
     howTitle: "איך זה עובד",
     howSub: "ארבעה צעדים. אותו לולאה שמייצרת קשר ארוך טווח עם האורח.",
     howSteps: [
-      { n: "01", t: "הזמנה נכנסת", d: "דרך וואטסאפ, האתר שלך, או הטלפון — הכל נוחת במקום אחד.", icon: "📥" },
+      { n: "01", t: "הזמנה נכנסת", d: "דרך וואטסאפ, האתר שלך, או הטלפון -הכל נוחת במקום אחד.", icon: "📥" },
       { n: "02", t: "OpenSeat מאשר", d: "המערכת משבצת שולחן, שולחת אישור וסידור למשמרת.", icon: "✅" },
       { n: "03", t: "מזהים את האורח", d: "הצוות רואה אם זה חבר מועדון, VIP ומה חשוב לפני ההושבה.", icon: "👀" },
-      { n: "04", t: "מחזירים אותו שוב", d: "נקודות, הטבה או הודעת חזרה — והקשר עם האורח ממשיך.", icon: "🔁" },
+      { n: "04", t: "מחזירים אותו שוב", d: "נקודות, הטבה או הודעת חזרה -והקשר עם האורח ממשיך.", icon: "🔁" },
     ],
     whyTitle: "למה מסעדות בוחרות ב-OpenSeat",
     whyPoints: [
       { t: "חוסך 1–2 שעות ביום", d: "פחות טלפונים, פחות הקלדות, פחות בלגן בין וואטסאפ, אתר ונייר.", accent: "time" },
-      { t: "משפר את הקשר עם האורחים", d: "היסטוריה, העדפות ורגעים חשובים — במקום אחד. בלי לנחש.", accent: "heart" },
-      { t: "מגדיל שימור וחזרות", d: "מועדון, הטבות ותקשורת מדויקת — יותר אורחים חוזרים.", accent: "trend" },
+      { t: "משפר את הקשר עם האורחים", d: "היסטוריה, העדפות ורגעים חשובים -במקום אחד. בלי לנחש.", accent: "heart" },
+      { t: "מגדיל שימור וחזרות", d: "מועדון, הטבות ותקשורת מדויקת -יותר אורחים חוזרים.", accent: "trend" },
       { t: "וואטסאפ + כל טאבלט", d: "האורחים נשארים בוואטסאפ. הצוות עובד מכל דפדפן.", accent: "chat" },
-      { t: "White-label מלא", d: "המיתוג שלך, הווידג׳ט שלך, הדשבורד שלך — לא עוד פלטפורמה גנרית.", accent: "brush" },
+      { t: "White-label מלא", d: "המיתוג שלך, הווידג׳ט שלך, הדשבורד שלך -לא עוד פלטפורמה גנרית.", accent: "brush" },
       { t: "מחיר נגיש וברור", d: "חבילות חודשיות למסעדות עצמאיות, בלי חומרה יקרה.", accent: "coin" },
     ],
-    cmpTitle: "השוואה ישירה", cmpSub: "מה באמת יש לכל מערכת — לא מה שהאתר מבטיח.",
+    cmpTitle: "השוואה ישירה", cmpSub: "מה באמת יש לכל מערכת -לא מה שהאתר מבטיח.",
     cmpHeaders: ["", "OpenSeat", "Ontopo", "Tabit", "SevenRooms"],
     cmpRows: [
       ["הזמנות אונליין", "v", "v", "v", "v"],
@@ -68,7 +68,7 @@ const I18N = {
     ],
     launchTitle: "מחיר השקה לפיילוט", launchKicker: "5 מסעדות ראשונות",
     launchDesc: "חבילת Growth המלאה ב-₪299/חודש ל-5 המסעדות הראשונות. מחיר חודשי קבוע לפיילוט, לא תשלום חד-פעמי.",
-    launchCta: "הבטיחו את המקום שלכם", launchNote: "אחרי 5 המקומות — מחירון Growth הרגיל",
+    launchCta: "הבטיחו את המקום שלכם", launchNote: "אחרי 5 המקומות -מחירון Growth הרגיל",
     pricingTitle: "מחירון שקוף",
     pricingSub: "חבילות חודשיות לפי גודל המסעדה. הנחה שנתית (10 חודשים במחיר של 12). ביטול מתי שרוצים.",
     pricingTierLabel: "בחר גודל מסעדה",
@@ -96,13 +96,13 @@ const I18N = {
     faq: [
       { q: "האם צריך ידע טכני?", a: "לא. הווידג׳ט נכנס בשורת קוד, הדשבורד עובד מהדפדפן, ווואטסאפ עובד לבד." },
       { q: "יש הנחה שנתית? אפשר לבטל מתי שרוצים?", a: "בהתחייבות שנתית משלמים 10 חודשים ומקבלים 12. במסלול חודשי אפשר לבטל בכל עת." },
-      { q: "זה עובד על הטאבלט שכבר יש לי?", a: "כן. כל המערכת בדפדפן — על כל טאבלט או מחשב רגיל." },
+      { q: "זה עובד על הטאבלט שכבר יש לי?", a: "כן. כל המערכת בדפדפן -על כל טאבלט או מחשב רגיל." },
       { q: "אפשר לשים את המיתוג של המסעדה?", a: "כן. הווידג׳ט, הדשבורד והחוויה נבנים סביב המותג שלך." },
       { q: "באילו שפות המערכת עובדת?", a: "עברית, אנגלית וערבית, עם זיהוי שפה אוטומטי לאורח." },
       { q: "הנתונים שלי באמת שלי?", a: "כן. אתה הבעלים של כל נתוני האורחים וה-CRM." },
     ],
     demoTitle: "דמו הזמנה חי",
-    demoSub: "כך נראה תהליך ההזמנה באתר שלך — מהיר, נקי ועובד על כל טאבלט.",
+    demoSub: "כך נראה תהליך ההזמנה באתר שלך -מהיר, נקי ועובד על כל טאבלט.",
     contactTitle: "דברו איתנו",
     contactSub: "שיחה של 15 דקות. מקבלים דמו חי על המסעדה שלך בוואטסאפ.",
     contactLeft: [
@@ -298,7 +298,7 @@ const I18N = {
     hero: {
       badge: "بايلوت · أول 5 مطاعم · ₪299/شهر",
       title1: "أذكى عضو", title2: "في فريق", title3: "مطعمك.",
-      desc: "حجوزات + نادي أعضاء على واتساب. OpenSeat يجمع الحجوزات، العلاقة مع الضيوف، ولوحة المالك — نظام واحد على موقعك وعلى أي تابلت.",
+      desc: "حجوزات + نادي أعضاء على واتساب. OpenSeat يجمع الحجوزات، العلاقة مع الضيوف، ولوحة المالك -نظام واحد على موقعك وعلى أي تابلت.",
       cta1: "شاهد العرض الحي", cta2: "شاهد الأسعار",
       trust: "يعمل 24/7 · مدعوم بالذكاء الاصطناعي · عربي، عبري، إنجليزي",
     },
@@ -310,22 +310,22 @@ const I18N = {
       { k: "100%", v: "علامتك وموقعك يبقيان لك" },
     ],
     modulesTitle: "ثلاث وحدات.", modulesTitle2: "نظام متكامل واحد.",
-    modulesSub: "ابدأ بالحجوزات ونادي الأعضاء. CRM الضيوف، واتساب ولوحة المالك في نفس النظام — بدون تكاملات هشّة وبدون تطبيق إضافي.",
+    modulesSub: "ابدأ بالحجوزات ونادي الأعضاء. CRM الضيوف، واتساب ولوحة المالك في نفس النظام -بدون تكاملات هشّة وبدون تطبيق إضافي.",
     modules: [
       { id: "live", tag: "Live", name: "محرك الحجوزات", color: "#16A34A", icon: "📅",
-        desc: "تعيين طاولات ذكي، قائمة انتظار، لوحة مالك وودجة للموقع — لحظي وعلى أي تابلت.",
+        desc: "تعيين طاولات ذكي، قائمة انتظار، لوحة مالك وودجة للموقع -لحظي وعلى أي تابلت.",
         features: ["تعيين تلقائي حسب حجم المجموعة", "قائمة انتظار بمطابقة ذكية", "ودجة بسطر كود واحد", "تذكيرات وتتبع عدم الحضور"] },
       { id: "connect", tag: "Connect", name: "طبقة العلاقة مع الضيوف", color: "#2563EB", icon: "💬",
-        desc: "CRM ضيوف، معرفة الزبون العائد، واتساب AI ورؤية للمالك — بدون تطبيق ثانٍ.",
+        desc: "CRM ضيوف، معرفة الزبون العائد، واتساب AI ورؤية للمالك -بدون تطبيق ثانٍ.",
         features: ["CRM يُبنى تلقائيًا", "وسوم VIP، عائد، معرض للخطر", "واتساب AI بـ 3 لغات", "ملخص يومي للمالك على واتساب"] },
       { id: "club", tag: "Club", name: "نادي الأعضاء", color: "#9333EA", icon: "🎟️",
-        desc: "نقاط، درجات VIP وإحالات — سبب حقيقي ليعود الضيف.",
+        desc: "نقاط، درجات VIP وإحالات -سبب حقيقي ليعود الضيف.",
         features: ["نقاط على الزيارات", "امتيازات عيد الميلاد", "عضو يجلب عضو", "فحص الرصيد على واتساب"] },
     ],
     howTitle: "كيف يعمل",
     howSub: "أربع خطوات. حلقة واحدة تبني علاقة طويلة مع كل ضيف.",
     howSteps: [
-      { n: "01", t: "الحجز يدخل", d: "واتساب، موقعك أو الهاتف — كله يدخل لمكان واحد.", icon: "📥" },
+      { n: "01", t: "الحجز يدخل", d: "واتساب، موقعك أو الهاتف -كله يدخل لمكان واحد.", icon: "📥" },
       { n: "02", t: "OpenSeat يؤكد", d: "يعيّن الطاولة، يرسل التأكيد ويهدئ الوردية.", icon: "✅" },
       { n: "03", t: "تتعرف على الضيف", d: "الطاقم يرى حالة العضو/VIP وما المهم قبل الجلوس.", icon: "👀" },
       { n: "04", t: "تعيده مرة أخرى", d: "نقاط، امتيازات أو رسالة عودة تواصل العلاقة.", icon: "🔁" },
@@ -333,7 +333,7 @@ const I18N = {
     whyTitle: "لماذا يختار المطاعم OpenSeat",
     whyPoints: [
       { t: "يوفّر 1\u20132 ساعة يوميًا", d: "مكالمات أقل، طباعة أقل، فوضى أقل بين واتساب والموقع والورق.", accent: "time" },
-      { t: "علاقة أفضل مع الضيوف", d: "التاريخ والتفضيلات واللحظات المهمة — مكان واحد.", accent: "heart" },
+      { t: "علاقة أفضل مع الضيوف", d: "التاريخ والتفضيلات واللحظات المهمة -مكان واحد.", accent: "heart" },
       { t: "احتفاظ أعلى", d: "العضوية والمكافآت والمتابعة تعيد المزيد من الضيوف.", accent: "trend" },
       { t: "واتساب + أي تابلت", d: "الضيوف على واتساب، والطاقم من أي متصفح.", accent: "chat" },
       { t: "White-label كامل", d: "علامتك، ودجتك ولوحة التحكم الخاصة بك.", accent: "brush" },
@@ -354,7 +354,7 @@ const I18N = {
     ],
     launchTitle: "سعر إطلاق البايلوت", launchKicker: "أول 5 مطاعم",
     launchDesc: "حزمة Growth الكاملة بـ ₪299/شهر لأول 5 مطاعم. سعر شهري للإطلاق.",
-    launchCta: "احجز مكانك", launchNote: "بعد أول 5 — يعود السعر الاعتيادي لـ Growth",
+    launchCta: "احجز مكانك", launchNote: "بعد أول 5 -يعود السعر الاعتيادي لـ Growth",
     pricingTitle: "تسعير شفاف",
     pricingSub: "خطط شهرية حسب حجم المطعم. خصم سنوي (10 بسعر 12). إلغاء في أي وقت.",
     pricingTierLabel: "اختر الحجم",
@@ -382,13 +382,13 @@ const I18N = {
     faq: [
       { q: "هل أحتاج معرفة تقنية؟", a: "لا. الودجة بسطر واحد، لوحة التحكم في المتصفح، وواتساب يعمل وحده." },
       { q: "هل يوجد خصم سنوي وإمكانية إلغاء؟", a: "12 شهر بسعر 10 سنويًا. الإلغاء ممكن أي وقت في الخطة الشهرية." },
-      { q: "هل يعمل على تابلتي؟", a: "نعم — النظام كله في المتصفح." },
+      { q: "هل يعمل على تابلتي؟", a: "نعم -النظام كله في المتصفح." },
       { q: "هل أستخدم علامتي؟", a: "نعم. الودجة، اللوحة وتجربة الضيف تحمل علامتك." },
       { q: "ما اللغات المدعومة؟", a: "عربي، عبري وإنجليزي مع كشف تلقائي." },
       { q: "هل بياناتي ملكي فعلًا؟", a: "نعم، أنت تملك بيانات الضيوف وCRM." },
     ],
     demoTitle: "عرض حجز حي",
-    demoSub: "هكذا يبدو الحجز على موقعك — سريع، نظيف ومصمم لضيوف حقيقيين.",
+    demoSub: "هكذا يبدو الحجز على موقعك -سريع، نظيف ومصمم لضيوف حقيقيين.",
     contactTitle: "تحدث معنا",
     contactSub: "مكالمة 15 دقيقة. واحصل على عرض حي على واتساب لمطعمك.",
     contactLeft: [
@@ -580,11 +580,17 @@ function AccessibilityWidget({ lang }: { lang: Lang }) {
    ═══════════════════════════════════════════════════════════ */
 function Nav({ L, lang, setLang }: { L: I18NData; lang: Lang; setLang: (l: Lang) => void }) {
   const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => {
     const onS = () => setScrolled(window.scrollY > 8);
     window.addEventListener("scroll", onS, { passive: true });
     return () => window.removeEventListener("scroll", onS);
   }, []);
+  useEffect(() => {
+    if (mobileOpen) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
   const navLinks = [
     { href: "#modules", label: L.nav.modules }, { href: "#how", label: L.nav.how },
     { href: "#pricing", label: L.nav.pricing }, { href: "#demo", label: L.nav.demo },
@@ -603,8 +609,8 @@ function Nav({ L, lang, setLang }: { L: I18NData; lang: Lang; setLang: (l: Lang)
         <nav className="nav-links" style={{ display: "flex", alignItems: "center", gap: 28 }}>
           {navLinks.map(l => <a key={l.href} href={l.href} style={{ fontSize: 14, color: "var(--ink-70)", fontWeight: 500 }}>{l.label}</a>)}
         </nav>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 2, background: "var(--paper-2)", borderRadius: 999, padding: 3, border: "1px solid var(--line)" }}>
+        <div className="nav-right" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="lang-switcher" style={{ display: "flex", alignItems: "center", gap: 2, background: "var(--paper-2)", borderRadius: 999, padding: 3, border: "1px solid var(--line)" }}>
             {(["he", "en", "ar"] as const).map(c => (
               <button key={c} onClick={() => setLang(c)} style={{
                 border: "none", background: lang === c ? "white" : "transparent",
@@ -614,12 +620,50 @@ function Nav({ L, lang, setLang }: { L: I18NData; lang: Lang; setLang: (l: Lang)
               }}>{c.toUpperCase()}</button>
             ))}
           </div>
-          <a href="#contact" className="btn btn-primary" style={{ padding: "10px 16px", fontSize: 14 }}>
+          <a href="#contact" className="btn btn-primary nav-cta" style={{ padding: "10px 16px", fontSize: 14 }}>
+            {L.nav.cta} <span className="arrow">{"\u2192"}</span>
+          </a>
+          {/* Mobile hamburger */}
+          <button className="mobile-menu-btn" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Menu" aria-expanded={mobileOpen}
+            style={{ display: "none", background: "none", border: "none", cursor: "pointer", padding: 8, color: "var(--ink)" }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              {mobileOpen ? <><line x1="6" y1="6" x2="18" y2="18" /><line x1="6" y1="18" x2="18" y2="6" /></> : <><line x1="3" y1="7" x2="21" y2="7" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="17" x2="21" y2="17" /></>}
+            </svg>
+          </button>
+        </div>
+      </div>
+      {/* Mobile menu overlay */}
+      {mobileOpen && (
+        <div style={{ position: "fixed", inset: 0, top: 56, background: "rgba(251,247,244,.98)", backdropFilter: "blur(12px)", zIndex: 79, padding: "24px", display: "flex", flexDirection: "column", gap: 8 }}>
+          {navLinks.map(l => (
+            <a key={l.href} href={l.href} onClick={() => setMobileOpen(false)} style={{ display: "block", padding: "16px 0", fontSize: 18, fontWeight: 600, color: "var(--ink)", borderBottom: "1px solid var(--line)" }}>{l.label}</a>
+          ))}
+          <div style={{ marginTop: 16, display: "flex", gap: 12, alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 2, background: "var(--paper-2)", borderRadius: 999, padding: 3, border: "1px solid var(--line)" }}>
+              {(["he", "en", "ar"] as const).map(c => (
+                <button key={c} onClick={() => { setLang(c); setMobileOpen(false); }} style={{
+                  border: "none", background: lang === c ? "white" : "transparent",
+                  color: lang === c ? "var(--ink)" : "var(--ink-50)",
+                  padding: "8px 12px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}>{c.toUpperCase()}</button>
+              ))}
+            </div>
+          </div>
+          <a href="#contact" onClick={() => setMobileOpen(false)} className="btn btn-primary" style={{ marginTop: 16, justifyContent: "center", width: "100%", padding: "16px 24px", fontSize: 16 }}>
             {L.nav.cta} <span className="arrow">{"\u2192"}</span>
           </a>
         </div>
-      </div>
-      <style>{`@media(max-width:900px){ .nav-links{ display:none !important; } }`}</style>
+      )}
+      <style>{`
+        @media(max-width:900px){
+          .nav-links{ display:none !important; }
+          .nav-cta{ display:none !important; }
+          .mobile-menu-btn{ display:flex !important; }
+        }
+        @media(max-width:480px){
+          .lang-switcher{ display:none !important; }
+        }
+      `}</style>
     </header>
   );
 }
@@ -811,6 +855,7 @@ function Hero({ L }: { L: I18NData }) {
       <style>{`
         @media(max-width:960px){ .hero-cols{ grid-template-columns: 1fr !important; } .stats-grid{ grid-template-columns: repeat(2,1fr) !important; } .stats-grid > div:nth-child(2n){ border-inline-end: none !important; } .stats-grid > div:nth-child(-n+2){ border-bottom: 1px solid var(--line); } .callout-chip{ display: none !important; } }
         @media(max-width:520px){ .stats-grid{ grid-template-columns: 1fr !important; } .stats-grid > div{ border-inline-end: none !important; border-bottom: 1px solid var(--line); } }
+        @media(max-width:480px){ .hero-cols h1{ font-size: clamp(32px, 8vw, 44px) !important; } }
       `}</style>
     </section>
   );
@@ -1295,7 +1340,7 @@ function Contact({ L }: { L: I18NData }) {
             {([["name", L.formName, "text"], ["email", L.formEmail, "email"], ["restaurant", L.formRestaurant, "text"]] as const).map(([k, lbl, tp]) => (
               <div key={k}><label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginBottom: 6 }}>{lbl}</label><input type={tp} name={k} required style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 14, background: "var(--paper)" }} /></div>
             ))}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div className="phone-seats-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div><label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginBottom: 6 }}>{L.formPhone}</label><input type="tel" name="phone" style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 14, background: "var(--paper)" }} /></div>
               <div><label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginBottom: 6 }}>{L.formSeats}</label><select name="seats" style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 14, background: "var(--paper)" }}><option>1-30</option><option>31-80</option><option>81-150</option><option>151-200</option><option>200+</option></select></div>
             </div>
@@ -1306,7 +1351,7 @@ function Contact({ L }: { L: I18NData }) {
           </form>
         </div>
       </div>
-      <style>{`@media(max-width:900px){ .contact-grid{ grid-template-columns: 1fr !important; } }`}</style>
+      <style>{`@media(max-width:900px){ .contact-grid{ grid-template-columns: 1fr !important; } } @media(max-width:480px){ .contact-grid form{ padding: 20px !important; } .contact-grid .phone-seats-grid{ grid-template-columns: 1fr !important; } }`}</style>
     </section>
   );
 }

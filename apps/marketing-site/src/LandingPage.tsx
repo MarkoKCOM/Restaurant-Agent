@@ -144,7 +144,10 @@ const I18N = {
     dateFull: "שישי, 24.4", dateRelative: "היום + 4 ימים",
     demoName: "דני ל.",
     repeatGuests: "אורחים חוזרים", waAutoConfirm: "WhatsApp · אישור אוטומטי", aiTyping: "AI מקליד תשובה",
-    embedLabel: "EMBED ON YOUR SITE",
+    embedLabel: "רץ עכשיו באתר שלך",
+    embedNote: "זה הווידג׳ט האמיתי, לא תמונה ולא קישור. האורח מזמין כאן וההזמנה נכנסת ישר למערכת.",
+    widgetLoading: "טוען את הווידג׳ט החי...",
+    widgetError: "הווידג׳ט לא נטען כרגע.",
     formName: "שם מלא", formEmail: "Email", formRestaurant: "שם המסעדה",
     formPhone: "טלפון", formSeats: "גודל מסעדה", formSend: "שלח בקשה", formSending: "...", formSent: "נשלח ✓",
     cmpLegend: { yes: "יש", partial: "חלקי", no: "אין" },
@@ -287,7 +290,10 @@ const I18N = {
     dateFull: "Fri, Apr 24", dateRelative: "Today + 4 days",
     demoName: "Danny L.",
     repeatGuests: "repeat guests", waAutoConfirm: "WhatsApp \u00B7 auto-confirm", aiTyping: "AI typing\u2026",
-    embedLabel: "EMBED ON YOUR SITE",
+    embedLabel: "RUNNING LIVE ON YOUR SITE",
+    embedNote: "This is the real widget, not a screenshot and not a link. Guests book here and the reservation goes straight into the system.",
+    widgetLoading: "Loading the live widget...",
+    widgetError: "The widget could not load right now.",
     formName: "Full name", formEmail: "Email", formRestaurant: "Restaurant",
     formPhone: "Phone", formSeats: "Seats", formSend: "Send request", formSending: "...", formSent: "Sent \u2713",
     cmpLegend: { yes: "Included", partial: "Partial", no: "Missing" },
@@ -430,7 +436,10 @@ const I18N = {
     dateFull: "الجمعة 24.4", dateRelative: "اليوم + 4 أيام",
     demoName: "دني ل.",
     repeatGuests: "عائدون", waAutoConfirm: "واتساب · تأكيد تلقائي", aiTyping: "AI يكتب...",
-    embedLabel: "EMBED ON YOUR SITE",
+    embedLabel: "يعمل الآن على موقعك",
+    embedNote: "هذه هي الودجة الحقيقية، ليست صورة ولا رابطًا. الضيف يحجز هنا والحجز يدخل مباشرة إلى النظام.",
+    widgetLoading: "يتم تحميل الودجة الحية...",
+    widgetError: "تعذر تحميل الودجة الآن.",
     formName: "الاسم", formEmail: "البريد الإلكتروني", formRestaurant: "اسم المطعم",
     formPhone: "هاتف", formSeats: "حجم المطعم", formSend: "أرسل", formSending: "...", formSent: "أُرسل ✓",
     cmpLegend: { yes: "موجود", partial: "جزئي", no: "غير موجود" },
@@ -438,6 +447,44 @@ const I18N = {
 };
 
 type I18NData = (typeof I18N)[Lang];
+
+type OpenSeatBookingWindow = Window & typeof globalThis & {
+  OpenSeatBooking?: {
+    mount: (el: HTMLElement, config: { restaurantId: string; apiUrl?: string }) => void;
+  };
+};
+
+const LIVE_WIDGET_RESTAURANT_ID = "c3c22e37-a309-4fde-aa6c-6e714212a3bc";
+const LIVE_WIDGET_API_URL = "https://booking-widget-rust.vercel.app";
+const LIVE_WIDGET_SCRIPT_URL = `${LIVE_WIDGET_API_URL}/openseat-booking.iife.js`;
+
+let liveWidgetScriptPromise: Promise<void> | null = null;
+
+function ensureLiveWidgetScript() {
+  const widgetWindow = window as OpenSeatBookingWindow;
+  if (widgetWindow.OpenSeatBooking) return Promise.resolve();
+
+  if (!liveWidgetScriptPromise) {
+    liveWidgetScriptPromise = new Promise<void>((resolve, reject) => {
+      const existing = document.querySelector<HTMLScriptElement>('script[data-openseat-live-widget="true"]');
+      if (existing) {
+        existing.addEventListener("load", () => resolve(), { once: true });
+        existing.addEventListener("error", () => reject(new Error("Failed to load OpenSeat widget script")), { once: true });
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.src = LIVE_WIDGET_SCRIPT_URL;
+      script.async = true;
+      script.dataset.openseatLiveWidget = "true";
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Failed to load OpenSeat widget script"));
+      document.body.appendChild(script);
+    });
+  }
+
+  return liveWidgetScriptPromise;
+}
 
 /* ═══════════════════════════════════════════════════════════
    Hooks
@@ -1179,6 +1226,65 @@ function FAQ({ L }: { L: I18NData }) {
 /* ═══════════════════════════════════════════════════════════
    Live Demo (interactive phone mockup)
    ═══════════════════════════════════════════════════════════ */
+function LiveWidgetEmbed({ L }: { L: I18NData }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const mountWidget = async () => {
+      const host = hostRef.current;
+      if (!host) return;
+
+      setStatus("loading");
+      host.innerHTML = "";
+
+      try {
+        await ensureLiveWidgetScript();
+        if (cancelled || !hostRef.current) return;
+
+        const widgetWindow = window as OpenSeatBookingWindow;
+        widgetWindow.OpenSeatBooking?.mount(hostRef.current, {
+          restaurantId: LIVE_WIDGET_RESTAURANT_ID,
+          apiUrl: LIVE_WIDGET_API_URL,
+        });
+        setStatus("ready");
+      } catch {
+        if (!cancelled) setStatus("error");
+      }
+    };
+
+    void mountWidget();
+
+    return () => {
+      cancelled = true;
+      if (hostRef.current) hostRef.current.innerHTML = "";
+    };
+  }, []);
+
+  return (
+    <div style={{ marginTop: 24, padding: 18, borderRadius: 14, background: "white", border: "1px solid var(--line)", boxShadow: "0 10px 30px -20px rgba(0,0,0,.12)" }}>
+      <div className="mono-sm" style={{ color: "var(--brand)", marginBottom: 8 }}>{L.embedLabel}</div>
+      <p style={{ margin: "0 0 14px", fontSize: 14, color: "var(--ink-70)", lineHeight: 1.6 }}>{L.embedNote}</p>
+      <div style={{ minHeight: 620, borderRadius: 16, overflow: "hidden", border: "1px solid var(--line)", background: "var(--paper-2)" }}>
+        {status === "error" ? (
+          <div style={{ padding: 24, fontSize: 14, color: "var(--ink-70)" }}>{L.widgetError}</div>
+        ) : (
+          <div style={{ position: "relative", minHeight: 620 }}>
+            {status === "loading" && (
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: "var(--ink-50)", background: "var(--paper-2)" }}>
+                {L.widgetLoading}
+              </div>
+            )}
+            <div ref={hostRef} style={{ padding: 20, opacity: status === "ready" ? 1 : 0, transition: "opacity .2s ease" }} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function LiveDemo({ L }: { L: I18NData }) {
   const ref = useReveal();
   const w = L.widget;
@@ -1283,12 +1389,7 @@ function LiveDemo({ L }: { L: I18NData }) {
                 </div>
               ))}
             </div>
-            <div style={{ marginTop: 24, padding: 18, borderRadius: 14, background: "var(--ink)", color: "white" }}>
-              <div className="mono-sm" style={{ color: "var(--brand)", marginBottom: 8 }}>{L.embedLabel}</div>
-              <code style={{ display: "block", fontFamily: "var(--font-mono)", fontSize: 12, opacity: .95, lineHeight: 1.6, direction: "ltr", textAlign: "left" }}>
-                {'<script src="openseat.io/widget.js"'}<br />{'  data-restaurant="your-slug"></script>'}
-              </code>
-            </div>
+            <LiveWidgetEmbed L={L} />
           </div>
         </div>
       </div>

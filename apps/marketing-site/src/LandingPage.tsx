@@ -628,10 +628,13 @@ function Nav({ L, lang, setLang }: { L: I18NData; lang: Lang; setLang: (l: Lang)
   ];
   return (
     <header style={{
-      position: "sticky", top: 0, zIndex: mobileOpen ? 140 : 80,
-      backdropFilter: (scrolled || mobileOpen) ? "blur(12px)" : "none",
-      background: (scrolled || mobileOpen) ? "rgba(251,247,244,.96)" : "transparent",
+      position: "sticky", top: 0, zIndex: mobileOpen ? 160 : 80,
+      isolation: "isolate",
+      backdropFilter: mobileOpen ? "none" : scrolled ? "blur(12px)" : "none",
+      WebkitBackdropFilter: mobileOpen ? "none" : scrolled ? "blur(12px)" : "none",
+      background: mobileOpen ? "var(--paper)" : scrolled ? "rgba(251,247,244,.96)" : "transparent",
       borderBottom: (scrolled || mobileOpen) ? "1px solid var(--line)" : "1px solid transparent",
+      boxShadow: mobileOpen ? "0 16px 40px -32px rgba(0,0,0,.28)" : "none",
       transition: "all .25s",
     }}>
       <div className="container-x" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 24px" }}>
@@ -664,7 +667,7 @@ function Nav({ L, lang, setLang }: { L: I18NData; lang: Lang; setLang: (l: Lang)
       </div>
       {/* Mobile menu overlay */}
       {mobileOpen && (
-        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, height: "calc(100dvh - 56px)", minHeight: "calc(100vh - 56px)", background: "var(--paper)", zIndex: 79, padding: "24px", paddingBottom: "max(24px, env(safe-area-inset-bottom))", overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, borderBottom: "1px solid var(--line)", boxShadow: "0 30px 80px -30px rgba(0,0,0,.18)" }}>
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, height: "calc(100dvh - 56px)", minHeight: "calc(100vh - 56px)", background: "linear-gradient(180deg, var(--paper) 0%, #F8F3EF 100%)", opacity: 1, zIndex: 79, padding: "24px", paddingBottom: "max(24px, env(safe-area-inset-bottom))", overflowY: "auto", overscrollBehavior: "contain", display: "flex", flexDirection: "column", gap: 8, borderBottom: "1px solid var(--line)", boxShadow: "0 30px 80px -30px rgba(0,0,0,.18)", isolation: "isolate" }}>
           {navLinks.map(l => (
             <a key={l.href} href={l.href} onClick={() => setMobileOpen(false)} style={{ display: "block", padding: "16px 0", fontSize: 18, fontWeight: 600, color: "var(--ink)", borderBottom: "1px solid var(--line)" }}>{l.label}</a>
           ))}

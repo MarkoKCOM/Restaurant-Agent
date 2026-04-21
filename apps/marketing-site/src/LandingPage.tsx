@@ -16,7 +16,7 @@ const I18N = {
       cta1: "ראה דמו חי", cta2: "ראה מחירים",
       trust: "עובד 24/7 · מופעל ע״י AI · עברית, אנגלית, ערבית",
     },
-    tape: ["הזמנות אונליין", "בוט וואטסאפ AI", "מועדון חברים", "CRM אורחים", "ווידג׳ט לאתר", "דשבורד בעלים"],
+    tape: ["הזמנות אונליין", "בוט וואטסאפ", "מועדון חברים", "ספר אורחים", "ווידג׳ט לאתר", "דשבורד בעלים"],
     stats: [
       { k: "24/7", v: "AI פעיל, בלי הפסקות" },
       { k: "1-2 שעות", v: "חיסכון יומי לכל משמרת" },
@@ -24,17 +24,17 @@ const I18N = {
       { k: "100%", v: "האתר והמותג נשארים שלך" },
     ],
     modulesTitle: "שלושה מודולים.", modulesTitle2: "מערכת אחת שלמה.",
-    modulesSub: "מתחילים מההזמנות ומהמועדון. ה-CRM, הוואטסאפ והדשבורד יושבים באותה מערכת - בלי שילובים שבירים ובלי עוד אפליקציה לצוות.",
+    modulesSub: "מתחילים מהזמנות ומהמועדון. ספר האורחים, הוואטסאפ והדשבורד יושבים באותה מערכת - בלי חיבורים מסובכים ובלי עוד אפליקציה לצוות.",
     modules: [
-      { id: "live", tag: "Live", name: "מנוע ההזמנות", color: "#16A34A", icon: "📅",
-        desc: "שיבוץ שולחנות חכם, רשימת המתנה, דשבורד בעלים וווידג׳ט לאתר - בזמן אמת, על כל טאבלט.",
-        features: ["שיבוץ אוטומטי לפי גודל קבוצה", "רשימת המתנה עם התאמה חכמה", "ווידג׳ט לאתר בשורת קוד אחת", "תזכורות ודיווחי no-show"] },
-      { id: "connect", tag: "Connect", name: "שכבת הקשר עם האורחים", color: "#2563EB", icon: "💬",
-        desc: "CRM אורחים, זיהוי לקוחות חוזרים, בוט וואטסאפ AI ונראות לבעלים - בלי עוד אפליקציה.",
-        features: ["CRM שנבנה אוטומטית מההזמנה הראשונה", "תגיות VIP, חוזר, בסיכון, מארח גדול", "בוט וואטסאפ בעברית, אנגלית וערבית", "סיכום יומי לבעלים ב-WhatsApp"] },
-      { id: "club", tag: "Club", name: "מועדון החברים של המסעדה", color: "#9333EA", icon: "🎟️",
-        desc: "נקודות, דרגות VIP והפניות - מועדון שנותן לאורחים סיבה אמיתית לחזור שוב ושוב.",
-        features: ["נקודות על ביקורים לפי הכללים שלך", "הטבות יום הולדת ואירועים", "חבר מביא חבר עם תגמול לשניהם", "האורח בודק יתרה בוואטסאפ"] },
+      { id: "live", tag: "הזמנות", name: "יומן ההזמנות", color: "#16A34A", icon: "📅",
+        desc: "הזמנות, רשימת המתנה, ווידג׳ט לאתר ובוט וואטסאפ שעוזר לסגור שולחן מהר.",
+        features: ["שיבוץ אוטומטי לפי גודל קבוצה", "רשימת המתנה עם התאמה חכמה", "ווידג׳ט לאתר בשורת קוד אחת", "אישור ותזכורת בוואטסאפ"] },
+      { id: "connect", tag: "וואטסאפ", name: "קשר עם האורחים", color: "#2563EB", icon: "💬",
+        desc: "ספר אורחים, זיהוי לקוחות חוזרים, הודעות אוטומטיות ונראות מלאה לבעלים.",
+        features: ["ספר אורחים שנבנה מההזמנה הראשונה", "זיהוי VIP, חוזר, יום הולדת ומארח גדול", "הודעות וואטסאפ בעברית, אנגלית וערבית", "סיכום יומי לבעלים בוואטסאפ"] },
+      { id: "club", tag: "מועדון", name: "מועדון החברים", color: "#9333EA", icon: "🎟️",
+        desc: "נקודות, הטבות והפניות - סיבה אמיתית לאורח לחזור שוב ושוב.",
+        features: ["נקודות על ביקורים לפי הכללים שלך", "הטבות יום הולדת ואירועים", "חבר מביא חבר עם תגמול לשניהם", "בדיקת יתרה בוואטסאפ"] },
     ],
     howTitle: "איך זה עובד",
     howSub: "ארבעה צעדים. אותו לולאה שמייצרת קשר ארוך טווח עם האורח.",
@@ -57,8 +57,8 @@ const I18N = {
     cmpHeaders: ["", "OpenSeat", "Ontopo", "Tabit", "SevenRooms"],
     cmpRows: [
       ["הזמנות אונליין", "v", "v", "v", "v"],
-      ["בוט וואטסאפ AI", "v", "x", "x", "x"],
-      ["CRM אורחים", "v", "x", "~", "v"],
+      ["בוט וואטסאפ", "v", "x", "x", "x"],
+      ["ספר אורחים", "v", "x", "~", "v"],
       ["מועדון חברים", "v", "x", "x", "~"],
       ["ווידג׳ט לאתר", "v", "x", "v", "v"],
       ["דשבורד בעלים", "v", "~", "v", "v"],
@@ -67,8 +67,8 @@ const I18N = {
       ["מחיר רגיל", "מ-₪499", "חינם", "₪800+", "$500+"],
     ],
     launchTitle: "מחיר השקה לפיילוט", launchKicker: "5 מסעדות ראשונות",
-    launchDesc: "חבילת Growth המלאה ב-₪299/חודש ל-5 המסעדות הראשונות. מחיר חודשי קבוע לפיילוט, לא תשלום חד-פעמי.",
-    launchCta: "הבטיחו את המקום שלכם", launchNote: "אחרי 5 המקומות - מחירון Growth הרגיל",
+    launchDesc: "חבילת מועדון המלאה ב-₪299/חודש ל-5 המסעדות הראשונות. מחיר חודשי קבוע לפיילוט, לא תשלום חד-פעמי.",
+    launchCta: "הבטיחו את המקום שלכם", launchNote: "אחרי 5 המקומות - מחירון מועדון הרגיל",
     pricingTitle: "מחירון שקוף",
     pricingSub: "חבילות חודשיות לפי גודל המסעדה. הנחה שנתית (10 חודשים במחיר של 12). ביטול מתי שרוצים.",
     pricingTierLabel: "בחר גודל מסעדה",
@@ -77,12 +77,12 @@ const I18N = {
       { id: "200", label: "עד 200" }, { id: "200+", label: "200+" },
     ],
     plans: [
-      { name: "Live", desc: "הזמנות + ווידג׳ט + דשבורד", module: "OpenSeat Live",
+      { name: "הזמנות", desc: "הזמנות + בוט וואטסאפ + ווידג׳ט + דשבורד", module: "למסעדה שמתחילה מסודר",
         prices: { "80": 499, "150": 699, "200": 999, "200+": 1399 } as Record<string, number>,
-        includes: ["מנוע הזמנות חכם", "רשימת המתנה", "ווידג׳ט לאתר", "דשבורד בעלים"] },
-      { name: "Growth", desc: "Live + Connect + Club", module: "OpenSeat Live + Connect + Club", popular: true,
+        includes: ["מנוע הזמנות חכם", "בוט וואטסאפ להזמנות", "ווידג׳ט לאתר", "דשבורד בעלים"] },
+      { name: "מועדון", desc: "הזמנות + וואטסאפ + מועדון חברים", module: "למסעדה שרוצה יותר אורחים חוזרים", popular: true,
         prices: { "80": 799, "150": 1099, "200": 1499, "200+": 1999 } as Record<string, number>,
-        includes: ["הכל ב-Live", "CRM אורחים מלא", "בוט וואטסאפ AI", "מועדון חברים + הטבות"] },
+        includes: ["הכל בחבילת הזמנות", "ספר אורחים מלא", "מועדון חברים + הטבות", "זיהוי אורחים חוזרים ו-VIP"] },
     ],
     addonsTitle: "תוספות אופציונליות", addonsSub: "הוסף רק מה שאתה צריך. בלי חבילות חובה.",
     addons: [
@@ -99,10 +99,17 @@ const I18N = {
       { q: "זה עובד על הטאבלט שכבר יש לי?", a: "כן. כל המערכת בדפדפן - על כל טאבלט או מחשב רגיל." },
       { q: "אפשר לשים את המיתוג של המסעדה?", a: "כן. הווידג׳ט, הדשבורד והחוויה נבנים סביב המותג שלך." },
       { q: "באילו שפות המערכת עובדת?", a: "עברית, אנגלית וערבית, עם זיהוי שפה אוטומטי לאורח." },
-      { q: "הנתונים שלי באמת שלי?", a: "כן. אתה הבעלים של כל נתוני האורחים וה-CRM." },
+      { q: "הנתונים שלי באמת שלי?", a: "כן. אתה הבעלים של כל נתוני האורחים וספר האורחים." },
     ],
-    demoTitle: "דמו הזמנה חי",
-    demoSub: "כך נראה תהליך ההזמנה באתר שלך - מהיר, נקי ועובד על כל טאבלט.",
+    demoTitle: "כך זה נראה אצל האורח",
+    demoSub: "מסך אחד ברור בנייד. אותו תהליך עובד גם באתר שלך, בוואטסאפ ועל כל טאבלט.",
+    demoCardLabel: "פשוט וברור",
+    demoCardTitle: "מסך אחד לאורח. כל השאר קורה מאחורי הקלעים.",
+    demoCardPoints: [
+      "נראה טוב בנייד בלי להעמיס על האורח",
+      "אותו תהליך יושב באתר שלך ובוואטסאפ",
+      "הצוות והבעלים רואים הכל בדשבורד אחד",
+    ],
     contactTitle: "דברו איתנו",
     contactSub: "שיחה של 15 דקות. מקבלים דמו חי על המסעדה שלך בוואטסאפ.",
     contactLeft: [
@@ -113,7 +120,7 @@ const I18N = {
     footer: {
       tagline: "חבר הצוות הכי חכם של המסעדה שלך.",
       cols: [
-        { t: "מוצר", items: ["OpenSeat Live", "OpenSeat Connect", "OpenSeat Club", "תוספות", "מחירון"] },
+        { t: "מוצר", items: ["הזמנות", "וואטסאפ", "מועדון חברים", "תוספות", "מחירון"] },
         { t: "חברה", items: ["מי אנחנו", "פיילוט", "בלוג", "צור קשר"] },
         { t: "משאבים", items: ["מרכז עזרה", "מדריך הקמה", "סטטוס מערכת", "תנאי שימוש", "פרטיות"] },
       ],
@@ -162,7 +169,7 @@ const I18N = {
       cta1: "See live demo", cta2: "See pricing",
       trust: "Works 24/7 \u00B7 AI powered \u00B7 Hebrew, English, Arabic",
     },
-    tape: ["Online reservations", "WhatsApp AI bot", "Membership club", "Guest CRM", "Website widget", "Owner dashboard"],
+    tape: ["Online reservations", "WhatsApp bot", "Membership club", "Guest book", "Website widget", "Owner dashboard"],
     stats: [
       { k: "24/7", v: "AI on, never sleeps" },
       { k: "1-2 hrs", v: "saved every shift" },
@@ -170,17 +177,17 @@ const I18N = {
       { k: "100%", v: "your brand, your site" },
     ],
     modulesTitle: "Three modules.", modulesTitle2: "One complete system.",
-    modulesSub: "Start with reservations and a membership club. Guest CRM, WhatsApp and the owner dashboard live in the same system - no brittle integrations, no second app for staff.",
+    modulesSub: "Start with reservations and a membership club. Your guest book, WhatsApp and owner dashboard live in the same system - no brittle integrations, no second app for staff.",
     modules: [
-      { id: "live", tag: "Live", name: "Reservations engine", color: "#16A34A", icon: "📅",
-        desc: "Smart table assignment, waitlist, owner dashboard and website widget - real-time, any tablet.",
-        features: ["Auto table assignment by party size", "Waitlist with smart matching", "One-line embed widget", "Reminders & no-show tracking"] },
-      { id: "connect", tag: "Connect", name: "Guest relationship layer", color: "#2563EB", icon: "💬",
-        desc: "Guest CRM, repeat recognition, WhatsApp AI and owner visibility - no second app.",
-        features: ["CRM auto-built from first booking", "Auto tags: VIP, returning, at-risk", "WhatsApp bot in HE / EN / AR", "Daily owner summary on WhatsApp"] },
-      { id: "club", tag: "Club", name: "Membership club layer", color: "#9333EA", icon: "🎟️",
-        desc: "Points, VIP tiers and referrals - a real reason for guests to come back.",
-        features: ["Points on visits by your rules", "Birthday & milestone perks", "Member-get-member referrals", "Balance check on WhatsApp"] },
+      { id: "live", tag: "Bookings", name: "Reservation desk", color: "#16A34A", icon: "📅",
+        desc: "Reservations, waitlist, website widget and a WhatsApp bot that helps close the booking fast.",
+        features: ["Auto table assignment by party size", "Waitlist with smart matching", "One-line website widget", "WhatsApp confirmations and reminders"] },
+      { id: "connect", tag: "WhatsApp", name: "Guest chat", color: "#2563EB", icon: "💬",
+        desc: "Guest book, repeat recognition, automated WhatsApp follow-up and owner visibility.",
+        features: ["Guest book built from the first booking", "Auto tags: VIP, returning, birthday, big host", "WhatsApp bot in HE / EN / AR", "Daily owner summary on WhatsApp"] },
+      { id: "club", tag: "Club", name: "Membership club", color: "#9333EA", icon: "🎟️",
+        desc: "Points, perks and referrals - a real reason for guests to come back.",
+        features: ["Points on visits by your rules", "Birthday and milestone perks", "Member-get-member referrals", "Balance check on WhatsApp"] },
     ],
     howTitle: "How it works",
     howSub: "Four steps. One loop that builds a long-term relationship with every guest.",
@@ -203,8 +210,8 @@ const I18N = {
     cmpHeaders: ["", "OpenSeat", "Ontopo", "Tabit", "SevenRooms"],
     cmpRows: [
       ["Online reservations", "v", "v", "v", "v"],
-      ["WhatsApp AI bot", "v", "x", "x", "x"],
-      ["Guest CRM", "v", "x", "~", "v"],
+      ["WhatsApp bot", "v", "x", "x", "x"],
+      ["Guest book", "v", "x", "~", "v"],
       ["Membership club", "v", "x", "x", "~"],
       ["Website widget", "v", "x", "v", "v"],
       ["Owner dashboard", "v", "~", "v", "v"],
@@ -213,8 +220,8 @@ const I18N = {
       ["Standard price", "from \u20AA499", "Free", "\u20AA800+", "$500+"],
     ],
     launchTitle: "Pilot launch price", launchKicker: "First 5 restaurants",
-    launchDesc: "Full Growth package at \u20AA299/mo for the first 5 restaurants. Monthly launch price, not a one-time payment.",
-    launchCta: "Reserve your slot", launchNote: "After the first 5 - standard Growth pricing",
+    launchDesc: "Full Club package at \u20AA299/mo for the first 5 restaurants. Monthly launch price, not a one-time payment.",
+    launchCta: "Reserve your slot", launchNote: "After the first 5 - standard Club pricing",
     pricingTitle: "Transparent pricing",
     pricingSub: "Monthly plans by restaurant size. Annual discount (10 months for 12). Cancel anytime.",
     pricingTierLabel: "Pick your size",
@@ -223,12 +230,12 @@ const I18N = {
       { id: "200", label: "Up to 200" }, { id: "200+", label: "200+" },
     ],
     plans: [
-      { name: "Live", desc: "Reservations + Widget + Dashboard", module: "OpenSeat Live",
+      { name: "Reservations", desc: "Reservations + WhatsApp bot + widget + dashboard", module: "For restaurants getting organized",
         prices: { "80": 499, "150": 699, "200": 999, "200+": 1399 } as Record<string, number>,
-        includes: ["Smart reservations engine", "Waitlist", "Website widget", "Owner dashboard"] },
-      { name: "Growth", desc: "Live + Connect + Club", module: "OpenSeat Live + Connect + Club", popular: true,
+        includes: ["Smart reservations engine", "WhatsApp bot for bookings", "Website widget", "Owner dashboard"] },
+      { name: "Club", desc: "Reservations + WhatsApp + membership club", module: "For restaurants that want more repeat guests", popular: true,
         prices: { "80": 799, "150": 1099, "200": 1499, "200+": 1999 } as Record<string, number>,
-        includes: ["Everything in Live", "Full guest CRM", "WhatsApp AI bot", "Membership club + perks"] },
+        includes: ["Everything in Reservations", "Full guest book", "Membership club + perks", "Returning guest and VIP recognition"] },
     ],
     addonsTitle: "Optional add-ons", addonsSub: "Add only what you need. No mandatory bundles.",
     addons: [
@@ -245,10 +252,17 @@ const I18N = {
       { q: "Will it run on my existing tablet?", a: "Yes. Browser-based - any normal tablet or computer works." },
       { q: "Can I use my own branding?", a: "Yes. Widget, dashboard and guest experience all carry your brand." },
       { q: "Which languages does it support?", a: "Hebrew, English and Arabic, with auto-detection for guests." },
-      { q: "Do I really own my data?", a: "Yes. You own the guest data and CRM fully." },
+      { q: "Do I really own my data?", a: "Yes. You fully own your guest data and history." },
     ],
-    demoTitle: "Live booking demo",
-    demoSub: "This is what booking looks like on your site - fast, clean, made for real guests.",
+    demoTitle: "What guests actually see",
+    demoSub: "One clear mobile screen. The same flow also works on your site, on WhatsApp and on any tablet.",
+    demoCardLabel: "Simple by design",
+    demoCardTitle: "One guest-facing screen. Everything else happens behind the scenes.",
+    demoCardPoints: [
+      "Looks clean on mobile without overwhelming the guest",
+      "The same flow fits your site and WhatsApp",
+      "Staff and owners see everything in one dashboard",
+    ],
     contactTitle: "Talk to us",
     contactSub: "A 15-minute call. Get a live WhatsApp demo for your own restaurant.",
     contactLeft: [
@@ -259,7 +273,7 @@ const I18N = {
     footer: {
       tagline: "Your restaurant's smartest team member.",
       cols: [
-        { t: "Product", items: ["OpenSeat Live", "OpenSeat Connect", "OpenSeat Club", "Add-ons", "Pricing"] },
+        { t: "Product", items: ["Reservations", "WhatsApp", "Membership club", "Add-ons", "Pricing"] },
         { t: "Company", items: ["About", "Pilot", "Blog", "Contact"] },
         { t: "Resources", items: ["Help center", "Setup guide", "Status", "Terms", "Privacy"] },
       ],
@@ -308,7 +322,7 @@ const I18N = {
       cta1: "شاهد العرض الحي", cta2: "شاهد الأسعار",
       trust: "يعمل 24/7 · مدعوم بالذكاء الاصطناعي · عربي، عبري، إنجليزي",
     },
-    tape: ["حجوزات أونلاين", "بوت واتساب AI", "نادي أعضاء", "CRM ضيوف", "ودجة للموقع", "لوحة مالك"],
+    tape: ["حجوزات أونلاين", "بوت واتساب", "نادي أعضاء", "سجل الضيوف", "ودجة للموقع", "لوحة مالك"],
     stats: [
       { k: "24/7", v: "AI نشط بدون توقف" },
       { k: "1-2 ساعة", v: "توفير في كل وردية" },
@@ -316,17 +330,17 @@ const I18N = {
       { k: "100%", v: "علامتك وموقعك يبقيان لك" },
     ],
     modulesTitle: "ثلاث وحدات.", modulesTitle2: "نظام متكامل واحد.",
-    modulesSub: "ابدأ بالحجوزات ونادي الأعضاء. CRM الضيوف، واتساب ولوحة المالك في نفس النظام - بدون تكاملات هشّة وبدون تطبيق إضافي.",
+    modulesSub: "ابدأ بالحجوزات ونادي الأعضاء. سجل الضيوف، واتساب ولوحة المالك في نفس النظام - بدون تكاملات هشّة وبدون تطبيق إضافي.",
     modules: [
-      { id: "live", tag: "Live", name: "محرك الحجوزات", color: "#16A34A", icon: "📅",
-        desc: "تعيين طاولات ذكي، قائمة انتظار، لوحة مالك وودجة للموقع - لحظي وعلى أي تابلت.",
-        features: ["تعيين تلقائي حسب حجم المجموعة", "قائمة انتظار بمطابقة ذكية", "ودجة بسطر كود واحد", "تذكيرات وتتبع عدم الحضور"] },
-      { id: "connect", tag: "Connect", name: "طبقة العلاقة مع الضيوف", color: "#2563EB", icon: "💬",
-        desc: "CRM ضيوف، معرفة الزبون العائد، واتساب AI ورؤية للمالك - بدون تطبيق ثانٍ.",
-        features: ["CRM يُبنى تلقائيًا", "وسوم VIP، عائد، معرض للخطر", "واتساب AI بـ 3 لغات", "ملخص يومي للمالك على واتساب"] },
-      { id: "club", tag: "Club", name: "نادي الأعضاء", color: "#9333EA", icon: "🎟️",
-        desc: "نقاط، درجات VIP وإحالات - سبب حقيقي ليعود الضيف.",
-        features: ["نقاط على الزيارات", "امتيازات عيد الميلاد", "عضو يجلب عضو", "فحص الرصيد على واتساب"] },
+      { id: "live", tag: "الحجوزات", name: "دفتر الحجوزات", color: "#16A34A", icon: "📅",
+        desc: "حجوزات، قائمة انتظار، ودجة للموقع وبوت واتساب يساعدك على إغلاق الحجز بسرعة.",
+        features: ["تعيين تلقائي حسب حجم المجموعة", "قائمة انتظار بمطابقة ذكية", "ودجة للموقع بسطر واحد", "تأكيدات وتذكيرات على واتساب"] },
+      { id: "connect", tag: "واتساب", name: "تواصل الضيوف", color: "#2563EB", icon: "💬",
+        desc: "سجل الضيوف، معرفة الزبون العائد، رسائل واتساب تلقائية ورؤية واضحة للمالك.",
+        features: ["سجل ضيوف يُبنى من أول حجز", "وسوم VIP، عائد، عيد ميلاد، مضيف كبير", "بوت واتساب بالعربية والعبرية والإنجليزية", "ملخص يومي للمالك على واتساب"] },
+      { id: "club", tag: "النادي", name: "نادي الأعضاء", color: "#9333EA", icon: "🎟️",
+        desc: "نقاط وامتيازات وإحالات - سبب حقيقي ليعود الضيف مرة بعد مرة.",
+        features: ["نقاط على الزيارات حسب قواعدك", "امتيازات عيد الميلاد والمناسبات", "عضو يجلب عضو", "فحص الرصيد على واتساب"] },
     ],
     howTitle: "كيف يعمل",
     howSub: "أربع خطوات. حلقة واحدة تبني علاقة طويلة مع كل ضيف.",
@@ -349,8 +363,8 @@ const I18N = {
     cmpHeaders: ["", "OpenSeat", "Ontopo", "Tabit", "SevenRooms"],
     cmpRows: [
       ["حجوزات أونلاين", "v", "v", "v", "v"],
-      ["بوت واتساب AI", "v", "x", "x", "x"],
-      ["CRM ضيوف", "v", "x", "~", "v"],
+      ["بوت واتساب", "v", "x", "x", "x"],
+      ["سجل الضيوف", "v", "x", "~", "v"],
       ["نادي أعضاء", "v", "x", "x", "~"],
       ["ودجة موقع", "v", "x", "v", "v"],
       ["لوحة مالك", "v", "~", "v", "v"],
@@ -359,8 +373,8 @@ const I18N = {
       ["السعر العادي", "من ₪499", "مجاني", "₪800+", "$500+"],
     ],
     launchTitle: "سعر إطلاق البايلوت", launchKicker: "أول 5 مطاعم",
-    launchDesc: "حزمة Growth الكاملة بـ ₪299/شهر لأول 5 مطاعم. سعر شهري للإطلاق.",
-    launchCta: "احجز مكانك", launchNote: "بعد أول 5 - يعود السعر الاعتيادي لـ Growth",
+    launchDesc: "حزمة النادي الكاملة بـ ₪299/شهر لأول 5 مطاعم. هذا سعر شهري للإطلاق وليس دفعة لمرة واحدة.",
+    launchCta: "احجز مكانك", launchNote: "بعد أول 5 - يعود السعر الاعتيادي لحزمة النادي",
     pricingTitle: "تسعير شفاف",
     pricingSub: "خطط شهرية حسب حجم المطعم. خصم سنوي (10 بسعر 12). إلغاء في أي وقت.",
     pricingTierLabel: "اختر الحجم",
@@ -369,12 +383,12 @@ const I18N = {
       { id: "200", label: "حتى 200" }, { id: "200+", label: "200+" },
     ],
     plans: [
-      { name: "Live", desc: "حجوزات + ودجة + لوحة", module: "OpenSeat Live",
+      { name: "الحجوزات", desc: "الحجوزات + بوت واتساب + ودجة + لوحة", module: "للمطعم الذي يريد ترتيب العمل",
         prices: { "80": 499, "150": 699, "200": 999, "200+": 1399 } as Record<string, number>,
-        includes: ["محرك حجوزات ذكي", "قائمة انتظار", "ودجة للموقع", "لوحة مالك"] },
-      { name: "Growth", desc: "Live + Connect + Club", module: "OpenSeat Live + Connect + Club", popular: true,
+        includes: ["محرك حجوزات ذكي", "بوت واتساب للحجوزات", "ودجة للموقع", "لوحة مالك"] },
+      { name: "النادي", desc: "الحجوزات + واتساب + نادي أعضاء", module: "للمطعم الذي يريد ضيوفًا يعودون أكثر", popular: true,
         prices: { "80": 799, "150": 1099, "200": 1499, "200+": 1999 } as Record<string, number>,
-        includes: ["كل ما في Live", "CRM ضيوف كامل", "بوت واتساب AI", "نادي أعضاء + امتيازات"] },
+        includes: ["كل ما في الحجوزات", "سجل ضيوف كامل", "نادي أعضاء + امتيازات", "معرفة الضيف العائد وVIP"] },
     ],
     addonsTitle: "إضافات اختيارية", addonsSub: "أضف فقط ما تحتاج. بدون باقات إلزامية.",
     addons: [
@@ -391,10 +405,17 @@ const I18N = {
       { q: "هل يعمل على تابلتي؟", a: "نعم -النظام كله في المتصفح." },
       { q: "هل أستخدم علامتي؟", a: "نعم. الودجة، اللوحة وتجربة الضيف تحمل علامتك." },
       { q: "ما اللغات المدعومة؟", a: "عربي، عبري وإنجليزي مع كشف تلقائي." },
-      { q: "هل بياناتي ملكي فعلًا؟", a: "نعم، أنت تملك بيانات الضيوف وCRM." },
+      { q: "هل بياناتي ملكي فعلًا؟", a: "نعم، أنت تملك بيانات الضيوف وسجل الضيوف بالكامل." },
     ],
-    demoTitle: "عرض حجز حي",
-    demoSub: "هكذا يبدو الحجز على موقعك -سريع، نظيف ومصمم لضيوف حقيقيين.",
+    demoTitle: "هكذا يراه الضيف",
+    demoSub: "شاشة جوال واحدة وواضحة. نفس المسار يعمل أيضًا على موقعك، على واتساب وعلى أي تابلت.",
+    demoCardLabel: "بسيط وواضح",
+    demoCardTitle: "شاشة واحدة للضيف. وكل شيء آخر يحدث خلف الكواليس.",
+    demoCardPoints: [
+      "يبدو جيدًا على الجوال بدون إرباك الضيف",
+      "نفس المسار يعمل على موقعك وعلى واتساب",
+      "الطاقم والمالك يرون كل شيء في لوحة واحدة",
+    ],
     contactTitle: "تحدث معنا",
     contactSub: "مكالمة 15 دقيقة. واحصل على عرض حي على واتساب لمطعمك.",
     contactLeft: [
@@ -405,7 +426,7 @@ const I18N = {
     footer: {
       tagline: "أذكى عضو في فريق مطعمك.",
       cols: [
-        { t: "المنتج", items: ["OpenSeat Live", "OpenSeat Connect", "OpenSeat Club", "إضافات", "الأسعار"] },
+        { t: "المنتج", items: ["الحجوزات", "واتساب", "نادي أعضاء", "إضافات", "الأسعار"] },
         { t: "الشركة", items: ["من نحن", "البايلوت", "المدونة", "تواصل"] },
         { t: "الموارد", items: ["مركز المساعدة", "دليل الإعداد", "حالة النظام", "الشروط", "الخصوصية"] },
       ],
@@ -447,44 +468,6 @@ const I18N = {
 };
 
 type I18NData = (typeof I18N)[Lang];
-
-type OpenSeatBookingWindow = Window & typeof globalThis & {
-  OpenSeatBooking?: {
-    mount: (el: HTMLElement, config: { restaurantId: string; apiUrl?: string }) => void;
-  };
-};
-
-const LIVE_WIDGET_RESTAURANT_ID = "c3c22e37-a309-4fde-aa6c-6e714212a3bc";
-const LIVE_WIDGET_API_URL = "https://booking-widget-rust.vercel.app";
-const LIVE_WIDGET_SCRIPT_URL = `${LIVE_WIDGET_API_URL}/openseat-booking.iife.js`;
-
-let liveWidgetScriptPromise: Promise<void> | null = null;
-
-function ensureLiveWidgetScript() {
-  const widgetWindow = window as OpenSeatBookingWindow;
-  if (widgetWindow.OpenSeatBooking) return Promise.resolve();
-
-  if (!liveWidgetScriptPromise) {
-    liveWidgetScriptPromise = new Promise<void>((resolve, reject) => {
-      const existing = document.querySelector<HTMLScriptElement>('script[data-openseat-live-widget="true"]');
-      if (existing) {
-        existing.addEventListener("load", () => resolve(), { once: true });
-        existing.addEventListener("error", () => reject(new Error("Failed to load OpenSeat widget script")), { once: true });
-        return;
-      }
-
-      const script = document.createElement("script");
-      script.src = LIVE_WIDGET_SCRIPT_URL;
-      script.async = true;
-      script.dataset.openseatLiveWidget = "true";
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error("Failed to load OpenSeat widget script"));
-      document.body.appendChild(script);
-    });
-  }
-
-  return liveWidgetScriptPromise;
-}
 
 /* ═══════════════════════════════════════════════════════════
    Hooks
@@ -1075,6 +1058,7 @@ function Comparison({ L }: { L: I18NData }) {
    ═══════════════════════════════════════════════════════════ */
 function Launch({ L }: { L: I18NData }) {
   const ref = useReveal();
+  const featuredPlan = L.plans.find((plan) => plan.popular) ?? L.plans[0];
   return (
     <section ref={ref} className="reveal" style={{ padding: "80px 0" }}>
       <div className="container-x">
@@ -1094,7 +1078,7 @@ function Launch({ L }: { L: I18NData }) {
             </div>
             <div style={{ display: "flex", justifyContent: "center" }}>
               <div style={{ background: "white", borderRadius: 20, padding: 28, textAlign: "center", border: "1px solid var(--launch-border)", boxShadow: "0 30px 60px -30px rgba(196,30,58,.3)", minWidth: 240 }}>
-                <div className="mono-sm" style={{ color: "var(--ink-50)", marginBottom: 8 }}>Growth · {L.pilotLabel}</div>
+                <div className="mono-sm" style={{ color: "var(--ink-50)", marginBottom: 8 }}>{featuredPlan.name} · {L.pilotLabel}</div>
                 <div style={{ fontSize: 18, color: "var(--ink-50)", textDecoration: "line-through", marginBottom: 6 }}>{"\u20AA"}799</div>
                 <div className="font-display" style={{ fontSize: 56, lineHeight: 1, fontWeight: 700, color: "var(--brand)" }}>{"\u20AA"}299</div>
                 <div style={{ fontSize: 13, color: "var(--ink-70)", marginTop: 6 }}>{L.pilotPrice}</div>
@@ -1226,60 +1210,18 @@ function FAQ({ L }: { L: I18NData }) {
 /* ═══════════════════════════════════════════════════════════
    Live Demo (interactive phone mockup)
    ═══════════════════════════════════════════════════════════ */
-function LiveWidgetEmbed({ L }: { L: I18NData }) {
-  const hostRef = useRef<HTMLDivElement>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const mountWidget = async () => {
-      const host = hostRef.current;
-      if (!host) return;
-
-      setStatus("loading");
-      host.innerHTML = "";
-
-      try {
-        await ensureLiveWidgetScript();
-        if (cancelled || !hostRef.current) return;
-
-        const widgetWindow = window as OpenSeatBookingWindow;
-        widgetWindow.OpenSeatBooking?.mount(hostRef.current, {
-          restaurantId: LIVE_WIDGET_RESTAURANT_ID,
-          apiUrl: LIVE_WIDGET_API_URL,
-        });
-        setStatus("ready");
-      } catch {
-        if (!cancelled) setStatus("error");
-      }
-    };
-
-    void mountWidget();
-
-    return () => {
-      cancelled = true;
-      if (hostRef.current) hostRef.current.innerHTML = "";
-    };
-  }, []);
-
+function DemoSupportCard({ L }: { L: I18NData }) {
   return (
-    <div style={{ marginTop: 24, padding: 18, borderRadius: 14, background: "white", border: "1px solid var(--line)", boxShadow: "0 10px 30px -20px rgba(0,0,0,.12)" }}>
-      <div className="mono-sm" style={{ color: "var(--brand)", marginBottom: 8 }}>{L.embedLabel}</div>
-      <p style={{ margin: "0 0 14px", fontSize: 14, color: "var(--ink-70)", lineHeight: 1.6 }}>{L.embedNote}</p>
-      <div style={{ minHeight: 620, borderRadius: 16, overflow: "hidden", border: "1px solid var(--line)", background: "var(--paper-2)" }}>
-        {status === "error" ? (
-          <div style={{ padding: 24, fontSize: 14, color: "var(--ink-70)" }}>{L.widgetError}</div>
-        ) : (
-          <div style={{ position: "relative", minHeight: 620 }}>
-            {status === "loading" && (
-              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: "var(--ink-50)", background: "var(--paper-2)" }}>
-                {L.widgetLoading}
-              </div>
-            )}
-            <div ref={hostRef} style={{ padding: 20, opacity: status === "ready" ? 1 : 0, transition: "opacity .2s ease" }} />
+    <div style={{ marginTop: 24, padding: 20, borderRadius: 18, background: "white", border: "1px solid var(--line)", boxShadow: "0 10px 30px -20px rgba(0,0,0,.12)" }}>
+      <div className="mono-sm" style={{ color: "var(--brand)", marginBottom: 8 }}>{L.demoCardLabel}</div>
+      <div style={{ fontSize: 24, lineHeight: 1.2, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 16 }}>{L.demoCardTitle}</div>
+      <div style={{ display: "grid", gap: 10 }}>
+        {L.demoCardPoints.map((point, i) => (
+          <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 14, background: "var(--paper-2)", border: "1px solid var(--line)" }}>
+            <span style={{ width: 18, height: 18, borderRadius: 999, background: "var(--brand)", color: "white", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, flex: "0 0 auto", marginTop: 2 }}>{"✓"}</span>
+            <span style={{ fontSize: 14, color: "var(--ink-70)", lineHeight: 1.6 }}>{point}</span>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );
@@ -1309,7 +1251,7 @@ function LiveDemo({ L }: { L: I18NData }) {
           <h2 className="font-display" style={{ fontSize: "clamp(36px,4.5vw,54px)", lineHeight: 1.05, margin: 0, fontWeight: 600, letterSpacing: "-0.03em" }}>{L.demoTitle}</h2>
           <p style={{ color: "var(--ink-70)", fontSize: 17, marginTop: 14, maxWidth: 600, marginInline: "auto" }}>{L.demoSub}</p>
         </div>
-        <div className="demo-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, alignItems: "center", maxWidth: 1040, marginInline: "auto" }}>
+        <div className="demo-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, alignItems: "start", maxWidth: 1040, marginInline: "auto" }}>
           <div style={{ display: "flex", justifyContent: "center" }}>
             <div className="phone">
               <div className="phone-screen" dir={L.dir}>
@@ -1389,7 +1331,7 @@ function LiveDemo({ L }: { L: I18NData }) {
                 </div>
               ))}
             </div>
-            <LiveWidgetEmbed L={L} />
+            <DemoSupportCard L={L} />
           </div>
         </div>
       </div>

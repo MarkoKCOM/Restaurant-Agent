@@ -628,10 +628,10 @@ function Nav({ L, lang, setLang }: { L: I18NData; lang: Lang; setLang: (l: Lang)
   ];
   return (
     <header style={{
-      position: "sticky", top: 0, zIndex: 80,
-      backdropFilter: scrolled ? "blur(12px)" : "none",
-      background: scrolled ? "rgba(251,247,244,.85)" : "transparent",
-      borderBottom: scrolled ? "1px solid var(--line)" : "1px solid transparent",
+      position: "sticky", top: 0, zIndex: mobileOpen ? 140 : 80,
+      backdropFilter: (scrolled || mobileOpen) ? "blur(12px)" : "none",
+      background: (scrolled || mobileOpen) ? "rgba(251,247,244,.96)" : "transparent",
+      borderBottom: (scrolled || mobileOpen) ? "1px solid var(--line)" : "1px solid transparent",
       transition: "all .25s",
     }}>
       <div className="container-x" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 24px" }}>
@@ -664,7 +664,7 @@ function Nav({ L, lang, setLang }: { L: I18NData; lang: Lang; setLang: (l: Lang)
       </div>
       {/* Mobile menu overlay */}
       {mobileOpen && (
-        <div style={{ position: "fixed", inset: 0, top: 56, background: "rgba(251,247,244,.98)", backdropFilter: "blur(12px)", zIndex: 79, padding: "24px", display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, height: "calc(100dvh - 56px)", minHeight: "calc(100vh - 56px)", background: "var(--paper)", zIndex: 79, padding: "24px", paddingBottom: "max(24px, env(safe-area-inset-bottom))", overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, borderBottom: "1px solid var(--line)", boxShadow: "0 30px 80px -30px rgba(0,0,0,.18)" }}>
           {navLinks.map(l => (
             <a key={l.href} href={l.href} onClick={() => setMobileOpen(false)} style={{ display: "block", padding: "16px 0", fontSize: 18, fontWeight: 600, color: "var(--ink)", borderBottom: "1px solid var(--line)" }}>{l.label}</a>
           ))}

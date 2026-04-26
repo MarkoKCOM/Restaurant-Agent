@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-04-26 (Telegram HQ E2E testing prep)
+
+### Added
+- OpenSpec change `openspec/changes/telegram-hq-e2e-testing/` with proposal, design, capability spec, and a detailed Hebrew-first Telegram E2E checklist.
+- Clean `OpenSeat HQ` sandbox tenant (`openseat-hq`) cloned from BFF structure for Telegram customer-flow testing until WhatsApp access is live.
+
+### Changed
+- Telegram General is now treated as the temporary WhatsApp sandbox for customer-facing Hebrew reservation tests.
+- BFF live data reset is documented as destructive and requires explicit wipe scope before execution.
+
+### Verified
+- `OpenSeat HQ` provisioned with 15 tables and zero guests/reservations/waitlist/reward claims.
+- Current BFF operational counts recorded before any wipe: 238 guests, 147 reservations, 41 waitlist entries, 78 loyalty transactions, 10 rewards, 8 reward claims.
+
+---
+
 ## 2026-04-14 (Self-serve dashboard onboarding)
 
 ### Added

@@ -567,6 +567,27 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
       restaurantName: "BFF",
       source: "admin-diagnostics ownerWhatsappMissing sample",
     },
+    ownerDeliveryReadiness: {
+      status: "ok",
+      outputPath: "/tmp/openseat-debug-bundle/owner-delivery-readiness.json",
+      requestId: "debug-owner-delivery-restaurants-1",
+      totals: {
+        restaurants: 9,
+        ownerWhatsappConfigured: 7,
+        ownerWhatsappMissing: 2,
+      },
+      missingSamples: [
+        {
+          id: "restaurant-1",
+          slug: "bff",
+          name: "BFF",
+          package: "growth",
+          ownerPhoneMasked: "050****12",
+          whatsappNumberMasked: "052****34",
+          repairCommand: "METHOD=PATCH BODY='{\"ownerWhatsapp\":\"<owner-whatsapp-number>\"}' OPENSEAT_TOKEN=... pnpm debug:api -- http://localhost:3001/api/v1/restaurants/restaurant-1",
+        },
+      ],
+    },
   },
 });
 
@@ -586,6 +607,9 @@ assertIncludes(
 assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overdue=1 failed=1 skipped=3 winBackDue=2 birthdayDue=1 anniversaryDue=1 reviewWithoutPositive=1 negativeWithReview=1");
 assertIncludes(debugBundleManifestOutput, "Campaigns: attention total=6 draft=1 scheduled=2 sent=3 overdue=1 deliverySent=12 skipped=4 optedOut=2 weekLimit=1 monthLimit=1");
 assertIncludes(debugBundleManifestOutput, "Outbound messages: attention total=5 logged=4 sent=0 skipped=0 failed=1 ownerWhatsappMissing=2 types=daily_morning_summary:2,thank_you:3 errors=OUTBOUND_RECIPIENT_MISSING:1");
+assertIncludes(debugBundleManifestOutput, "Owner delivery readiness: ok total=9 configured=7 missing=2 output=/tmp/openseat-debug-bundle/owner-delivery-readiness.json");
+assertIncludes(debugBundleManifestOutput, "Owner delivery repair samples:");
+assertIncludes(debugBundleManifestOutput, "- restaurant-1 slug=bff repair=METHOD=PATCH BODY='{\"ownerWhatsapp\":\"<owner-whatsapp-number>\"}' OPENSEAT_TOKEN=... pnpm debug:api -- http://localhost:3001/api/v1/restaurants/restaurant-1");
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");
 assertIncludes(debugBundleManifestOutput, 'Default restaurant selector: restaurant-1 slug=bff name="BFF" source=admin-diagnostics ownerWhatsappMissing sample');
 assertIncludes(debugBundleManifestOutput, "Queues: daily-summary:ok/failed=0/repeat=0, engagement:ok/failed=0/repeat=0, membership-events:ok/failed=0/repeat=?");
@@ -612,6 +636,8 @@ for (const expectedSummarizerContent of [
   "Gamification",
   "Engagement",
   "Campaigns",
+  "Owner delivery readiness",
+  "Owner delivery repair samples",
   "Summary schedules",
   "Engagement schedules",
   "Operational attention",
@@ -915,6 +941,11 @@ for (const requiredOwnerDeliveryContent of [
   "/api/v1/admin/restaurants",
   "ownerWhatsappConfigured",
   "ownerWhatsappMissing",
+  "owner-delivery-readiness",
+  "OPENSEAT_OWNER_DELIVERY_ARTIFACT_PATH",
+  "missingRestaurants",
+  "repairCommand",
+  "artifact-path",
   "ownerPhoneMasked",
   "whatsappNumberMasked",
   "phoneMasked",
@@ -1157,6 +1188,10 @@ for (const requiredReadmeContent of [
   "outbound-debug-summary.txt",
   "owner-delivery-readiness",
   "owner-delivery-readiness.txt",
+  "owner-delivery-readiness.json",
+  "captureOwnerDeliveryHighlights",
+  "Owner delivery readiness:",
+  "Owner delivery repair samples:",
   "package-enforcement-smoke",
   "package-enforcement-smoke.txt",
   "queue-debug-summary",

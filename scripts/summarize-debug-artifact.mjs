@@ -449,6 +449,7 @@ async function summarizeDebugBundleManifest(report) {
   const outboundByType = outboundMessages.byType ?? {};
   const outboundByErrorCode = outboundMessages.byErrorCode ?? {};
   const outboundDeliveryReadiness = outboundMessages.deliveryReadiness ?? {};
+  const ownerDeliveryReadiness = highlights.ownerDeliveryReadiness ?? {};
   const agentMembershipIntents = highlights.agentMembershipIntents ?? {};
   const defaultRestaurantSelector = highlights.defaultRestaurantSelector ?? {};
   const queues = asArray(adminDiagnostics.queues);
@@ -523,6 +524,27 @@ async function summarizeDebugBundleManifest(report) {
       "Outbound messages",
       `${outboundMessages.status} total=${outboundTotals.total ?? "?"} logged=${outboundTotals.logged ?? "?"} sent=${outboundTotals.sent ?? "?"} skipped=${outboundTotals.skipped ?? "?"} failed=${outboundTotals.failed ?? "?"} ownerWhatsappMissing=${outboundDeliveryReadiness.ownerWhatsappMissing ?? "?"} types=${Object.entries(outboundByType).map(([type, count]) => `${type}:${count}`).join(",") || "none"} errors=${Object.entries(outboundByErrorCode).map(([code, count]) => `${code}:${count}`).join(",") || "none"}`,
     );
+  }
+  if (ownerDeliveryReadiness.status) {
+    if (ownerDeliveryReadiness.status === "unparsed") {
+      printLine(
+        "Owner delivery readiness",
+        `unparsed output=${ownerDeliveryReadiness.outputPath ?? "?"} error=${ownerDeliveryReadiness.error ?? "unknown"}`,
+      );
+    } else {
+      const totals = ownerDeliveryReadiness.totals ?? {};
+      printLine(
+        "Owner delivery readiness",
+        `${ownerDeliveryReadiness.status} total=${totals.restaurants ?? "?"} configured=${totals.ownerWhatsappConfigured ?? "?"} missing=${totals.ownerWhatsappMissing ?? "?"} output=${ownerDeliveryReadiness.outputPath ?? "?"}`,
+      );
+      const missingSamples = asArray(ownerDeliveryReadiness.missingSamples);
+      if (missingSamples.length > 0) {
+        console.log("Owner delivery repair samples:");
+        for (const restaurant of missingSamples.slice(0, 3)) {
+          console.log(`- ${restaurant.id ?? "?"} slug=${restaurant.slug ?? "none"} repair=${restaurant.repairCommand ?? "unknown"}`);
+        }
+      }
+    }
   }
   if (agentMembershipIntents.status) {
     printLine(

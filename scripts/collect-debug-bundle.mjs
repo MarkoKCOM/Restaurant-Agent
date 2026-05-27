@@ -469,6 +469,41 @@ async function captureAgentIntentHighlights(artifactPath) {
   }
 }
 
+async function captureOwnerDeliveryHighlights(artifactPath, commandRecord) {
+  if (commandRecord.status !== "passed") return;
+
+  try {
+    const report = await readJson(artifactPath);
+    const totals = isObject(report.totals) ? report.totals : {};
+    const missingRestaurants = asArray(report.missingRestaurants);
+    manifest.highlights.ownerDeliveryReadiness = {
+      status: report.status ?? "unknown",
+      outputPath: artifactPath,
+      requestId: report.requestId,
+      totals: {
+        restaurants: totals.restaurants,
+        ownerWhatsappConfigured: totals.ownerWhatsappConfigured,
+        ownerWhatsappMissing: totals.ownerWhatsappMissing,
+      },
+      missingSamples: missingRestaurants.slice(0, 5).map((restaurant) => ({
+        id: restaurant.id,
+        slug: restaurant.slug,
+        name: restaurant.name,
+        package: restaurant.package,
+        ownerPhoneMasked: restaurant.ownerPhoneMasked,
+        whatsappNumberMasked: restaurant.whatsappNumberMasked,
+        repairCommand: restaurant.repairCommand,
+      })),
+    };
+  } catch (error) {
+    manifest.highlights.ownerDeliveryReadiness = {
+      status: "unparsed",
+      outputPath: artifactPath,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 async function captureDiagnosticsHighlights(commandRecord) {
   if (commandRecord.status !== "passed" || !commandRecord.outputPath) return;
 
@@ -692,9 +727,27 @@ async function writeReadme() {
       const outboundByType = outboundMessages.byType ?? {};
       const outboundByErrorCode = outboundMessages.byErrorCode ?? {};
       const outboundDeliveryReadiness = outboundMessages.deliveryReadiness ?? {};
+      const ownerDeliveryReadiness = manifest.highlights.ownerDeliveryReadiness;
       lines.push(
         `- Outbound messages: ${outboundMessages.status ?? "unknown"} total=${outboundTotals.total ?? "?"} logged=${outboundTotals.logged ?? "?"} sent=${outboundTotals.sent ?? "?"} skipped=${outboundTotals.skipped ?? "?"} failed=${outboundTotals.failed ?? "?"} ownerWhatsappMissing=${outboundDeliveryReadiness.ownerWhatsappMissing ?? "?"} types=${Object.entries(outboundByType).map(([type, count]) => `${type}:${count}`).join(",") || "none"} errors=${Object.entries(outboundByErrorCode).map(([code, count]) => `${code}:${count}`).join(",") || "none"}`,
       );
+      if (ownerDeliveryReadiness?.status === "unparsed") {
+        lines.push(`- Owner delivery readiness: unparsed file=${ownerDeliveryReadiness.outputPath ?? "unknown"} error=${ownerDeliveryReadiness.error}`);
+      } else if (ownerDeliveryReadiness) {
+        const totals = ownerDeliveryReadiness.totals ?? {};
+        lines.push(
+          `- Owner delivery readiness: ${ownerDeliveryReadiness.status ?? "unknown"} total=${totals.restaurants ?? "?"} configured=${totals.ownerWhatsappConfigured ?? "?"} missing=${totals.ownerWhatsappMissing ?? "?"}`,
+        );
+        const missingSamples = asArray(ownerDeliveryReadiness.missingSamples);
+        if (missingSamples.length > 0) {
+          lines.push("- Owner delivery repair samples:");
+          for (const restaurant of missingSamples.slice(0, 3)) {
+            lines.push(
+              `  - ${restaurant.id ?? "?"} slug=${restaurant.slug ?? "none"} name=${JSON.stringify(restaurant.name ?? "")} repair=${restaurant.repairCommand ?? "unknown"}`,
+            );
+          }
+        }
+      }
       if (agentMembershipIntents) {
         lines.push(
           `- Agent membership intents: ${agentMembershipIntents.status ?? "unknown"} ${agentMembershipIntents.passed ?? "?"}/${agentMembershipIntents.total ?? "?"}`,
@@ -851,13 +904,17 @@ if (diagnosticsToken.token) {
   });
   packageCommand.tokenSource = diagnosticsToken.source;
 
+  const ownerDeliveryArtifactPath = resolve(outDir, "owner-delivery-readiness.json");
   const ownerDeliveryCommand = await runStep("owner-delivery-readiness", "node", ["scripts/owner-delivery-readiness.mjs"], {
     env: {
       OPENSEAT_API_URL: apiUrl,
       OPENSEAT_TOKEN: diagnosticsToken.token,
+      OPENSEAT_OWNER_DELIVERY_ARTIFACT_PATH: ownerDeliveryArtifactPath,
     },
   });
   ownerDeliveryCommand.tokenSource = diagnosticsToken.source;
+  ownerDeliveryCommand.artifactPath = ownerDeliveryArtifactPath;
+  await captureOwnerDeliveryHighlights(ownerDeliveryArtifactPath, ownerDeliveryCommand);
 
   const tokenRestaurantId = decodeTokenRestaurantId(diagnosticsToken.token);
   const needsDefaultRestaurantSelector =

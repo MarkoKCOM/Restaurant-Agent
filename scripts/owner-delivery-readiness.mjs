@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { writeFile } from "node:fs/promises";
 import { sanitizeConnectionError } from "./lib/debug-errors.mjs";
 import { createSignedSuperAdminToken } from "./lib/debug-token.mjs";
 
@@ -70,6 +71,7 @@ const explicitToken = readOption("token", process.env.OPENSEAT_TOKEN ?? "");
 const token = explicitToken || createSignedSuperAdminToken();
 const packageFilter = readOption("package", "");
 const onlyMissing = readOption("only-missing", "true") !== "false";
+const artifactPath = readOption("artifact-path", process.env.OPENSEAT_OWNER_DELIVERY_ARTIFACT_PATH ?? "");
 
 if (!token) {
   console.error("Missing OPENSEAT_TOKEN or JWT_SECRET for a super-admin owner delivery readiness token.");
@@ -90,6 +92,38 @@ if (packageFilter) {
 const missing = restaurants.filter((restaurant) => restaurant?.ownerWhatsappConfigured !== true);
 const configured = restaurants.filter((restaurant) => restaurant?.ownerWhatsappConfigured === true);
 const rows = onlyMissing ? missing : restaurants;
+const repairCommandFor = (restaurant) =>
+  `METHOD=PATCH BODY='{"ownerWhatsapp":"<owner-whatsapp-number>"}' OPENSEAT_TOKEN=... pnpm debug:api -- ${apiUrl}/api/v1/restaurants/${restaurant.id}`;
+const report = {
+  type: "owner-delivery-readiness",
+  status: "ok",
+  apiUrl,
+  requestId: restaurantsResult.requestId,
+  tokenSource: explicitToken ? "provided" : "jwt_secret",
+  packageFilter: packageFilter || null,
+  onlyMissing,
+  totals: {
+    restaurants: restaurants.length,
+    ownerWhatsappConfigured: configured.length,
+    ownerWhatsappMissing: missing.length,
+  },
+  missingRestaurants: missing.map((restaurant) => ({
+    id: restaurant.id,
+    slug: restaurant.slug ?? null,
+    name: restaurant.name ?? null,
+    package: restaurant.package ?? null,
+    ownerWhatsappConfigured: restaurant.ownerWhatsappConfigured === true,
+    ownerWhatsappMasked: restaurant.ownerWhatsappMasked ?? null,
+    ownerPhoneMasked: restaurant.ownerPhoneMasked ?? null,
+    whatsappNumberMasked: restaurant.whatsappNumberMasked ?? null,
+    phoneMasked: restaurant.phoneMasked ?? null,
+    repairCommand: repairCommandFor(restaurant),
+  })),
+};
+
+if (artifactPath) {
+  await writeFile(artifactPath, `${JSON.stringify(report, null, 2)}\n`);
+}
 
 console.log("Owner Delivery Readiness");
 console.log(`apiUrl=${apiUrl}`);
@@ -122,8 +156,6 @@ for (const restaurant of rows) {
     ].join(" "),
   );
   if (restaurant.ownerWhatsappConfigured !== true) {
-    console.log(
-      `  repair: METHOD=PATCH BODY='{"ownerWhatsapp":"<owner-whatsapp-number>"}' OPENSEAT_TOKEN=... pnpm debug:api -- ${apiUrl}/api/v1/restaurants/${restaurant.id}`,
-    );
+    console.log(`  repair: ${repairCommandFor(restaurant)}`);
   }
 }

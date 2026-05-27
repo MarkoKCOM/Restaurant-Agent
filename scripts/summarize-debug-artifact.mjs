@@ -5,7 +5,7 @@ import { basename } from "node:path";
 const artifactPath = process.argv[2];
 
 if (!artifactPath) {
-  console.error("Usage: pnpm debug:artifact <path-to-smoke-e2e-or-agent-intent-artifact.json>");
+  console.error("Usage: pnpm debug:artifact <path-to-smoke-e2e-agent-intent-or-debug-bundle-artifact.json>");
   process.exit(1);
 }
 
@@ -138,10 +138,96 @@ function summarizeAgentMembershipIntent(report) {
   printLogTraceCommands(failed.map((result) => result.requestId));
 }
 
+function summarizeDebugBundleManifest(report) {
+  const commands = asArray(report.commands);
+  const failed = commands.filter((command) => command.status === "failed");
+  const skipped = commands.filter((command) => command.status === "skipped");
+  const passed = commands.filter((command) => command.status === "passed");
+  const highlights = report.highlights ?? {};
+  const adminDiagnostics = highlights.adminDiagnostics ?? {};
+  const source = adminDiagnostics.source ?? {};
+  const migrationDrift = adminDiagnostics.migrationDrift ?? {};
+  const checks = adminDiagnostics.checks ?? {};
+  const membershipProcessing = adminDiagnostics.membershipProcessing ?? {};
+  const agentMembershipIntents = highlights.agentMembershipIntents ?? {};
+  const queues = asArray(adminDiagnostics.queues);
+
+  console.log(`Artifact: ${basename(artifactPath)}`);
+  console.log("Type: debug-bundle");
+  printLine("Created", report.createdAt);
+  printLine("API URL", report.apiUrl);
+  printLine("Service", report.service);
+  printLine("Since", report.since);
+  printLine("Output dir", report.outDir);
+  if (report.readiness) {
+    printLine("Readiness", `${report.readiness.status ?? "unknown"} after ${report.readiness.attempts ?? "?"} attempt(s)`);
+  }
+  printLine("Commands", `${passed.length}/${commands.length} passed`);
+
+  if (adminDiagnostics.status) {
+    printLine("Admin diagnostics", adminDiagnostics.status);
+  }
+  if (source.status || source.shortCommit || source.checkout) {
+    const match = source.checkoutMatchesBuild === undefined ? "unknown" : String(source.checkoutMatchesBuild);
+    printLine(
+      "Running build",
+      `${source.shortCommit ?? "unknown"} checkout=${source.checkout ?? "unknown"} matches=${match}`,
+    );
+  }
+  if (migrationDrift.status) {
+    printLine(
+      "Migration drift",
+      `${migrationDrift.status} code=${migrationDrift.codeLatestId ?? "?"} database=${migrationDrift.databaseLatestId ?? "?"}`,
+    );
+  }
+  if (checks.database || checks.redis) {
+    printLine("Dependencies", `database=${checks.database ?? "unknown"} redis=${checks.redis ?? "unknown"}`);
+  }
+  if (membershipProcessing.status) {
+    printLine(
+      "Membership processing",
+      `${membershipProcessing.status} open=${membershipProcessing.openCount ?? "?"} attempts=${membershipProcessing.totalOpenAttempts ?? "?"}`,
+    );
+  }
+  if (agentMembershipIntents.status) {
+    printLine(
+      "Agent membership intents",
+      `${agentMembershipIntents.status} ${agentMembershipIntents.passed ?? "?"}/${agentMembershipIntents.total ?? "?"}`,
+    );
+  }
+  if (queues.length > 0) {
+    printLine("Queues", queues.map((queue) => `${queue.name}:${queue.status}/failed=${queue.failed ?? "?"}`).join(", "));
+  }
+
+  if (failed.length === 0 && skipped.length === 0) {
+    console.log("Bundle issues: none");
+    return;
+  }
+
+  if (failed.length > 0) {
+    console.log(`Failed commands: ${failed.length}`);
+    for (const command of failed) {
+      const exitCode = command.exitCode === undefined || command.exitCode === null ? "" : ` exitCode=${command.exitCode}`;
+      const outputPath = command.outputPath ? ` output=${command.outputPath}` : "";
+      console.log(`- ${command.name}:${exitCode}${outputPath}`);
+    }
+  }
+
+  if (skipped.length > 0) {
+    console.log(`Skipped commands: ${skipped.length}`);
+    for (const command of skipped) {
+      const reason = command.reason ? ` reason=${command.reason}` : "";
+      console.log(`- ${command.name}:${reason}`);
+    }
+  }
+}
+
 const raw = await readFile(artifactPath, "utf8");
 const report = JSON.parse(raw);
 
-if (report.type === "agent-membership-intent") {
+if (Array.isArray(report.commands) && report.createdAt) {
+  summarizeDebugBundleManifest(report);
+} else if (report.type === "agent-membership-intent") {
   summarizeAgentMembershipIntent(report);
 } else if (Array.isArray(report.results)) {
   summarizeE2e(report);

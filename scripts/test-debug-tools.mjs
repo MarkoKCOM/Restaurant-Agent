@@ -184,6 +184,81 @@ const agentIntentFetchFailureOutput = await summarize(agentIntentFetchFailurePat
 assertIncludes(agentIntentFetchFailureOutput, "Type: agent-membership-intent");
 assertIncludes(agentIntentFetchFailureOutput, "fetch failed code=ECONNREFUSED requestId=agent-intent-fetch-failed-test-1");
 
+const debugBundleManifestPath = await writeJson("manifest.json", {
+  createdAt: "2026-05-27T12:00:00.000Z",
+  apiUrl: "http://localhost:3001",
+  service: "openseat-api",
+  since: "30 minutes ago",
+  outDir: "/tmp/openseat-debug-bundle",
+  readiness: { status: "ready", attempts: 1 },
+  commands: [
+    { name: "health-probe", status: "passed", outputPath: "/tmp/openseat-debug-bundle/health-probe.txt" },
+    {
+      name: "api-smoke",
+      status: "failed",
+      exitCode: 1,
+      outputPath: "/tmp/openseat-debug-bundle/api-smoke.txt",
+    },
+    { name: "admin-diagnostics", status: "skipped", reason: "missing token" },
+  ],
+  highlights: {
+    adminDiagnostics: {
+      status: "ok",
+      source: {
+        shortCommit: "abc1234",
+        checkout: "abc1234",
+        checkoutMatchesBuild: true,
+      },
+      migrationDrift: {
+        status: "ok",
+        codeLatestId: "202605270001",
+        databaseLatestId: "202605270001",
+      },
+      checks: {
+        database: "ok",
+        redis: "ok",
+      },
+      membershipProcessing: {
+        status: "ok",
+        openCount: 2,
+        totalOpenAttempts: 3,
+      },
+      queues: [
+        { name: "membership-events", status: "ok", failed: 0 },
+      ],
+    },
+    agentMembershipIntents: {
+      status: "passed",
+      passed: 4,
+      total: 4,
+    },
+  },
+});
+
+const debugBundleManifestOutput = await summarize(debugBundleManifestPath);
+assertIncludes(debugBundleManifestOutput, "Type: debug-bundle");
+assertIncludes(debugBundleManifestOutput, "Readiness: ready after 1 attempt(s)");
+assertIncludes(debugBundleManifestOutput, "Commands: 1/3 passed");
+assertIncludes(debugBundleManifestOutput, "Running build: abc1234 checkout=abc1234 matches=true");
+assertIncludes(debugBundleManifestOutput, "Migration drift: ok code=202605270001 database=202605270001");
+assertIncludes(debugBundleManifestOutput, "Membership processing: ok open=2 attempts=3");
+assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");
+assertIncludes(debugBundleManifestOutput, "Queues: membership-events:ok/failed=0");
+assertIncludes(debugBundleManifestOutput, "Failed commands: 1");
+assertIncludes(debugBundleManifestOutput, "- api-smoke: exitCode=1 output=/tmp/openseat-debug-bundle/api-smoke.txt");
+assertIncludes(debugBundleManifestOutput, "Skipped commands: 1");
+assertIncludes(debugBundleManifestOutput, "- admin-diagnostics: reason=missing token");
+
+const artifactSummarizer = await readFile("scripts/summarize-debug-artifact.mjs", "utf8");
+for (const expectedSummarizerContent of [
+  "summarizeDebugBundleManifest",
+  "Type: debug-bundle",
+  "Membership processing",
+  "Agent membership intents",
+]) {
+  assertIncludes(artifactSummarizer, expectedSummarizerContent);
+}
+
 const agentIntentScript = await readFile("scripts/agent-membership-intent-smoke.mjs", "utf8");
 for (const expectedProbe of [
   "sanitizeConnectionError",

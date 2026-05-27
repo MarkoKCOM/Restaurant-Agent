@@ -103,6 +103,7 @@ Summarize smoke, E2E, or agent-intent artifacts without reading the full JSON:
 ```bash
 pnpm debug:artifact /tmp/openseat-smoke.json
 pnpm debug:artifact apps/e2e/artifacts/e2e-....json
+pnpm debug:artifact /tmp/openseat-debug-bundle/manifest.json
 ```
 
 When a smoke artifact has unhandled HTTP failures, the summary includes ready-to-run `pnpm debug:logs ...` commands for the failing request IDs.

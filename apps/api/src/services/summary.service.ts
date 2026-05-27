@@ -317,7 +317,7 @@ export async function getMorningSummary(params: {
     summaryDate,
     yesterdayDate,
     ownerWhatsappConfigured: Boolean(restaurant.ownerWhatsapp),
-    ownerRecipientMasked: maskPhone(restaurant.ownerWhatsapp ?? restaurant.ownerPhone),
+    ownerRecipientMasked: maskPhone(restaurant.ownerWhatsapp),
     yesterday,
     today: {
       ...today,

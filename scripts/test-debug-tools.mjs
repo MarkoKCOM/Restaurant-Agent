@@ -712,6 +712,7 @@ const outboundDebugSummary = await readFile("scripts/outbound-debug-summary.mjs"
 const queueDebugSummary = await readFile("apps/api/scripts/queue-debug-summary.mjs", "utf8");
 const diagnosticsService = await readFile("apps/api/src/services/diagnostics.service.ts", "utf8");
 const outboundMessageService = await readFile("apps/api/src/services/outbound-message.service.ts", "utf8");
+const summaryService = await readFile("apps/api/src/services/summary.service.ts", "utf8");
 const debugTokenHelpers = await readFile("scripts/lib/debug-token.mjs", "utf8");
 const debugErrorHelpers = await readFile("scripts/lib/debug-errors.mjs", "utf8");
 const rootPackageJson = await readFile("package.json", "utf8");
@@ -774,6 +775,14 @@ for (const requiredOutboundServiceContent of [
   "status: missingRequiredRecipient ? \"skipped\" : \"logged\"",
 ]) {
   assertIncludes(outboundMessageService, requiredOutboundServiceContent);
+}
+
+for (const requiredSummaryServiceContent of [
+  "ownerWhatsappConfigured: Boolean(restaurant.ownerWhatsapp)",
+  "ownerRecipientMasked: maskPhone(restaurant.ownerWhatsapp)",
+  "OWNER_WHATSAPP_MISSING",
+]) {
+  assertIncludes(summaryService, requiredSummaryServiceContent);
 }
 
 for (const requiredQueueDebugContent of [

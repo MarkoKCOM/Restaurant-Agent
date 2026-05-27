@@ -65,6 +65,7 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
     guestPhone: string;
     notes: string;
     source: string;
+    partySize?: number;
   }) {
     let lastError: unknown = null;
     const candidateSlots = availabilitySlots.length > 0 ? availabilitySlots : [requireSlot(0)];
@@ -76,7 +77,7 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
           guestPhone: input.guestPhone,
           date: reservationDate,
           timeStart,
-          partySize: 2,
+          partySize: input.partySize ?? 2,
           notes: input.notes,
           source: input.source,
         });
@@ -223,6 +224,40 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
     if (!guestId) throw new Error("No guest");
     const data = await api.getLoyaltyBalance(guestId);
     return `points=${(data as any).pointsBalance} tier=${(data as any).tier}`;
+  }));
+
+  results.push(await runTest("Group Host Bonus", async () => {
+    const groupAvailability = await api.getAvailability(RESTAURANT_ID, reservationDate, 6);
+    const groupSlots = ((groupAvailability as any).slots as Array<{ time?: string }> | undefined)
+      ?.map((slot) => slot.time)
+      .filter((time): time is string => !!time) ?? [];
+    if (groupSlots.length === 0) {
+      throw new Error(`No group availability on ${reservationDate}`);
+    }
+
+    const originalSlots = availabilitySlots;
+    availabilitySlots = groupSlots;
+    try {
+      const data = await createReservationUsingAvailableSlot({
+        guestName: `Group Host ${runId}`,
+        guestPhone: `058${String(Date.now()).slice(-7)}`,
+        notes: `${runId}-group-host`,
+        source: "web",
+        partySize: 6,
+      });
+      const reservation = (data as any).reservation;
+      await api.updateReservation(reservation.id, { status: "seated" });
+      await api.updateReservation(reservation.id, { status: "completed" });
+      const history = await api.getLoyaltyHistory(reservation.guestId);
+      const transactions = (history as any).transactions as Array<{ reason?: string; points?: number }>;
+      const hostBonus = transactions.find((tx) => tx.reason === "host_group_bonus");
+      if (!hostBonus || hostBonus.points !== 20) {
+        throw new Error(`Expected host_group_bonus=20, got ${JSON.stringify(hostBonus)}`);
+      }
+      return `guest=${reservation.guestId.slice(0, 8)}... hostBonus=${hostBonus.points}`;
+    } finally {
+      availabilitySlots = originalSlots;
+    }
   }));
 
   // 9. Create reward for membership claim flow

@@ -3,6 +3,7 @@ import { db } from "../db/index.js";
 import {
   guests,
   loyaltyTransactions,
+  reservations,
   rewards,
 } from "../db/schema.js";
 import type { InferSelectModel } from "drizzle-orm";
@@ -23,6 +24,8 @@ export type Tier = "bronze" | "silver" | "gold";
 const POINTS_PER_VISIT = 10;
 const STAMP_CARD_SIZE = 10;
 const STAMP_BONUS_POINTS = 50;
+const HOST_GROUP_MIN_PARTY_SIZE = 6;
+const HOST_GROUP_BONUS_POINTS = 20;
 
 export function getTierMultiplier(tier: Tier): number {
   return TIER_THRESHOLDS[tier].multiplier;
@@ -395,6 +398,7 @@ export async function onVisitCompleted(
 
   // Check stamp card — every 10th visit gets bonus
   let stampBonus = false;
+  let hostGroupBonus = false;
   if (guest.visitCount % STAMP_CARD_SIZE === 0 && guest.visitCount > 0) {
     const [existingStampBonus] = await db
       .select({ id: loyaltyTransactions.id })
@@ -416,11 +420,53 @@ export async function onVisitCompleted(
     }
   }
 
+  const [reservation] = await db
+    .select({ partySize: reservations.partySize })
+    .from(reservations)
+    .where(
+      and(
+        eq(reservations.id, reservationId),
+        eq(reservations.restaurantId, restaurantId),
+        eq(reservations.guestId, guestId),
+      ),
+    )
+    .limit(1);
+
+  if (reservation && reservation.partySize >= HOST_GROUP_MIN_PARTY_SIZE) {
+    const [existingHostGroupBonus] = await db
+      .select({ id: loyaltyTransactions.id })
+      .from(loyaltyTransactions)
+      .where(
+        and(
+          eq(loyaltyTransactions.guestId, guestId),
+          eq(loyaltyTransactions.restaurantId, restaurantId),
+          eq(loyaltyTransactions.reservationId, reservationId),
+          eq(loyaltyTransactions.type, "earn"),
+          eq(loyaltyTransactions.reason, "host_group_bonus"),
+        ),
+      )
+      .limit(1);
+
+    if (!existingHostGroupBonus) {
+      await awardPoints(
+        guestId,
+        restaurantId,
+        HOST_GROUP_BONUS_POINTS,
+        "host_group_bonus",
+        reservationId,
+      );
+      hostGroupBonus = true;
+    }
+  }
+
   // Evaluate tier
   const tierChange = await evaluateTier(guestId);
 
   return {
-    pointsAwarded: pointsForVisit + (stampBonus ? STAMP_BONUS_POINTS : 0),
+    pointsAwarded:
+      pointsForVisit
+      + (stampBonus ? STAMP_BONUS_POINTS : 0)
+      + (hostGroupBonus ? HOST_GROUP_BONUS_POINTS : 0),
     stampBonus,
     tierChange,
   };

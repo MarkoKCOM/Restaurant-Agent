@@ -414,6 +414,23 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
           negativeFeedbackWithPendingReview: 1,
         },
       },
+      campaigns: {
+        status: "attention",
+        totals: {
+          total: 6,
+          draft: 1,
+          scheduled: 2,
+          sent: 3,
+          overdueScheduled: 1,
+        },
+        delivery: {
+          sent: 12,
+          skipped: 4,
+          skippedOptedOut: 2,
+          skippedRateLimitedWeek: 1,
+          skippedRateLimitedMonth: 1,
+        },
+      },
       outboundMessages: {
         status: "attention",
         totals: {
@@ -467,6 +484,7 @@ assertIncludes(
   "Gamification: attention activeChallenges=2 smokeChallenges=1 birthdayWeekActive=1 birthdayWeekDue=1 stuckChallenges=1 duplicateProgress=1 referralCodes=7 referralCreditMismatches=1 menuBadgeGuests=5 achievementGuests=4 achievementMissing=1/1 invalidAchievements=1 leaderboardOptedIn=3 leaderboardRewardMissing=1 invalidLeaderboard=1 streakActive=3 staleStreaks=1 invalidStreaks=1 streakBonusMissing=1",
 );
 assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overdue=1 failed=1 skipped=3 winBackDue=2 birthdayDue=1 anniversaryDue=1 reviewWithoutPositive=1 negativeWithReview=1");
+assertIncludes(debugBundleManifestOutput, "Campaigns: attention total=6 draft=1 scheduled=2 sent=3 overdue=1 deliverySent=12 skipped=4 optedOut=2 weekLimit=1 monthLimit=1");
 assertIncludes(debugBundleManifestOutput, "Outbound messages: attention total=5 logged=4 sent=0 failed=1 types=daily_morning_summary:2,thank_you:3");
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");
 assertIncludes(debugBundleManifestOutput, "Queues: daily-summary:ok/failed=0/repeat=0, membership-events:ok/failed=0/repeat=?");
@@ -484,6 +502,7 @@ for (const expectedSummarizerContent of [
   "Membership repair summary",
   "Gamification",
   "Engagement",
+  "Campaigns",
   "Summary schedules",
   "parseSummaryScheduleHealth",
   "formatSummaryScheduleHealthFromDiagnostics",
@@ -776,6 +795,9 @@ for (const requiredDiagnosticsContent of [
   "scheduleHealth",
   "inspectSummaryScheduleHealth",
   "buildScheduleCheck",
+  "inspectCampaigns",
+  "overdueScheduled",
+  "skippedRateLimitedWeek",
   "daily-morning-summary",
   "0 9 * * *",
   "0 23 * * *",
@@ -864,6 +886,8 @@ for (const requiredReadmeContent of [
   "manifest.highlights.adminDiagnostics",
   "gamification",
   "engagement",
+  "campaigns",
+  "Campaigns:",
   "outboundMessages",
   "manifest.highlights.agentMembershipIntents",
   "membershipDebugRestaurantId",

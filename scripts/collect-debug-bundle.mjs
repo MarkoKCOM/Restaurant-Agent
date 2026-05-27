@@ -234,6 +234,9 @@ async function captureDiagnosticsHighlights(commandRecord) {
     const engagement = isObject(operational.engagement)
       ? operational.engagement
       : {};
+    const campaigns = isObject(operational.campaigns)
+      ? operational.campaigns
+      : {};
     const outboundMessages = isObject(operational.outboundMessages)
       ? operational.outboundMessages
       : {};
@@ -286,6 +289,15 @@ async function captureDiagnosticsHighlights(commandRecord) {
         reviewSolicitation: engagement.reviewSolicitation,
         skippedByReason: engagement.skippedByReason,
         error: engagement.error,
+      },
+      campaigns: {
+        status: campaigns.status,
+        totals: campaigns.totals,
+        delivery: campaigns.delivery,
+        skippedByReason: campaigns.skippedByReason,
+        overdueSamples: campaigns.overdueSamples,
+        recentSamples: campaigns.recentSamples,
+        error: campaigns.error,
       },
       outboundMessages: {
         status: outboundMessages.status,
@@ -393,6 +405,12 @@ async function writeReadme() {
       const reviewSolicitation = engagement.reviewSolicitation ?? {};
       lines.push(
         `- Engagement: ${engagement.status ?? "unknown"} pending=${engagementTotals.pending ?? "?"} overdue=${engagementTotals.overduePending ?? "?"} failed=${engagementTotals.failed ?? "?"} skipped=${engagementTotals.skipped ?? "?"} winBackDue=${winBack.dueUnscheduledTotal ?? "?"} birthdayDue=${birthdays.dueUnscheduledToday ?? "?"} anniversaryDue=${anniversaries.dueUnscheduledToday ?? "?"} reviewWithoutPositive=${reviewSolicitation.pendingWithoutPositiveFeedback ?? "?"} negativeWithReview=${reviewSolicitation.negativeFeedbackWithPendingReview ?? "?"}`,
+      );
+      const campaigns = adminDiagnostics.campaigns ?? {};
+      const campaignTotals = campaigns.totals ?? {};
+      const campaignDelivery = campaigns.delivery ?? {};
+      lines.push(
+        `- Campaigns: ${campaigns.status ?? "unknown"} total=${campaignTotals.total ?? "?"} draft=${campaignTotals.draft ?? "?"} scheduled=${campaignTotals.scheduled ?? "?"} sent=${campaignTotals.sent ?? "?"} overdue=${campaignTotals.overdueScheduled ?? "?"} deliverySent=${campaignDelivery.sent ?? "?"} skipped=${campaignDelivery.skipped ?? "?"} optedOut=${campaignDelivery.skippedOptedOut ?? "?"} weekLimit=${campaignDelivery.skippedRateLimitedWeek ?? "?"} monthLimit=${campaignDelivery.skippedRateLimitedMonth ?? "?"}`,
       );
       const outboundMessages = adminDiagnostics.outboundMessages ?? {};
       const outboundTotals = outboundMessages.totals ?? {};

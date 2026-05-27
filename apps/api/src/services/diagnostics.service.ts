@@ -11,6 +11,7 @@ import { campaignQueue, engagementQueue, reminderQueue, summaryQueue } from "../
 import {
   challengeProgress,
   challenges,
+  campaigns,
   engagementJobs,
   guests,
   loyaltyTransactions,
@@ -62,6 +63,7 @@ export interface DiagnosticsReport {
     membershipProcessing: MembershipProcessingDiagnostic;
     gamification: GamificationDiagnostic;
     engagement: EngagementDiagnostic;
+    campaigns: CampaignDiagnostic;
     outboundMessages: OutboundMessageDiagnostics;
   };
 }
@@ -352,6 +354,50 @@ export interface EngagementDiagnostic {
     skipReason: string | null;
     triggerAt: string;
     createdAt: string;
+  }>;
+  error?: DiagnosticCheck["error"];
+}
+
+export interface CampaignDiagnostic {
+  status: "ok" | "attention" | "error";
+  totals?: {
+    total: number;
+    draft: number;
+    scheduled: number;
+    sent: number;
+    cancelled: number;
+    overdueScheduled: number;
+  };
+  delivery?: {
+    sent: number;
+    delivered: number;
+    read: number;
+    replied: number;
+    skipped: number;
+    skippedOptedOut: number;
+    skippedRateLimitedWeek: number;
+    skippedRateLimitedMonth: number;
+    recipientRows: number;
+  };
+  skippedByReason?: Array<{
+    reason: string;
+    count: number;
+  }>;
+  overdueSamples?: Array<{
+    id: string;
+    restaurantId: string;
+    name: string;
+    scheduledAt: string | null;
+  }>;
+  recentSamples?: Array<{
+    id: string;
+    restaurantId: string;
+    name: string;
+    status: string;
+    scheduledAt: string | null;
+    sentAt: string | null;
+    sent: number;
+    skipped: number;
   }>;
   error?: DiagnosticCheck["error"];
 }
@@ -1827,6 +1873,153 @@ async function inspectEngagement(): Promise<EngagementDiagnostic> {
   }
 }
 
+async function inspectCampaigns(): Promise<CampaignDiagnostic> {
+  try {
+    const [summaryRows, deliveryRows, skippedRows, overdueRows, recentRows] = await Promise.all([
+      db.execute(sql`
+        select
+          count(*)::int as total,
+          count(*) filter (where status = 'draft')::int as draft,
+          count(*) filter (where status = 'scheduled')::int as scheduled,
+          count(*) filter (where status = 'sent')::int as sent,
+          count(*) filter (where status = 'cancelled')::int as cancelled,
+          count(*) filter (where status = 'scheduled' and scheduled_at < now() - interval '15 minutes')::int as overdue_scheduled
+        from ${campaigns}
+      `) as Promise<Array<{
+        total: number;
+        draft: number;
+        scheduled: number;
+        sent: number;
+        cancelled: number;
+        overdue_scheduled: number;
+      }>>,
+      db.execute(sql`
+        select
+          coalesce(sum((stats -> 'delivery' ->> 'sent')::int), 0)::int as sent,
+          coalesce(sum((stats -> 'delivery' ->> 'delivered')::int), 0)::int as delivered,
+          coalesce(sum((stats -> 'delivery' ->> 'read')::int), 0)::int as read,
+          coalesce(sum((stats -> 'delivery' ->> 'replied')::int), 0)::int as replied,
+          coalesce(sum((stats -> 'delivery' ->> 'skipped')::int), 0)::int as skipped,
+          coalesce(sum((stats -> 'delivery' ->> 'skippedOptedOut')::int), 0)::int as skipped_opted_out,
+          coalesce(sum((stats -> 'delivery' ->> 'skippedRateLimitedWeek')::int), 0)::int as skipped_rate_limited_week,
+          coalesce(sum((stats -> 'delivery' ->> 'skippedRateLimitedMonth')::int), 0)::int as skipped_rate_limited_month,
+          coalesce(sum(jsonb_array_length(coalesce(stats -> 'deliveryRecipients', '[]'::jsonb))), 0)::int as recipient_rows
+        from ${campaigns}
+      `) as Promise<Array<{
+        sent: number;
+        delivered: number;
+        read: number;
+        replied: number;
+        skipped: number;
+        skipped_opted_out: number;
+        skipped_rate_limited_week: number;
+        skipped_rate_limited_month: number;
+        recipient_rows: number;
+      }>>,
+      db.execute(sql`
+        select coalesce(recipient ->> 'reason', 'unknown') as reason, count(*)::int as count
+        from ${campaigns}
+        cross join lateral jsonb_array_elements(coalesce(stats -> 'deliveryRecipients', '[]'::jsonb)) recipient
+        where recipient ->> 'status' = 'skipped'
+        group by coalesce(recipient ->> 'reason', 'unknown')
+        order by count desc, reason asc
+        limit 5
+      `) as Promise<Array<{
+        reason: string;
+        count: number;
+      }>>,
+      db.execute(sql`
+        select id, restaurant_id, name, scheduled_at
+        from ${campaigns}
+        where status = 'scheduled'
+          and scheduled_at < now() - interval '15 minutes'
+        order by scheduled_at asc
+        limit 5
+      `) as Promise<Array<{
+        id: string;
+        restaurant_id: string;
+        name: string;
+        scheduled_at: Date | string | null;
+      }>>,
+      db.execute(sql`
+        select
+          id,
+          restaurant_id,
+          name,
+          status,
+          scheduled_at,
+          sent_at,
+          coalesce((stats -> 'delivery' ->> 'sent')::int, 0)::int as sent,
+          coalesce((stats -> 'delivery' ->> 'skipped')::int, 0)::int as skipped
+        from ${campaigns}
+        order by created_at desc
+        limit 5
+      `) as Promise<Array<{
+        id: string;
+        restaurant_id: string;
+        name: string;
+        status: string;
+        scheduled_at: Date | string | null;
+        sent_at: Date | string | null;
+        sent: number;
+        skipped: number;
+      }>>,
+    ]);
+
+    const summary = summaryRows[0];
+    const delivery = deliveryRows[0];
+    const overdueScheduled = Number(summary?.overdue_scheduled ?? 0);
+
+    return {
+      status: overdueScheduled > 0 ? "attention" : "ok",
+      totals: {
+        total: Number(summary?.total ?? 0),
+        draft: Number(summary?.draft ?? 0),
+        scheduled: Number(summary?.scheduled ?? 0),
+        sent: Number(summary?.sent ?? 0),
+        cancelled: Number(summary?.cancelled ?? 0),
+        overdueScheduled,
+      },
+      delivery: {
+        sent: Number(delivery?.sent ?? 0),
+        delivered: Number(delivery?.delivered ?? 0),
+        read: Number(delivery?.read ?? 0),
+        replied: Number(delivery?.replied ?? 0),
+        skipped: Number(delivery?.skipped ?? 0),
+        skippedOptedOut: Number(delivery?.skipped_opted_out ?? 0),
+        skippedRateLimitedWeek: Number(delivery?.skipped_rate_limited_week ?? 0),
+        skippedRateLimitedMonth: Number(delivery?.skipped_rate_limited_month ?? 0),
+        recipientRows: Number(delivery?.recipient_rows ?? 0),
+      },
+      skippedByReason: skippedRows.map((row) => ({
+        reason: row.reason,
+        count: Number(row.count),
+      })),
+      overdueSamples: overdueRows.map((row) => ({
+        id: row.id,
+        restaurantId: row.restaurant_id,
+        name: row.name,
+        scheduledAt: toIsoString(row.scheduled_at) ?? null,
+      })),
+      recentSamples: recentRows.map((row) => ({
+        id: row.id,
+        restaurantId: row.restaurant_id,
+        name: row.name,
+        status: row.status,
+        scheduledAt: toIsoString(row.scheduled_at) ?? null,
+        sentAt: toIsoString(row.sent_at) ?? null,
+        sent: Number(row.sent ?? 0),
+        skipped: Number(row.skipped ?? 0),
+      })),
+    };
+  } catch (error: unknown) {
+    return {
+      status: "error",
+      error: sanitizeError(error),
+    };
+  }
+}
+
 function parseMigrationFileId(fileName: string): number | undefined {
   const match = fileName.match(/^(\d+)_.*\.sql$/);
   if (!match) return undefined;
@@ -2010,13 +2203,14 @@ async function inspectOutboundMessages(): Promise<OutboundMessageDiagnostics> {
 }
 
 export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
-  const [database, redis, deployment, membershipProcessing, gamification, engagement, outboundMessages, ...queues] = await Promise.all([
+  const [database, redis, deployment, membershipProcessing, gamification, engagement, campaignDiagnostics, outboundMessages, ...queues] = await Promise.all([
     timedCheck(pingDatabase),
     timedCheck(pingRedis),
     inspectDeployment(),
     inspectMembershipProcessing(),
     inspectGamification(),
     inspectEngagement(),
+    inspectCampaigns(),
     inspectOutboundMessages(),
     inspectQueue("reservation-reminders", reminderQueue),
     inspectQueue("daily-summary", summaryQueue),
@@ -2033,6 +2227,7 @@ export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
     && membershipProcessing.status !== "error"
     && gamification.status !== "error"
     && engagement.status !== "error"
+    && campaignDiagnostics.status !== "error"
     && outboundMessages.status !== "error"
     && deployment.migrationDrift?.status !== "mismatch"
     ? "ok"
@@ -2059,6 +2254,7 @@ export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
       membershipProcessing,
       gamification,
       engagement,
+      campaigns: campaignDiagnostics,
       outboundMessages,
     },
   };

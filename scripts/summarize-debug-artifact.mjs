@@ -392,6 +392,9 @@ async function summarizeDebugBundleManifest(report) {
   const engagementBirthdays = engagement.birthdays ?? {};
   const engagementAnniversaries = engagement.anniversaries ?? {};
   const engagementReviewSolicitation = engagement.reviewSolicitation ?? {};
+  const campaigns = adminDiagnostics.campaigns ?? {};
+  const campaignTotals = campaigns.totals ?? {};
+  const campaignDelivery = campaigns.delivery ?? {};
   const outboundMessages = adminDiagnostics.outboundMessages ?? {};
   const outboundTotals = outboundMessages.totals ?? {};
   const outboundByType = outboundMessages.byType ?? {};
@@ -452,6 +455,12 @@ async function summarizeDebugBundleManifest(report) {
     printLine(
       "Engagement",
       `${engagement.status} pending=${engagementTotals.pending ?? "?"} overdue=${engagementTotals.overduePending ?? "?"} failed=${engagementTotals.failed ?? "?"} skipped=${engagementTotals.skipped ?? "?"} winBackDue=${engagementWinBack.dueUnscheduledTotal ?? "?"} birthdayDue=${engagementBirthdays.dueUnscheduledToday ?? "?"} anniversaryDue=${engagementAnniversaries.dueUnscheduledToday ?? "?"} reviewWithoutPositive=${engagementReviewSolicitation.pendingWithoutPositiveFeedback ?? "?"} negativeWithReview=${engagementReviewSolicitation.negativeFeedbackWithPendingReview ?? "?"}`,
+    );
+  }
+  if (campaigns.status) {
+    printLine(
+      "Campaigns",
+      `${campaigns.status} total=${campaignTotals.total ?? "?"} draft=${campaignTotals.draft ?? "?"} scheduled=${campaignTotals.scheduled ?? "?"} sent=${campaignTotals.sent ?? "?"} overdue=${campaignTotals.overdueScheduled ?? "?"} deliverySent=${campaignDelivery.sent ?? "?"} skipped=${campaignDelivery.skipped ?? "?"} optedOut=${campaignDelivery.skippedOptedOut ?? "?"} weekLimit=${campaignDelivery.skippedRateLimitedWeek ?? "?"} monthLimit=${campaignDelivery.skippedRateLimitedMonth ?? "?"}`,
     );
   }
   if (outboundMessages.status) {

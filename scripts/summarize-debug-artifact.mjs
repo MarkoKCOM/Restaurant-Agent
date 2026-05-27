@@ -36,6 +36,11 @@ function requestIdsFromText(value) {
     .map((match) => match[1]);
 }
 
+function formatCheckout(value) {
+  if (!value || typeof value !== "object") return value ?? "unknown";
+  return value.shortCommit ?? value.commit ?? value.status ?? "unknown";
+}
+
 function summarizeE2e(report) {
   const results = asArray(report.results);
   const failed = results.filter((result) => !result.pass);
@@ -171,7 +176,7 @@ function summarizeDebugBundleManifest(report) {
     const match = source.checkoutMatchesBuild === undefined ? "unknown" : String(source.checkoutMatchesBuild);
     printLine(
       "Running build",
-      `${source.shortCommit ?? "unknown"} checkout=${source.checkout ?? "unknown"} matches=${match}`,
+      `${source.shortCommit ?? "unknown"} checkout=${formatCheckout(source.checkout)} matches=${match}`,
     );
   }
   if (migrationDrift.status) {

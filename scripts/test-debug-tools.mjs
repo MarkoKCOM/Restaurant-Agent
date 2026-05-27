@@ -206,7 +206,7 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
       status: "ok",
       source: {
         shortCommit: "abc1234",
-        checkout: "abc1234",
+        checkout: { shortCommit: "abc1234", branch: "main" },
         checkoutMatchesBuild: true,
       },
       migrationDrift: {

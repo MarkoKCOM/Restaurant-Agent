@@ -5,7 +5,7 @@ import { basename } from "node:path";
 const artifactPath = process.argv[2];
 
 if (!artifactPath) {
-  console.error("Usage: pnpm debug:artifact <path-to-smoke-or-e2e-artifact.json>");
+  console.error("Usage: pnpm debug:artifact <path-to-smoke-e2e-or-agent-intent-artifact.json>");
   process.exit(1);
 }
 
@@ -99,10 +99,38 @@ function summarizeSmoke(report) {
   }
 }
 
+function summarizeAgentMembershipIntent(report) {
+  const results = asArray(report.results);
+  const failed = results.filter((result) => !result.ok);
+
+  console.log(`Artifact: ${basename(artifactPath)}`);
+  console.log("Type: agent-membership-intent");
+  printLine("Run", report.runId);
+  printLine("Status", `${report.passed ?? results.length - failed.length}/${report.total ?? results.length} passed`);
+  printLine("API URL", report.apiUrl);
+
+  if (failed.length === 0) {
+    console.log("Failures: none");
+    return;
+  }
+
+  console.log(`Failures: ${failed.length}`);
+  for (const result of failed) {
+    const mismatches = asArray(result.mismatches);
+    const details = mismatches.length > 0 ? mismatches.join("; ") : "intent probe failed";
+    const requestId = result.requestId ? ` requestId=${result.requestId}` : "";
+    console.log(`- ${result.name}: ${details}${requestId}`);
+  }
+
+  printLogTraceCommands(failed.map((result) => result.requestId));
+}
+
 const raw = await readFile(artifactPath, "utf8");
 const report = JSON.parse(raw);
 
-if (Array.isArray(report.results)) {
+if (report.type === "agent-membership-intent") {
+  summarizeAgentMembershipIntent(report);
+} else if (Array.isArray(report.results)) {
   summarizeE2e(report);
 } else {
   summarizeSmoke(report);

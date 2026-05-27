@@ -42,10 +42,10 @@ function deployWorkflowMatches(path) {
   ]);
   const prefixMatches = [
     "apps/booking-widget/",
-  "apps/dashboard/",
-  "apps/marketing-site/",
-  "packages/",
-];
+    "apps/dashboard/",
+    "apps/marketing-site/",
+    "packages/",
+  ];
 
   return exactMatches.has(path) || prefixMatches.some((prefix) => path.startsWith(prefix));
 }
@@ -92,6 +92,38 @@ const skippedSmokePath = await writeJson("smoke-skipped.json", {
 const skippedOutput = await summarize(skippedSmokePath);
 assertIncludes(skippedOutput, "Status: skipped");
 assertIncludes(skippedOutput, "Reason: missing credentials");
+
+const agentIntentPath = await writeJson("agent-intents.json", {
+  type: "agent-membership-intent",
+  status: "failed",
+  runId: "agent-intent-test",
+  apiUrl: "http://localhost:3001",
+  total: 2,
+  passed: 1,
+  failed: 1,
+  results: [
+    {
+      name: "Hebrew balance",
+      requestId: "agent-intent-test-1",
+      ok: true,
+      observed: { intent: "membership_summary", expectedTool: "get_membership_summary", language: "he" },
+      mismatches: [],
+    },
+    {
+      name: "English opt-out",
+      requestId: "agent-intent-test-2",
+      ok: false,
+      observed: { intent: "unknown", expectedTool: null, language: "en" },
+      mismatches: ["intent expected messaging_opt_out got unknown"],
+    },
+  ],
+});
+
+const agentIntentOutput = await summarize(agentIntentPath);
+assertIncludes(agentIntentOutput, "Type: agent-membership-intent");
+assertIncludes(agentIntentOutput, "Status: 1/2 passed");
+assertIncludes(agentIntentOutput, "- English opt-out: intent expected messaging_opt_out got unknown requestId=agent-intent-test-2");
+assertIncludes(agentIntentOutput, 'pnpm debug:logs agent-intent-test-2 --since "2 hours ago"');
 
 const agentIntentScript = await readFile("scripts/agent-membership-intent-smoke.mjs", "utf8");
 for (const expectedProbe of [

@@ -452,6 +452,10 @@ export const translations = {
       toastPrefsError: "שגיאה בשמירת ההעדפות",
       // Member panel
       memberPanel: "חברות במועדון",
+      membershipDataErrorTitle: "חלק מנתוני המועדון של האורח לא נטענו",
+      membershipSummaryError: "שגיאה בטעינת תקציר המועדון",
+      loyaltyBalanceError: "שגיאה בטעינת יתרת הנקודות",
+      loyaltyHistoryError: "שגיאה בטעינת היסטוריית הנקודות",
       memberActiveClaims: "תביעות פעילות",
       memberNoActiveClaims: "אין תביעות פעילות",
       memberClaimCode: "קוד מימוש",
@@ -1138,6 +1142,10 @@ export const translations = {
       toastPrefsError: "Error saving preferences",
       // Member panel
       memberPanel: "Membership Club",
+      membershipDataErrorTitle: "Some guest membership data could not be loaded",
+      membershipSummaryError: "Could not load membership summary",
+      loyaltyBalanceError: "Could not load loyalty balance",
+      loyaltyHistoryError: "Could not load loyalty history",
       memberActiveClaims: "Active claims",
       memberNoActiveClaims: "No active claims",
       memberClaimCode: "Claim code",

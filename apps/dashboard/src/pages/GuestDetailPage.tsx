@@ -91,9 +91,9 @@ export function GuestDetailPage() {
   const updatePrefsMutation = useUpdateGuestPreferences();
   const loyaltyEnabled = isFeatureEnabled("loyalty", restaurant?.dashboardConfig);
   const guestNotesEnabled = isFeatureEnabled("guestNotes", restaurant?.dashboardConfig);
-  const { data: loyaltyBalance } = useLoyaltyBalance(loyaltyEnabled ? id : undefined);
-  const { data: loyaltyHistory } = useLoyaltyHistory(loyaltyEnabled ? id : undefined);
-  const { data: membershipSummary } = useMembershipSummary(loyaltyEnabled ? id : undefined);
+  const { data: loyaltyBalance, error: loyaltyBalanceError } = useLoyaltyBalance(loyaltyEnabled ? id : undefined);
+  const { data: loyaltyHistory, error: loyaltyHistoryError } = useLoyaltyHistory(loyaltyEnabled ? id : undefined);
+  const { data: membershipSummary, error: membershipSummaryError } = useMembershipSummary(loyaltyEnabled ? id : undefined);
   const { data: visitInsights } = useVisitInsights(id);
   const { showToast } = useToast();
   const { t, lang } = useLang();
@@ -515,6 +515,23 @@ export function GuestDetailPage() {
           </div>
         )}
       </div>
+      )}
+
+      {loyaltyEnabled && (membershipSummaryError || loyaltyBalanceError || loyaltyHistoryError) && (
+        <div className="bg-red-50 rounded-xl border border-red-200 p-4 mb-6 text-sm text-red-800">
+          <p className="font-semibold text-red-900">{t.guestDetail.membershipDataErrorTitle}</p>
+          <ul className="mt-2 space-y-1">
+            {membershipSummaryError ? (
+              <li>{formatApiErrorMessage(membershipSummaryError, t.guestDetail.membershipSummaryError)}</li>
+            ) : null}
+            {loyaltyBalanceError ? (
+              <li>{formatApiErrorMessage(loyaltyBalanceError, t.guestDetail.loyaltyBalanceError)}</li>
+            ) : null}
+            {loyaltyHistoryError ? (
+              <li>{formatApiErrorMessage(loyaltyHistoryError, t.guestDetail.loyaltyHistoryError)}</li>
+            ) : null}
+          </ul>
+        </div>
       )}
 
       {/* Membership Club Panel */}

@@ -280,6 +280,24 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
     return `template=${reward.templateKey} moments=${reward.recommendedMoments.join(",")}`;
   }));
 
+  results.push(await runTest("Membership Access: employee cannot manage rewards", async () => {
+    if (!rewardId) throw new Error("No reward");
+    await api.expectEmployeeCreateRewardForbidden({
+      restaurantId: RESTAURANT_ID,
+      nameHe: `Employee Forbidden ${runId}`,
+      pointsCost: 1,
+    });
+    await api.expectEmployeeUpdateRewardForbidden(rewardId, {
+      nameHe: `Employee Patch Forbidden ${runId}`,
+    });
+    return "create=403 update=403";
+  }));
+
+  results.push(await runTest("Membership Access: employee cannot retry processing failures", async () => {
+    await api.expectEmployeeProcessingFailuresForbidden(RESTAURANT_ID);
+    return "processingFailures=403";
+  }));
+
   // 10. Membership summary
   results.push(await runTest("Membership Summary", async () => {
     if (!guestId) throw new Error("No guest");
@@ -318,9 +336,9 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
   }));
 
   // 12. Verify reward claim
-  results.push(await runTest("Verify Reward Claim", async () => {
+  results.push(await runTest("Employee Verify Reward Claim", async () => {
     if (!rewardClaimCode) throw new Error("No reward claim code");
-    const data = await api.verifyRewardClaim(rewardClaimCode);
+    const data = await api.verifyRewardClaimAsEmployee(rewardClaimCode);
     const claim = (data as any).claim;
     if (claim.status !== "active") {
       throw new Error(`Expected active claim during verification, got ${claim.status}`);
@@ -329,9 +347,9 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
   }));
 
   // 13. Redeem reward claim
-  results.push(await runTest("Redeem Reward Claim", async () => {
+  results.push(await runTest("Employee Redeem Reward Claim", async () => {
     if (!rewardClaimId) throw new Error("No reward claim id");
-    const data = await api.redeemRewardClaim(rewardClaimId);
+    const data = await api.redeemRewardClaimAsEmployee(rewardClaimId);
     const claim = (data as any).claim;
     if (claim.status !== "redeemed" || !claim.redeemedAt) {
       throw new Error("Claim was not redeemed correctly");
@@ -396,7 +414,7 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
 
   results.push(await runTest("Restore Messaging Preferences", async () => {
     if (!guestId) throw new Error("No guest");
-    const data = await api.updateMessagingPreferences(guestId, false);
+    const data = await api.updateMessagingPreferencesAsEmployee(guestId, false);
     const guest = (data as any).guest;
     if (guest?.optedOutCampaigns) {
       throw new Error("Expected optedOutCampaigns to be false after restore");

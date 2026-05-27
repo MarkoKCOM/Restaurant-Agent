@@ -22,6 +22,7 @@ const SUPER_ADMIN_PASSWORD = process.env.OPENSEAT_SUPER_ADMIN_PASSWORD || proces
 
 let cachedToken: string | null = null;
 let cachedSuperAdminToken: string | null = null;
+let cachedEmployeeToken: string | null = null;
 
 async function request(path: string, opts: { method?: string; token?: string; body?: unknown; retry?: boolean } = {}) {
   const { method = "GET", token, body, retry = true } = opts;
@@ -56,6 +57,18 @@ async function request(path: string, opts: { method?: string; token?: string; bo
   return data as Record<string, unknown>;
 }
 
+async function expectStatus(fn: () => Promise<unknown>, expectedStatus: number): Promise<string> {
+  try {
+    await fn();
+  } catch (error) {
+    const message = String(error);
+    if (message.includes(`-> ${expectedStatus}:`)) return message;
+    throw error;
+  }
+
+  throw new Error(`Expected HTTP ${expectedStatus}, but request succeeded`);
+}
+
 export async function loginWithCredentials(email: string, password: string) {
   return request("/api/v1/auth/login", {
     method: "POST",
@@ -81,18 +94,29 @@ function base64Url(value: string): string {
 }
 
 function createSignedSuperAdminToken(): string {
+  return createSignedRoleToken({
+    id: randomUUID(),
+    email: "synthetic-super-admin@openseat.local",
+    restaurantId: null,
+    role: "super_admin",
+  });
+}
+
+function createSignedRoleToken(input: {
+  id: string;
+  email: string;
+  restaurantId: string | null;
+  role: "admin" | "employee" | "super_admin";
+}): string {
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret) {
-    throw new Error("Missing JWT_SECRET for synthetic super-admin token");
+    throw new Error("Missing JWT_SECRET for synthetic role token");
   }
 
   const header = base64Url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const now = Math.floor(Date.now() / 1000);
   const payload = base64Url(JSON.stringify({
-    id: randomUUID(),
-    email: "synthetic-super-admin@openseat.local",
-    restaurantId: null,
-    role: "super_admin",
+    ...input,
     iat: now,
     exp: now + 60 * 60,
   }));
@@ -106,6 +130,16 @@ function createSignedSuperAdminToken(): string {
   return `${header}.${payload}.${signature}`;
 }
 
+function decodeJwtPayload(token: string): { id: string; email: string; restaurantId: string | null } {
+  const payload = token.split(".")[1];
+  if (!payload) throw new Error("Invalid JWT payload");
+  return JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+    id: string;
+    email: string;
+    restaurantId: string | null;
+  };
+}
+
 export async function getSuperAdminToken(): Promise<string> {
   if (cachedSuperAdminToken) return cachedSuperAdminToken;
 
@@ -117,6 +151,19 @@ export async function getSuperAdminToken(): Promise<string> {
 
   cachedSuperAdminToken = createSignedSuperAdminToken();
   return cachedSuperAdminToken;
+}
+
+export async function getSyntheticEmployeeToken(): Promise<string> {
+  if (cachedEmployeeToken) return cachedEmployeeToken;
+
+  const adminPayload = decodeJwtPayload(await getToken());
+  cachedEmployeeToken = createSignedRoleToken({
+    id: adminPayload.id,
+    email: adminPayload.email,
+    restaurantId: adminPayload.restaurantId,
+    role: "employee",
+  });
+  return cachedEmployeeToken;
 }
 
 // ── Public endpoints (no auth) ──────────────────────
@@ -267,9 +314,29 @@ export async function createReward(data: {
   return request("/api/v1/loyalty/rewards", { method: "POST", token, body: data });
 }
 
+export async function expectEmployeeCreateRewardForbidden(data: {
+  restaurantId: string;
+  nameHe: string;
+  pointsCost: number;
+}) {
+  const token = await getSyntheticEmployeeToken();
+  return expectStatus(
+    () => request("/api/v1/loyalty/rewards", { method: "POST", token, body: data, retry: false }),
+    403,
+  );
+}
+
 export async function updateReward(rewardId: string, data: Record<string, unknown>) {
   const token = await getToken();
   return request(`/api/v1/loyalty/rewards/${rewardId}`, { method: "PATCH", token, body: data });
+}
+
+export async function expectEmployeeUpdateRewardForbidden(rewardId: string, data: Record<string, unknown>) {
+  const token = await getSyntheticEmployeeToken();
+  return expectStatus(
+    () => request(`/api/v1/loyalty/rewards/${rewardId}`, { method: "PATCH", token, body: data, retry: false }),
+    403,
+  );
 }
 
 export async function claimReward(guestId: string, rewardId: string, body: { reservationId?: string } = {}) {
@@ -282,13 +349,32 @@ export async function verifyRewardClaim(claimCode: string) {
   return request(`/api/v1/loyalty/claims/${claimCode}/verify`, { token });
 }
 
+export async function verifyRewardClaimAsEmployee(claimCode: string) {
+  const token = await getSyntheticEmployeeToken();
+  return request(`/api/v1/loyalty/claims/${claimCode}/verify`, { token });
+}
+
 export async function redeemRewardClaim(claimId: string) {
   const token = await getToken();
   return request(`/api/v1/loyalty/claims/${claimId}/redeem`, { method: "POST", token });
 }
 
+export async function redeemRewardClaimAsEmployee(claimId: string) {
+  const token = await getSyntheticEmployeeToken();
+  return request(`/api/v1/loyalty/claims/${claimId}/redeem`, { method: "POST", token });
+}
+
 export async function updateMessagingPreferences(guestId: string, optedOutCampaigns: boolean) {
   const token = await getToken();
+  return request(`/api/v1/loyalty/${guestId}/messaging-preferences`, {
+    method: "PATCH",
+    token,
+    body: { optedOutCampaigns },
+  });
+}
+
+export async function updateMessagingPreferencesAsEmployee(guestId: string, optedOutCampaigns: boolean) {
+  const token = await getSyntheticEmployeeToken();
   return request(`/api/v1/loyalty/${guestId}/messaging-preferences`, {
     method: "PATCH",
     token,
@@ -497,6 +583,14 @@ export async function listEngagementJobs(
 export async function triggerWinBack(restaurantId: string) {
   const token = await getToken();
   return request(`/api/v1/engagement/win-back/check?restaurantId=${restaurantId}`, { method: "POST", token });
+}
+
+export async function expectEmployeeProcessingFailuresForbidden(restaurantId: string) {
+  const token = await getSyntheticEmployeeToken();
+  return expectStatus(
+    () => request(`/api/v1/loyalty/processing-failures?restaurantId=${restaurantId}`, { token, retry: false }),
+    403,
+  );
 }
 
 export async function getAdminRestaurants() {

@@ -15,6 +15,10 @@
   - engagement jobs now distinguish transactional vs promotional messages
   - promotional jobs respect guest opt-out state and a two-per-week pacing limit
   - skipped promotional jobs store a machine-readable `skipReason` for debugging
+- Membership access-boundary E2E coverage:
+  - employees are blocked from reward catalog management and membership-processing repair
+  - employees can verify and redeem reward claims
+  - employees can restore member messaging preferences through the operational opt-out flow
 - Protected super-admin dependency diagnostics at `GET /api/v1/admin/diagnostics`:
   - database ping status and latency
   - Redis ping status and latency

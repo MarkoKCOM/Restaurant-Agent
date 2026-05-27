@@ -989,6 +989,7 @@ for (const requiredOutboundServiceContent of [
   "byErrorCodeDetails",
   "firstSeenAt",
   "lastSeenAt",
+  "function toIsoString",
   "ownerWhatsappMissing",
   "ownerDeliveryRecipientMissing",
   "ownerDeliveryFallbackAvailable",

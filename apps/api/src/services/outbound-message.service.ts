@@ -103,6 +103,15 @@ function previewText(text: string): string {
   return text.length > MAX_PREVIEW_LENGTH ? `${text.slice(0, MAX_PREVIEW_LENGTH - 3)}...` : text;
 }
 
+function toIsoString(value: unknown): string {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "string" || typeof value === "number") {
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) return date.toISOString();
+  }
+  return new Date(0).toISOString();
+}
+
 export async function logOutboundMessage(params: LogOutboundMessageParams) {
   const [row] = await db
     .insert(outboundMessages)
@@ -260,8 +269,8 @@ export async function getOutboundMessageDiagnostics(params: {
     byErrorCode[row.errorCode] = count;
     byErrorCodeDetails[row.errorCode] = {
       count,
-      firstSeenAt: row.firstSeenAt.toISOString(),
-      lastSeenAt: row.lastSeenAt.toISOString(),
+      firstSeenAt: toIsoString(row.firstSeenAt),
+      lastSeenAt: toIsoString(row.lastSeenAt),
     };
   }
   const ownerWhatsappMissing = Number(ownerWhatsappMissingRows[0]?.missingCount ?? 0);

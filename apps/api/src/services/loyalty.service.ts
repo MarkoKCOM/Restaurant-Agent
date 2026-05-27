@@ -4,6 +4,7 @@ import {
   guests,
   loyaltyTransactions,
   reservations,
+  restaurants,
   rewards,
 } from "../db/schema.js";
 import type { InferSelectModel } from "drizzle-orm";
@@ -26,9 +27,70 @@ const STAMP_CARD_SIZE = 10;
 const STAMP_BONUS_POINTS = 50;
 const HOST_GROUP_MIN_PARTY_SIZE = 6;
 const HOST_GROUP_BONUS_POINTS = 20;
+const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+
+type DayKey = (typeof DAY_KEYS)[number];
+
+interface OffPeakMultiplierConfig {
+  start: string;
+  end: string;
+  multiplier: number;
+  days?: DayKey[];
+  enabled?: boolean;
+}
 
 export function getTierMultiplier(tier: Tier): number {
   return TIER_THRESHOLDS[tier].multiplier;
+}
+
+function minutesFromHHMM(value: string): number | null {
+  const match = /^(\d{2}):(\d{2})/.exec(value);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+function dayKeyFromDate(value: string): DayKey | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  return DAY_KEYS[new Date(`${value}T12:00:00`).getDay()] ?? null;
+}
+
+function getConfiguredOffPeakMultiplier(
+  dashboardConfig: unknown,
+  reservationDate: string,
+  timeStart: string,
+): number {
+  const loyaltyConfig = typeof dashboardConfig === "object" && dashboardConfig !== null
+    ? (dashboardConfig as { loyalty?: { offPeakMultipliers?: unknown } }).loyalty
+    : undefined;
+  const windows = Array.isArray(loyaltyConfig?.offPeakMultipliers)
+    ? loyaltyConfig.offPeakMultipliers
+    : [];
+  const reservationMinutes = minutesFromHHMM(timeStart);
+  const reservationDay = dayKeyFromDate(reservationDate);
+  if (reservationMinutes === null || reservationDay === null) return 1;
+
+  return windows.reduce((best, rawWindow) => {
+    if (typeof rawWindow !== "object" || rawWindow === null) return best;
+    const window = rawWindow as Partial<OffPeakMultiplierConfig>;
+    if (window.enabled === false) return best;
+    if (typeof window.start !== "string" || typeof window.end !== "string") return best;
+    if (typeof window.multiplier !== "number" || !Number.isFinite(window.multiplier)) return best;
+    if (window.multiplier <= 1) return best;
+    if (window.days && (!Array.isArray(window.days) || !window.days.includes(reservationDay))) {
+      return best;
+    }
+
+    const start = minutesFromHHMM(window.start);
+    const end = minutesFromHHMM(window.end);
+    if (start === null || end === null || start === end) return best;
+    const inWindow = start < end
+      ? reservationMinutes >= start && reservationMinutes < end
+      : reservationMinutes >= start || reservationMinutes < end;
+    return inWindow ? Math.max(best, Math.min(window.multiplier, 5)) : best;
+  }, 1);
 }
 
 // ── Points ─────────────────────────────────────────────
@@ -373,9 +435,34 @@ export async function onVisitCompleted(
     throw new Error("Guest not found");
   }
 
+  const [reservation] = await db
+    .select({
+      date: reservations.date,
+      timeStart: reservations.timeStart,
+      partySize: reservations.partySize,
+      dashboardConfig: restaurants.dashboardConfig,
+    })
+    .from(reservations)
+    .innerJoin(restaurants, eq(reservations.restaurantId, restaurants.id))
+    .where(
+      and(
+        eq(reservations.id, reservationId),
+        eq(reservations.restaurantId, restaurantId),
+        eq(reservations.guestId, guestId),
+      ),
+    )
+    .limit(1);
+
   const tier = (guest.tier ?? "bronze") as Tier;
-  const multiplier = getTierMultiplier(tier);
-  const pointsForVisit = Math.round(POINTS_PER_VISIT * multiplier);
+  const tierMultiplier = getTierMultiplier(tier);
+  const offPeakMultiplier = reservation
+    ? getConfiguredOffPeakMultiplier(
+      reservation.dashboardConfig,
+      reservation.date,
+      reservation.timeStart,
+    )
+    : 1;
+  const pointsForVisit = Math.round(POINTS_PER_VISIT * tierMultiplier * offPeakMultiplier);
 
   // Award visit points
   const [existingVisitCompletion] = await db
@@ -419,18 +506,6 @@ export async function onVisitCompleted(
       stampBonus = true;
     }
   }
-
-  const [reservation] = await db
-    .select({ partySize: reservations.partySize })
-    .from(reservations)
-    .where(
-      and(
-        eq(reservations.id, reservationId),
-        eq(reservations.restaurantId, restaurantId),
-        eq(reservations.guestId, guestId),
-      ),
-    )
-    .limit(1);
 
   if (reservation && reservation.partySize >= HOST_GROUP_MIN_PARTY_SIZE) {
     const [existingHostGroupBonus] = await db

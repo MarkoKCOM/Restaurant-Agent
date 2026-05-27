@@ -109,6 +109,7 @@ function summarizeSmoke(report) {
       || step.step === "gamification.expired-challenge.window"
       || step.step === "gamification.expired-challenge.cleanup"
       || step.step === "gamification.challenge-idempotency"
+      || step.step === "loyalty.off-peak-multiplier"
     )
   );
   if (operationalSteps.length > 0) {
@@ -132,6 +133,8 @@ function summarizeSmoke(report) {
         console.log(`- gamification.expired-challenge.cleanup: active=${step.isActive === false ? "no" : "yes"} challengeId=${step.challengeId ?? "?"}`);
       } else if (step.step === "gamification.challenge-idempotency") {
         console.log(`- gamification.challenge-idempotency: progress=${step.progress ?? "?"}/${step.target ?? "?"} points=${step.pointsBefore ?? "?"}->${step.pointsAfter ?? "?"} duplicateAward=${step.pointsBefore === step.pointsAfter ? "no" : "yes"}`);
+      } else if (step.step === "loyalty.off-peak-multiplier") {
+        console.log(`- loyalty.off-peak-multiplier: visitPoints=${step.actualVisitPoints ?? "?"}/${step.expectedVisitPoints ?? "?"} reason=${step.reason ?? "?"}`);
       }
     }
   }

@@ -130,6 +130,19 @@ export const dashboardBrandingSchema = z.object({
   tagline: z.string().max(120).optional(),
 }).strict();
 
+export const dashboardLoyaltyOffPeakMultiplierSchema = z.object({
+  label: z.string().trim().max(80).optional(),
+  start: hhmmStringSchema,
+  end: hhmmStringSchema,
+  multiplier: z.coerce.number().min(1).max(5),
+  days: z.array(z.enum(operatingHoursDayKeys)).optional(),
+  enabled: z.boolean().optional(),
+}).strict();
+
+export const dashboardLoyaltyConfigSchema = z.object({
+  offPeakMultipliers: z.array(dashboardLoyaltyOffPeakMultiplierSchema).max(12).optional(),
+}).passthrough();
+
 export const dashboardConfigSchema = z.object({
   // Legacy fields (kept for compatibility)
   accentColor: hexColor,
@@ -137,6 +150,7 @@ export const dashboardConfigSchema = z.object({
   // Structured brand kit
   palette: dashboardPaletteSchema.optional(),
   branding: dashboardBrandingSchema.optional(),
+  loyalty: dashboardLoyaltyConfigSchema.optional(),
   language: z.enum(["he", "en"]).optional(),
   visiblePages: z.array(z.string()).optional(),
   features: z.object({

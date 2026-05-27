@@ -52,6 +52,19 @@ export interface DashboardBranding {
   tagline?: string;
 }
 
+export interface DashboardLoyaltyOffPeakMultiplier {
+  label?: string;
+  start: string;
+  end: string;
+  multiplier: number;
+  days?: Array<"sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat">;
+  enabled?: boolean;
+}
+
+export interface DashboardLoyaltyConfig {
+  offPeakMultipliers?: DashboardLoyaltyOffPeakMultiplier[];
+}
+
 export interface DashboardConfig {
   // ── Legacy fields — kept for backward compatibility ──
   /** @deprecated Use palette.primary instead. */
@@ -62,6 +75,7 @@ export interface DashboardConfig {
   // ── Structured brand kit ──
   palette?: DashboardPalette;
   branding?: DashboardBranding;
+  loyalty?: DashboardLoyaltyConfig;
 
   language?: "he" | "en";
   visiblePages?: string[];

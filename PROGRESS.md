@@ -3,6 +3,10 @@
 ## 2026-05-27 (Debugging infrastructure pass)
 
 ### Added
+- Configurable off-peak loyalty multipliers:
+  - restaurant `dashboardConfig.loyalty.offPeakMultipliers` accepts enabled time windows, optional day filters, and multiplier values
+  - reservation completion multiplies visit-completion points by the matching off-peak window while preserving existing tier, stamp, host bonus, and idempotency behavior
+  - API smoke temporarily configures an off-peak window around the actual created reservation time and verifies the visit-completion transaction receives doubled points
 - WhatsApp-ready referral retrieval/share flow:
   - `GET /api/v1/loyalty/:guestId/referral-share` generates or returns a member referral code
   - response includes referral stats and Hebrew/English share copy

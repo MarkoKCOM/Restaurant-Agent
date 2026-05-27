@@ -73,6 +73,16 @@ function plusDays(days) {
   return d.toISOString().slice(0, 10);
 }
 
+function timePlusMinutes(value, minutesToAdd) {
+  const [hours, minutes] = value.slice(0, 5).split(":").map(Number);
+  const total = (hours * 60 + minutes + minutesToAdd) % (24 * 60);
+  return `${Math.floor(total / 60).toString().padStart(2, "0")}:${(total % 60).toString().padStart(2, "0")}`;
+}
+
+function dayKeyForDate(value) {
+  return ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][new Date(`${value}T12:00:00`).getDay()];
+}
+
 const runId = `smoke-${Date.now()}`;
 let reservationDate = plusDays(10);
 const visitDate = plusDays(0);
@@ -87,6 +97,7 @@ const report = {
   requests: [],
 };
 let requestSeq = 0;
+const cleanupTasks = [];
 
 function record(step, details) {
   report.steps.push({ step, ...details });
@@ -181,6 +192,44 @@ async function main() {
     reservationId: reservation.id,
     guestId: reservation.guestId,
     status: reservation.status,
+  });
+
+  const restaurantDetails = await request(`/api/v1/restaurants/${restaurantId}`);
+  const originalDashboardConfig = restaurantDetails.dashboardConfig ?? {};
+  const reservationTime = reservation.timeStart ?? slot.time;
+  const offPeakWindow = {
+    label: `Smoke off-peak ${runId}`,
+    start: reservationTime.slice(0, 5),
+    end: timePlusMinutes(reservationTime, 30),
+    multiplier: 2,
+    days: [dayKeyForDate(reservationDate)],
+    enabled: true,
+  };
+  const smokeDashboardConfig = {
+    ...originalDashboardConfig,
+    loyalty: {
+      ...(originalDashboardConfig.loyalty ?? {}),
+      offPeakMultipliers: [offPeakWindow],
+    },
+  };
+
+  await request(`/api/v1/restaurants/${restaurantId}`, {
+    method: "PATCH",
+    token,
+    body: { dashboardConfig: smokeDashboardConfig },
+  });
+  cleanupTasks.push(async () => {
+    await request(`/api/v1/restaurants/${restaurantId}`, {
+      method: "PATCH",
+      token,
+      body: { dashboardConfig: originalDashboardConfig },
+    });
+  });
+  record("loyalty.off-peak-config", {
+    start: offPeakWindow.start,
+    end: offPeakWindow.end,
+    multiplier: offPeakWindow.multiplier,
+    day: offPeakWindow.days[0],
   });
 
   const futureChallengeDate = plusDays(60);
@@ -323,6 +372,19 @@ async function main() {
     visits: loyalty.stampCard?.visits,
   });
 
+  const loyaltyHistory = await request(`/api/v1/loyalty/${reservation.guestId}/history?limit=20`, { token });
+  const visitCompletionTransaction = (loyaltyHistory.transactions ?? []).find((tx) =>
+    tx.reservationId === reservation.id && tx.reason === "visit_completion"
+  );
+  record("loyalty.off-peak-multiplier", {
+    expectedVisitPoints: 20,
+    actualVisitPoints: visitCompletionTransaction?.points ?? null,
+    reason: visitCompletionTransaction?.reason ?? null,
+  });
+  if (visitCompletionTransaction?.points !== 20) {
+    throw new Error(`Off-peak visit multiplier was not applied: expected 20 visit points, got ${visitCompletionTransaction?.points ?? "missing"}`);
+  }
+
   const challengesAfterCompletion = await request(`/api/v1/gamification/${reservation.guestId}/challenges?restaurantId=${restaurantId}`, { token });
   const smokeChallengeAfter = (challengesAfterCompletion.challenges ?? []).find((item) => item.challenge?.id === smokeChallengeId);
   record("gamification.challenge-progress", {
@@ -455,6 +517,16 @@ try {
     ? { name: error.name, message: error.message, stack: error.stack }
     : { message: String(error) };
 } finally {
+  for (const cleanup of cleanupTasks.reverse()) {
+    try {
+      await cleanup();
+    } catch (error) {
+      report.cleanupErrors = [
+        ...(report.cleanupErrors ?? []),
+        error instanceof Error ? error.message : String(error),
+      ];
+    }
+  }
   const artifactPath = await writeReport();
   if (artifactPath) {
     console.error(`Smoke artifact: ${artifactPath}`);

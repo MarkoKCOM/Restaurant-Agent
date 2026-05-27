@@ -592,6 +592,9 @@ for (const expectedSummarizerContent of [
 const agentIntentScript = await readFile("scripts/agent-membership-intent-smoke.mjs", "utf8");
 for (const expectedProbe of [
   "sanitizeConnectionError",
+  "createSignedSuperAdminToken",
+  "tokenSource",
+  "authorization: `Bearer ${token}`",
   "כמה נקודות יש לי במועדון?",
   "Do I have any reward I can claim?",
   "אפשר קוד חבר מביא חבר?",
@@ -980,9 +983,11 @@ for (const requiredPackageEnforcementContent of [
   "PACKAGE_GROWTH_REQUIRED",
   "RESTAURANT_NOT_FOUND",
   "restaurant.package !== \"growth\"",
+  '{ method: "POST", path: "/api/v1/agent/message" }',
 ]) {
   assertIncludes(authMiddleware, requiredPackageEnforcementContent);
 }
+assertNotIncludes(authMiddleware, '{ method: "POST", path: "/api/v1/agent", prefix: true }');
 
 for (const requiredCampaignPackageContent of [
   "enforceCampaignAccess",
@@ -1076,6 +1081,7 @@ for (const expectedTokenHelper of [
   assertIncludes(debugTokenHelpers, expectedTokenHelper);
 }
 assertIncludes(debugBundleCollector, 'import { createSignedSuperAdminToken } from "./lib/debug-token.mjs";');
+assertIncludes(debugBundleCollector, 'OPENSEAT_TOKEN: diagnosticsToken.token || process.env.OPENSEAT_TOKEN');
 assert(!debugBundleCollector.includes("function createSignedSuperAdminToken()"), "Expected debug bundle to use shared token helper");
 
 for (const requiredReadmeContent of [

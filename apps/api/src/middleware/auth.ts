@@ -38,7 +38,7 @@ const PUBLIC_ROUTES: Array<{
   { method: "POST", path: "/api/v1/reservations" },
   { method: "POST", path: "/api/v1/waitlist" },
   { method: "POST", path: "/api/v1/waitlist", prefix: true, suffix: "/accept" },
-  { method: "POST", path: "/api/v1/agent", prefix: true },
+  { method: "POST", path: "/api/v1/agent/message" },
   { method: "POST", path: "/api/v1/feedback" },
 ];
 

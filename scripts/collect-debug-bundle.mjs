@@ -783,6 +783,7 @@ await runStep("agent-membership-intents", "node", ["scripts/agent-membership-int
   env: {
     OPENSEAT_API_URL: apiUrl,
     OPENSEAT_AGENT_INTENT_ARTIFACT_PATH: agentIntentArtifactPath,
+    OPENSEAT_TOKEN: diagnosticsToken.token || process.env.OPENSEAT_TOKEN,
   },
 });
 await captureAgentIntentHighlights(agentIntentArtifactPath);

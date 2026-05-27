@@ -78,7 +78,7 @@ Bundle summaries separate command failures from operational attention. If all bu
 
 When `JWT_SECRET` is available on the VPS, `pnpm debug:membership` and `pnpm debug:outbound` can synthesize a short-lived super-admin token. You still need a restaurant selector such as `OPENSEAT_RESTAURANT_ID` or `OPENSEAT_RESTAURANT_SLUG`. The scripts print `tokenSource=jwt_secret` or `tokenSource=provided` so support can see which auth path was used.
 
-The bundle also runs deterministic membership-intent probes against `/api/v1/agent/debug/membership-intent`, covering balance, reward, referral, and promotional opt-out phrases. These checks do not call the LLM; they prove the agent debugging layer still maps common membership questions to the expected tools.
+The bundle also runs authenticated deterministic membership-intent probes against `/api/v1/agent/debug/membership-intent`, covering balance, reward, referral, and promotional opt-out phrases. These checks do not call the LLM; they prove the agent debugging layer still maps common membership questions to the expected tools.
 
 The API reliability smoke creates future-dated and expired challenges to verify launch windows are respected, creates a short-lived current visit-count challenge, completes a test reservation, verifies that the guest challenge progress is created and completed, confirms a challenge-completion congratulations job is scheduled, retries the completed challenge to prove points are not awarded twice, verifies a configured lucky-spin prize and reward-delivery job, verifies broken-streak reset plus recovery scheduling, creates branded social sharing templates for achievement/streak/leaderboard moments, creates a targeted birthday-week challenge to prove private challenge visibility and bonus-point rewards, verifies campaign audience preview segmentation and campaign opt-out exclusion, then deactivates all smoke challenges. This catches regressions where challenges leak outside their active window, duplicate completion rewards are issued, challenge completion follow-up disappears, visit-triggered spin rewards fail, broken streak recovery disappears, share-ready retention moments disappear from the agent/dashboard payload, targeted birthday challenges leak to unrelated guests, campaign segments include opted-out guests by default, or the retention/gamification stage stops running even though the reservation itself completed successfully.
 
@@ -332,9 +332,12 @@ For deterministic membership intent checks that do not call the LLM:
 
 ```bash
 METHOD=POST \
+OPENSEAT_TOKEN=... \
 BODY='{"message":"אפשר קוד חבר מביא חבר?"}' \
 pnpm debug:api -- http://localhost:3001/api/v1/agent/debug/membership-intent
 ```
+
+On the VPS, `pnpm debug:agent-intents` can use `JWT_SECRET` to synthesize a short-lived super-admin token. `/api/v1/agent/message` remains public for inbound channel delivery, but `/api/v1/agent/reset` and `/api/v1/agent/debug/*` require authentication.
 
 Run the full deterministic membership-intent smoke set:
 

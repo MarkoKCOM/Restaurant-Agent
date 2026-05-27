@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 import { sanitizeConnectionError } from "./lib/debug-errors.mjs";
+import { createSignedSuperAdminToken } from "./lib/debug-token.mjs";
 
 const apiUrl = (process.env.OPENSEAT_API_URL || "http://127.0.0.1:3001").replace(/\/$/, "");
 const artifactPath = process.env.OPENSEAT_AGENT_INTENT_ARTIFACT_PATH;
+const explicitToken = process.env.OPENSEAT_TOKEN ?? "";
+const token = explicitToken || createSignedSuperAdminToken();
 const runId = `agent-intent-${Date.now()}`;
 
 const cases = [
@@ -46,6 +49,7 @@ async function probe(testCase, index) {
       headers: {
         "content-type": "application/json",
         "x-request-id": requestId,
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({ message: testCase.message }),
     });
@@ -112,6 +116,7 @@ const report = {
   status: passed === results.length ? "passed" : "failed",
   runId,
   apiUrl,
+  tokenSource: explicitToken ? "provided" : token ? "jwt_secret" : "none",
   total: results.length,
   passed,
   failed: results.length - passed,
@@ -126,6 +131,7 @@ if (artifactPath) {
 }
 
 console.log(`Agent membership intent smoke: ${passed}/${results.length} passed`);
+console.log(`tokenSource=${report.tokenSource}`);
 for (const result of results) {
   const detail = result.ok
     ? `intent=${result.observed.intent} tool=${result.observed.expectedTool} lang=${result.observed.language}`

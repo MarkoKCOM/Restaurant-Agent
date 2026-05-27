@@ -373,6 +373,7 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
         source: "web",
       });
       const reservation = (data as any).reservation;
+      await api.updateReservation(reservation.id, { status: "seated" });
       await api.updateReservation(reservation.id, { status: "completed" });
     }
 

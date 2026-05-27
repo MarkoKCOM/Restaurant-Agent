@@ -286,6 +286,14 @@ async function captureDiagnosticsHighlights(commandRecord) {
         status: queue.status,
         failed: queue.counts?.failed,
         delayed: queue.counts?.delayed,
+        repeatableJobs: Array.isArray(queue.repeatableJobs)
+          ? queue.repeatableJobs.map((job) => ({
+              name: job.name,
+              pattern: job.pattern,
+              tz: job.tz,
+              next: job.next,
+            }))
+          : undefined,
       })),
     };
   } catch (error) {

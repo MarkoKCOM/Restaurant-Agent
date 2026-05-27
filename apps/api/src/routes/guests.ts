@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { createGuestSchema } from "@openseat/domain";
@@ -24,6 +24,37 @@ const updateGuestSchema = z.object({
   optedOutCampaigns: z.boolean().optional(),
 });
 
+function sendGuestError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  statusCode: number,
+  message: string,
+  code: string,
+  context: Record<string, unknown> = {},
+) {
+  const logPayload = {
+    ...context,
+    code,
+    requestId: request.id,
+    statusCode,
+    userId: request.user?.id,
+    restaurantId: request.user?.restaurantId,
+    role: request.user?.role,
+  };
+
+  if (statusCode >= 500) {
+    request.log.error(logPayload, "Guest request failed");
+  } else {
+    request.log.warn(logPayload, "Guest request rejected");
+  }
+
+  return reply.status(statusCode).send({
+    error: message,
+    code,
+    requestId: request.id,
+  });
+}
+
 export async function guestRoutes(app: FastifyInstance) {
   // GET / — list guests
   app.get("/", async (request, reply) => {
@@ -31,13 +62,20 @@ export async function guestRoutes(app: FastifyInstance) {
     const user = request.user!;
     const roleErr = requireRestaurantAdmin(user);
     if (roleErr) {
-      return reply.status(403).send({ error: roleErr });
+      return sendGuestError(request, reply, 403, roleErr, "GUEST_FORBIDDEN");
     }
 
     if (restaurantId) {
       const err = enforceTenant(user, restaurantId);
       if (err) {
-        return reply.status(403).send({ error: err });
+        return sendGuestError(
+          request,
+          reply,
+          403,
+          err,
+          "GUEST_FORBIDDEN",
+          { restaurantLookupId: restaurantId },
+        );
       }
     }
 
@@ -54,13 +92,19 @@ export async function guestRoutes(app: FastifyInstance) {
     const row = await getGuestById(id);
 
     if (!row) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendGuestError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId: id });
     }
 
     const err = enforceTenant(request.user!, row.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendGuestError(
+        request,
+        reply,
+        403,
+        err,
+        "GUEST_FORBIDDEN",
+        { guestId: id, restaurantLookupId: row.restaurantId },
+      );
     }
 
     const guest = toDomainGuest(row);
@@ -84,7 +128,14 @@ export async function guestRoutes(app: FastifyInstance) {
     const parsed = createGuestSchema.parse(request.body);
     const err = enforceTenant(request.user!, parsed.restaurantId!) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendGuestError(
+        request,
+        reply,
+        403,
+        err,
+        "GUEST_FORBIDDEN",
+        { restaurantLookupId: parsed.restaurantId },
+      );
     }
 
     const row = await findOrCreateGuest({
@@ -104,19 +155,24 @@ export async function guestRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const guestRow = await getGuestById(id);
     if (!guestRow) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendGuestError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId: id });
     }
 
     const err = enforceTenant(request.user!, guestRow.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendGuestError(
+        request,
+        reply,
+        403,
+        err,
+        "GUEST_FORBIDDEN",
+        { guestId: id, restaurantLookupId: guestRow.restaurantId },
+      );
     }
 
     const profile = await getFullGuestProfile(id);
     if (!profile) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendGuestError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId: id });
     }
 
     return { profile };
@@ -127,13 +183,19 @@ export async function guestRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const guestRow = await getGuestById(id);
     if (!guestRow) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendGuestError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId: id });
     }
 
     const err = enforceTenant(request.user!, guestRow.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendGuestError(
+        request,
+        reply,
+        403,
+        err,
+        "GUEST_FORBIDDEN",
+        { guestId: id, restaurantLookupId: guestRow.restaurantId },
+      );
     }
 
     const history = await getGuestSentimentHistory(id);
@@ -145,19 +207,24 @@ export async function guestRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const guestRow = await getGuestById(id);
     if (!guestRow) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendGuestError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId: id });
     }
 
     const err = enforceTenant(request.user!, guestRow.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendGuestError(
+        request,
+        reply,
+        403,
+        err,
+        "GUEST_FORBIDDEN",
+        { guestId: id, restaurantLookupId: guestRow.restaurantId },
+      );
     }
 
     const tags = await autoTagGuest(id);
     if (!tags) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendGuestError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId: id });
     }
 
     return { tags };
@@ -179,19 +246,24 @@ export async function guestRoutes(app: FastifyInstance) {
     const prefs = preferencesSchema.parse(request.body ?? {});
     const guestRow = await getGuestById(id);
     if (!guestRow) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendGuestError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId: id });
     }
 
     const err = enforceTenant(request.user!, guestRow.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendGuestError(
+        request,
+        reply,
+        403,
+        err,
+        "GUEST_FORBIDDEN",
+        { guestId: id, restaurantLookupId: guestRow.restaurantId },
+      );
     }
 
     const updated = await updateGuestPreferences(id, { preferences: prefs });
     if (!updated) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendGuestError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId: id });
     }
 
     return { guest: toDomainGuest(updated) };
@@ -203,19 +275,24 @@ export async function guestRoutes(app: FastifyInstance) {
     const body = updateGuestSchema.parse(request.body ?? {}) as Parameters<typeof updateGuestPreferences>[1];
     const guestRow = await getGuestById(id);
     if (!guestRow) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendGuestError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId: id });
     }
 
     const err = enforceTenant(request.user!, guestRow.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendGuestError(
+        request,
+        reply,
+        403,
+        err,
+        "GUEST_FORBIDDEN",
+        { guestId: id, restaurantLookupId: guestRow.restaurantId },
+      );
     }
 
     const updated = await updateGuestPreferences(id, body);
     if (!updated) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendGuestError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId: id });
     }
 
     return { guest: toDomainGuest(updated) };

@@ -10,6 +10,7 @@ import {
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { ModalPortal } from "../components/ModalPortal.js";
 import { useLang } from "../i18n.js";
+import { formatApiErrorMessage } from "../lib/apiError.js";
 
 const STATUS_COLORS: Record<string, string> = {
   waiting: "bg-yellow-100 text-yellow-800",
@@ -434,7 +435,7 @@ function AddToWaitlistModal({
       },
       {
         onSuccess: () => onClose(),
-        onError: (err) => setError(err.message || t.waitlist.addError),
+        onError: (error: unknown) => setError(formatApiErrorMessage(error, t.waitlist.addError)),
       },
     );
   }

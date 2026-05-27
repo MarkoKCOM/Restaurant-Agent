@@ -886,6 +886,18 @@ for (const expectedDashboardSignupContent of [
   assertIncludes(dashboardSignup, expectedDashboardSignupContent);
 }
 
+const dashboardReservationsPage = await readFile("apps/dashboard/src/pages/ReservationsPage.tsx", "utf8");
+const dashboardWaitlistPage = await readFile("apps/dashboard/src/pages/WaitlistPage.tsx", "utf8");
+for (const expectedDashboardActionErrorContent of [
+  "formatApiErrorMessage(error, t.res.toastWalkInError)",
+  "formatApiErrorMessage(error, t.res.toastCreateError)",
+  "formatApiErrorMessage(error, t.waitlist.addError)",
+]) {
+  assertIncludes(`${dashboardReservationsPage}\n${dashboardWaitlistPage}`, expectedDashboardActionErrorContent);
+}
+assertNotIncludes(dashboardReservationsPage, "setError(err.message || t.res");
+assertNotIncludes(dashboardWaitlistPage, "setError(err.message || t.waitlist");
+
 const gamificationRouteEnvelope = await readFile("apps/api/src/routes/gamification.ts", "utf8");
 for (const expectedGamificationRouteContent of [
   "gamificationOperationStatusCode",

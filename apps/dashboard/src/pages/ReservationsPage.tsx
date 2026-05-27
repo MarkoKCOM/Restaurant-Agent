@@ -1083,7 +1083,7 @@ function CreateReservationModal({
             showToast(t.res.walkInCreated);
             onClose();
           },
-          onError: (err) => setError(err.message || t.res.toastWalkInError),
+          onError: (error: unknown) => setError(formatApiErrorMessage(error, t.res.toastWalkInError)),
         },
       );
       return;
@@ -1105,7 +1105,7 @@ function CreateReservationModal({
           showToast(t.res.toastCreated);
           onClose();
         },
-        onError: (err) => setError(err.message || t.res.toastCreateError),
+        onError: (error: unknown) => setError(formatApiErrorMessage(error, t.res.toastCreateError)),
       },
     );
   }

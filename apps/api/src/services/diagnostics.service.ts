@@ -1,7 +1,10 @@
+import { readdir } from "node:fs/promises";
+import { join } from "node:path";
 import { Redis } from "ioredis";
 import type { Queue } from "bullmq";
+import { sql } from "drizzle-orm";
 import { env } from "../env.js";
-import { pingDatabase } from "../db/index.js";
+import { db, pingDatabase } from "../db/index.js";
 import { engagementQueue, reminderQueue, summaryQueue } from "../queue/index.js";
 
 export type DiagnosticStatus = "ok" | "error";
@@ -29,11 +32,38 @@ export interface DiagnosticsReport {
     chatModel: string;
     openRouterConfigured: boolean;
   };
+  deployment: DeploymentDiagnostic;
   checks: {
     database: DiagnosticCheck;
     redis: DiagnosticCheck;
   };
   queues: QueueDiagnostic[];
+}
+
+export interface DeploymentDiagnostic {
+  nodeVersion: string;
+  pid: number;
+  cwd: string;
+  codeMigrations: {
+    status: DiagnosticStatus;
+    count?: number;
+    latestFile?: string;
+    error?: DiagnosticCheck["error"];
+  };
+  databaseMigrations: {
+    status: DiagnosticStatus;
+    count?: number;
+    latestId?: number;
+    latestHash?: string;
+    latestCreatedAt?: number;
+    error?: DiagnosticCheck["error"];
+  };
+  migrationDrift?: {
+    status: "ok" | "unknown" | "mismatch";
+    codeLatestId?: number;
+    databaseLatestId?: number;
+    message?: string;
+  };
 }
 
 export interface QueueDiagnostic {
@@ -150,10 +180,116 @@ async function inspectQueue(name: string, queue: Queue): Promise<QueueDiagnostic
   }
 }
 
+function parseMigrationFileId(fileName: string): number | undefined {
+  const match = fileName.match(/^(\d+)_.*\.sql$/);
+  if (!match) return undefined;
+  return Number.parseInt(match[1], 10);
+}
+
+async function inspectCodeMigrations(): Promise<DeploymentDiagnostic["codeMigrations"]> {
+  try {
+    const files = (await readdir(join(process.cwd(), "drizzle")))
+      .filter((file) => /^\d+_.*\.sql$/.test(file))
+      .sort();
+
+    return {
+      status: "ok",
+      count: files.length,
+      latestFile: files.at(-1),
+    };
+  } catch (error: unknown) {
+    return {
+      status: "error",
+      error: sanitizeError(error),
+    };
+  }
+}
+
+async function inspectDatabaseMigrations(): Promise<DeploymentDiagnostic["databaseMigrations"]> {
+  try {
+    const rows = await db.execute(sql`
+      select
+        count(*)::int as count,
+        max(id)::int as latest_id,
+        (
+          select hash
+          from drizzle.__drizzle_migrations
+          order by id desc
+          limit 1
+        ) as latest_hash,
+        (
+          select created_at
+          from drizzle.__drizzle_migrations
+          order by id desc
+          limit 1
+        )::bigint as latest_created_at
+      from drizzle.__drizzle_migrations
+    `) as Array<{
+      count: number;
+      latest_id: number | null;
+      latest_hash: string | null;
+      latest_created_at: number | null;
+    }>;
+    const row = rows[0];
+
+    return {
+      status: "ok",
+      count: Number(row?.count ?? 0),
+      latestId: row?.latest_id ?? undefined,
+      latestHash: row?.latest_hash ?? undefined,
+      latestCreatedAt: row?.latest_created_at === null || row?.latest_created_at === undefined
+        ? undefined
+        : Number(row.latest_created_at),
+    };
+  } catch (error: unknown) {
+    return {
+      status: "error",
+      error: sanitizeError(error),
+    };
+  }
+}
+
+async function inspectDeployment(): Promise<DeploymentDiagnostic> {
+  const [codeMigrations, databaseMigrations] = await Promise.all([
+    inspectCodeMigrations(),
+    inspectDatabaseMigrations(),
+  ]);
+  const codeLatestId = codeMigrations.latestFile
+    ? parseMigrationFileId(codeMigrations.latestFile)
+    : undefined;
+  const databaseLatestId = databaseMigrations.latestId;
+  const migrationDrift: DeploymentDiagnostic["migrationDrift"] =
+    codeLatestId === undefined || databaseLatestId === undefined
+      ? {
+          status: "unknown",
+          codeLatestId,
+          databaseLatestId,
+          message: "Migration drift could not be evaluated",
+        }
+      : codeLatestId === databaseLatestId
+        ? { status: "ok", codeLatestId, databaseLatestId }
+        : {
+            status: "mismatch",
+            codeLatestId,
+            databaseLatestId,
+            message: "Latest code migration does not match latest applied database migration",
+          };
+
+  return {
+    nodeVersion: process.version,
+    pid: process.pid,
+    cwd: process.cwd(),
+    codeMigrations,
+    databaseMigrations,
+    migrationDrift,
+  };
+}
+
 export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
-  const [database, redis, ...queues] = await Promise.all([
+  const [database, redis, deployment, ...queues] = await Promise.all([
     timedCheck(pingDatabase),
     timedCheck(pingRedis),
+    inspectDeployment(),
     inspectQueue("reservation-reminders", reminderQueue),
     inspectQueue("daily-summary", summaryQueue),
     inspectQueue("engagement", engagementQueue),
@@ -161,6 +297,9 @@ export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
   const checks = { database, redis };
   const status = Object.values(checks).every((check) => check.status === "ok")
     && queues.every((queue) => queue.status === "ok")
+    && deployment.codeMigrations.status === "ok"
+    && deployment.databaseMigrations.status === "ok"
+    && deployment.migrationDrift?.status !== "mismatch"
     ? "ok"
     : "degraded";
 
@@ -177,6 +316,7 @@ export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
       chatModel: env.CHAT_MODEL,
       openRouterConfigured: Boolean(env.OPENROUTER_API_KEY),
     },
+    deployment,
     checks,
     queues,
   };

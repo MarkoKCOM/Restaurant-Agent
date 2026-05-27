@@ -517,6 +517,11 @@ export async function getFeedbackSummary(restaurantId: string) {
   return request(`/api/v1/feedback/summary?restaurantId=${restaurantId}`, { token });
 }
 
+export async function getAdminDiagnostics() {
+  const token = await getSuperAdminToken();
+  return request("/api/v1/admin/diagnostics", { token });
+}
+
 export async function generateReferralCode(guestId: string) {
   const token = await getToken();
   return request(`/api/v1/gamification/${guestId}/referral-code`, { method: "POST", token });

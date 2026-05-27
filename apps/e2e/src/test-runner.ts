@@ -94,6 +94,19 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
     return "API is up";
   }));
 
+  results.push(await runTest("Admin Diagnostics", async () => {
+    const data = await api.getAdminDiagnostics();
+    const deployment = (data as any).deployment;
+    const migrationDrift = deployment?.migrationDrift;
+    if (!deployment || !migrationDrift) {
+      throw new Error("Diagnostics response missing deployment migration state");
+    }
+    if (migrationDrift.status !== "ok") {
+      throw new Error(`Migration drift status is ${migrationDrift.status}`);
+    }
+    return `status=${(data as any).status} migrations=${migrationDrift.codeLatestId}/${migrationDrift.databaseLatestId}`;
+  }));
+
   // 2. List restaurants
   results.push(await runTest("List Restaurants", async () => {
     const data = await api.listRestaurants();

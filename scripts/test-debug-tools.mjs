@@ -148,4 +148,19 @@ for (const changedPath of [
   assert(!deployWorkflowMatches(changedPath), `Expected ${changedPath} to skip Vercel deploy`);
 }
 
+const debugBundleCollector = await readFile("scripts/collect-debug-bundle.mjs", "utf8");
+for (const requiredReadmeContent of [
+  "# OpenSeat Debug Bundle",
+  "| Step | Status | File | Notes |",
+  "## Open First",
+  "admin-diagnostics.txt",
+  "api-smoke-summary.txt",
+  "recent-api-logs.txt",
+  "manifest.json",
+  "README.md",
+  "readme: readmePath",
+]) {
+  assertIncludes(debugBundleCollector, requiredReadmeContent);
+}
+
 console.log("Debug tool tests passed");

@@ -73,6 +73,7 @@ const copy = {
     logSuccess: "הודעה נרשמה",
     morningSummaryError: "לא ניתן לטעון את סיכום הבוקר",
     morningSummaryLogError: "לא ניתן לרשום את הודעת הבוקר",
+    partialErrorTitle: "חלק מנתוני האנליטיקה לא נטענו",
     empty: "אין נתונים לתקופה.",
     loading: "טוען אנליטיקה...",
     error: "לא ניתן לטעון אנליטיקה",
@@ -125,6 +126,7 @@ const copy = {
     logSuccess: "Message logged",
     morningSummaryError: "Could not load morning summary",
     morningSummaryLogError: "Could not log morning summary",
+    partialErrorTitle: "Some analytics data could not be loaded",
     empty: "No data for this period.",
     loading: "Loading analytics...",
     error: "Could not load analytics",
@@ -167,20 +169,16 @@ export function AnalyticsPage() {
   const logMorningSummary = useLogDailyMorningSummary();
   const queries = [analytics.reservations, analytics.retention, analytics.loyalty, analytics.clv, analytics.campaignRoi];
   const loading = isLoading || queries.some((query) => query.isLoading);
-  const error = queries.find((query) => query.error)?.error;
+  const analyticsErrors = [
+    { label: t.reservations, error: analytics.reservations.error },
+    { label: t.retention, error: analytics.retention.error },
+    { label: t.loyalty, error: analytics.loyalty.error },
+    { label: t.clv, error: analytics.clv.error },
+    { label: t.campaign, error: analytics.campaignRoi.error },
+  ].filter((item): item is { label: string; error: Error } => Boolean(item.error));
 
   if (loading) {
     return <div className="p-8 text-gray-500">{t.loading}</div>;
-  }
-
-  if (error) {
-    return (
-      <div className="p-8">
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
-          {formatApiErrorMessage(error, t.error)}
-        </div>
-      </div>
-    );
   }
 
   const reservations = analytics.reservations.data?.reservations.current;
@@ -213,6 +211,20 @@ export function AnalyticsPage() {
         </div>
         <span className="text-sm font-medium text-gray-500">{t.range}</span>
       </header>
+
+      {analyticsErrors.length > 0 ? (
+        <section className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <p className="font-semibold text-red-900">{t.partialErrorTitle}</p>
+          <ul className="mt-2 space-y-1">
+            {analyticsErrors.map((item) => (
+              <li key={item.label}>
+                <span className="font-semibold">{item.label}: </span>
+                {formatApiErrorMessage(item.error, t.error)}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="rounded-lg border border-gray-200 bg-white p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

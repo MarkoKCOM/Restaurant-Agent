@@ -148,6 +148,7 @@
 - [x] 13.15 Add gamification route preflight error envelopes — guest/challenge lookup and active-challenge listing failures keep gamification-specific codes, request IDs, and member/challenge context
 - [x] 13.16 Add loyalty route preflight error envelopes — guest/claim lookup failures keep loyalty-specific codes, request IDs, and member/reward context
 - [x] 13.17 Surface settings reward-catalog load errors — Settings reward management shows formatted HTTP/code/request-ID details instead of an empty-looking reward catalog
+- [x] 13.18 Surface partial analytics load errors — analytics page labels failed reservation/retention/loyalty/CLV/campaign queries with formatted HTTP/code/request-ID details while leaving healthy sections visible
 
 ## 14. Branding & Landing Page
 

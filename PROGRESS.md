@@ -109,6 +109,7 @@
 - Debug artifact summaries now parse membership debug output and surface overdue/failed engagement-job counts plus skipped retention reasons in the top-level bundle summary.
 - Debug artifact summaries now parse campaign queue diagnostics and surface skipped campaign reasons plus overdue campaign sample counts in the top-level bundle summary.
 - Engagement list endpoints now wrap outbound-message and engagement-job read failures with stable error codes plus request IDs, so retention dashboard/debug reads can be traced directly in logs.
+- Analytics dashboard failures are now labeled by surface and rendered as a partial-data warning, so a retention/loyalty/CLV/campaign query failure keeps HTTP/code/request-ID details without hiding healthy analytics sections.
 - Visit and feedback routes now log persistence/read failures at error level with stable codes for visit history, insights, and feedback summaries, preserving request IDs on paths that feed loyalty/gamification state.
 - Feedback sentiment LLM fallback logs now include a stable code, safe failure reason, model, rating sentiment, and feedback length so review-routing regressions can be diagnosed without exposing guest text.
 - Queue worker failures now emit stable queue-specific codes plus retry/timing context for reminders, daily summaries, engagement jobs, campaign delivery, and invalid/missing engagement records, making membership and retention automation failures searchable from service logs.

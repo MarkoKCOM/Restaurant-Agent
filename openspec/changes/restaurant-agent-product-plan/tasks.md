@@ -145,6 +145,7 @@
 - [x] 13.12 Add bundle-run API log issue summaries — debug artifacts surface fresh warning/error counts, codes, and samples without manual log greps, separating expected smoke warnings from unexpected runtime noise
 - [x] 13.13 Add guarded owner delivery repair command — operators can patch one known owner WhatsApp value and immediately re-check delivery readiness
 - [x] 13.14 Add optional bundle failure gate for unexpected API log noise — CI/debug runs can fail after writing artifacts when bundle-run logs contain unexpected warnings or errors
+- [x] 13.15 Add gamification route preflight error envelopes — guest/challenge lookup and active-challenge listing failures keep gamification-specific codes, request IDs, and member/challenge context
 
 ## 14. Branding & Landing Page
 

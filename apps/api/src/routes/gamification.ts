@@ -102,6 +102,55 @@ function gamificationOperationStatusCode(message: string): number {
   return 500;
 }
 
+async function loadGamificationGuest(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  guestId: string,
+  failureCode: string,
+  context: Record<string, unknown> = {},
+) {
+  try {
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { ...context, guestId });
+      return null;
+    }
+
+    return guest;
+  } catch (error: unknown) {
+    sendCaughtGamificationError(request, reply, error, failureCode, { ...context, guestId });
+    return null;
+  }
+}
+
+async function loadGamificationChallenge(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  challengeId: string,
+  failureCode: string,
+  context: Record<string, unknown> = {},
+) {
+  try {
+    const challenge = await getChallengeById(challengeId);
+    if (!challenge) {
+      sendGamificationError(
+        request,
+        reply,
+        404,
+        "Challenge not found",
+        "CHALLENGE_NOT_FOUND",
+        { ...context, challengeId },
+      );
+      return null;
+    }
+
+    return challenge;
+  } catch (error: unknown) {
+    sendCaughtGamificationError(request, reply, error, failureCode, { ...context, challengeId });
+    return null;
+  }
+}
+
 async function enforceGamificationAccess(
   request: FastifyRequest,
   reply: FastifyReply,
@@ -140,10 +189,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
   // POST /:guestId/referral-code — generate referral code
   app.post("/:guestId/referral-code", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
-    const guest = await getGuestById(guestId);
-    if (!guest) {
-      return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
-    }
+    const guest = await loadGamificationGuest(request, reply, guestId, "REFERRAL_CODE_GUEST_LOOKUP_FAILED");
+    if (!guest) return reply;
 
     const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
     if (accessError) return reply;
@@ -165,10 +212,10 @@ export async function gamificationRoutes(app: FastifyInstance) {
   app.post("/apply-referral", async (request, reply) => {
     const { guestId, referralCode } = applyReferralSchema.parse(request.body);
 
-    const guest = await getGuestById(guestId);
-    if (!guest) {
-      return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
-    }
+    const guest = await loadGamificationGuest(request, reply, guestId, "APPLY_REFERRAL_GUEST_LOOKUP_FAILED", {
+      referralCode,
+    });
+    if (!guest) return reply;
 
     const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
     if (accessError) return reply;
@@ -192,10 +239,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
   // GET /:guestId/referral-stats — referral stats
   app.get("/:guestId/referral-stats", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
-    const guest = await getGuestById(guestId);
-    if (!guest) {
-      return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
-    }
+    const guest = await loadGamificationGuest(request, reply, guestId, "REFERRAL_STATS_GUEST_LOOKUP_FAILED");
+    if (!guest) return reply;
 
     const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
     if (accessError) return reply;
@@ -227,8 +272,12 @@ export async function gamificationRoutes(app: FastifyInstance) {
     const accessError = await enforceGamificationAccess(request, reply, restaurantId);
     if (accessError) return reply;
 
-    const activeChallenges = await listActiveChallenges(restaurantId);
-    return { challenges: activeChallenges };
+    try {
+      const activeChallenges = await listActiveChallenges(restaurantId);
+      return { challenges: activeChallenges };
+    } catch (err: unknown) {
+      return sendCaughtGamificationError(request, reply, err, "CHALLENGE_LIST_FAILED", { restaurantId });
+    }
   });
 
   // POST /challenges — create a challenge
@@ -289,17 +338,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
     const { challengeId } = request.params as { challengeId: string };
     const parsed = updateChallengeSchema.parse(request.body ?? {});
 
-    const challenge = await getChallengeById(challengeId);
-    if (!challenge) {
-      return sendGamificationError(
-        request,
-        reply,
-        404,
-        "Challenge not found",
-        "CHALLENGE_NOT_FOUND",
-        { challengeId },
-      );
-    }
+    const challenge = await loadGamificationChallenge(request, reply, challengeId, "UPDATE_CHALLENGE_LOOKUP_FAILED");
+    if (!challenge) return reply;
 
     const accessError = await enforceGamificationAccess(request, reply, challenge.restaurantId, { challengeId });
     if (accessError) return reply;
@@ -358,10 +398,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
   app.get("/:guestId/share-templates", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
     const query = shareTemplateQuerySchema.parse(request.query ?? {});
-    const guest = await getGuestById(guestId);
-    if (!guest) {
-      return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
-    }
+    const guest = await loadGamificationGuest(request, reply, guestId, "SHARE_TEMPLATES_GUEST_LOOKUP_FAILED", query);
+    if (!guest) return reply;
 
     const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
     if (accessError) return reply;
@@ -425,10 +463,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
 
   app.post("/:guestId/leaderboard/opt-in", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
-    const guest = await getGuestById(guestId);
-    if (!guest) {
-      return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
-    }
+    const guest = await loadGamificationGuest(request, reply, guestId, "LEADERBOARD_OPT_IN_GUEST_LOOKUP_FAILED");
+    if (!guest) return reply;
 
     const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
     if (accessError) return reply;
@@ -444,10 +480,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
 
   app.post("/:guestId/leaderboard/opt-out", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
-    const guest = await getGuestById(guestId);
-    if (!guest) {
-      return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
-    }
+    const guest = await loadGamificationGuest(request, reply, guestId, "LEADERBOARD_OPT_OUT_GUEST_LOOKUP_FAILED");
+    if (!guest) return reply;
 
     const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
     if (accessError) return reply;
@@ -476,10 +510,10 @@ export async function gamificationRoutes(app: FastifyInstance) {
       );
     }
 
-    const guest = await getGuestById(guestId);
-    if (!guest) {
-      return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
-    }
+    const guest = await loadGamificationGuest(request, reply, guestId, "GUEST_CHALLENGES_GUEST_LOOKUP_FAILED", {
+      restaurantId,
+    });
+    if (!guest) return reply;
 
     const accessError = await enforceGamificationAccess(request, reply, restaurantId, { guestId });
     if (accessError) return reply;
@@ -509,18 +543,19 @@ export async function gamificationRoutes(app: FastifyInstance) {
       challengeId: string;
     };
 
-    const guest = await getGuestById(guestId);
-    const challenge = await getChallengeById(challengeId);
-    if (!guest || !challenge) {
-      return sendGamificationError(
-        request,
-        reply,
-        404,
-        "Guest or challenge not found",
-        "GUEST_OR_CHALLENGE_NOT_FOUND",
-        { guestId, challengeId },
-      );
-    }
+    const guest = await loadGamificationGuest(request, reply, guestId, "INCREMENT_CHALLENGE_GUEST_LOOKUP_FAILED", {
+      challengeId,
+    });
+    if (!guest) return reply;
+
+    const challenge = await loadGamificationChallenge(
+      request,
+      reply,
+      challengeId,
+      "INCREMENT_CHALLENGE_LOOKUP_FAILED",
+      { guestId },
+    );
+    if (!challenge) return reply;
 
     const accessError = await enforceGamificationAccess(request, reply, challenge.restaurantId, { guestId, challengeId });
     if (accessError) return reply;
@@ -551,10 +586,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
   // GET /:guestId/streak — streak info
   app.get("/:guestId/streak", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
-    const guest = await getGuestById(guestId);
-    if (!guest) {
-      return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
-    }
+    const guest = await loadGamificationGuest(request, reply, guestId, "STREAK_GUEST_LOOKUP_FAILED");
+    if (!guest) return reply;
 
     const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
     if (accessError) return reply;

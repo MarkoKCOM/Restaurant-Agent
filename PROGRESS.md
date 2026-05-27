@@ -128,6 +128,7 @@
 - Campaign route catches now preserve campaign-specific context for unexpected delivery/create/event failures and return error-level HTTP 500 envelopes instead of falling through to less specific global handling.
 - Analytics route catches now add surface-specific context for reservations, retention, loyalty, CLV, campaign ROI, and morning-summary failures while preserving stable 400/404 envelopes for known date and restaurant errors.
 - Analytics date validation now uses typed input errors with stable `ANALYTICS_DATE_FORMAT_INVALID` and `ANALYTICS_DATE_RANGE_INVALID` 400 responses, avoiding brittle message matching on retention/loyalty analytics failures.
+- Gamification routes now wrap guest/challenge preflight lookups and active-challenge listing with gamification-specific error codes, so referral, challenge, leaderboard, share-template, and streak failures keep request IDs plus member/challenge context instead of falling into generic errors.
 
 ### Verified
 - `pnpm --filter @openseat/domain build`

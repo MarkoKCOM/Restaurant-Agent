@@ -906,6 +906,15 @@ assertNotIncludes(dashboardWaitlistPage, "setError(err.message || t.waitlist");
 const gamificationRouteEnvelope = await readFile("apps/api/src/routes/gamification.ts", "utf8");
 for (const expectedGamificationRouteContent of [
   "gamificationOperationStatusCode",
+  "loadGamificationGuest",
+  "loadGamificationChallenge",
+  "REFERRAL_CODE_GUEST_LOOKUP_FAILED",
+  "CHALLENGE_LIST_FAILED",
+  "UPDATE_CHALLENGE_LOOKUP_FAILED",
+  "GUEST_CHALLENGES_GUEST_LOOKUP_FAILED",
+  "INCREMENT_CHALLENGE_GUEST_LOOKUP_FAILED",
+  "INCREMENT_CHALLENGE_LOOKUP_FAILED",
+  "STREAK_GUEST_LOOKUP_FAILED",
   "request.log.error(logPayload, \"Gamification operation failed\")",
   "request.log.warn(logPayload, \"Gamification operation rejected\")",
   "return reply.status(statusCode).send",

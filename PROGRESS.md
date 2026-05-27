@@ -96,6 +96,7 @@
 - Outbound diagnostics now include machine-readable status reasons plus `ownerDeliveryBlocked` and `ownerWhatsappConfigOnlyMissing`, so support can distinguish current delivery blockers from historical skipped rows and owner WhatsApp configuration cleanup.
 - Outbound error-code diagnostics now include first/last seen timestamps and debug bundle summaries print the window next to each error code, making historical delivery residue visibly different from fresh regressions.
 - Debug bundles now collect both the requested context log window and a bundle-run-only API log slice, so a fresh smoke regression is not confused with older warnings still inside the broader journal window.
+- Debug bundle summaries now classify the bundle-run API log slice and print fresh warning/error counts, error codes, and samples so operators can spot newly introduced runtime noise without manual `rg`.
 
 ### Verified
 - `pnpm --filter @openseat/domain build`

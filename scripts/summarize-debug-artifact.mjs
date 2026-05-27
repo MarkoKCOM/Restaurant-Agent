@@ -453,6 +453,7 @@ async function summarizeDebugBundleManifest(report) {
   const outboundDeliveryReadiness = outboundMessages.deliveryReadiness ?? {};
   const ownerDeliveryReadiness = highlights.ownerDeliveryReadiness ?? {};
   const agentMembershipIntents = highlights.agentMembershipIntents ?? {};
+  const apiLogIssues = highlights.apiLogIssues ?? {};
   const defaultRestaurantSelector = highlights.defaultRestaurantSelector ?? {};
   const queues = asArray(adminDiagnostics.queues);
   const summaryScheduleHealth = formatSummaryScheduleHealthFromDiagnostics(queues)
@@ -569,6 +570,19 @@ async function summarizeDebugBundleManifest(report) {
       "Agent membership intents",
       `${agentMembershipIntents.status} ${agentMembershipIntents.passed ?? "?"}/${agentMembershipIntents.total ?? "?"}`,
     );
+  }
+  if (apiLogIssues.status) {
+    printLine(
+      "Bundle-run API logs",
+      `${apiLogIssues.status} issues=${apiLogIssues.issueEvents ?? "?"}/${apiLogIssues.totalEvents ?? "?"} levels=${Object.entries(apiLogIssues.byLevel ?? {}).map(([level, count]) => `${level}:${count}`).join(",") || "none"} codes=${Object.entries(apiLogIssues.byCode ?? {}).map(([code, count]) => `${code}:${count}`).join(",") || "none"} output=${apiLogIssues.outputPath ?? "?"}`,
+    );
+    const apiLogSamples = asArray(apiLogIssues.samples);
+    if (apiLogSamples.length > 0) {
+      console.log("Bundle-run API log samples:");
+      for (const sample of apiLogSamples.slice(0, 5)) {
+        console.log(`- ${sample}`);
+      }
+    }
   }
   if (defaultRestaurantSelector.status === "resolved") {
     const slug = defaultRestaurantSelector.restaurantSlug ? ` slug=${defaultRestaurantSelector.restaurantSlug}` : "";

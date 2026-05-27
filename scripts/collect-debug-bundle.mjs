@@ -131,6 +131,91 @@ function buildAttentionSamples({ membershipProcessing, gamification, engagement,
   return samples.slice(0, limit);
 }
 
+function parseJsonFromLogLine(line) {
+  const firstBrace = line.indexOf("{");
+  if (firstBrace < 0) return null;
+
+  for (let index = firstBrace; index >= 0 && index < line.length; index = line.indexOf("{", index + 1)) {
+    if (index < 0) return null;
+    try {
+      return JSON.parse(line.slice(index));
+    } catch {
+      // Journal lines can contain non-JSON prefixes; keep scanning for the JSON payload.
+    }
+  }
+
+  return null;
+}
+
+function levelName(level) {
+  if (level >= 60) return "fatal";
+  if (level >= 50) return "error";
+  if (level >= 40) return "warn";
+  if (level >= 30) return "info";
+  if (level >= 20) return "debug";
+  if (level >= 10) return "trace";
+  return "unknown";
+}
+
+function summarizeApiLogEvent(event) {
+  const method = event.method ?? event.req?.method;
+  const url = event.url ?? event.req?.url;
+  const statusCode = event.statusCode ?? event.res?.statusCode ?? event.err?.statusCode;
+  return [
+    levelName(event.level),
+    cleanToken(event.reqId),
+    cleanToken(event.msg ?? event.err?.message),
+    method ? cleanToken(method) : "",
+    url ? cleanToken(url) : "",
+    statusCode ? `status=${statusCode}` : "",
+    event.code ? `code=${cleanToken(event.code)}` : "",
+    event.err?.code ? `errCode=${cleanToken(event.err.code)}` : "",
+  ].filter(Boolean).join(" ");
+}
+
+async function captureApiLogIssueHighlights(logPath, sourceName) {
+  let text;
+  try {
+    text = await readFile(logPath, "utf8");
+  } catch (error) {
+    manifest.highlights.apiLogIssues = {
+      status: "unparsed",
+      source: sourceName,
+      outputPath: logPath,
+      error: error instanceof Error ? error.message : String(error),
+    };
+    return;
+  }
+
+  const events = text
+    .split(/\r?\n/)
+    .map(parseJsonFromLogLine)
+    .filter(Boolean);
+  const issueEvents = events.filter((event) => Number(event.level ?? 0) >= 40 || event.err);
+  const byLevel = {};
+  const byCode = {};
+  const samples = [];
+
+  for (const event of issueEvents) {
+    const level = levelName(Number(event.level ?? 0));
+    byLevel[level] = (byLevel[level] ?? 0) + 1;
+    const code = cleanToken(event.code ?? event.err?.code ?? event.err?.name ?? "");
+    if (code) byCode[code] = (byCode[code] ?? 0) + 1;
+    if (samples.length < 8) samples.push(summarizeApiLogEvent(event));
+  }
+
+  manifest.highlights.apiLogIssues = {
+    status: issueEvents.length > 0 ? "attention" : "ok",
+    source: sourceName,
+    outputPath: logPath,
+    totalEvents: events.length,
+    issueEvents: issueEvents.length,
+    byLevel,
+    byCode,
+    samples,
+  };
+}
+
 const apiUrl = (process.env.OPENSEAT_API_URL || "http://127.0.0.1:3001").replace(/\/$/, "");
 const since = readOption("since", "30 minutes ago");
 const service = readOption("service", "openseat-api");
@@ -688,6 +773,7 @@ async function writeReadme() {
       const checks = adminDiagnostics.checks ?? {};
       const membershipProcessing = adminDiagnostics.membershipProcessing ?? {};
       const agentMembershipIntents = manifest.highlights.agentMembershipIntents;
+      const apiLogIssues = manifest.highlights.apiLogIssues;
       const queues = Array.isArray(adminDiagnostics.queues) ? adminDiagnostics.queues : [];
       lines.push(`- Admin diagnostics: ${adminDiagnostics.status ?? "unknown"}`);
       lines.push(
@@ -776,6 +862,18 @@ async function writeReadme() {
           `- Agent membership intents: ${agentMembershipIntents.status ?? "unknown"} ${agentMembershipIntents.passed ?? "?"}/${agentMembershipIntents.total ?? "?"}`,
         );
       }
+      if (apiLogIssues) {
+        lines.push(
+          `- Bundle-run API logs: ${apiLogIssues.status ?? "unknown"} issues=${apiLogIssues.issueEvents ?? "?"}/${apiLogIssues.totalEvents ?? "?"} levels=${Object.entries(apiLogIssues.byLevel ?? {}).map(([level, count]) => `${level}:${count}`).join(",") || "none"} codes=${Object.entries(apiLogIssues.byCode ?? {}).map(([code, count]) => `${code}:${count}`).join(",") || "none"}`,
+        );
+        const samples = asArray(apiLogIssues.samples);
+        if (samples.length > 0) {
+          lines.push("- Bundle-run API log samples:");
+          for (const sample of samples.slice(0, 5)) {
+            lines.push(`  - ${sample}`);
+          }
+        }
+      }
       const defaultRestaurantSelector = manifest.highlights.defaultRestaurantSelector;
       if (defaultRestaurantSelector?.status === "resolved") {
         const slug = defaultRestaurantSelector.restaurantSlug ? ` slug=${defaultRestaurantSelector.restaurantSlug}` : "";
@@ -830,7 +928,7 @@ async function writeReadme() {
     lines.push("- `package-enforcement-smoke.txt` for starter-vs-Growth package guard probes.");
     lines.push("- `api-smoke-summary.txt` for end-to-end API flow status and any failing request IDs.");
     lines.push("- `recent-api-logs.txt` for service-side context from the requested `--since` window.");
-    lines.push("- `bundle-run-api-logs.txt` for service-side context from this bundle invocation only.");
+    lines.push("- `bundle-run-api-logs.txt` for service-side context from this bundle invocation only; check the bundle-run API log summary first for warning/error samples.");
   }
   if (skipped.length > 0) {
     lines.push(`- Skipped steps: ${skipped.map((command) => command.name).join(", ")}.`);
@@ -1110,7 +1208,7 @@ await runStep("recent-api-logs", "journalctl", [
   "short-iso",
 ]);
 
-await runStep("bundle-run-api-logs", "journalctl", [
+const bundleRunLogs = await runStep("bundle-run-api-logs", "journalctl", [
   "-u",
   service,
   "--since",
@@ -1119,6 +1217,7 @@ await runStep("bundle-run-api-logs", "journalctl", [
   "-o",
   "short-iso",
 ]);
+await captureApiLogIssueHighlights(bundleRunLogs.outputPath, "bundle-run-api-logs");
 
 await writeJson("manifest.json", manifest);
 const readmePath = await writeReadme();

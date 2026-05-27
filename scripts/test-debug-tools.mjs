@@ -580,6 +580,25 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
       passed: 4,
       total: 4,
     },
+    apiLogIssues: {
+      status: "attention",
+      source: "bundle-run-api-logs",
+      outputPath: "/tmp/openseat-debug-bundle/bundle-run-api-logs.txt",
+      totalEvents: 8,
+      issueEvents: 2,
+      byLevel: {
+        warn: 1,
+        error: 1,
+      },
+      byCode: {
+        FST_ERR_REP_ALREADY_SENT: 1,
+        AGENT_TOOL_FAILED: 1,
+      },
+      samples: [
+        "warn debug-package-1 Reply was already sent POST /api/v1/campaigns/audience-preview status=500 errCode=FST_ERR_REP_ALREADY_SENT",
+        "error agent-message-1 Agent tool failed POST /api/v1/agent/message status=500 code=AGENT_TOOL_FAILED",
+      ],
+    },
     defaultRestaurantSelector: {
       status: "resolved",
       restaurantId: "restaurant-1",
@@ -637,6 +656,9 @@ assertIncludes(debugBundleManifestOutput, "Owner delivery recipients: configured
 assertIncludes(debugBundleManifestOutput, "Owner delivery repair samples:");
 assertIncludes(debugBundleManifestOutput, "- restaurant-1 slug=bff repair=METHOD=PATCH BODY='{\"ownerWhatsapp\":\"<owner-whatsapp-number>\"}' OPENSEAT_TOKEN=... pnpm debug:api -- http://localhost:3001/api/v1/restaurants/restaurant-1");
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");
+assertIncludes(debugBundleManifestOutput, "Bundle-run API logs: attention issues=2/8 levels=warn:1,error:1 codes=FST_ERR_REP_ALREADY_SENT:1,AGENT_TOOL_FAILED:1 output=/tmp/openseat-debug-bundle/bundle-run-api-logs.txt");
+assertIncludes(debugBundleManifestOutput, "Bundle-run API log samples:");
+assertIncludes(debugBundleManifestOutput, "- warn debug-package-1 Reply was already sent POST /api/v1/campaigns/audience-preview status=500 errCode=FST_ERR_REP_ALREADY_SENT");
 assertIncludes(debugBundleManifestOutput, 'Default restaurant selector: restaurant-1 slug=bff name="BFF" source=admin-diagnostics ownerWhatsappMissing sample');
 assertIncludes(debugBundleManifestOutput, "Queues: daily-summary:ok/failed=0/repeat=0, engagement:ok/failed=0/repeat=0, membership-events:ok/failed=0/repeat=?");
 assertIncludes(debugBundleManifestOutput, "Summary schedules: restaurants=9 morning expected=9 found=9 pattern=0 9 * * * status=ok closing expected=9 found=9 pattern=0 23 * * * status=ok timezones=Asia/Jerusalem:9");
@@ -664,6 +686,8 @@ for (const expectedSummarizerContent of [
   "Campaigns",
   "Owner delivery readiness",
   "Owner delivery repair samples",
+  "Bundle-run API logs",
+  "apiLogIssues",
   "Summary schedules",
   "Engagement schedules",
   "Operational attention",
@@ -1321,6 +1345,8 @@ for (const requiredReadmeContent of [
   "api-smoke-summary.txt",
   "recent-api-logs.txt",
   "bundle-run-api-logs.txt",
+  "captureApiLogIssueHighlights",
+  "Bundle-run API log samples",
   "manifest.json",
   "README.md",
   "logWindows",

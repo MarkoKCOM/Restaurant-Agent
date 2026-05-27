@@ -72,7 +72,7 @@ Collect a timestamped debug bundle with health probe output, optional admin diag
 pnpm debug:bundle --since "30 minutes ago"
 ```
 
-The bundle is written to `artifacts/debug-bundles/<timestamp>/`. Set `OPENSEAT_TOKEN` to include `/api/v1/admin/diagnostics`, and set the normal smoke credentials to include the API smoke run. Use `--out /tmp/openseat-debug` to choose a specific folder.
+The bundle is written to `artifacts/debug-bundles/<timestamp>/`. Set `OPENSEAT_TOKEN`, `JWT_SECRET`, or super-admin credentials to include `/api/v1/admin/diagnostics`, and set the normal smoke credentials to include the API smoke run. Use `--out /tmp/openseat-debug` to choose a specific folder.
 
 After pulling changes that touch `packages/domain`, rebuild it before checking apps that import `@openseat/domain`.
 

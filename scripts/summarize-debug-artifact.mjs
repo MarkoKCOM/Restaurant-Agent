@@ -102,6 +102,7 @@ function summarizeSmoke(report) {
     && (
       step.step === "membership.processing-failures"
       || step.step === "engagement.jobs"
+      || step.step === "gamification.challenge-progress"
     )
   );
   if (operationalSteps.length > 0) {
@@ -111,6 +112,8 @@ function summarizeSmoke(report) {
         console.log(`- membership.processing-failures: open=${step.openCount ?? "?"} related=${step.relatedOpenCount ?? "?"}`);
       } else if (step.step === "engagement.jobs") {
         console.log(`- engagement.jobs: count=${step.jobCount ?? "?"} statuses=${asArray(step.statuses).join(",") || "none"} types=${asArray(step.types).join(",") || "none"}`);
+      } else if (step.step === "gamification.challenge-progress") {
+        console.log(`- gamification.challenge-progress: progress=${step.progress ?? "?"}/${step.target ?? "?"} status=${step.status ?? "?"} completed=${step.completed === true ? "yes" : "no"}`);
       }
     }
   }

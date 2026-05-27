@@ -183,6 +183,41 @@ async function main() {
     status: reservation.status,
   });
 
+  const challenge = await request("/api/v1/gamification/challenges", {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      name: `Smoke visit challenge ${runId}`,
+      description: "Created by the reliability smoke to verify automatic visit challenge progress",
+      type: "visit_count",
+      target: 1,
+      reward: 5,
+      startDate: visitDate,
+      endDate: visitDate,
+    },
+  });
+  const smokeChallengeId = challenge.challenge?.id;
+  if (!smokeChallengeId) throw new Error("Challenge create endpoint did not return challenge.id");
+  record("gamification.challenge.create", {
+    challengeId: smokeChallengeId,
+    type: challenge.challenge.type,
+    target: challenge.challenge.targetValue,
+    reward: challenge.challenge.rewardPoints,
+  });
+
+  const challengesBeforeCompletion = await request(`/api/v1/gamification/${reservation.guestId}/challenges?restaurantId=${restaurantId}`, { token });
+  const smokeChallengeBefore = (challengesBeforeCompletion.challenges ?? []).find((item) => item.challenge?.id === smokeChallengeId);
+  record("gamification.challenge.before-completion", {
+    challengeId: smokeChallengeId,
+    activeChallengeCount: challengesBeforeCompletion.challenges?.length ?? 0,
+    hasSmokeChallenge: Boolean(smokeChallengeBefore),
+    progress: smokeChallengeBefore?.progress?.currentValue ?? null,
+  });
+  if (!smokeChallengeBefore) {
+    throw new Error(`Created smoke challenge was not returned by guest challenges endpoint: ${smokeChallengeId}`);
+  }
+
   const listed = await request(`/api/v1/reservations?restaurantId=${restaurantId}&date=${reservationDate}`, { token });
   const listedReservation = listed.reservations.find((r) => r.id === reservation.id);
   if (!listedReservation) throw new Error("Created reservation not returned by list endpoint");
@@ -203,6 +238,25 @@ async function main() {
     tier: loyalty.tier,
     visits: loyalty.stampCard?.visits,
   });
+
+  const challengesAfterCompletion = await request(`/api/v1/gamification/${reservation.guestId}/challenges?restaurantId=${restaurantId}`, { token });
+  const smokeChallengeAfter = (challengesAfterCompletion.challenges ?? []).find((item) => item.challenge?.id === smokeChallengeId);
+  record("gamification.challenge-progress", {
+    challengeId: smokeChallengeId,
+    activeChallengeCount: challengesAfterCompletion.challenges?.length ?? 0,
+    progress: smokeChallengeAfter?.progress?.currentValue ?? null,
+    status: smokeChallengeAfter?.progress?.status ?? null,
+    completed: Boolean(smokeChallengeAfter?.progress?.completedAt),
+    target: smokeChallengeAfter?.challenge?.targetValue ?? null,
+  });
+  if (!smokeChallengeAfter?.progress) {
+    throw new Error(`Reservation completion did not create progress for smoke challenge: ${smokeChallengeId}`);
+  }
+  if ((smokeChallengeAfter.progress.currentValue ?? 0) < 1 || !smokeChallengeAfter.progress.completedAt) {
+    throw new Error(
+      `Reservation completion did not complete smoke challenge: ${smokeChallengeId} progress=${smokeChallengeAfter.progress.currentValue ?? "missing"} completedAt=${smokeChallengeAfter.progress.completedAt ?? "missing"}`,
+    );
+  }
 
   const membershipFailures = await request(`/api/v1/loyalty/processing-failures?restaurantId=${restaurantId}&status=open&limit=20`, { token });
   const relatedMembershipFailures = (membershipFailures.failures ?? []).filter((failure) =>

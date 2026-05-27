@@ -427,6 +427,7 @@ async function writeReadme() {
     lines.push("- Open failed step files first, then use request IDs inside them with `pnpm debug:logs <request-id>`.");
   } else {
     lines.push("- `admin-diagnostics.txt` for database, Redis, migration drift, queue, and runtime health.");
+    lines.push("- `queue-debug-summary.txt` for BullMQ repeatable jobs, delayed jobs, and failed job samples.");
     lines.push("- `membership-debug-summary.txt` for open membership repair rows, engagement job counts, and retry commands.");
     lines.push("- `outbound-debug-summary.txt` for the recent WhatsApp-bound message log and message IDs.");
     lines.push("- `api-smoke-summary.txt` for end-to-end API flow status and any failing request IDs.");
@@ -499,6 +500,12 @@ await runStep("health-probe", "node", ["scripts/api-debug-probe.mjs", `${apiUrl}
   env: {
     REQUEST_ID: `debug-bundle-health-${Date.now()}`,
     EXPECT_STATUS: "200",
+  },
+});
+
+await runStep("queue-debug-summary", "pnpm", ["--filter", "@openseat/api", "queue:debug"], {
+  env: {
+    OPENSEAT_QUEUE_DEBUG_SAMPLE_LIMIT: process.env.OPENSEAT_QUEUE_DEBUG_SAMPLE_LIMIT ?? "5",
   },
 });
 

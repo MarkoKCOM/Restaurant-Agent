@@ -12,6 +12,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/db/seed.ts",
+    "queue:debug": "node scripts/queue-debug-summary.mjs",
     "provision:sandbox": "node scripts/provision-pilot-sandbox.mjs"
   },
   "dependencies": {

@@ -12,6 +12,7 @@
     "debug:agent-intents": "node scripts/agent-membership-intent-smoke.mjs",
     "debug:membership": "node scripts/membership-debug-summary.mjs",
     "debug:outbound": "node scripts/outbound-debug-summary.mjs",
+    "debug:queues": "pnpm --filter @openseat/api queue:debug",
     "debug:logs": "node scripts/api-log-trace.mjs",
     "test:debug-tools": "node scripts/test-debug-tools.mjs",
     "db:generate": "pnpm --filter @openseat/api db:generate",

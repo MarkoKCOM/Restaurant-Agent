@@ -634,10 +634,14 @@ const debugBundleCollector = await readFile("scripts/collect-debug-bundle.mjs", 
 const apiLogTrace = await readFile("scripts/api-log-trace.mjs", "utf8");
 const membershipDebugSummary = await readFile("scripts/membership-debug-summary.mjs", "utf8");
 const outboundDebugSummary = await readFile("scripts/outbound-debug-summary.mjs", "utf8");
+const queueDebugSummary = await readFile("apps/api/scripts/queue-debug-summary.mjs", "utf8");
 const debugErrorHelpers = await readFile("scripts/lib/debug-errors.mjs", "utf8");
 const rootPackageJson = await readFile("package.json", "utf8");
+const apiPackageJson = await readFile("apps/api/package.json", "utf8");
 assertIncludes(rootPackageJson, '"debug:membership": "node scripts/membership-debug-summary.mjs"');
 assertIncludes(rootPackageJson, '"debug:outbound": "node scripts/outbound-debug-summary.mjs"');
+assertIncludes(rootPackageJson, '"debug:queues": "pnpm --filter @openseat/api queue:debug"');
+assertIncludes(apiPackageJson, '"queue:debug": "node scripts/queue-debug-summary.mjs"');
 
 for (const requiredMembershipDebugContent of [
   "Membership Debug Summary",
@@ -672,6 +676,24 @@ for (const requiredOutboundDebugContent of [
   "/api/v1/engagement/outbound-messages",
 ]) {
   assertIncludes(outboundDebugSummary, requiredOutboundDebugContent);
+}
+
+for (const requiredQueueDebugContent of [
+  "OpenSeat Queue Debug Summary",
+  "reservation-reminders",
+  "daily-summary",
+  "engagement",
+  "campaign-delivery",
+  "getRepeatableJobs",
+  "getJobCounts",
+  "getFailed",
+  "getDelayed",
+  "OPENSEAT_QUEUE_DEBUG_SAMPLE_LIMIT",
+  "sanitizeConnectionError",
+  "sanitizeJobData",
+  "[redacted]",
+]) {
+  assertIncludes(queueDebugSummary, requiredQueueDebugContent);
 }
 
 for (const requiredLogTraceContent of [
@@ -717,6 +739,9 @@ for (const requiredReadmeContent of [
   "membership-debug-summary.txt",
   "outbound-debug-summary",
   "outbound-debug-summary.txt",
+  "queue-debug-summary",
+  "queue-debug-summary.txt",
+  "OPENSEAT_QUEUE_DEBUG_SAMPLE_LIMIT",
   "OPENSEAT_BUNDLE_RESTAURANT_ID",
   "OPENSEAT_BUNDLE_RESTAURANT_SLUG",
   "OPENSEAT_OUTBOUND_RESTAURANT_ID",

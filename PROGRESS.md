@@ -50,6 +50,9 @@
 - Owner-facing morning summary operations:
   - analytics dashboard now previews the WhatsApp-style daily morning summary with owner-recipient readiness, notable guests, and alerts
   - admins can manually log the morning summary to the outbound message trail for delivery debugging and support follow-up
+- Queue debugging:
+  - `pnpm debug:queues` prints BullMQ counts, repeatable schedules, failed samples, and delayed samples for reminder, summary, engagement, and campaign queues
+  - debug bundles include `queue-debug-summary.txt` so scheduled automation issues show queue state without a separate Redis inspection step
 - Protected super-admin dependency diagnostics at `GET /api/v1/admin/diagnostics`:
   - database ping status and latency
   - Redis ping status and latency

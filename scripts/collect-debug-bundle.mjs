@@ -115,6 +115,49 @@ async function writeJson(name, value) {
   return outputPath;
 }
 
+async function writeReadme() {
+  const lines = [
+    "# OpenSeat Debug Bundle",
+    "",
+    `Created: ${manifest.createdAt}`,
+    `API URL: ${apiUrl}`,
+    `Service logs: ${service} since ${since}`,
+    "",
+    "## Status",
+    "",
+    "| Step | Status | File | Notes |",
+    "| --- | --- | --- | --- |",
+  ];
+
+  for (const command of manifest.commands) {
+    const file = command.outputPath ? command.outputPath.replace(`${outDir}/`, "") : "";
+    const notes = command.reason ?? command.tokenSource ?? (command.exitCode !== undefined ? `exit ${command.exitCode}` : "");
+    lines.push(`| ${command.name} | ${command.status} | ${file} | ${notes} |`);
+  }
+
+  const failed = manifest.commands.filter((command) => command.status === "failed");
+  const skipped = manifest.commands.filter((command) => command.status === "skipped");
+  lines.push("");
+  lines.push("## Open First");
+  lines.push("");
+  if (failed.length > 0) {
+    lines.push("- Open failed step files first, then use request IDs inside them with `pnpm debug:logs <request-id>`.");
+  } else {
+    lines.push("- `admin-diagnostics.txt` for database, Redis, migration drift, queue, and runtime health.");
+    lines.push("- `api-smoke-summary.txt` for end-to-end API flow status and any failing request IDs.");
+    lines.push("- `recent-api-logs.txt` for service-side context around this bundle run.");
+  }
+  if (skipped.length > 0) {
+    lines.push(`- Skipped steps: ${skipped.map((command) => command.name).join(", ")}.`);
+  }
+  lines.push("- `manifest.json` contains command metadata and elapsed times.");
+  lines.push("");
+
+  const outputPath = resolve(outDir, "README.md");
+  await writeFile(outputPath, `${lines.join("\n")}\n`);
+  return outputPath;
+}
+
 async function getDiagnosticsToken() {
   if (process.env.OPENSEAT_TOKEN) {
     return { token: process.env.OPENSEAT_TOKEN, source: "OPENSEAT_TOKEN" };
@@ -220,10 +263,12 @@ await runStep("recent-api-logs", "journalctl", [
 ]);
 
 await writeJson("manifest.json", manifest);
+const readmePath = await writeReadme();
 
 console.log(JSON.stringify({
   outDir,
   manifest: resolve(outDir, "manifest.json"),
+  readme: readmePath,
   commands: manifest.commands.map((command) => ({
     name: command.name,
     status: command.status,

@@ -25,7 +25,6 @@ export const PROMOTIONAL_ENGAGEMENT_TYPES = [
   "win_back_60",
   "win_back_90",
   "leaderboard_summary",
-  "lucky_spin_reward",
 ] as const;
 
 const PROMOTIONAL_WEEKLY_LIMIT = 2;

@@ -120,6 +120,7 @@ const smokePath = await writeJson("smoke.json", {
     { step: "engagement.birthday-check", due: 1, scheduled: 1, skippedExisting: 0, skippedPolicy: 0, jobStatus: "pending" },
     { step: "engagement.anniversary-check", due: 1, scheduled: 1, skippedExisting: 0, skippedPolicy: 0, jobStatus: "pending" },
     { step: "engagement.win-back-overdue", scheduled30: 1, skippedExisting: 0, skippedPolicy: 0, jobStatus: "pending" },
+    { step: "campaign.audience-preview", matchedCount: 1, matchedWithOptOutCount: 2, excludedOptedOut: 1, hasTargetGuest: true, includesOptedOutByDefault: false, includesOptedOutWhenRequested: true },
   ],
   requests: [
     {
@@ -183,6 +184,7 @@ assertIncludes(smokeOutput, "gamification.birthday-week.cleanup: active=no clean
 assertIncludes(smokeOutput, "engagement.birthday-check: due=1 scheduled=1 existing=0 policy=0 status=pending");
 assertIncludes(smokeOutput, "engagement.anniversary-check: due=1 scheduled=1 existing=0 policy=0 status=pending");
 assertIncludes(smokeOutput, "engagement.win-back-overdue: scheduled30=1 existing=0 policy=0 status=pending");
+assertIncludes(smokeOutput, "campaign.audience-preview: matched=1 withOptOut=2 excludedOptedOut=1 target=yes optedOutDefault=no optedOutRequested=yes");
 assertIncludes(smokeOutput, "Unhandled HTTP failures: 1");
 assertIncludes(smokeOutput, "POST /api/v1/reservations -> 500 code=INTERNAL_ERROR requestId=smoke-test-2");
 assertIncludes(smokeOutput, 'pnpm debug:logs smoke-test-2 --since "2 hours ago"');

@@ -137,6 +137,7 @@ function summarizeSmoke(report) {
       || step.step === "engagement.birthday-check"
       || step.step === "engagement.anniversary-check"
       || step.step === "engagement.win-back-overdue"
+      || step.step === "campaign.audience-preview"
     )
   );
   if (operationalSteps.length > 0) {
@@ -217,6 +218,8 @@ function summarizeSmoke(report) {
         console.log(`- engagement.anniversary-check: due=${step.due ?? "?"} scheduled=${step.scheduled ?? "?"} existing=${step.skippedExisting ?? "?"} policy=${step.skippedPolicy ?? "?"} status=${step.jobStatus ?? "?"}`);
       } else if (step.step === "engagement.win-back-overdue") {
         console.log(`- engagement.win-back-overdue: scheduled30=${step.scheduled30 ?? "?"} existing=${step.skippedExisting ?? "?"} policy=${step.skippedPolicy ?? "?"} status=${step.jobStatus ?? "?"}`);
+      } else if (step.step === "campaign.audience-preview") {
+        console.log(`- campaign.audience-preview: matched=${step.matchedCount ?? "?"} withOptOut=${step.matchedWithOptOutCount ?? "?"} excludedOptedOut=${step.excludedOptedOut ?? "?"} target=${step.hasTargetGuest === true ? "yes" : "no"} optedOutDefault=${step.includesOptedOutByDefault === true ? "yes" : "no"} optedOutRequested=${step.includesOptedOutWhenRequested === true ? "yes" : "no"}`);
       }
     }
   }

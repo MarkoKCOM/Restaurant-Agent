@@ -1193,6 +1193,105 @@ async function main() {
     throw new Error(`Overdue win-back check did not schedule win_back_30: ${JSON.stringify(winBackCheck.result ?? {})}`);
   }
 
+  const campaignTag = `campaign_smoke_${runId}`;
+  const campaignLapsedDate = plusDays(-35);
+  const campaignGuest = await request("/api/v1/guests", {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      name: `Smoke Campaign Segment ${runId}`,
+      phone: `059${String(Date.now()).slice(-7)}`,
+      language: "he",
+      source: "web",
+    },
+  });
+  const optedOutCampaignGuest = await request("/api/v1/guests", {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      name: `Smoke Campaign Optout ${runId}`,
+      phone: `058${String(Date.now()).slice(-7)}`,
+      language: "he",
+      source: "web",
+    },
+  });
+  const campaignGuestId = campaignGuest.guest?.id;
+  const optedOutCampaignGuestId = optedOutCampaignGuest.guest?.id;
+  if (!campaignGuestId || !optedOutCampaignGuestId) {
+    throw new Error("Campaign audience smoke guest creation did not return guest IDs");
+  }
+  await request(`/api/v1/guests/${campaignGuestId}`, {
+    method: "PATCH",
+    token,
+    body: { tags: [campaignTag] },
+  });
+  await request(`/api/v1/guests/${optedOutCampaignGuestId}`, {
+    method: "PATCH",
+    token,
+    body: { tags: [campaignTag], optedOutCampaigns: true },
+  });
+  for (const guestId of [campaignGuestId, optedOutCampaignGuestId]) {
+    await request("/api/v1/visits", {
+      method: "POST",
+      token,
+      body: {
+        restaurantId,
+        guestId,
+        date: campaignLapsedDate,
+        partySize: 2,
+        totalSpend: 180,
+        items: [{ name: "Campaign smoke dish", category: "campaign", price: 90 }],
+        channel: "web",
+      },
+    });
+  }
+  const campaignPreview = await request("/api/v1/campaigns/audience-preview", {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      filter: {
+        lapsedDays: 30,
+        tagsAll: [campaignTag],
+        minTotalSpend: 100,
+      },
+      sampleLimit: 5,
+    },
+  });
+  const campaignPreviewWithOptOut = await request("/api/v1/campaigns/audience-preview", {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      filter: {
+        lapsedDays: 30,
+        tagsAll: [campaignTag],
+        minTotalSpend: 100,
+        includeOptedOut: true,
+      },
+      sampleLimit: 5,
+    },
+  });
+  const campaignSampleIds = (campaignPreview.preview?.sample ?? []).map((guest) => guest.guestId);
+  const campaignSampleIdsWithOptOut = (campaignPreviewWithOptOut.preview?.sample ?? []).map((guest) => guest.guestId);
+  record("campaign.audience-preview", {
+    matchedCount: campaignPreview.preview?.matchedCount ?? null,
+    matchedWithOptOutCount: campaignPreviewWithOptOut.preview?.matchedCount ?? null,
+    excludedOptedOut: campaignPreview.preview?.excludedOptedOut ?? null,
+    filtersApplied: campaignPreview.preview?.filtersApplied ?? [],
+    hasTargetGuest: campaignSampleIds.includes(campaignGuestId),
+    includesOptedOutByDefault: campaignSampleIds.includes(optedOutCampaignGuestId),
+    includesOptedOutWhenRequested: campaignSampleIdsWithOptOut.includes(optedOutCampaignGuestId),
+  });
+  if (!campaignSampleIds.includes(campaignGuestId) || campaignSampleIds.includes(optedOutCampaignGuestId)) {
+    throw new Error(`Campaign audience preview did not match opt-out rules: ${JSON.stringify(campaignPreview.preview ?? null)}`);
+  }
+  if (!campaignSampleIdsWithOptOut.includes(optedOutCampaignGuestId)) {
+    throw new Error(`Campaign audience preview did not include opted-out guest when requested: ${JSON.stringify(campaignPreviewWithOptOut.preview ?? null)}`);
+  }
+
   const tableStatus = await request(`/api/v1/restaurants/${restaurantId}/table-status`, { token });
   record("restaurants.table-status", { tableCount: tableStatus.length });
 

@@ -100,7 +100,7 @@
 
 ## 10. Campaign Manager (Growth)
 
-- [ ] 10.1 Implement audience segmentation builder — filter guests by visit frequency, recency, tier, tags, spend
+- [x] 10.1 Implement audience segmentation builder — filter guests by visit frequency, recency, tier, tags, spend
 - [ ] 10.2 Implement campaign creation and scheduling — template text with personalization vars, schedule with quiet hours enforcement
 - [ ] 10.3 Implement campaign delivery engine — BullMQ job to send WhatsApp template messages in batches
 - [ ] 10.4 Implement campaign stats tracking — sent, delivered, read, replied counts

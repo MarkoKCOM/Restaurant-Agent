@@ -88,6 +88,7 @@
 - `pnpm debug:api` probe script for quickly checking endpoint status, elapsed time, request ID, content type, and body.
 - `docs/DEBUGGING.md` with request-ID triage steps, log lookup commands, and debugging commands.
 - Settings reward management now surfaces reward-catalog load failures with the same formatted HTTP/code/request-ID details as the loyalty dashboard instead of looking like an empty reward list.
+- Staff reward claim verification now classifies not-found and already-redeemed responses by stable API code while preserving HTTP/code/request-ID details in the visible feedback.
 
 ### Changed
 - API startup, worker, cron scheduling, and shutdown messages now use structured Fastify logs.

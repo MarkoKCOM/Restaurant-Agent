@@ -4,7 +4,7 @@ import type { RewardClaimVerified, TableStatusItem } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useToast } from "../components/Toast.js";
 import { useLang } from "../i18n.js";
-import { formatApiErrorMessage } from "../lib/apiError.js";
+import { formatApiErrorMessage, isApiErrorCode } from "../lib/apiError.js";
 import { isFeatureEnabled } from "@openseat/domain";
 import type { Reservation, Table } from "@openseat/domain";
 
@@ -96,9 +96,12 @@ function getClaimFeedbackMessage(
   t: ReturnType<typeof useLang>["t"],
   fallback: string,
 ): string {
-  const message = error instanceof Error ? error.message : "";
-  if (message.includes("already redeemed")) return t.today.claimAlreadyRedeemed;
-  if (message.includes("not found")) return t.today.claimNotFound;
+  if (isApiErrorCode(error, "LOYALTY_CLAIM_NOT_ACTIVE")) {
+    return formatApiErrorMessage(error, t.today.claimAlreadyRedeemed);
+  }
+  if (isApiErrorCode(error, "LOYALTY_CLAIM_NOT_FOUND")) {
+    return formatApiErrorMessage(error, t.today.claimNotFound);
+  }
   return formatApiErrorMessage(error, fallback);
 }
 

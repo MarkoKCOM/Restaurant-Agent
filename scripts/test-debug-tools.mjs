@@ -891,6 +891,18 @@ for (const expectedDashboardSignupContent of [
   assertIncludes(dashboardSignup, expectedDashboardSignupContent);
 }
 
+const dashboardTodayPage = await readFile("apps/dashboard/src/pages/TodayPage.tsx", "utf8");
+for (const expectedDashboardClaimErrorContent of [
+  "isApiErrorCode(error, \"LOYALTY_CLAIM_NOT_ACTIVE\")",
+  "formatApiErrorMessage(error, t.today.claimAlreadyRedeemed)",
+  "isApiErrorCode(error, \"LOYALTY_CLAIM_NOT_FOUND\")",
+  "formatApiErrorMessage(error, t.today.claimNotFound)",
+]) {
+  assertIncludes(dashboardTodayPage, expectedDashboardClaimErrorContent);
+}
+assertNotIncludes(dashboardTodayPage, "message.includes(\"already redeemed\")");
+assertNotIncludes(dashboardTodayPage, "message.includes(\"not found\")");
+
 const dashboardReservationsPage = await readFile("apps/dashboard/src/pages/ReservationsPage.tsx", "utf8");
 const dashboardWaitlistPage = await readFile("apps/dashboard/src/pages/WaitlistPage.tsx", "utf8");
 const dashboardAnalyticsPage = await readFile("apps/dashboard/src/pages/AnalyticsPage.tsx", "utf8");

@@ -234,6 +234,15 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
           referrerCreditMismatches: 1,
         },
       },
+      engagement: {
+        status: "attention",
+        totals: {
+          pending: 4,
+          overduePending: 1,
+          failed: 1,
+          skipped: 3,
+        },
+      },
       queues: [
         { name: "membership-events", status: "ok", failed: 0 },
       ],
@@ -257,6 +266,7 @@ assertIncludes(
   debugBundleManifestOutput,
   "Gamification: attention activeChallenges=2 stuckChallenges=1 referralCodes=7 referralCreditMismatches=1",
 );
+assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overdue=1 failed=1 skipped=3");
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");
 assertIncludes(debugBundleManifestOutput, "Queues: membership-events:ok/failed=0");
 assertIncludes(debugBundleManifestOutput, "Failed commands: 1");
@@ -270,6 +280,7 @@ for (const expectedSummarizerContent of [
   "Type: debug-bundle",
   "Membership processing",
   "Gamification",
+  "Engagement",
   "Agent membership intents",
 ]) {
   assertIncludes(artifactSummarizer, expectedSummarizerContent);
@@ -299,7 +310,7 @@ const e2ePath = await writeJson("e2e.json", {
     {
       name: "Admin Diagnostics",
       pass: true,
-      detail: "status=ok matchesBuild=true membershipOpen=0 gamification=ok activeChallenges=6 stuckChallenges=0 referralCreditMismatches=0",
+      detail: "status=ok matchesBuild=true membershipOpen=0 gamification=ok activeChallenges=6 stuckChallenges=0 referralCreditMismatches=0 engagement=ok engagementPending=4 engagementOverdue=0 engagementFailed=0",
       durationMs: 2,
     },
     { name: "Create Reservation", pass: false, detail: "boom requestId=e2e-request-1", durationMs: 14 },
@@ -311,16 +322,19 @@ assertIncludes(e2eOutput, "Type: e2e");
 assertIncludes(e2eOutput, "Status: 1/2 passed");
 assertIncludes(e2eOutput, "Diagnostics:");
 assertIncludes(e2eOutput, "Admin Diagnostics: status=ok matchesBuild=true membershipOpen=0 gamification=ok activeChallenges=6");
+assertIncludes(e2eOutput, "engagement=ok engagementPending=4 engagementOverdue=0 engagementFailed=0");
 assertIncludes(e2eOutput, "- Create Reservation: boom requestId=e2e-request-1");
 assertIncludes(e2eOutput, 'pnpm debug:logs e2e-request-1 --since "2 hours ago"');
 
 const e2eRunner = await readFile("apps/e2e/src/test-runner.ts", "utf8");
 for (const expectedE2eRunnerContent of [
   "Diagnostics response missing gamification summary",
+  "Diagnostics response missing engagement summary",
   "Diagnostics build/checkout mismatch",
   "matchesBuild=${source.checkoutMatchesBuild}",
   "gamification=${gamification.status}",
   "referralCreditMismatches=${gamification.referrals.referrerCreditMismatches}",
+  "engagement=${engagement.status}",
 ]) {
   assertIncludes(e2eRunner, expectedE2eRunnerContent);
 }
@@ -395,6 +409,7 @@ for (const requiredReadmeContent of [
   "Dependencies: database=",
   "Membership processing:",
   "Gamification:",
+  "Engagement:",
   "Agent membership intents:",
   "agent-membership-intents",
   "agent-membership-intents.json",
@@ -411,6 +426,7 @@ for (const requiredReadmeContent of [
   "highlights: {}",
   "manifest.highlights.adminDiagnostics",
   "gamification",
+  "engagement",
   "manifest.highlights.agentMembershipIntents",
   "readme: readmePath",
 ]) {

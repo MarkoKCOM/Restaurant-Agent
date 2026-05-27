@@ -170,6 +170,8 @@ function summarizeDebugBundleManifest(report) {
   const gamification = adminDiagnostics.gamification ?? {};
   const gamificationChallenges = gamification.challenges ?? {};
   const gamificationReferrals = gamification.referrals ?? {};
+  const engagement = adminDiagnostics.engagement ?? {};
+  const engagementTotals = engagement.totals ?? {};
   const agentMembershipIntents = highlights.agentMembershipIntents ?? {};
   const queues = asArray(adminDiagnostics.queues);
 
@@ -214,6 +216,12 @@ function summarizeDebugBundleManifest(report) {
     printLine(
       "Gamification",
       `${gamification.status} activeChallenges=${gamificationChallenges.active ?? "?"} stuckChallenges=${gamificationChallenges.stuckCompletions ?? "?"} referralCodes=${gamificationReferrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${gamificationReferrals.referrerCreditMismatches ?? "?"}`,
+    );
+  }
+  if (engagement.status) {
+    printLine(
+      "Engagement",
+      `${engagement.status} pending=${engagementTotals.pending ?? "?"} overdue=${engagementTotals.overduePending ?? "?"} failed=${engagementTotals.failed ?? "?"} skipped=${engagementTotals.skipped ?? "?"}`,
     );
   }
   if (agentMembershipIntents.status) {

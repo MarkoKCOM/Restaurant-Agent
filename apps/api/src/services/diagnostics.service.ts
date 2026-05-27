@@ -11,6 +11,7 @@ import { engagementQueue, reminderQueue, summaryQueue } from "../queue/index.js"
 import {
   challengeProgress,
   challenges,
+  engagementJobs,
   guests,
   loyaltyTransactions,
   membershipProcessingFailures,
@@ -52,6 +53,7 @@ export interface DiagnosticsReport {
   operational: {
     membershipProcessing: MembershipProcessingDiagnostic;
     gamification: GamificationDiagnostic;
+    engagement: EngagementDiagnostic;
   };
 }
 
@@ -179,6 +181,36 @@ export interface GamificationDiagnostic {
       bonusCount: number;
     }>;
   };
+  error?: DiagnosticCheck["error"];
+}
+
+export interface EngagementDiagnostic {
+  status: "ok" | "attention" | "error";
+  totals?: {
+    total: number;
+    pending: number;
+    sent: number;
+    skipped: number;
+    failed: number;
+    promotionalPending: number;
+    transactionalPending: number;
+    overduePending: number;
+  };
+  skippedByReason?: Array<{
+    reason: string;
+    count: number;
+  }>;
+  recentAttentionSamples?: Array<{
+    id: string;
+    restaurantId: string;
+    guestId: string;
+    type: string;
+    status: string;
+    messageCategory: string;
+    skipReason: string | null;
+    triggerAt: string;
+    createdAt: string;
+  }>;
   error?: DiagnosticCheck["error"];
 }
 
@@ -530,6 +562,109 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
   }
 }
 
+async function inspectEngagement(): Promise<EngagementDiagnostic> {
+  try {
+    const [summaryRows, skippedRows, sampleRows] = await Promise.all([
+      db.execute(sql`
+        select
+          count(*)::int as total,
+          count(*) filter (where status = 'pending')::int as pending,
+          count(*) filter (where status = 'sent')::int as sent,
+          count(*) filter (where status = 'skipped')::int as skipped,
+          count(*) filter (where status = 'failed')::int as failed,
+          count(*) filter (where status = 'pending' and message_category = 'promotional')::int as promotional_pending,
+          count(*) filter (where status = 'pending' and message_category = 'transactional')::int as transactional_pending,
+          count(*) filter (where status = 'pending' and trigger_at < now() - interval '15 minutes')::int as overdue_pending
+        from ${engagementJobs}
+      `) as Promise<Array<{
+        total: number;
+        pending: number;
+        sent: number;
+        skipped: number;
+        failed: number;
+        promotional_pending: number;
+        transactional_pending: number;
+        overdue_pending: number;
+      }>>,
+      db.execute(sql`
+        select coalesce(skip_reason, 'unknown') as reason, count(*)::int as count
+        from ${engagementJobs}
+        where status = 'skipped'
+        group by coalesce(skip_reason, 'unknown')
+        order by count desc, reason asc
+        limit 5
+      `) as Promise<Array<{
+        reason: string;
+        count: number;
+      }>>,
+      db.execute(sql`
+        select
+          id,
+          restaurant_id,
+          guest_id,
+          type,
+          status,
+          message_category,
+          skip_reason,
+          trigger_at,
+          created_at
+        from ${engagementJobs}
+        where status = 'failed'
+          or (status = 'pending' and trigger_at < now() - interval '15 minutes')
+        order by trigger_at asc
+        limit 5
+      `) as Promise<Array<{
+        id: string;
+        restaurant_id: string;
+        guest_id: string;
+        type: string;
+        status: string;
+        message_category: string;
+        skip_reason: string | null;
+        trigger_at: Date | string;
+        created_at: Date | string;
+      }>>,
+    ]);
+    const summary = summaryRows[0];
+    const failed = Number(summary?.failed ?? 0);
+    const overduePending = Number(summary?.overdue_pending ?? 0);
+
+    return {
+      status: failed > 0 || overduePending > 0 ? "attention" : "ok",
+      totals: {
+        total: Number(summary?.total ?? 0),
+        pending: Number(summary?.pending ?? 0),
+        sent: Number(summary?.sent ?? 0),
+        skipped: Number(summary?.skipped ?? 0),
+        failed,
+        promotionalPending: Number(summary?.promotional_pending ?? 0),
+        transactionalPending: Number(summary?.transactional_pending ?? 0),
+        overduePending,
+      },
+      skippedByReason: skippedRows.map((row) => ({
+        reason: row.reason,
+        count: Number(row.count),
+      })),
+      recentAttentionSamples: sampleRows.map((row) => ({
+        id: row.id,
+        restaurantId: row.restaurant_id,
+        guestId: row.guest_id,
+        type: row.type,
+        status: row.status,
+        messageCategory: row.message_category,
+        skipReason: row.skip_reason,
+        triggerAt: toIsoString(row.trigger_at) ?? "",
+        createdAt: toIsoString(row.created_at) ?? "",
+      })),
+    };
+  } catch (error: unknown) {
+    return {
+      status: "error",
+      error: sanitizeError(error),
+    };
+  }
+}
+
 function parseMigrationFileId(fileName: string): number | undefined {
   const match = fileName.match(/^(\d+)_.*\.sql$/);
   if (!match) return undefined;
@@ -702,12 +837,13 @@ async function inspectDeployment(): Promise<DeploymentDiagnostic> {
 }
 
 export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
-  const [database, redis, deployment, membershipProcessing, gamification, ...queues] = await Promise.all([
+  const [database, redis, deployment, membershipProcessing, gamification, engagement, ...queues] = await Promise.all([
     timedCheck(pingDatabase),
     timedCheck(pingRedis),
     inspectDeployment(),
     inspectMembershipProcessing(),
     inspectGamification(),
+    inspectEngagement(),
     inspectQueue("reservation-reminders", reminderQueue),
     inspectQueue("daily-summary", summaryQueue),
     inspectQueue("engagement", engagementQueue),
@@ -720,6 +856,7 @@ export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
     && deployment.databaseMigrations.status === "ok"
     && membershipProcessing.status !== "error"
     && gamification.status !== "error"
+    && engagement.status !== "error"
     && deployment.migrationDrift?.status !== "mismatch"
     ? "ok"
     : "degraded";
@@ -743,6 +880,7 @@ export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
     operational: {
       membershipProcessing,
       gamification,
+      engagement,
     },
   };
 }

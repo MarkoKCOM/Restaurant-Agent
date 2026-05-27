@@ -207,6 +207,9 @@ async function captureDiagnosticsHighlights(commandRecord) {
     const gamification = isObject(operational.gamification)
       ? operational.gamification
       : {};
+    const engagement = isObject(operational.engagement)
+      ? operational.engagement
+      : {};
     const queues = Array.isArray(diagnostics.queues) ? diagnostics.queues : [];
 
     manifest.highlights.adminDiagnostics = {
@@ -242,6 +245,12 @@ async function captureDiagnosticsHighlights(commandRecord) {
         challenges: gamification.challenges,
         referrals: gamification.referrals,
         error: gamification.error,
+      },
+      engagement: {
+        status: engagement.status,
+        totals: engagement.totals,
+        skippedByReason: engagement.skippedByReason,
+        error: engagement.error,
       },
       queues: queues.map((queue) => ({
         name: queue.name,
@@ -318,6 +327,11 @@ async function writeReadme() {
       const referrals = gamification.referrals ?? {};
       lines.push(
         `- Gamification: ${gamification.status ?? "unknown"} activeChallenges=${challenges.active ?? "?"} stuckChallenges=${challenges.stuckCompletions ?? "?"} referralCodes=${referrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${referrals.referrerCreditMismatches ?? "?"}`,
+      );
+      const engagement = adminDiagnostics.engagement ?? {};
+      const engagementTotals = engagement.totals ?? {};
+      lines.push(
+        `- Engagement: ${engagement.status ?? "unknown"} pending=${engagementTotals.pending ?? "?"} overdue=${engagementTotals.overduePending ?? "?"} failed=${engagementTotals.failed ?? "?"} skipped=${engagementTotals.skipped ?? "?"}`,
       );
       if (agentMembershipIntents) {
         lines.push(

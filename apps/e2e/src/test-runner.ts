@@ -137,6 +137,7 @@ export async function runAllTests(): Promise<TestRunReport> {
     const source = deployment?.source;
     const membershipProcessing = (data as any).operational?.membershipProcessing;
     const gamification = (data as any).operational?.gamification;
+    const engagement = (data as any).operational?.engagement;
     if (!deployment || !migrationDrift) {
       throw new Error("Diagnostics response missing deployment migration state");
     }
@@ -169,7 +170,17 @@ export async function runAllTests(): Promise<TestRunReport> {
     ) {
       throw new Error("Diagnostics response missing gamification summary");
     }
-    return `status=${(data as any).status} build=${source.shortCommit} checkout=${source.checkout.shortCommit} matchesBuild=${source.checkoutMatchesBuild} migrations=${migrationDrift.codeLatestId}/${migrationDrift.databaseLatestId} membershipOpen=${membershipProcessing.openCount} gamification=${gamification.status} activeChallenges=${gamification.challenges.active} stuckChallenges=${gamification.challenges.stuckCompletions} referralCreditMismatches=${gamification.referrals.referrerCreditMismatches}`;
+    if (
+      !engagement
+      || !["ok", "attention"].includes(engagement.status)
+      || typeof engagement.totals?.pending !== "number"
+      || typeof engagement.totals?.overduePending !== "number"
+      || typeof engagement.totals?.failed !== "number"
+      || typeof engagement.totals?.skipped !== "number"
+    ) {
+      throw new Error("Diagnostics response missing engagement summary");
+    }
+    return `status=${(data as any).status} build=${source.shortCommit} checkout=${source.checkout.shortCommit} matchesBuild=${source.checkoutMatchesBuild} migrations=${migrationDrift.codeLatestId}/${migrationDrift.databaseLatestId} membershipOpen=${membershipProcessing.openCount} gamification=${gamification.status} activeChallenges=${gamification.challenges.active} stuckChallenges=${gamification.challenges.stuckCompletions} referralCreditMismatches=${gamification.referrals.referrerCreditMismatches} engagement=${engagement.status} engagementPending=${engagement.totals.pending} engagementOverdue=${engagement.totals.overduePending} engagementFailed=${engagement.totals.failed}`;
   }));
 
   results.push(await runTest("API Diagnostics: missing token envelope", async () => {

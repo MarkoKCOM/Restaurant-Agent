@@ -47,6 +47,7 @@
   - agent tools now include membership summary and membership-message opt-out actions
   - `/api/v1/agent/debug/membership-intent` maps common WhatsApp membership phrases to expected tools without an LLM call
   - E2E probes cover Hebrew/English balance, rewards, referral, and opt-out intents
+  - agent tool traces now classify malformed LLM tool arguments separately from tool execution failures, making bad tool-call JSON visible without losing the request to a generic agent error
 - Owner-facing morning summary operations:
   - analytics dashboard now previews the WhatsApp-style daily morning summary with owner-recipient readiness, notable guests, and alerts
   - admins can manually log the morning summary to the outbound message trail for delivery debugging and support follow-up

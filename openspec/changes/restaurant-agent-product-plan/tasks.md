@@ -150,6 +150,7 @@
 - [x] 13.17 Surface settings reward-catalog load errors — Settings reward management shows formatted HTTP/code/request-ID details instead of an empty-looking reward catalog
 - [x] 13.18 Surface partial analytics load errors — analytics page labels failed reservation/retention/loyalty/CLV/campaign queries with formatted HTTP/code/request-ID details while leaving healthy sections visible
 - [x] 13.19 Harden staff reward-claim feedback — Today claim verification uses stable loyalty API codes for not-found/already-redeemed states while preserving HTTP/code/request-ID details
+- [x] 13.20 Classify agent tool-call failures — malformed LLM tool arguments and tool execution failures appear as distinct toolTrace error codes instead of generic agent failures
 
 ## 14. Branding & Landing Page
 

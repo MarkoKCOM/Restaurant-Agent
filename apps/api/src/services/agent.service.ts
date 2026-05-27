@@ -45,6 +45,7 @@ export interface AgentToolTraceEvent {
   tool: string;
   success: boolean;
   elapsedMs: number;
+  errorCode?: "AGENT_TOOL_ARGS_INVALID" | "AGENT_TOOL_EXECUTION_FAILED";
   error?: string;
 }
 
@@ -308,11 +309,38 @@ export async function handleMessage(req: AgentRequest): Promise<AgentResponse> {
       // Execute each tool call
       for (const tc of result.tool_calls) {
         const toolName = tc.function.name;
-        const toolArgs = JSON.parse(tc.function.arguments);
         toolsUsed.push(toolName);
 
         let toolResult: string;
         const startedAt = Date.now();
+        let toolArgs: Record<string, unknown>;
+        try {
+          const parsedArgs = JSON.parse(tc.function.arguments) as unknown;
+          if (!parsedArgs || typeof parsedArgs !== "object" || Array.isArray(parsedArgs)) {
+            throw new Error("Tool arguments must be a JSON object");
+          }
+          toolArgs = parsedArgs as Record<string, unknown>;
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          toolTrace.push({
+            tool: toolName,
+            success: false,
+            elapsedMs: Date.now() - startedAt,
+            errorCode: "AGENT_TOOL_ARGS_INVALID",
+            error: errorMessage,
+          });
+          toolResult = JSON.stringify({ error: "Invalid tool arguments", code: "AGENT_TOOL_ARGS_INVALID" });
+
+          const toolMsg: Message = {
+            role: "tool",
+            content: toolResult,
+            tool_call_id: tc.id,
+          };
+          llmMessages.push(toolMsg);
+          ctx.messages.push(toolMsg);
+          continue;
+        }
+
         try {
           const output = await executeTool(toolName, toolArgs, ctx);
           toolResult = typeof output === "string" ? output : JSON.stringify(output);
@@ -327,9 +355,10 @@ export async function handleMessage(req: AgentRequest): Promise<AgentResponse> {
             tool: toolName,
             success: false,
             elapsedMs: Date.now() - startedAt,
+            errorCode: "AGENT_TOOL_EXECUTION_FAILED",
             error: errorMessage,
           });
-          toolResult = JSON.stringify({ error: errorMessage });
+          toolResult = JSON.stringify({ error: errorMessage, code: "AGENT_TOOL_EXECUTION_FAILED" });
         }
 
         const toolMsg: Message = {

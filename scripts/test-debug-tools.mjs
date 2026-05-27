@@ -1058,6 +1058,7 @@ const campaignRoutes = await readFile("apps/api/src/routes/campaigns.ts", "utf8"
 const analyticsRoutes = await readFile("apps/api/src/routes/analytics.ts", "utf8");
 const analyticsService = await readFile("apps/api/src/services/analytics.service.ts", "utf8");
 const agentRoutes = await readFile("apps/api/src/routes/agent.ts", "utf8");
+const agentService = await readFile("apps/api/src/services/agent.service.ts", "utf8");
 const engagementRoutes = await readFile("apps/api/src/routes/engagement.ts", "utf8");
 const visitsRoutes = await readFile("apps/api/src/routes/visits.ts", "utf8");
 const reservationRoutes = await readFile("apps/api/src/routes/reservations.ts", "utf8");
@@ -1515,6 +1516,17 @@ for (const requiredAgentRouteContent of [
   "messageLength: body.message.length",
 ]) {
   assertIncludes(agentRoutes, requiredAgentRouteContent);
+}
+
+for (const requiredAgentServiceContent of [
+  "errorCode?: \"AGENT_TOOL_ARGS_INVALID\" | \"AGENT_TOOL_EXECUTION_FAILED\"",
+  "Tool arguments must be a JSON object",
+  "errorCode: \"AGENT_TOOL_ARGS_INVALID\"",
+  "code: \"AGENT_TOOL_ARGS_INVALID\"",
+  "errorCode: \"AGENT_TOOL_EXECUTION_FAILED\"",
+  "code: \"AGENT_TOOL_EXECUTION_FAILED\"",
+]) {
+  assertIncludes(agentService, requiredAgentServiceContent);
 }
 
 for (const requiredLoyaltyPackageContent of [

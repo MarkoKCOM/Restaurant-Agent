@@ -351,6 +351,7 @@ Agent message responses include sanitized diagnostics:
 - `diagnostics.requestId`
 - `diagnostics.llmRounds`
 - `diagnostics.toolTrace[]` with tool name, success flag, elapsed milliseconds, and sanitized error text
+- failed tool traces include `errorCode`, such as `AGENT_TOOL_ARGS_INVALID` for malformed LLM tool arguments and `AGENT_TOOL_EXECUTION_FAILED` for tool/API execution failures
 
 The API logs the same request ID, selected tools, and tool timings. Use this when Jake answers incorrectly or silently skips a tool:
 

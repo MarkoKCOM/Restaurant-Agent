@@ -76,6 +76,8 @@ The bundle is written to `artifacts/debug-bundles/<timestamp>/`. Set `OPENSEAT_T
 
 The bundle also runs deterministic membership-intent probes against `/api/v1/agent/debug/membership-intent`, covering balance, reward, referral, and promotional opt-out phrases. These checks do not call the LLM; they prove the agent debugging layer still maps common membership questions to the expected tools.
 
+Before endpoint probes run, the bundle waits for `/api/v1/health` to become ready. Tune startup waiting with `OPENSEAT_BUNDLE_READY_TIMEOUT_MS` and `OPENSEAT_BUNDLE_READY_INTERVAL_MS` when collecting immediately after a restart.
+
 After pulling changes that touch `packages/domain`, rebuild it before checking apps that import `@openseat/domain`.
 
 The main E2E runner writes a JSON artifact for every CLI run. By default it lands under `apps/e2e/artifacts/<runId>.json` and includes the API URL, timings, pass/fail counts, and per-test details:

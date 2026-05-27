@@ -65,6 +65,7 @@ const manifest = {
   service,
   since,
   outDir,
+  readiness: {},
   commands: [],
   highlights: {},
 };
@@ -114,6 +115,43 @@ async function writeJson(name, value) {
   const outputPath = resolve(outDir, name);
   await writeFile(outputPath, `${JSON.stringify(value, null, 2)}\n`);
   return outputPath;
+}
+
+async function waitForApiReady() {
+  const startedAt = Date.now();
+  const timeoutMs = Number(process.env.OPENSEAT_BUNDLE_READY_TIMEOUT_MS ?? 15_000);
+  const intervalMs = Number(process.env.OPENSEAT_BUNDLE_READY_INTERVAL_MS ?? 500);
+  let attempts = 0;
+  let lastError = "";
+
+  while (Date.now() - startedAt <= timeoutMs) {
+    attempts += 1;
+    try {
+      const response = await fetch(`${apiUrl}/api/v1/health`, {
+        headers: { "x-request-id": `debug-bundle-ready-${Date.now()}` },
+      });
+      if (response.ok) {
+        manifest.readiness = {
+          status: "ready",
+          attempts,
+          elapsedMs: Date.now() - startedAt,
+        };
+        return;
+      }
+      lastError = `HTTP ${response.status}`;
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+    }
+
+    await new Promise((resolveWait) => setTimeout(resolveWait, intervalMs));
+  }
+
+  manifest.readiness = {
+    status: "timeout",
+    attempts,
+    elapsedMs: Date.now() - startedAt,
+    lastError,
+  };
 }
 
 async function readJson(path) {
@@ -218,6 +256,7 @@ async function writeReadme() {
     `Created: ${manifest.createdAt}`,
     `API URL: ${apiUrl}`,
     `Service logs: ${service} since ${since}`,
+    `Readiness: ${manifest.readiness.status ?? "unknown"} after ${manifest.readiness.attempts ?? "?"} attempt(s)`,
     "",
     "## Status",
     "",
@@ -352,6 +391,7 @@ async function getDiagnosticsToken() {
 }
 
 await mkdir(outDir, { recursive: true });
+await waitForApiReady();
 
 await runStep("health-probe", "node", ["scripts/api-debug-probe.mjs", `${apiUrl}/api/v1/health`], {
   env: {

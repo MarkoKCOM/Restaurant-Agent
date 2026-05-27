@@ -162,6 +162,7 @@ for (const changedPath of [
 const debugBundleCollector = await readFile("scripts/collect-debug-bundle.mjs", "utf8");
 for (const requiredReadmeContent of [
   "# OpenSeat Debug Bundle",
+  "Readiness:",
   "| Step | Status | File | Notes |",
   "## Highlights",
   "Admin diagnostics:",
@@ -175,6 +176,8 @@ for (const requiredReadmeContent of [
   "Agent membership intents:",
   "agent-membership-intents",
   "agent-membership-intents.json",
+  "waitForApiReady",
+  "OPENSEAT_BUNDLE_READY_TIMEOUT_MS",
   "Queues:",
   "Diagnostics request:",
   "## Open First",

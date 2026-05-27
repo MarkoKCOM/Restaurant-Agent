@@ -66,6 +66,18 @@ function deployWorkflowMatches(path) {
   return exactMatches.has(path) || prefixMatches.some((prefix) => path.startsWith(prefix));
 }
 
+function deployAppImpacts(path) {
+  const allApps = { dashboard: true, marketing: true, widget: true };
+  if (["pnpm-lock.yaml", "pnpm-workspace.yaml", "turbo.json"].includes(path) || path.startsWith("packages/")) {
+    return allApps;
+  }
+  return {
+    dashboard: path.startsWith("apps/dashboard/"),
+    marketing: path.startsWith("apps/marketing-site/"),
+    widget: path.startsWith("apps/booking-widget/"),
+  };
+}
+
 const smokePath = await writeJson("smoke.json", {
   status: "failed",
   runId: "smoke-test",
@@ -371,6 +383,12 @@ for (const requiredPath of [
   "turbo.json",
   "detect-deploy-impact",
   "should-deploy",
+  "deploy-dashboard",
+  "deploy-marketing",
+  "deploy-widget",
+  "deploy_dashboard=true",
+  "deploy_marketing=true",
+  "deploy_widget=true",
 ]) {
   assertIncludes(deployWorkflow, requiredPath);
 }
@@ -395,6 +413,22 @@ for (const changedPath of [
   "package.json",
 ]) {
   assert(!deployWorkflowMatches(changedPath), `Expected ${changedPath} to skip Vercel deploy`);
+}
+
+for (const [changedPath, expected] of [
+  ["apps/dashboard/src/App.tsx", { dashboard: true, marketing: false, widget: false }],
+  ["apps/booking-widget/src/main.tsx", { dashboard: false, marketing: false, widget: true }],
+  ["apps/marketing-site/src/LandingPage.tsx", { dashboard: false, marketing: true, widget: false }],
+  ["packages/domain/src/index.ts", { dashboard: true, marketing: true, widget: true }],
+  [".github/workflows/deploy.yml", { dashboard: false, marketing: false, widget: false }],
+]) {
+  const actual = deployAppImpacts(changedPath);
+  assert(
+    actual.dashboard === expected.dashboard
+      && actual.marketing === expected.marketing
+      && actual.widget === expected.widget,
+    `Unexpected deploy app impact for ${changedPath}: ${JSON.stringify(actual)}`,
+  );
 }
 
 const debugBundleCollector = await readFile("scripts/collect-debug-bundle.mjs", "utf8");

@@ -33,6 +33,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       should-deploy: ${{ steps.filter.outputs.should_deploy }}
+      deploy-dashboard: ${{ steps.filter.outputs.deploy_dashboard }}
+      deploy-marketing: ${{ steps.filter.outputs.deploy_marketing }}
+      deploy-widget: ${{ steps.filter.outputs.deploy_widget }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,20 +57,44 @@ jobs:
           fi
 
           should_deploy=false
+          deploy_dashboard=false
+          deploy_marketing=false
+          deploy_widget=false
           while IFS= read -r path; do
             case "$path" in
-              apps/booking-widget/*|apps/dashboard/*|apps/marketing-site/*|packages/*|pnpm-lock.yaml|pnpm-workspace.yaml|turbo.json)
+              apps/dashboard/*)
                 should_deploy=true
+                deploy_dashboard=true
+                ;;
+              apps/marketing-site/*)
+                should_deploy=true
+                deploy_marketing=true
+                ;;
+              apps/booking-widget/*)
+                should_deploy=true
+                deploy_widget=true
+                ;;
+              packages/*|pnpm-lock.yaml|pnpm-workspace.yaml|turbo.json)
+                should_deploy=true
+                deploy_dashboard=true
+                deploy_marketing=true
+                deploy_widget=true
                 ;;
             esac
           done < <(git diff --name-only "$base" "${{ github.sha }}")
 
           echo "should_deploy=$should_deploy" >> "$GITHUB_OUTPUT"
+          echo "deploy_dashboard=$deploy_dashboard" >> "$GITHUB_OUTPUT"
+          echo "deploy_marketing=$deploy_marketing" >> "$GITHUB_OUTPUT"
+          echo "deploy_widget=$deploy_widget" >> "$GITHUB_OUTPUT"
           echo "should_deploy=$should_deploy"
+          echo "deploy_dashboard=$deploy_dashboard"
+          echo "deploy_marketing=$deploy_marketing"
+          echo "deploy_widget=$deploy_widget"
 
   deploy-dashboard:
     needs: detect-deploy-impact
-    if: needs.detect-deploy-impact.outputs.should-deploy == 'true'
+    if: needs.detect-deploy-impact.outputs.deploy-dashboard == 'true'
     runs-on: ubuntu-latest
     env:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_DASHBOARD_PROJECT_ID }}
@@ -102,7 +129,7 @@ jobs:
 
   deploy-marketing:
     needs: detect-deploy-impact
-    if: needs.detect-deploy-impact.outputs.should-deploy == 'true'
+    if: needs.detect-deploy-impact.outputs.deploy-marketing == 'true'
     runs-on: ubuntu-latest
     env:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_MARKETING_PROJECT_ID }}
@@ -137,7 +164,7 @@ jobs:
 
   deploy-widget:
     needs: detect-deploy-impact
-    if: needs.detect-deploy-impact.outputs.should-deploy == 'true'
+    if: needs.detect-deploy-impact.outputs.deploy-widget == 'true'
     runs-on: ubuntu-latest
     env:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_WIDGET_PROJECT_ID }}

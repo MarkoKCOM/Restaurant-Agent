@@ -94,7 +94,7 @@
 - [ ] 9.2 Implement review solicitation — positive sentiment → Google Review link, negative → route to owner
 - [ ] 9.3 Implement sentiment analysis on engagement responses using Claude Haiku
 - [ ] 9.4 Implement complaint interception and service recovery workflow — detect negative response, notify owner, suggest recovery actions
-- [ ] 9.5 Implement birthday automation — daily job checks upcoming birthdays, sends personalized greeting + offer
+- [x] 9.5 Implement birthday automation — daily job checks upcoming birthdays, sends personalized greeting + offer
 - [ ] 9.6 Implement anniversary automation — yearly trigger on first-visit anniversary
 - [x] 9.7 Implement win-back automation — 30/60/90 day escalation for lapsed guests
 

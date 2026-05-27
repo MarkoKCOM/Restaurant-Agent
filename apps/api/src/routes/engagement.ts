@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import {
   listEngagementJobs,
+  checkBirthdays,
   checkWinBack,
 } from "../services/engagement.service.js";
 import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
@@ -63,6 +64,40 @@ export async function engagementRoutes(app: FastifyInstance) {
 
     const jobs = await listEngagementJobs({ restaurantId, guestId, status, messageCategory });
     return { jobs };
+  });
+
+  // POST /birthdays/check — manually trigger birthday greeting check for a restaurant
+  app.post("/birthdays/check", async (request, reply) => {
+    const { restaurantId } = request.query as { restaurantId?: string };
+
+    if (!restaurantId) {
+      return sendEngagementError(
+        request,
+        reply,
+        400,
+        "restaurantId query parameter is required",
+        "RESTAURANT_ID_REQUIRED",
+      );
+    }
+
+    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return sendEngagementError(request, reply, 403, err, "ENGAGEMENT_FORBIDDEN", { restaurantId });
+    }
+
+    try {
+      const result = await checkBirthdays(restaurantId);
+      return { result };
+    } catch (error: unknown) {
+      return sendEngagementError(
+        request,
+        reply,
+        500,
+        "Birthday check failed",
+        "BIRTHDAY_CHECK_FAILED",
+        { err: error, restaurantId },
+      );
+    }
   });
 
   // POST /win-back/check — manually trigger win-back check for a restaurant

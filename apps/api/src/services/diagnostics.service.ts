@@ -225,6 +225,15 @@ export interface EngagementDiagnostic {
       dueType: string;
     }>;
   };
+  birthdays?: {
+    dueUnscheduledToday: number;
+    invalidBirthdayCount: number;
+    samples: Array<{
+      guestId: string;
+      restaurantId: string;
+      birthday: string;
+    }>;
+  };
   skippedByReason?: Array<{
     reason: string;
     count: number;
@@ -676,7 +685,7 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
 
 async function inspectEngagement(): Promise<EngagementDiagnostic> {
   try {
-    const [summaryRows, skippedRows, sampleRows, winBackRows, winBackSampleRows] = await Promise.all([
+    const [summaryRows, skippedRows, sampleRows, winBackRows, winBackSampleRows, birthdayRows, birthdaySampleRows] = await Promise.all([
       db.execute(sql`
         select
           count(*)::int as total,
@@ -808,15 +817,91 @@ async function inspectEngagement(): Promise<EngagementDiagnostic> {
         last_visit_date: string;
         due_type: string;
       }>>,
+      db.execute(sql`
+        with birthday_guests as (
+          select
+            g.id,
+            g.restaurant_id,
+            g.preferences ->> 'birthday' as birthday,
+            case
+              when g.preferences ->> 'birthday' ~ '^\\d{4}-\\d{2}-\\d{2}$' then substring(g.preferences ->> 'birthday' from 6 for 5)
+              when g.preferences ->> 'birthday' ~ '^\\d{2}-\\d{2}$' then g.preferences ->> 'birthday'
+            end as month_day
+          from ${guests} g
+          where g.preferences ? 'birthday'
+        ),
+        due as (
+          select *
+          from birthday_guests
+          where month_day = to_char(now() at time zone 'Asia/Jerusalem', 'MM-DD')
+        ),
+        unscheduled as (
+          select d.*
+          from due d
+          where not exists (
+            select 1
+            from ${engagementJobs} ej
+            where ej.guest_id = d.id
+              and ej.restaurant_id = d.restaurant_id
+              and ej.type = 'birthday'
+              and ej.trigger_at >= date_trunc('day', now() at time zone 'Asia/Jerusalem') at time zone 'Asia/Jerusalem'
+              and ej.trigger_at < (date_trunc('day', now() at time zone 'Asia/Jerusalem') + interval '1 day') at time zone 'Asia/Jerusalem'
+          )
+        )
+        select
+          (select count(*)::int from unscheduled) as due_unscheduled_today,
+          (select count(*)::int from birthday_guests where birthday is not null and month_day is null) as invalid_birthday_count
+      `) as Promise<Array<{
+        due_unscheduled_today: number;
+        invalid_birthday_count: number;
+      }>>,
+      db.execute(sql`
+        with birthday_guests as (
+          select
+            g.id,
+            g.restaurant_id,
+            g.preferences ->> 'birthday' as birthday,
+            case
+              when g.preferences ->> 'birthday' ~ '^\\d{4}-\\d{2}-\\d{2}$' then substring(g.preferences ->> 'birthday' from 6 for 5)
+              when g.preferences ->> 'birthday' ~ '^\\d{2}-\\d{2}$' then g.preferences ->> 'birthday'
+            end as month_day
+          from ${guests} g
+          where g.preferences ? 'birthday'
+        ),
+        due as (
+          select *
+          from birthday_guests
+          where month_day = to_char(now() at time zone 'Asia/Jerusalem', 'MM-DD')
+        )
+        select d.id, d.restaurant_id, d.birthday
+        from due d
+        where not exists (
+          select 1
+          from ${engagementJobs} ej
+          where ej.guest_id = d.id
+            and ej.restaurant_id = d.restaurant_id
+            and ej.type = 'birthday'
+            and ej.trigger_at >= date_trunc('day', now() at time zone 'Asia/Jerusalem') at time zone 'Asia/Jerusalem'
+            and ej.trigger_at < (date_trunc('day', now() at time zone 'Asia/Jerusalem') + interval '1 day') at time zone 'Asia/Jerusalem'
+        )
+        order by d.restaurant_id asc, d.id asc
+        limit 5
+      `) as Promise<Array<{
+        id: string;
+        restaurant_id: string;
+        birthday: string;
+      }>>,
     ]);
     const summary = summaryRows[0];
     const winBackSummary = winBackRows[0];
+    const birthdaySummary = birthdayRows[0];
     const failed = Number(summary?.failed ?? 0);
     const overduePending = Number(summary?.overdue_pending ?? 0);
     const dueUnscheduledTotal = Number(winBackSummary?.due_unscheduled_total ?? 0);
+    const birthdayDueUnscheduledToday = Number(birthdaySummary?.due_unscheduled_today ?? 0);
 
     return {
-      status: failed > 0 || overduePending > 0 || dueUnscheduledTotal > 0 ? "attention" : "ok",
+      status: failed > 0 || overduePending > 0 || dueUnscheduledTotal > 0 || birthdayDueUnscheduledToday > 0 ? "attention" : "ok",
       totals: {
         total: Number(summary?.total ?? 0),
         pending: Number(summary?.pending ?? 0),
@@ -837,6 +922,15 @@ async function inspectEngagement(): Promise<EngagementDiagnostic> {
           restaurantId: row.restaurant_id,
           lastVisitDate: String(row.last_visit_date),
           dueType: row.due_type,
+        })),
+      },
+      birthdays: {
+        dueUnscheduledToday: birthdayDueUnscheduledToday,
+        invalidBirthdayCount: Number(birthdaySummary?.invalid_birthday_count ?? 0),
+        samples: birthdaySampleRows.map((row) => ({
+          guestId: row.id,
+          restaurantId: row.restaurant_id,
+          birthday: row.birthday,
         })),
       },
       skippedByReason: skippedRows.map((row) => ({

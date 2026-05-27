@@ -241,6 +241,7 @@ export async function guestRoutes(app: FastifyInstance) {
       notes: z.string().default(""),
       hospitalitySignals: z.array(z.string()).default([]),
       hospitalityNote: z.string().default(""),
+      birthday: z.string().regex(/^(\d{2}-\d{2}|\d{4}-\d{2}-\d{2})$/).optional(),
     });
 
     const prefs = preferencesSchema.parse(request.body ?? {});

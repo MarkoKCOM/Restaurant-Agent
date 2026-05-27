@@ -83,6 +83,17 @@ function dayKeyForDate(value) {
   return ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][new Date(`${value}T12:00:00`).getDay()];
 }
 
+function jerusalemMonthDay() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jerusalem",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return `${month}-${day}`;
+}
+
 const runId = `smoke-${Date.now()}`;
 let reservationDate = plusDays(10);
 const visitDate = plusDays(0);
@@ -456,6 +467,43 @@ async function main() {
     statuses: [...new Set((engagementJobs.jobs ?? []).map((job) => job.status))],
     types: [...new Set((engagementJobs.jobs ?? []).map((job) => job.type))],
   });
+
+  const birthdayGuest = await request("/api/v1/guests", {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      name: `Smoke Birthday ${runId}`,
+      phone: `053${String(Date.now()).slice(-7)}`,
+      language: "he",
+      source: "web",
+    },
+  });
+  const birthdayGuestId = birthdayGuest.guest?.id;
+  if (!birthdayGuestId) throw new Error("Birthday smoke guest create endpoint did not return guest.id");
+
+  await request(`/api/v1/guests/${birthdayGuestId}`, {
+    method: "PATCH",
+    token,
+    body: { preferences: { birthday: jerusalemMonthDay() } },
+  });
+  const birthdayCheck = await request(`/api/v1/engagement/birthdays/check?restaurantId=${restaurantId}`, {
+    method: "POST",
+    token,
+  });
+  const birthdayJobs = await request(`/api/v1/engagement/jobs?restaurantId=${restaurantId}&guestId=${birthdayGuestId}`, { token });
+  const birthdayJob = (birthdayJobs.jobs ?? []).find((job) => job.type === "birthday");
+  record("engagement.birthday-check", {
+    guestId: birthdayGuestId,
+    due: birthdayCheck.result?.due ?? null,
+    scheduled: birthdayCheck.result?.scheduled ?? null,
+    skippedExisting: birthdayCheck.result?.skippedExisting ?? null,
+    skippedPolicy: birthdayCheck.result?.skippedPolicy ?? null,
+    jobStatus: birthdayJob?.status ?? null,
+  });
+  if (!birthdayJob || !["pending", "sent", "skipped"].includes(birthdayJob.status)) {
+    throw new Error(`Birthday check did not create a birthday engagement job: ${JSON.stringify(birthdayCheck.result ?? {})}`);
+  }
 
   const winBackGuest = await request("/api/v1/guests", {
     method: "POST",

@@ -22,10 +22,8 @@ import { createReminderWorker } from "./queue/reminder.worker.js";
 import { createSummaryWorker } from "./queue/summary.worker.js";
 import { createEngagementWorker } from "./queue/engagement.worker.js";
 import { summaryQueue, engagementQueue } from "./queue/index.js";
-import { checkWinBack } from "./services/engagement.service.js";
 import { db } from "./db/index.js";
 import { restaurants } from "./db/schema.js";
-import { eq } from "drizzle-orm";
 
 function getRequestId(req: IncomingMessage): string {
   const incoming = req.headers["x-request-id"];
@@ -171,6 +169,18 @@ try {
           tz: "Asia/Jerusalem",
         },
         jobId: `win-back-cron-${restaurant.id}`,
+      },
+    );
+
+    await engagementQueue.add(
+      "birthday-check",
+      { type: "birthday_cron", restaurantId: restaurant.id },
+      {
+        repeat: {
+          pattern: "0 9 * * *",
+          tz: "Asia/Jerusalem",
+        },
+        jobId: `birthday-cron-${restaurant.id}`,
       },
     );
 

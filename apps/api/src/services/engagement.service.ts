@@ -72,6 +72,30 @@ async function findAnyEngagementJob(params: {
   return existingJob;
 }
 
+async function findEngagementJobInWindow(params: {
+  guestId: string;
+  restaurantId: string;
+  type: string;
+  windowStart: Date;
+  windowEnd: Date;
+}): Promise<EngagementJobRow | undefined> {
+  const [existingJob] = await db
+    .select()
+    .from(engagementJobs)
+    .where(
+      and(
+        eq(engagementJobs.guestId, params.guestId),
+        eq(engagementJobs.restaurantId, params.restaurantId),
+        eq(engagementJobs.type, params.type),
+        gte(engagementJobs.triggerAt, params.windowStart),
+        lt(engagementJobs.triggerAt, params.windowEnd),
+      ),
+    )
+    .limit(1);
+
+  return existingJob;
+}
+
 async function getGuestOptOutState(guestId: string): Promise<boolean | null> {
   const [guest] = await db
     .select({ optedOutCampaigns: guests.optedOutCampaigns })
@@ -274,6 +298,115 @@ export async function scheduleBirthdayGreeting(
   }
 
   return scheduleEngagementJob({ guestId, restaurantId, type: "birthday", triggerAt });
+}
+
+function getBirthdayMonthDay(birthday: unknown): string | null {
+  if (typeof birthday !== "string") return null;
+  const normalized = birthday.trim();
+  if (/^\d{2}-\d{2}$/.test(normalized)) return normalized;
+  const isoDate = normalized.match(/^\d{4}-(\d{2}-\d{2})$/);
+  return isoDate?.[1] ?? null;
+}
+
+function getJerusalemMonthDay(date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jerusalem",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return `${month}-${day}`;
+}
+
+function getBirthdayTriggerAt(monthDay: string, referenceDate = new Date()): Date | null {
+  const [month, day] = monthDay.split("-");
+  if (!month || !day) return null;
+
+  const jerusalemYear = Number(new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jerusalem",
+    year: "numeric",
+  }).format(referenceDate));
+  const target = new Date(`${jerusalemYear}-${month}-${day}T10:00:00+03:00`);
+  if (Number.isNaN(target.getTime())) return null;
+
+  return target.getTime() < referenceDate.getTime()
+    ? new Date(referenceDate.getTime() + 60 * 1000)
+    : target;
+}
+
+export interface BirthdayCheckResult {
+  scheduled: number;
+  skippedExisting: number;
+  skippedPolicy: number;
+  skippedInvalidBirthday: number;
+  due: number;
+}
+
+/**
+ * Find guests with birthdays today and schedule a promotional greeting.
+ */
+export async function checkBirthdays(restaurantId: string): Promise<BirthdayCheckResult> {
+  const result: BirthdayCheckResult = {
+    scheduled: 0,
+    skippedExisting: 0,
+    skippedPolicy: 0,
+    skippedInvalidBirthday: 0,
+    due: 0,
+  };
+  const todayMonthDay = getJerusalemMonthDay();
+  const triggerAt = getBirthdayTriggerAt(todayMonthDay);
+  if (!triggerAt) return result;
+
+  const windowStart = new Date(triggerAt);
+  windowStart.setUTCHours(0, 0, 0, 0);
+  const windowEnd = new Date(windowStart);
+  windowEnd.setUTCDate(windowEnd.getUTCDate() + 1);
+
+  const restaurantGuests = await db
+    .select()
+    .from(guests)
+    .where(eq(guests.restaurantId, restaurantId));
+
+  for (const guest of restaurantGuests) {
+    const prefs = guest.preferences as Record<string, unknown> | null;
+    if (!prefs || !("birthday" in prefs)) continue;
+
+    const monthDay = getBirthdayMonthDay(prefs.birthday);
+    if (!monthDay) {
+      result.skippedInvalidBirthday++;
+      continue;
+    }
+    if (monthDay !== todayMonthDay) continue;
+
+    result.due++;
+    const existingJob = await findEngagementJobInWindow({
+      restaurantId,
+      guestId: guest.id,
+      type: "birthday",
+      windowStart,
+      windowEnd,
+    });
+    if (existingJob) {
+      result.skippedExisting++;
+      continue;
+    }
+
+    const job = await scheduleEngagementJob({
+      restaurantId,
+      guestId: guest.id,
+      type: "birthday",
+      triggerAt,
+    });
+
+    if (job.status === "pending") {
+      result.scheduled++;
+    } else if (job.status === "skipped") {
+      result.skippedPolicy++;
+    }
+  }
+
+  return result;
 }
 
 /**

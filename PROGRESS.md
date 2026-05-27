@@ -15,6 +15,10 @@
   - 30/60/90-day win-back checks now catch due or overdue guests instead of relying on an exact last-visit date match
   - win-back checks avoid repeatedly scheduling the same tier for a guest once any job for that tier exists
   - diagnostics/debug-bundle summaries expose unscheduled win-back due counts, and API smoke verifies a 31-day lapsed guest gets a pending `win_back_30` job
+- Birthday automation:
+  - daily restaurant birthday checks schedule a promotional birthday greeting for guests whose saved birthday is today
+  - manual `POST /api/v1/engagement/birthdays/check` uses the same tenant checks and policy gates as other engagement automation
+  - diagnostics/debug-bundle summaries expose unscheduled birthday greetings due today, and API smoke verifies the birthday path creates an engagement job
 - WhatsApp-ready referral retrieval/share flow:
   - `GET /api/v1/loyalty/:guestId/referral-share` generates or returns a member referral code
   - response includes referral stats and Hebrew/English share copy

@@ -94,6 +94,7 @@ const smokePath = await writeJson("smoke.json", {
     { step: "gamification.challenge-idempotency", challengeId: "challenge-test-1", progress: 1, target: 1, completed: true, pointsBefore: 15, pointsAfter: 15 },
     { step: "gamification.challenge.cleanup", challengeId: "challenge-test-1", isActive: false },
     { step: "gamification.menu-exploration", categoryCount: 2, badges: ["first_taste", "menu_explorer"] },
+    { step: "engagement.birthday-check", due: 1, scheduled: 1, skippedExisting: 0, skippedPolicy: 0, jobStatus: "pending" },
     { step: "engagement.win-back-overdue", scheduled30: 1, skippedExisting: 0, skippedPolicy: 0, jobStatus: "pending" },
   ],
   requests: [
@@ -132,6 +133,7 @@ assertIncludes(smokeOutput, "gamification.challenge-progress: progress=1/1 statu
 assertIncludes(smokeOutput, "gamification.challenge-idempotency: progress=1/1 points=15->15 duplicateAward=no");
 assertIncludes(smokeOutput, "gamification.challenge.cleanup: active=no challengeId=challenge-test-1");
 assertIncludes(smokeOutput, "gamification.menu-exploration: categories=2 badges=first_taste,menu_explorer");
+assertIncludes(smokeOutput, "engagement.birthday-check: due=1 scheduled=1 existing=0 policy=0 status=pending");
 assertIncludes(smokeOutput, "engagement.win-back-overdue: scheduled30=1 existing=0 policy=0 status=pending");
 assertIncludes(smokeOutput, "Unhandled HTTP failures: 1");
 assertIncludes(smokeOutput, "POST /api/v1/reservations -> 500 code=INTERNAL_ERROR requestId=smoke-test-2");
@@ -302,6 +304,9 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
         winBack: {
           dueUnscheduledTotal: 2,
         },
+        birthdays: {
+          dueUnscheduledToday: 1,
+        },
       },
       queues: [
         { name: "membership-events", status: "ok", failed: 0 },
@@ -327,7 +332,7 @@ assertIncludes(
   debugBundleManifestOutput,
   "Gamification: attention activeChallenges=2 smokeChallenges=1 stuckChallenges=1 duplicateProgress=1 referralCodes=7 referralCreditMismatches=1 menuBadgeGuests=5",
 );
-assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overdue=1 failed=1 skipped=3 winBackDue=2");
+assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overdue=1 failed=1 skipped=3 winBackDue=2 birthdayDue=1");
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");
 assertIncludes(debugBundleManifestOutput, "Queues: membership-events:ok/failed=0");
 assertIncludes(debugBundleManifestOutput, "Failed commands: 1");

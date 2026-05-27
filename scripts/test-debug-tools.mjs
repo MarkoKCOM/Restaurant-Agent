@@ -302,6 +302,20 @@ const agentIntentFetchFailureOutput = await summarize(agentIntentFetchFailurePat
 assertIncludes(agentIntentFetchFailureOutput, "Type: agent-membership-intent");
 assertIncludes(agentIntentFetchFailureOutput, "fetch failed code=ECONNREFUSED requestId=agent-intent-fetch-failed-test-1");
 
+const queueDebugSummaryPath = join(tempDir, "queue-debug-summary.txt");
+await writeFile(queueDebugSummaryPath, [
+  "OpenSeat Queue Debug Summary",
+  "Queue: daily-summary",
+  "summary schedule health:",
+  "- restaurants=9",
+  "- daily-morning-summary expected=9 found=9 pattern=0 9 * * * status=ok",
+  "- daily-summary expected=9 found=9 pattern=0 23 * * * status=ok",
+  "- restaurantTimezones=Asia/Jerusalem:9",
+  "failed samples:",
+  "- none",
+  "",
+].join("\n"));
+
 const debugBundleManifestPath = await writeJson("manifest.json", {
   createdAt: "2026-05-27T12:00:00.000Z",
   apiUrl: "http://localhost:3001",
@@ -311,6 +325,7 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
   readiness: { status: "ready", attempts: 1 },
   commands: [
     { name: "health-probe", status: "passed", outputPath: "/tmp/openseat-debug-bundle/health-probe.txt" },
+    { name: "queue-debug-summary", status: "passed", outputPath: queueDebugSummaryPath },
     { name: "membership-debug-summary", status: "passed", outputPath: "/tmp/openseat-debug-bundle/membership-debug-summary.txt" },
     {
       name: "api-smoke",
@@ -428,7 +443,7 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
 const debugBundleManifestOutput = await summarize(debugBundleManifestPath);
 assertIncludes(debugBundleManifestOutput, "Type: debug-bundle");
 assertIncludes(debugBundleManifestOutput, "Readiness: ready after 1 attempt(s)");
-assertIncludes(debugBundleManifestOutput, "Commands: 2/4 passed");
+assertIncludes(debugBundleManifestOutput, "Commands: 3/5 passed");
 assertIncludes(debugBundleManifestOutput, "Running build: abc1234 checkout=abc1234 matches=true");
 assertIncludes(debugBundleManifestOutput, "Migration drift: ok code=202605270001 database=202605270001");
 assertIncludes(debugBundleManifestOutput, "Membership processing: ok open=2 attempts=3");
@@ -441,6 +456,7 @@ assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overd
 assertIncludes(debugBundleManifestOutput, "Outbound messages: attention total=5 logged=4 sent=0 failed=1 types=daily_morning_summary:2,thank_you:3");
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");
 assertIncludes(debugBundleManifestOutput, "Queues: membership-events:ok/failed=0");
+assertIncludes(debugBundleManifestOutput, "Summary schedules: restaurants=9 morning expected=9 found=9 pattern=0 9 * * * status=ok closing expected=9 found=9 pattern=0 23 * * * status=ok timezones=Asia/Jerusalem:9");
 assertIncludes(debugBundleManifestOutput, "Failed commands: 1");
 assertIncludes(debugBundleManifestOutput, "- api-smoke: exitCode=1 output=/tmp/openseat-debug-bundle/api-smoke.txt");
 assertIncludes(debugBundleManifestOutput, "Skipped commands: 1");
@@ -454,6 +470,8 @@ for (const expectedSummarizerContent of [
   "Membership repair summary",
   "Gamification",
   "Engagement",
+  "Summary schedules",
+  "parseSummaryScheduleHealth",
   "Agent membership intents",
 ]) {
   assertIncludes(artifactSummarizer, expectedSummarizerContent);

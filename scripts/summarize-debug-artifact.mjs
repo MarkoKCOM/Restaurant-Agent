@@ -41,6 +41,45 @@ function formatCheckout(value) {
   return value.shortCommit ?? value.commit ?? value.status ?? "unknown";
 }
 
+async function parseSummaryScheduleHealth(commands) {
+  const queueCommand = commands.find((command) => command.name === "queue-debug-summary" && command.outputPath);
+  if (!queueCommand) return null;
+
+  let text;
+  try {
+    text = await readFile(queueCommand.outputPath, "utf8");
+  } catch {
+    return null;
+  }
+
+  const lines = text.split(/\r?\n/);
+  const start = lines.findIndex((line) => line.trim() === "summary schedule health:");
+  if (start < 0) return null;
+
+  const section = [];
+  for (const line of lines.slice(start + 1)) {
+    if (!line.startsWith("- ")) break;
+    section.push(line.slice(2));
+  }
+
+  const restaurants = section.find((line) => line.startsWith("restaurants="))?.split("=")[1];
+  const morning = section.find((line) => line.startsWith("daily-morning-summary "));
+  const closing = section.find((line) => line.startsWith("daily-summary "));
+  const timezones = section.find((line) => line.startsWith("restaurantTimezones="))?.slice("restaurantTimezones=".length);
+  const skipped = section.find((line) => line.startsWith("skipped reason="))?.slice("skipped reason=".length);
+  const error = section.find((line) => line.startsWith("error="))?.slice("error=".length);
+
+  if (skipped) return `skipped reason=${skipped}`;
+  if (error) return `error=${error}`;
+
+  const parts = [];
+  if (restaurants) parts.push(`restaurants=${restaurants}`);
+  if (morning) parts.push(morning.replace("daily-morning-summary ", "morning "));
+  if (closing) parts.push(closing.replace("daily-summary ", "closing "));
+  if (timezones) parts.push(`timezones=${timezones}`);
+  return parts.length > 0 ? parts.join(" ") : null;
+}
+
 function summarizeE2e(report) {
   const results = asArray(report.results);
   const failed = results.filter((result) => !result.pass);
@@ -304,7 +343,7 @@ function summarizeAgentMembershipIntent(report) {
   printLogTraceCommands(failed.map((result) => result.requestId));
 }
 
-function summarizeDebugBundleManifest(report) {
+async function summarizeDebugBundleManifest(report) {
   const commands = asArray(report.commands);
   const failed = commands.filter((command) => command.status === "failed");
   const skipped = commands.filter((command) => command.status === "skipped");
@@ -334,6 +373,7 @@ function summarizeDebugBundleManifest(report) {
   const outboundByType = outboundMessages.byType ?? {};
   const agentMembershipIntents = highlights.agentMembershipIntents ?? {};
   const queues = asArray(adminDiagnostics.queues);
+  const summaryScheduleHealth = await parseSummaryScheduleHealth(commands);
 
   console.log(`Artifact: ${basename(artifactPath)}`);
   console.log("Type: debug-bundle");
@@ -404,6 +444,9 @@ function summarizeDebugBundleManifest(report) {
   if (queues.length > 0) {
     printLine("Queues", queues.map((queue) => `${queue.name}:${queue.status}/failed=${queue.failed ?? "?"}/repeat=${queue.repeatableJobs?.length ?? "?"}`).join(", "));
   }
+  if (summaryScheduleHealth) {
+    printLine("Summary schedules", summaryScheduleHealth);
+  }
 
   if (failed.length === 0 && skipped.length === 0) {
     console.log("Bundle issues: none");
@@ -432,7 +475,7 @@ const raw = await readFile(artifactPath, "utf8");
 const report = JSON.parse(raw);
 
 if (Array.isArray(report.commands) && report.createdAt) {
-  summarizeDebugBundleManifest(report);
+  await summarizeDebugBundleManifest(report);
 } else if (report.type === "agent-membership-intent") {
   summarizeAgentMembershipIntent(report);
 } else if (Array.isArray(report.results)) {

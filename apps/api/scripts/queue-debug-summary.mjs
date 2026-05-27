@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import "dotenv/config";
 import { Queue } from "bullmq";
+import postgres from "postgres";
 import { sanitizeConnectionError } from "../../../scripts/lib/debug-errors.mjs";
 
 const DEFAULT_QUEUES = [
@@ -95,6 +96,84 @@ function formatJob(job) {
   return `- ${job.name} id=${job.id ?? "none"} timestamp=${formatTimestamp(job.timestamp)}${attempts}${data}${failedReason}`;
 }
 
+async function loadRestaurantScheduleContext() {
+  const databaseUrl = readOption("database-url", process.env.DATABASE_URL ?? "");
+  if (!databaseUrl) {
+    return { status: "skipped", reason: "DATABASE_URL not configured" };
+  }
+
+  const sql = postgres(databaseUrl, { max: 1 });
+  try {
+    const rows = await sql`
+      select id, name, timezone
+      from restaurants
+      order by created_at asc
+    `;
+    return {
+      status: "loaded",
+      restaurants: rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        timezone: row.timezone || "Asia/Jerusalem",
+      })),
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      error: sanitizeConnectionError(error),
+    };
+  } finally {
+    await sql.end({ timeout: 1 });
+  }
+}
+
+function countBy(values) {
+  const counts = new Map();
+  for (const value of values) {
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([value, count]) => `${value}:${count}`).join(",");
+}
+
+function formatScheduleStatus({ name, pattern, expected, repeatableJobs }) {
+  const found = repeatableJobs.filter((job) => job.name === name && job.pattern === pattern).length;
+  const wrongPattern = repeatableJobs.filter((job) => job.name === name && job.pattern !== pattern).length;
+  const status = found === expected && wrongPattern === 0 ? "ok" : "attention";
+  const delta = found - expected;
+  const suffix = delta === 0 ? "" : ` delta=${delta > 0 ? "+" : ""}${delta}`;
+  const wrong = wrongPattern === 0 ? "" : ` wrongPattern=${wrongPattern}`;
+  return `- ${name} expected=${expected} found=${found} pattern=${pattern} status=${status}${suffix}${wrong}`;
+}
+
+function printSummaryScheduleHealth(repeatableJobs, scheduleContext) {
+  console.log("summary schedule health:");
+  if (scheduleContext.status === "skipped") {
+    console.log(`- skipped reason=${scheduleContext.reason}`);
+    return;
+  }
+  if (scheduleContext.status === "error") {
+    console.log(`- error=${JSON.stringify(scheduleContext.error)}`);
+    return;
+  }
+
+  const restaurants = scheduleContext.restaurants ?? [];
+  const expected = restaurants.length;
+  console.log(`- restaurants=${expected}`);
+  console.log(formatScheduleStatus({
+    name: "daily-morning-summary",
+    pattern: "0 9 * * *",
+    expected,
+    repeatableJobs,
+  }));
+  console.log(formatScheduleStatus({
+    name: "daily-summary",
+    pattern: "0 23 * * *",
+    expected,
+    repeatableJobs,
+  }));
+  console.log(`- restaurantTimezones=${countBy(restaurants.map((restaurant) => restaurant.timezone)) || "none"}`);
+}
+
 const redisUrl = readOption("redis-url", process.env.REDIS_URL ?? "redis://localhost:6379");
 const queueNames = String(readOption("queues", DEFAULT_QUEUES.join(",")))
   .split(",")
@@ -103,6 +182,9 @@ const queueNames = String(readOption("queues", DEFAULT_QUEUES.join(",")))
 const sampleLimit = Math.min(Math.max(Number(readOption("sample-limit", process.env[SAMPLE_LIMIT_ENV] ?? "5")) || 5, 1), 25);
 const connection = parseRedisUrl(redisUrl);
 const queues = queueNames.map((name) => new Queue(name, { connection }));
+const scheduleContext = queueNames.includes("daily-summary")
+  ? await loadRestaurantScheduleContext()
+  : null;
 
 console.log("OpenSeat Queue Debug Summary");
 console.log(`redis=${redisLabel(redisUrl)}`);
@@ -129,6 +211,10 @@ try {
       for (const job of repeatableJobs) {
         console.log(formatRepeatable(job));
       }
+    }
+
+    if (queue.name === "daily-summary" && scheduleContext) {
+      printSummaryScheduleHealth(repeatableJobs, scheduleContext);
     }
 
     console.log("failed samples:");

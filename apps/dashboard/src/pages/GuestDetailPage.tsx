@@ -94,7 +94,7 @@ export function GuestDetailPage() {
   const { data: loyaltyBalance, error: loyaltyBalanceError } = useLoyaltyBalance(loyaltyEnabled ? id : undefined);
   const { data: loyaltyHistory, error: loyaltyHistoryError } = useLoyaltyHistory(loyaltyEnabled ? id : undefined);
   const { data: membershipSummary, error: membershipSummaryError } = useMembershipSummary(loyaltyEnabled ? id : undefined);
-  const { data: visitInsights } = useVisitInsights(id);
+  const { data: visitInsights, error: visitInsightsError } = useVisitInsights(id);
   const { showToast } = useToast();
   const { t, lang } = useLang();
 
@@ -765,6 +765,13 @@ export function GuestDetailPage() {
       </div>
 
       {/* Visit Insights Section */}
+      {visitInsightsError && (
+        <div className="bg-red-50 rounded-xl border border-red-200 p-4 mb-6 text-sm text-red-800">
+          <p className="font-semibold text-red-900">{t.guestDetail.visitInsightsErrorTitle}</p>
+          <p className="mt-2">{formatApiErrorMessage(visitInsightsError, t.guestDetail.visitInsightsError)}</p>
+        </div>
+      )}
+
       {visitInsights && (visitInsights.favoriteItems?.length || visitInsights.dietaryProfile?.length || visitInsights.visitFrequency) && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
           <h3 className="text-lg font-semibold mb-4">{t.guestDetail.visitInsights}</h3>

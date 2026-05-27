@@ -775,8 +775,8 @@ export async function updateReservation(
     }
 
     try {
-      await scheduleThankYou(updated.guestId, updated.restaurantId, updated.id);
-      await scheduleReviewRequest(updated.guestId, updated.restaurantId, updated.id);
+      await scheduleThankYou(updated.guestId, updated.restaurantId, updated.id, { logger: options.logger });
+      await scheduleReviewRequest(updated.guestId, updated.restaurantId, updated.id, { logger: options.logger });
     } catch (error) {
       await recordCompletionFailure({
         stage: "engagement_scheduling",

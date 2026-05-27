@@ -1377,6 +1377,15 @@ assertNotIncludes(engagementRoutes, "if (accessError) return accessError;");
 for (const requiredEngagementServiceContent of [
   "limit?: number",
   "query.limit(Math.min(Math.max(params.limit, 1), 200))",
+  "ENGAGEMENT_JOB_SCHEDULE",
+  "ENGAGEMENT_JOB_QUEUE_ENQUEUE_FAILED",
+  "queue_enqueue_failed",
+  "Engagement job schedule reused existing pending job",
+  "Engagement job schedule skipped by policy",
+  "Engagement job scheduled",
+  "source: options.source",
+  "queueDelayMs",
+  "reservationId",
 ]) {
   assertIncludes(engagementService, requiredEngagementServiceContent);
 }

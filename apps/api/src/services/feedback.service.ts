@@ -415,6 +415,9 @@ export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitF
     const reviewRequest = await scheduleReviewRequestForPositiveFeedback({
       guestId: data.guestId,
       restaurantId: data.restaurantId,
+    }, {
+      logger: options.logger,
+      reservationId: data.reservationId,
     });
     reviewRouting = {
       route: "public_review",

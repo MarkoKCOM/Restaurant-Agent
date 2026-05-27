@@ -224,6 +224,8 @@ Queue workers log structured fields through the API logger, including `queue`, j
 journalctl -u openseat-api --since "30 minutes ago" | rg '"queue":"engagement"|QUEUE_ENGAGEMENT_JOB_FAILED|reservation-reminders|daily-summary'
 ```
 
+Engagement scheduling also logs `ENGAGEMENT_JOB_SCHEDULE` for created, reused, and policy-skipped retention jobs with `source`, guest/restaurant IDs, trigger time, queue delay, and reservation ID when available. If the database row is created but BullMQ enqueue fails, the row is marked `failed` with `skipReason=queue_enqueue_failed` and the service logs `ENGAGEMENT_JOB_QUEUE_ENQUEUE_FAILED`.
+
 ## Membership Processing Failures
 
 When a reservation is completed, OpenSeat runs several post-visit membership stages:

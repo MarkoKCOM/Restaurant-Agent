@@ -62,7 +62,7 @@ async function processEngagement(job: Job<EngagementJobData>, logger: FastifyBas
       { queue: "engagement", jobId: job.id, restaurantId, engagementType: type },
       "Running daily win-back check",
     );
-    const result = await checkWinBack(restaurantId);
+    const result = await checkWinBack(restaurantId, { logger, source: "win_back_cron" });
     logger.info(
       { queue: "engagement", jobId: job.id, restaurantId, engagementType: type, ...result },
       "Win-back check complete",
@@ -75,7 +75,7 @@ async function processEngagement(job: Job<EngagementJobData>, logger: FastifyBas
       { queue: "engagement", jobId: job.id, restaurantId, engagementType: type },
       "Running daily birthday check",
     );
-    const result = await checkBirthdays(restaurantId);
+    const result = await checkBirthdays(restaurantId, { logger, source: "birthday_cron" });
     logger.info(
       { queue: "engagement", jobId: job.id, restaurantId, engagementType: type, ...result },
       "Birthday check complete",
@@ -88,7 +88,7 @@ async function processEngagement(job: Job<EngagementJobData>, logger: FastifyBas
       { queue: "engagement", jobId: job.id, restaurantId, engagementType: type },
       "Running daily anniversary check",
     );
-    const result = await checkAnniversaries(restaurantId);
+    const result = await checkAnniversaries(restaurantId, { logger, source: "anniversary_cron" });
     logger.info(
       { queue: "engagement", jobId: job.id, restaurantId, engagementType: type, ...result },
       "Anniversary check complete",

@@ -176,7 +176,7 @@ export async function engagementRoutes(app: FastifyInstance) {
     if (accessError) return reply;
 
     try {
-      const result = await checkBirthdays(restaurantId);
+      const result = await checkBirthdays(restaurantId, { logger: request.log, source: "manual_birthday_check" });
       return { result };
     } catch (error: unknown) {
       return sendEngagementError(
@@ -208,7 +208,7 @@ export async function engagementRoutes(app: FastifyInstance) {
     if (accessError) return reply;
 
     try {
-      const result = await checkAnniversaries(restaurantId);
+      const result = await checkAnniversaries(restaurantId, { logger: request.log, source: "manual_anniversary_check" });
       return { result };
     } catch (error: unknown) {
       return sendEngagementError(
@@ -240,7 +240,7 @@ export async function engagementRoutes(app: FastifyInstance) {
     if (accessError) return reply;
 
     try {
-      const result = await checkWinBack(restaurantId);
+      const result = await checkWinBack(restaurantId, { logger: request.log, source: "manual_win_back_check" });
       return { result };
     } catch (error: unknown) {
       return sendEngagementError(

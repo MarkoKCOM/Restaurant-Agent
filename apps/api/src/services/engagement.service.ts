@@ -1,4 +1,5 @@
 import { and, eq, gte, inArray, lt, lte, gt, sql, ne } from "drizzle-orm";
+import type { FastifyBaseLogger } from "fastify";
 import { db } from "../db/index.js";
 import { engagementJobs, guests, restaurants, visitLogs } from "../db/schema.js";
 import { engagementQueue } from "../queue/index.js";
@@ -45,6 +46,12 @@ export interface EngagementQuietHours {
   enabled: boolean;
   start: string;
   end: string;
+}
+
+interface EngagementScheduleOptions {
+  logger?: FastifyBaseLogger;
+  source?: string;
+  reservationId?: string;
 }
 
 export function getEngagementMessageCategory(type: string): EngagementMessageCategory {
@@ -377,18 +384,48 @@ async function scheduleEngagementJob(params: {
   restaurantId: string;
   type: EngagementJobType;
   triggerAt: Date;
-}): Promise<EngagementJobRow> {
+}, options: EngagementScheduleOptions = {}): Promise<EngagementJobRow> {
+  const logContext = {
+    code: "ENGAGEMENT_JOB_SCHEDULE",
+    source: options.source,
+    restaurantId: params.restaurantId,
+    guestId: params.guestId,
+    reservationId: options.reservationId,
+    engagementType: params.type,
+    triggerAt: params.triggerAt.toISOString(),
+  };
   const existingJob = await findPendingEngagementJob(params);
-  if (existingJob) return existingJob;
+  if (existingJob) {
+    options.logger?.info(
+      {
+        ...logContext,
+        engagementJobId: existingJob.id,
+        result: "existing_pending",
+      },
+      "Engagement job schedule reused existing pending job",
+    );
+    return existingJob;
+  }
 
   const messageCategory = getEngagementMessageCategory(params.type);
   if (messageCategory === "promotional") {
     const eligibility = await evaluatePromotionalEligibility(params);
     if (!eligibility.allowed) {
-      return createSkippedEngagementJob({
+      const skippedJob = await createSkippedEngagementJob({
         ...params,
         skipReason: eligibility.reason,
       });
+      options.logger?.info(
+        {
+          ...logContext,
+          engagementJobId: skippedJob.id,
+          messageCategory,
+          result: "skipped",
+          skipReason: eligibility.reason,
+        },
+        "Engagement job schedule skipped by policy",
+      );
+      return skippedJob;
     }
   }
 
@@ -407,10 +444,41 @@ async function scheduleEngagementJob(params: {
   if (!job) throw new Error("Failed to create engagement job");
 
   const delay = params.triggerAt.getTime() - Date.now();
-  await engagementQueue.add(
-    "engagement",
-    { jobId: job.id, type: params.type, guestId: params.guestId, restaurantId: params.restaurantId },
-    { delay: Math.max(0, delay), jobId: `engagement-${job.id}` },
+  const queueDelayMs = Math.max(0, delay);
+  try {
+    await engagementQueue.add(
+      "engagement",
+      { jobId: job.id, type: params.type, guestId: params.guestId, restaurantId: params.restaurantId },
+      { delay: queueDelayMs, jobId: `engagement-${job.id}` },
+    );
+  } catch (error) {
+    await db
+      .update(engagementJobs)
+      .set({ status: "failed", skipReason: "queue_enqueue_failed" })
+      .where(eq(engagementJobs.id, job.id));
+    options.logger?.error(
+      {
+        err: error,
+        ...logContext,
+        code: "ENGAGEMENT_JOB_QUEUE_ENQUEUE_FAILED",
+        engagementJobId: job.id,
+        messageCategory,
+        queueDelayMs,
+      },
+      "Engagement job queue enqueue failed",
+    );
+    throw error;
+  }
+
+  options.logger?.info(
+    {
+      ...logContext,
+      engagementJobId: job.id,
+      messageCategory,
+      result: "scheduled",
+      queueDelayMs,
+    },
+    "Engagement job scheduled",
   );
 
   return job;
@@ -439,10 +507,14 @@ export async function shouldSendEngagementJob(job: EngagementJobRow): Promise<{ 
 export async function scheduleThankYou(
   guestId: string,
   restaurantId: string,
-  _reservationId: string,
+  reservationId: string,
+  options: EngagementScheduleOptions = {},
 ): Promise<EngagementJobRow> {
   const triggerAt = await applyRestaurantQuietHours(restaurantId, new Date(Date.now() + THANK_YOU_DELAY_MS));
-  return scheduleEngagementJob({ guestId, restaurantId, type: "thank_you", triggerAt });
+  return scheduleEngagementJob(
+    { guestId, restaurantId, type: "thank_you", triggerAt },
+    { ...options, source: options.source ?? "reservation_completed", reservationId },
+  );
 }
 
 /**
@@ -452,6 +524,7 @@ export async function scheduleThankYou(
 export async function scheduleBirthdayGreeting(
   guestId: string,
   restaurantId: string,
+  options: EngagementScheduleOptions = {},
 ): Promise<EngagementJobRow | null> {
   const [guest] = await db
     .select()
@@ -482,7 +555,10 @@ export async function scheduleBirthdayGreeting(
     triggerAt = new Date(`${currentYear + 1}-${month}-${day}T10:00:00+03:00`);
   }
 
-  return scheduleEngagementJob({ guestId, restaurantId, type: "birthday", triggerAt });
+  return scheduleEngagementJob(
+    { guestId, restaurantId, type: "birthday", triggerAt },
+    { ...options, source: options.source ?? "manual_birthday_schedule" },
+  );
 }
 
 function getBirthdayMonthDay(birthday: unknown): string | null {
@@ -539,7 +615,7 @@ export interface AnniversaryCheckResult {
 /**
  * Find guests with birthdays today and schedule a promotional greeting.
  */
-export async function checkBirthdays(restaurantId: string): Promise<BirthdayCheckResult> {
+export async function checkBirthdays(restaurantId: string, options: EngagementScheduleOptions = {}): Promise<BirthdayCheckResult> {
   const result: BirthdayCheckResult = {
     scheduled: 0,
     skippedExisting: 0,
@@ -590,7 +666,7 @@ export async function checkBirthdays(restaurantId: string): Promise<BirthdayChec
       guestId: guest.id,
       type: "birthday",
       triggerAt,
-    });
+    }, { ...options, source: options.source ?? "birthday_check" });
 
     if (job.status === "pending") {
       result.scheduled++;
@@ -614,7 +690,7 @@ function getDateYear(value: unknown): number | null {
   return match ? Number(match[1]) : null;
 }
 
-export async function checkAnniversaries(restaurantId: string): Promise<AnniversaryCheckResult> {
+export async function checkAnniversaries(restaurantId: string, options: EngagementScheduleOptions = {}): Promise<AnniversaryCheckResult> {
   const result: AnniversaryCheckResult = {
     scheduled: 0,
     skippedExisting: 0,
@@ -669,7 +745,7 @@ export async function checkAnniversaries(restaurantId: string): Promise<Annivers
       guestId: guest.id,
       type: "anniversary",
       triggerAt,
-    });
+    }, { ...options, source: options.source ?? "anniversary_check" });
 
     if (job.status === "pending") {
       result.scheduled++;
@@ -689,6 +765,7 @@ export async function scheduleReviewRequest(
   guestId: string,
   restaurantId: string,
   reservationId: string,
+  options: EngagementScheduleOptions = {},
 ): Promise<EngagementJobRow | null> {
   const [positiveFeedback] = await db
     .select({ id: visitLogs.id })
@@ -705,7 +782,11 @@ export async function scheduleReviewRequest(
 
   if (!positiveFeedback) return null;
 
-  const result = await scheduleReviewRequestForPositiveFeedback({ guestId, restaurantId });
+  const result = await scheduleReviewRequestForPositiveFeedback({ guestId, restaurantId }, {
+    ...options,
+    source: options.source ?? "positive_visit_feedback",
+    reservationId,
+  });
   return result?.job ?? null;
 }
 
@@ -725,7 +806,7 @@ export function buildGoogleReviewUrl(params: {
 export async function scheduleReviewRequestForPositiveFeedback(params: {
   guestId: string;
   restaurantId: string;
-}): Promise<{ job: EngagementJobRow; reviewUrl: string | null; delayHours: number } | null> {
+}, options: EngagementScheduleOptions = {}): Promise<{ job: EngagementJobRow; reviewUrl: string | null; delayHours: number } | null> {
   const [guest] = await db
     .select()
     .from(guests)
@@ -750,7 +831,7 @@ export async function scheduleReviewRequestForPositiveFeedback(params: {
     restaurantId: params.restaurantId,
     type: "review_request",
     triggerAt,
-  });
+  }, { ...options, source: options.source ?? "positive_feedback" });
 
   return {
     job,
@@ -802,6 +883,7 @@ export async function scheduleLeaderboardSummary(
   guestId: string,
   restaurantId: string,
   period: string,
+  options: EngagementScheduleOptions = {},
 ): Promise<EngagementJobRow> {
   void period;
   const triggerAt = await applyRestaurantQuietHours(restaurantId, new Date(Date.now() + 5 * 60 * 1000));
@@ -819,7 +901,7 @@ export async function scheduleLeaderboardSummary(
     restaurantId,
     type: "leaderboard_summary",
     triggerAt,
-  });
+  }, { ...options, source: options.source ?? "leaderboard_finalization" });
 
   return job;
 }
@@ -827,6 +909,7 @@ export async function scheduleLeaderboardSummary(
 export async function scheduleLuckySpinReward(
   guestId: string,
   restaurantId: string,
+  options: EngagementScheduleOptions = {},
 ): Promise<EngagementJobRow> {
   const triggerAt = await applyRestaurantQuietHours(restaurantId, new Date(Date.now() + 5 * 60 * 1000));
   return scheduleEngagementJob({
@@ -834,12 +917,13 @@ export async function scheduleLuckySpinReward(
     restaurantId,
     type: "lucky_spin_reward",
     triggerAt,
-  });
+  }, { ...options, source: options.source ?? "lucky_spin_reward" });
 }
 
 export async function scheduleChallengeCompletion(
   guestId: string,
   restaurantId: string,
+  options: EngagementScheduleOptions = {},
 ): Promise<EngagementJobRow> {
   const triggerAt = await applyRestaurantQuietHours(restaurantId, new Date(Date.now() + 5 * 60 * 1000));
   return scheduleEngagementJob({
@@ -847,12 +931,13 @@ export async function scheduleChallengeCompletion(
     restaurantId,
     type: "challenge_completion",
     triggerAt,
-  });
+  }, { ...options, source: options.source ?? "challenge_completion" });
 }
 
 export async function scheduleStreakBrokenRecovery(
   guestId: string,
   restaurantId: string,
+  options: EngagementScheduleOptions = {},
 ): Promise<EngagementJobRow> {
   const triggerAt = await applyRestaurantQuietHours(restaurantId, new Date(Date.now() + 5 * 60 * 1000));
   const existingJob = await findEngagementJobInWindow({
@@ -869,7 +954,7 @@ export async function scheduleStreakBrokenRecovery(
     restaurantId,
     type: "streak_broken",
     triggerAt,
-  });
+  }, { ...options, source: options.source ?? "streak_broken" });
 }
 
 interface WinBackResult {
@@ -883,7 +968,7 @@ interface WinBackResult {
 /**
  * Find guests who haven't visited in 30/60/90 days and schedule win-back messages.
  */
-export async function checkWinBack(restaurantId: string): Promise<WinBackResult> {
+export async function checkWinBack(restaurantId: string, options: EngagementScheduleOptions = {}): Promise<WinBackResult> {
   const result: WinBackResult = {
     scheduled30: 0,
     scheduled60: 0,
@@ -947,7 +1032,7 @@ export async function checkWinBack(restaurantId: string): Promise<WinBackResult>
         guestId: guest.id,
         type: tier.type,
         triggerAt,
-      });
+      }, { ...options, source: options.source ?? "win_back_check" });
 
       if (job.status === "pending") {
         result[tier.key]++;

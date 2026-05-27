@@ -78,10 +78,14 @@ The endpoint returns:
 - overall status: `ok` or `degraded`
 - database ping status and latency
 - Redis ping status and latency
+- BullMQ queue counts for reservation reminders, daily summaries, and engagement jobs
+- up to two failed-job samples per queue, including job ID, name, attempts, and sanitized failure reason
 - sanitized failure name/code/message
 - runtime flags such as `NODE_ENV`, `LOG_LEVEL`, selected AI models, and whether OpenRouter is configured
 
 Use this when `/api/v1/health` is green but app workflows still fail.
+
+Queue diagnostics are especially useful for failures that happen after an API request returns, such as delayed reminders, daily owner summaries, thank-you messages, review requests, win-back jobs, or membership engagement automation.
 
 ## Membership Processing Failures
 

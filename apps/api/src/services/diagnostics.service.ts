@@ -1,6 +1,8 @@
 import { Redis } from "ioredis";
+import type { Queue } from "bullmq";
 import { env } from "../env.js";
 import { pingDatabase } from "../db/index.js";
+import { engagementQueue, reminderQueue, summaryQueue } from "../queue/index.js";
 
 export type DiagnosticStatus = "ok" | "error";
 
@@ -31,6 +33,30 @@ export interface DiagnosticsReport {
     database: DiagnosticCheck;
     redis: DiagnosticCheck;
   };
+  queues: QueueDiagnostic[];
+}
+
+export interface QueueDiagnostic {
+  name: string;
+  status: DiagnosticStatus;
+  latencyMs: number;
+  counts?: {
+    waiting: number;
+    active: number;
+    delayed: number;
+    completed: number;
+    failed: number;
+    paused: number;
+  };
+  failedSamples?: Array<{
+    id: string | number | null;
+    name: string;
+    attemptsMade: number;
+    failedReason?: string;
+    timestamp?: number;
+    finishedOn?: number;
+  }>;
+  error?: DiagnosticCheck["error"];
 }
 
 function sanitizeError(error: unknown): DiagnosticCheck["error"] {
@@ -84,13 +110,57 @@ async function pingRedis(): Promise<void> {
   }
 }
 
+async function inspectQueue(name: string, queue: Queue): Promise<QueueDiagnostic> {
+  const startedAt = Date.now();
+
+  try {
+    const [counts, failedJobs] = await Promise.all([
+      queue.getJobCounts("waiting", "active", "delayed", "completed", "failed", "paused"),
+      queue.getFailed(0, 2),
+    ]);
+
+    return {
+      name,
+      status: "ok",
+      latencyMs: Date.now() - startedAt,
+      counts: {
+        waiting: counts.waiting ?? 0,
+        active: counts.active ?? 0,
+        delayed: counts.delayed ?? 0,
+        completed: counts.completed ?? 0,
+        failed: counts.failed ?? 0,
+        paused: counts.paused ?? 0,
+      },
+      failedSamples: failedJobs.map((job) => ({
+        id: job.id ?? null,
+        name: job.name,
+        attemptsMade: job.attemptsMade,
+        failedReason: job.failedReason,
+        timestamp: job.timestamp,
+        finishedOn: job.finishedOn,
+      })),
+    };
+  } catch (error: unknown) {
+    return {
+      name,
+      status: "error",
+      latencyMs: Date.now() - startedAt,
+      error: sanitizeError(error),
+    };
+  }
+}
+
 export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
-  const [database, redis] = await Promise.all([
+  const [database, redis, ...queues] = await Promise.all([
     timedCheck(pingDatabase),
     timedCheck(pingRedis),
+    inspectQueue("reservation-reminders", reminderQueue),
+    inspectQueue("daily-summary", summaryQueue),
+    inspectQueue("engagement", engagementQueue),
   ]);
   const checks = { database, redis };
   const status = Object.values(checks).every((check) => check.status === "ok")
+    && queues.every((queue) => queue.status === "ok")
     ? "ok"
     : "degraded";
 
@@ -108,5 +178,6 @@ export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
       openRouterConfigured: Boolean(env.OPENROUTER_API_KEY),
     },
     checks,
+    queues,
   };
 }

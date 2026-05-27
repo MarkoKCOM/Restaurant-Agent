@@ -1001,6 +1001,7 @@ const agentRoutes = await readFile("apps/api/src/routes/agent.ts", "utf8");
 const engagementRoutes = await readFile("apps/api/src/routes/engagement.ts", "utf8");
 const visitsRoutes = await readFile("apps/api/src/routes/visits.ts", "utf8");
 const reservationRoutes = await readFile("apps/api/src/routes/reservations.ts", "utf8");
+const guestRoutes = await readFile("apps/api/src/routes/guests.ts", "utf8");
 const engagementService = await readFile("apps/api/src/services/engagement.service.ts", "utf8");
 const challengeService = await readFile("apps/api/src/services/challenge.service.ts", "utf8");
 const loyaltyRoutes = await readFile("apps/api/src/routes/loyalty.ts", "utf8");
@@ -1407,6 +1408,22 @@ for (const requiredReservationRouteContent of [
   "request.log.error(logPayload, \"Reservation request failed\")",
 ]) {
   assertIncludes(reservationRoutes, requiredReservationRouteContent);
+}
+
+for (const requiredGuestRouteContent of [
+  "sendCaughtGuestError",
+  "GUEST_LIST_FAILED",
+  "GUEST_LOOKUP_FAILED",
+  "GUEST_RESERVATION_HISTORY_FAILED",
+  "GUEST_CREATE_FAILED",
+  "GUEST_FULL_PROFILE_FAILED",
+  "GUEST_SENTIMENT_HISTORY_FAILED",
+  "GUEST_AUTO_TAG_FAILED",
+  "GUEST_PREFERENCES_UPDATE_FAILED",
+  "GUEST_UPDATE_FAILED",
+  "request.log.error(logPayload, \"Guest request failed\")",
+]) {
+  assertIncludes(guestRoutes, requiredGuestRouteContent);
 }
 
 for (const requiredGamificationPackageContent of [

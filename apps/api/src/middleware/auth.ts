@@ -2,6 +2,9 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import fp from "fastify-plugin";
 import jwt from "jsonwebtoken";
 import { env } from "../env.js";
+import { db } from "../db/index.js";
+import { restaurants } from "../db/schema.js";
+import { eq } from "drizzle-orm";
 
 export type AdminRole = "admin" | "employee" | "super_admin";
 
@@ -200,4 +203,43 @@ export function requireSuperAdmin(user: AuthUser): string | null {
     return "Forbidden: super_admin role required";
   }
   return null;
+}
+
+export interface PackageAccessResult {
+  ok: boolean;
+  restaurantPackage?: "starter" | "growth";
+  error?: string;
+  code?: "RESTAURANT_NOT_FOUND" | "PACKAGE_GROWTH_REQUIRED";
+}
+
+export async function requireGrowthPackage(restaurantId: string): Promise<PackageAccessResult> {
+  const [restaurant] = await db
+    .select({
+      package: restaurants.package,
+    })
+    .from(restaurants)
+    .where(eq(restaurants.id, restaurantId))
+    .limit(1);
+
+  if (!restaurant) {
+    return {
+      ok: false,
+      error: "Restaurant not found",
+      code: "RESTAURANT_NOT_FOUND",
+    };
+  }
+
+  if (restaurant.package !== "growth") {
+    return {
+      ok: false,
+      restaurantPackage: restaurant.package,
+      error: "Growth package required",
+      code: "PACKAGE_GROWTH_REQUIRED",
+    };
+  }
+
+  return {
+    ok: true,
+    restaurantPackage: restaurant.package,
+  };
 }

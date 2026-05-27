@@ -710,6 +710,9 @@ for (const requiredDebuggingGuideContent of [
   "## Outbound Message Trail",
   "pnpm debug:outbound -- --status skipped --message-type daily_morning_summary --limit 5",
   "OUTBOUND_RECIPIENT_MISSING",
+  "## Package Enforcement",
+  "PACKAGE_GROWTH_REQUIRED",
+  "EXPECT_CODE=PACKAGE_GROWTH_REQUIRED",
   "## Queue State",
   "pnpm debug:queues",
   "daily-morning-summary",
@@ -784,6 +787,8 @@ const outboundDebugSummary = await readFile("scripts/outbound-debug-summary.mjs"
 const queueDebugSummary = await readFile("apps/api/scripts/queue-debug-summary.mjs", "utf8");
 const diagnosticsService = await readFile("apps/api/src/services/diagnostics.service.ts", "utf8");
 const adminRoutes = await readFile("apps/api/src/routes/admin.ts", "utf8");
+const authMiddleware = await readFile("apps/api/src/middleware/auth.ts", "utf8");
+const campaignRoutes = await readFile("apps/api/src/routes/campaigns.ts", "utf8");
 const outboundMessageService = await readFile("apps/api/src/services/outbound-message.service.ts", "utf8");
 const summaryService = await readFile("apps/api/src/services/summary.service.ts", "utf8");
 const debugTokenHelpers = await readFile("scripts/lib/debug-token.mjs", "utf8");
@@ -907,6 +912,26 @@ for (const requiredDiagnosticsContent of [
 
 assertIncludes(adminRoutes, "return reply.status(200).send({");
 assertNotIncludes(adminRoutes, "report.status === \"ok\" ? 200 : 503");
+
+for (const requiredPackageEnforcementContent of [
+  "requireGrowthPackage",
+  "PackageAccessResult",
+  "PACKAGE_GROWTH_REQUIRED",
+  "RESTAURANT_NOT_FOUND",
+  "restaurant.package !== \"growth\"",
+]) {
+  assertIncludes(authMiddleware, requiredPackageEnforcementContent);
+}
+
+for (const requiredCampaignPackageContent of [
+  "enforceCampaignAccess",
+  "requireGrowthPackage",
+  "requiredPackage: \"growth\"",
+  "packageAccess.code === \"RESTAURANT_NOT_FOUND\" ? 404 : 403",
+  "PACKAGE_GROWTH_REQUIRED",
+]) {
+  assertIncludes(campaignRoutes, requiredCampaignPackageContent);
+}
 
 for (const requiredLogTraceContent of [
   "parseJsonFromLine",

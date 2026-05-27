@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
+import { enforceTenant, requireGrowthPackage, requireRestaurantAdmin } from "../middleware/auth.js";
 import {
   createCampaign,
   deliverCampaign,
@@ -95,6 +95,40 @@ function sendCampaignError(
   });
 }
 
+async function enforceCampaignAccess(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  restaurantId: string,
+  context: Record<string, unknown> = {},
+) {
+  const accessError = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
+  if (accessError) {
+    return sendCampaignError(request, reply, 403, accessError, "CAMPAIGN_FORBIDDEN", {
+      restaurantId,
+      ...context,
+    });
+  }
+
+  const packageAccess = await requireGrowthPackage(restaurantId);
+  if (!packageAccess.ok) {
+    return sendCampaignError(
+      request,
+      reply,
+      packageAccess.code === "RESTAURANT_NOT_FOUND" ? 404 : 403,
+      packageAccess.error ?? "Growth package required",
+      packageAccess.code ?? "PACKAGE_GROWTH_REQUIRED",
+      {
+        restaurantId,
+        restaurantPackage: packageAccess.restaurantPackage,
+        requiredPackage: "growth",
+        ...context,
+      },
+    );
+  }
+
+  return null;
+}
+
 export async function campaignRoutes(app: FastifyInstance) {
   app.get("/templates", async () => ({
     templates: getCampaignTemplates(),
@@ -102,12 +136,8 @@ export async function campaignRoutes(app: FastifyInstance) {
 
   app.post("/audience-preview", async (request, reply) => {
     const parsed = audiencePreviewSchema.parse(request.body ?? {});
-    const err = enforceTenant(request.user!, parsed.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendCampaignError(request, reply, 403, err, "CAMPAIGN_FORBIDDEN", {
-        restaurantId: parsed.restaurantId,
-      });
-    }
+    const accessError = await enforceCampaignAccess(request, reply, parsed.restaurantId);
+    if (accessError) return accessError;
 
     const preview = await previewCampaignAudience({
       restaurantId: parsed.restaurantId,
@@ -132,12 +162,8 @@ export async function campaignRoutes(app: FastifyInstance) {
 
   app.post("/schedule-preview", async (request, reply) => {
     const parsed = schedulePreviewSchema.parse(request.body ?? {});
-    const err = enforceTenant(request.user!, parsed.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendCampaignError(request, reply, 403, err, "CAMPAIGN_FORBIDDEN", {
-        restaurantId: parsed.restaurantId,
-      });
-    }
+    const accessError = await enforceCampaignAccess(request, reply, parsed.restaurantId);
+    if (accessError) return accessError;
 
     const schedule = await previewCampaignSchedule({
       restaurantId: parsed.restaurantId,
@@ -150,12 +176,8 @@ export async function campaignRoutes(app: FastifyInstance) {
 
   app.post("/", async (request, reply) => {
     const parsed = createCampaignSchema.parse(request.body ?? {});
-    const err = enforceTenant(request.user!, parsed.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendCampaignError(request, reply, 403, err, "CAMPAIGN_FORBIDDEN", {
-        restaurantId: parsed.restaurantId,
-      });
-    }
+    const accessError = await enforceCampaignAccess(request, reply, parsed.restaurantId);
+    if (accessError) return accessError;
 
     try {
       const result = await createCampaign({
@@ -206,13 +228,10 @@ export async function campaignRoutes(app: FastifyInstance) {
   app.post("/:campaignId/deliver", async (request, reply) => {
     const params = campaignParamsSchema.parse(request.params ?? {});
     const parsed = deliverySchema.parse(request.body ?? {});
-    const err = enforceTenant(request.user!, parsed.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendCampaignError(request, reply, 403, err, "CAMPAIGN_FORBIDDEN", {
-        restaurantId: parsed.restaurantId,
-        campaignId: params.campaignId,
-      });
-    }
+    const accessError = await enforceCampaignAccess(request, reply, parsed.restaurantId, {
+      campaignId: params.campaignId,
+    });
+    if (accessError) return accessError;
 
     try {
       const result = await deliverCampaign({
@@ -256,14 +275,11 @@ export async function campaignRoutes(app: FastifyInstance) {
   app.post("/:campaignId/delivery-events", async (request, reply) => {
     const params = campaignParamsSchema.parse(request.params ?? {});
     const parsed = deliveryEventSchema.parse(request.body ?? {});
-    const err = enforceTenant(request.user!, parsed.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendCampaignError(request, reply, 403, err, "CAMPAIGN_FORBIDDEN", {
-        restaurantId: parsed.restaurantId,
-        campaignId: params.campaignId,
-        guestId: parsed.guestId,
-      });
-    }
+    const accessError = await enforceCampaignAccess(request, reply, parsed.restaurantId, {
+      campaignId: params.campaignId,
+      guestId: parsed.guestId,
+    });
+    if (accessError) return accessError;
 
     try {
       const result = await recordCampaignDeliveryEvent({

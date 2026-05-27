@@ -165,6 +165,22 @@ The endpoint returns:
 
 Use this when `/api/v1/health` is green but app workflows still fail.
 
+## Package Enforcement
+
+Growth-only API surfaces should reject starter restaurants with a stable `PACKAGE_GROWTH_REQUIRED` error and include `requiredPackage: "growth"` plus the current `restaurantPackage` when known. Start with campaign endpoints when checking this guard:
+
+```bash
+REQUEST_ID=debug-package-campaign \
+METHOD=POST \
+BODY='{"restaurantId":"...","filter":{}}' \
+EXPECT_STATUS=403 \
+EXPECT_CODE=PACKAGE_GROWTH_REQUIRED \
+OPENSEAT_TOKEN=... \
+pnpm debug:api -- http://localhost:3001/api/v1/campaigns/audience-preview
+```
+
+Use the response `requestId` with `pnpm debug:logs` if a package rejection is missing or returns the wrong code.
+
 Queue diagnostics are especially useful for failures that happen after an API request returns, such as delayed reminders, daily owner summaries, thank-you messages, review requests, win-back jobs, or membership engagement automation.
 
 Queue workers log structured fields through the API logger, including `queue`, job IDs, `restaurantId`, and relevant entity IDs. Guest phone numbers are masked in worker logs. Search by queue name or entity ID when investigating background behavior:

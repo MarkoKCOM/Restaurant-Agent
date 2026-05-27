@@ -205,14 +205,15 @@ const e2ePath = await writeJson("e2e.json", {
   totalMs: 15,
   results: [
     { name: "Health Check", pass: true, detail: "ok", durationMs: 1 },
-    { name: "Create Reservation", pass: false, detail: "boom", durationMs: 14 },
+    { name: "Create Reservation", pass: false, detail: "boom requestId=e2e-request-1", durationMs: 14 },
   ],
 });
 
 const e2eOutput = await summarize(e2ePath);
 assertIncludes(e2eOutput, "Type: e2e");
 assertIncludes(e2eOutput, "Status: 1/2 passed");
-assertIncludes(e2eOutput, "- Create Reservation: boom");
+assertIncludes(e2eOutput, "- Create Reservation: boom requestId=e2e-request-1");
+assertIncludes(e2eOutput, 'pnpm debug:logs e2e-request-1 --since "2 hours ago"');
 
 const deployWorkflow = await readFile(".github/workflows/deploy.yml", "utf8");
 for (const requiredPath of [

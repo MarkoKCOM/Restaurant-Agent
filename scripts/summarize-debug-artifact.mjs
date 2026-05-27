@@ -29,6 +29,13 @@ function printLogTraceCommands(requestIds) {
   }
 }
 
+function requestIdsFromText(value) {
+  if (typeof value !== "string") return [];
+
+  return [...value.matchAll(/\b(?:requestId|request|x-request-id)[=: ]+([A-Za-z0-9._:-]{8,128})\b/g)]
+    .map((match) => match[1]);
+}
+
 function summarizeE2e(report) {
   const results = asArray(report.results);
   const failed = results.filter((result) => !result.pass);
@@ -51,6 +58,7 @@ function summarizeE2e(report) {
   for (const result of failed) {
     console.log(`- ${result.name}: ${result.detail}`);
   }
+  printLogTraceCommands(failed.flatMap((result) => requestIdsFromText(result.detail)));
 }
 
 function summarizeSmoke(report) {

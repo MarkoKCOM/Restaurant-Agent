@@ -98,7 +98,7 @@ The push-time API Smoke workflow also uploads an `api-reliability-smoke` artifac
 OPENSEAT_SMOKE_ARTIFACT_PATH=/tmp/openseat-smoke.json node scripts/api-reliability-smoke.mjs
 ```
 
-Summarize either smoke or E2E artifacts without reading the full JSON:
+Summarize smoke, E2E, or agent-intent artifacts without reading the full JSON:
 
 ```bash
 pnpm debug:artifact /tmp/openseat-smoke.json
@@ -106,6 +106,8 @@ pnpm debug:artifact apps/e2e/artifacts/e2e-....json
 ```
 
 When a smoke artifact has unhandled HTTP failures, the summary includes ready-to-run `pnpm debug:logs ...` commands for the failing request IDs.
+
+When an E2E failure detail includes a request ID, the summary also prints matching `pnpm debug:logs ...` commands.
 
 Use `pnpm debug:api` to inspect one endpoint quickly. It sends an `x-request-id`, then prints the response status, elapsed time, returned request ID, content type, and body. Optional environment variables:
 

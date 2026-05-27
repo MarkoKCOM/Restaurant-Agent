@@ -998,6 +998,7 @@ const authMiddleware = await readFile("apps/api/src/middleware/auth.ts", "utf8")
 const campaignRoutes = await readFile("apps/api/src/routes/campaigns.ts", "utf8");
 const analyticsRoutes = await readFile("apps/api/src/routes/analytics.ts", "utf8");
 const engagementRoutes = await readFile("apps/api/src/routes/engagement.ts", "utf8");
+const visitsRoutes = await readFile("apps/api/src/routes/visits.ts", "utf8");
 const engagementService = await readFile("apps/api/src/services/engagement.service.ts", "utf8");
 const challengeService = await readFile("apps/api/src/services/challenge.service.ts", "utf8");
 const loyaltyRoutes = await readFile("apps/api/src/routes/loyalty.ts", "utf8");
@@ -1333,6 +1334,20 @@ for (const requiredEngagementServiceContent of [
   "query.limit(Math.min(Math.max(params.limit, 1), 200))",
 ]) {
   assertIncludes(engagementService, requiredEngagementServiceContent);
+}
+
+for (const requiredVisitRouteContent of [
+  "request.log.error(",
+  "statusCode: 500",
+  "return reply.status(500).send",
+  "VISIT_HISTORY_FAILED",
+  "VISIT_INSIGHTS_FAILED",
+  "FEEDBACK_SUMMARY_FAILED",
+  "requestId: request.id",
+  "Auto-tag after visit failed",
+  "Auto-tag after feedback failed",
+]) {
+  assertIncludes(visitsRoutes, requiredVisitRouteContent);
 }
 
 for (const requiredLoyaltyPackageContent of [

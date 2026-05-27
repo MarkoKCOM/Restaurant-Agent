@@ -52,12 +52,13 @@ function sendCaughtVisitError(
   context: Record<string, unknown> = {},
 ) {
   const message = error instanceof Error ? error.message : "Visit operation failed";
-  request.log.warn(
+  request.log.error(
     {
       ...context,
       err: error,
       code,
       requestId: request.id,
+      statusCode: 500,
       userId: request.user?.id,
       restaurantId: request.user?.restaurantId,
       role: request.user?.role,
@@ -65,7 +66,7 @@ function sendCaughtVisitError(
     "Visit operation failed",
   );
 
-  return reply.status(400).send({
+  return reply.status(500).send({
     error: message,
     code,
     requestId: request.id,
@@ -180,6 +181,7 @@ export async function visitRoutes(app: FastifyInstance) {
           restaurantId: parsed.restaurantId,
           guestId: parsed.guestId,
           visitId: visit.id,
+          requestId: request.id,
         },
         "Auto-tag after visit failed",
       );
@@ -206,8 +208,15 @@ export async function visitRoutes(app: FastifyInstance) {
       });
     }
 
-    const visits = await getVisitHistory(guestId, limit ? parseInt(limit, 10) : 20);
-    return { visits };
+    try {
+      const visits = await getVisitHistory(guestId, limit ? parseInt(limit, 10) : 20);
+      return { visits };
+    } catch (error: unknown) {
+      return sendCaughtVisitError(request, reply, error, "VISIT_HISTORY_FAILED", {
+        guestId,
+        restaurantId: guest.restaurantId,
+      });
+    }
   });
 
   // GET /api/v1/visits/:guestId/insights — aggregated guest insights
@@ -226,8 +235,15 @@ export async function visitRoutes(app: FastifyInstance) {
       });
     }
 
-    const insights = await getGuestInsights(guestId);
-    return { insights };
+    try {
+      const insights = await getGuestInsights(guestId);
+      return { insights };
+    } catch (error: unknown) {
+      return sendCaughtVisitError(request, reply, error, "VISIT_INSIGHTS_FAILED", {
+        guestId,
+        restaurantId: guest.restaurantId,
+      });
+    }
   });
 }
 
@@ -282,6 +298,7 @@ export async function feedbackRoutes(app: FastifyInstance) {
           guestId: parsed.guestId,
           reservationId: parsed.reservationId,
           visitId: result?.visit.id,
+          requestId: request.id,
         },
         "Auto-tag after feedback failed",
       );
@@ -312,7 +329,15 @@ export async function feedbackRoutes(app: FastifyInstance) {
       return sendVisitError(request, reply, 403, err, "FEEDBACK_FORBIDDEN", { restaurantId });
     }
 
-    const summary = await getFeedbackSummary(restaurantId, { from, to });
-    return { summary };
+    try {
+      const summary = await getFeedbackSummary(restaurantId, { from, to });
+      return { summary };
+    } catch (error: unknown) {
+      return sendCaughtVisitError(request, reply, error, "FEEDBACK_SUMMARY_FAILED", {
+        restaurantId,
+        from,
+        to,
+      });
+    }
   });
 }

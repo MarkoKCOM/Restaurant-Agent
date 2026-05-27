@@ -16,6 +16,7 @@ import {
   loyaltyTransactions,
   membershipProcessingFailures,
   restaurants,
+  visitLogs,
 } from "../db/schema.js";
 import {
   getRestaurantEngagementQuietHours,
@@ -256,6 +257,17 @@ export interface EngagementDiagnostic {
       restaurantId: string;
       guestId: string;
       triggerAt: string;
+    }>;
+  };
+  reviewSolicitation?: {
+    pendingWithoutPositiveFeedback: number;
+    negativeFeedbackWithPendingReview: number;
+    samples: Array<{
+      id: string;
+      restaurantId: string;
+      guestId: string;
+      triggerAt: string;
+      issue: string;
     }>;
   };
   skippedByReason?: Array<{
@@ -793,7 +805,7 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
 
 async function inspectEngagement(): Promise<EngagementDiagnostic> {
   try {
-    const [summaryRows, skippedRows, sampleRows, winBackRows, winBackSampleRows, birthdayRows, birthdaySampleRows, anniversaryRows, anniversarySampleRows, pendingThankYouRows] = await Promise.all([
+    const [summaryRows, skippedRows, sampleRows, winBackRows, winBackSampleRows, birthdayRows, birthdaySampleRows, anniversaryRows, anniversarySampleRows, pendingThankYouRows, reviewWithoutPositiveRows, negativeWithPendingReviewRows] = await Promise.all([
       db.execute(sql`
         select
           count(*)::int as total,
@@ -1070,6 +1082,58 @@ async function inspectEngagement(): Promise<EngagementDiagnostic> {
         guest_id: string;
         trigger_at: Date | string;
       }>>,
+      db.execute(sql`
+        select
+          ej.id,
+          ej.restaurant_id,
+          ej.guest_id,
+          ej.trigger_at,
+          count(*) over()::int as issue_count
+        from ${engagementJobs} ej
+        where ej.status = 'pending'
+          and ej.type = 'review_request'
+          and not exists (
+            select 1
+            from ${visitLogs} vl
+            where vl.restaurant_id = ej.restaurant_id
+              and vl.guest_id = ej.guest_id
+              and vl.sentiment = 'positive'
+          )
+        order by ej.trigger_at asc
+        limit 5
+      `) as Promise<Array<{
+        id: string;
+        restaurant_id: string;
+        guest_id: string;
+        trigger_at: Date | string;
+        issue_count: number;
+      }>>,
+      db.execute(sql`
+        select
+          ej.id,
+          ej.restaurant_id,
+          ej.guest_id,
+          ej.trigger_at,
+          count(*) over()::int as issue_count
+        from ${engagementJobs} ej
+        where ej.status = 'pending'
+          and ej.type = 'review_request'
+          and exists (
+            select 1
+            from ${visitLogs} vl
+            where vl.restaurant_id = ej.restaurant_id
+              and vl.guest_id = ej.guest_id
+              and vl.sentiment = 'negative'
+          )
+        order by ej.trigger_at asc
+        limit 5
+      `) as Promise<Array<{
+        id: string;
+        restaurant_id: string;
+        guest_id: string;
+        trigger_at: Date | string;
+        issue_count: number;
+      }>>,
     ]);
     const summary = summaryRows[0];
     const winBackSummary = winBackRows[0];
@@ -1101,9 +1165,27 @@ async function inspectEngagement(): Promise<EngagementDiagnostic> {
       }
     }
     const pendingThankYouInQuietHours = quietHourSamples.length;
+    const pendingReviewWithoutPositive = Number(reviewWithoutPositiveRows[0]?.issue_count ?? 0);
+    const negativeFeedbackWithPendingReview = Number(negativeWithPendingReviewRows[0]?.issue_count ?? 0);
+    const reviewSolicitationSamples = [
+      ...reviewWithoutPositiveRows.map((row) => ({
+        id: row.id,
+        restaurantId: row.restaurant_id,
+        guestId: row.guest_id,
+        triggerAt: toIsoString(row.trigger_at) ?? "",
+        issue: "pending_review_without_positive_feedback",
+      })),
+      ...negativeWithPendingReviewRows.map((row) => ({
+        id: row.id,
+        restaurantId: row.restaurant_id,
+        guestId: row.guest_id,
+        triggerAt: toIsoString(row.trigger_at) ?? "",
+        issue: "negative_feedback_with_pending_review",
+      })),
+    ].slice(0, 5);
 
     return {
-      status: failed > 0 || overduePending > 0 || dueUnscheduledTotal > 0 || birthdayDueUnscheduledToday > 0 || anniversaryDueUnscheduledToday > 0 || pendingThankYouInQuietHours > 0 ? "attention" : "ok",
+      status: failed > 0 || overduePending > 0 || dueUnscheduledTotal > 0 || birthdayDueUnscheduledToday > 0 || anniversaryDueUnscheduledToday > 0 || pendingThankYouInQuietHours > 0 || pendingReviewWithoutPositive > 0 || negativeFeedbackWithPendingReview > 0 ? "attention" : "ok",
       totals: {
         total: Number(summary?.total ?? 0),
         pending: Number(summary?.pending ?? 0),
@@ -1146,6 +1228,11 @@ async function inspectEngagement(): Promise<EngagementDiagnostic> {
       quietHours: {
         pendingThankYouInQuietHours,
         samples: quietHourSamples.slice(0, 5),
+      },
+      reviewSolicitation: {
+        pendingWithoutPositiveFeedback: pendingReviewWithoutPositive,
+        negativeFeedbackWithPendingReview,
+        samples: reviewSolicitationSamples,
       },
       skippedByReason: skippedRows.map((row) => ({
         reason: row.reason,

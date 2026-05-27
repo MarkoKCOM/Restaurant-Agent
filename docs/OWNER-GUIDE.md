@@ -44,6 +44,8 @@ Just click the action button next to any reservation. The system automatically u
 
 Completed visits also schedule a thank-you message about two hours later. If that timing lands inside restaurant quiet hours, the message is shifted to the quiet-hours end instead of waking the guest.
 
+Public review requests are only sent after positive feedback. Low ratings are kept private, tagged for service recovery, and routed to the owner contact with suggested recovery actions.
+
 ---
 
 ### Reservations (הזמנות)

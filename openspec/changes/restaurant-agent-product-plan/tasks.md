@@ -91,7 +91,7 @@
 ## 9. Engagement Automation (Growth)
 
 - [x] 9.1 Implement post-visit thank-you — BullMQ job triggered on visit completion, respects quiet hours
-- [ ] 9.2 Implement review solicitation — positive sentiment → Google Review link, negative → route to owner
+- [x] 9.2 Implement review solicitation — positive sentiment → Google Review link, negative → route to owner
 - [ ] 9.3 Implement sentiment analysis on engagement responses using Claude Haiku
 - [ ] 9.4 Implement complaint interception and service recovery workflow — detect negative response, notify owner, suggest recovery actions
 - [x] 9.5 Implement birthday automation — daily job checks upcoming birthdays, sends personalized greeting + offer

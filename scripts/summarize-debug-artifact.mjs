@@ -103,6 +103,9 @@ function summarizeSmoke(report) {
       step.step === "membership.processing-failures"
       || step.step === "engagement.jobs"
       || step.step === "engagement.thank-you.cleanup"
+      || step.step === "engagement.review-routing-positive"
+      || step.step === "engagement.review-routing-negative"
+      || step.step === "engagement.review-request.cleanup"
       || step.step === "gamification.challenge-progress"
       || step.step === "gamification.challenge.cleanup"
       || step.step === "gamification.future-challenge.window"
@@ -129,6 +132,12 @@ function summarizeSmoke(report) {
         console.log(`- engagement.jobs: count=${step.jobCount ?? "?"} statuses=${asArray(step.statuses).join(",") || "none"} types=${asArray(step.types).join(",") || "none"}${quiet}`);
       } else if (step.step === "engagement.thank-you.cleanup") {
         console.log(`- engagement.thank-you.cleanup: markedSent=${step.markedSent === true ? "yes" : "no"} jobId=${step.jobId ?? "?"}`);
+      } else if (step.step === "engagement.review-routing-positive") {
+        console.log(`- engagement.review-routing-positive: route=${step.route ?? "?"} status=${step.jobStatus ?? "?"} reviewUrl=${step.reviewUrlPresent === true ? "yes" : "no"} delayHours=${step.delayHours ?? "?"}`);
+      } else if (step.step === "engagement.review-routing-negative") {
+        console.log(`- engagement.review-routing-negative: route=${step.route ?? "?"} pendingReview=${step.pendingReviewRequest === true ? "yes" : "no"} recoveryActions=${asArray(step.recoveryActions).length}`);
+      } else if (step.step === "engagement.review-request.cleanup") {
+        console.log(`- engagement.review-request.cleanup: markedSent=${step.markedSent === true ? "yes" : "no"} jobId=${step.jobId ?? "?"}`);
       } else if (step.step === "gamification.challenge-progress") {
         console.log(`- gamification.challenge-progress: progress=${step.progress ?? "?"}/${step.target ?? "?"} status=${step.status ?? "?"} completed=${step.completed === true ? "yes" : "no"}`);
       } else if (step.step === "gamification.challenge.cleanup") {
@@ -241,6 +250,7 @@ function summarizeDebugBundleManifest(report) {
   const engagementWinBack = engagement.winBack ?? {};
   const engagementBirthdays = engagement.birthdays ?? {};
   const engagementAnniversaries = engagement.anniversaries ?? {};
+  const engagementReviewSolicitation = engagement.reviewSolicitation ?? {};
   const agentMembershipIntents = highlights.agentMembershipIntents ?? {};
   const queues = asArray(adminDiagnostics.queues);
 
@@ -295,7 +305,7 @@ function summarizeDebugBundleManifest(report) {
   if (engagement.status) {
     printLine(
       "Engagement",
-      `${engagement.status} pending=${engagementTotals.pending ?? "?"} overdue=${engagementTotals.overduePending ?? "?"} failed=${engagementTotals.failed ?? "?"} skipped=${engagementTotals.skipped ?? "?"} winBackDue=${engagementWinBack.dueUnscheduledTotal ?? "?"} birthdayDue=${engagementBirthdays.dueUnscheduledToday ?? "?"} anniversaryDue=${engagementAnniversaries.dueUnscheduledToday ?? "?"}`,
+      `${engagement.status} pending=${engagementTotals.pending ?? "?"} overdue=${engagementTotals.overduePending ?? "?"} failed=${engagementTotals.failed ?? "?"} skipped=${engagementTotals.skipped ?? "?"} winBackDue=${engagementWinBack.dueUnscheduledTotal ?? "?"} birthdayDue=${engagementBirthdays.dueUnscheduledToday ?? "?"} anniversaryDue=${engagementAnniversaries.dueUnscheduledToday ?? "?"} reviewWithoutPositive=${engagementReviewSolicitation.pendingWithoutPositiveFeedback ?? "?"} negativeWithReview=${engagementReviewSolicitation.negativeFeedbackWithPendingReview ?? "?"}`,
     );
   }
   if (agentMembershipIntents.status) {

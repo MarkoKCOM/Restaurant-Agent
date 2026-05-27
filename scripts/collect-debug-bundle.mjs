@@ -274,6 +274,7 @@ async function captureDiagnosticsHighlights(commandRecord) {
         winBack: engagement.winBack,
         birthdays: engagement.birthdays,
         anniversaries: engagement.anniversaries,
+        reviewSolicitation: engagement.reviewSolicitation,
         skippedByReason: engagement.skippedByReason,
         error: engagement.error,
       },
@@ -359,8 +360,9 @@ async function writeReadme() {
       const winBack = engagement.winBack ?? {};
       const birthdays = engagement.birthdays ?? {};
       const anniversaries = engagement.anniversaries ?? {};
+      const reviewSolicitation = engagement.reviewSolicitation ?? {};
       lines.push(
-        `- Engagement: ${engagement.status ?? "unknown"} pending=${engagementTotals.pending ?? "?"} overdue=${engagementTotals.overduePending ?? "?"} failed=${engagementTotals.failed ?? "?"} skipped=${engagementTotals.skipped ?? "?"} winBackDue=${winBack.dueUnscheduledTotal ?? "?"} birthdayDue=${birthdays.dueUnscheduledToday ?? "?"} anniversaryDue=${anniversaries.dueUnscheduledToday ?? "?"}`,
+        `- Engagement: ${engagement.status ?? "unknown"} pending=${engagementTotals.pending ?? "?"} overdue=${engagementTotals.overduePending ?? "?"} failed=${engagementTotals.failed ?? "?"} skipped=${engagementTotals.skipped ?? "?"} winBackDue=${winBack.dueUnscheduledTotal ?? "?"} birthdayDue=${birthdays.dueUnscheduledToday ?? "?"} anniversaryDue=${anniversaries.dueUnscheduledToday ?? "?"} reviewWithoutPositive=${reviewSolicitation.pendingWithoutPositiveFeedback ?? "?"} negativeWithReview=${reviewSolicitation.negativeFeedbackWithPendingReview ?? "?"}`,
       );
       if (agentMembershipIntents) {
         lines.push(

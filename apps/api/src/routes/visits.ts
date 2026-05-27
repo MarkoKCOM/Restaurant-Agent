@@ -281,14 +281,14 @@ export async function feedbackRoutes(app: FastifyInstance) {
           restaurantId: parsed.restaurantId,
           guestId: parsed.guestId,
           reservationId: parsed.reservationId,
-          visitId: result?.id,
+          visitId: result?.visit.id,
         },
         "Auto-tag after feedback failed",
       );
     });
 
     reply.code(201);
-    return { visit: result };
+    return { visit: result.visit, reviewRouting: result.reviewRouting };
   });
 
   // GET /api/v1/feedback/summary — restaurant feedback summary (requires auth)

@@ -1,6 +1,6 @@
 import { and, eq, gte, inArray, lt, lte, gt, sql, ne } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { engagementJobs, guests, restaurants } from "../db/schema.js";
+import { engagementJobs, guests, restaurants, visitLogs } from "../db/schema.js";
 import { engagementQueue } from "../queue/index.js";
 import type { InferSelectModel } from "drizzle-orm";
 
@@ -27,6 +27,8 @@ export const PROMOTIONAL_ENGAGEMENT_TYPES = [
 const PROMOTIONAL_WEEKLY_LIMIT = 2;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const THANK_YOU_DELAY_MS = 2 * 60 * 60 * 1000;
+const FIRST_TIME_REVIEW_DELAY_MS = 24 * 60 * 60 * 1000;
+const REGULAR_REVIEW_DELAY_MS = 2 * 60 * 60 * 1000;
 const DEFAULT_QUIET_HOURS = {
   enabled: true,
   start: "22:00",
@@ -337,6 +339,31 @@ async function createSkippedEngagementJob(params: {
 
   if (!job) throw new Error("Failed to create skipped engagement job");
   return job;
+}
+
+async function skipPendingEngagementJobs(params: {
+  guestId: string;
+  restaurantId: string;
+  type: EngagementJobType;
+  reason: string;
+}): Promise<number> {
+  const skipped = await db
+    .update(engagementJobs)
+    .set({
+      status: "skipped",
+      skipReason: params.reason,
+    })
+    .where(
+      and(
+        eq(engagementJobs.guestId, params.guestId),
+        eq(engagementJobs.restaurantId, params.restaurantId),
+        eq(engagementJobs.type, params.type),
+        eq(engagementJobs.status, "pending"),
+      ),
+    )
+    .returning({ id: engagementJobs.id });
+
+  return skipped.length;
 }
 
 async function scheduleEngagementJob(params: {
@@ -655,18 +682,111 @@ export async function checkAnniversaries(restaurantId: string): Promise<Annivers
 export async function scheduleReviewRequest(
   guestId: string,
   restaurantId: string,
-  _reservationId: string,
+  reservationId: string,
 ): Promise<EngagementJobRow | null> {
+  const [positiveFeedback] = await db
+    .select({ id: visitLogs.id })
+    .from(visitLogs)
+    .where(
+      and(
+        eq(visitLogs.guestId, guestId),
+        eq(visitLogs.restaurantId, restaurantId),
+        eq(visitLogs.reservationId, reservationId),
+        eq(visitLogs.sentiment, "positive"),
+      ),
+    )
+    .limit(1);
+
+  if (!positiveFeedback) return null;
+
+  const result = await scheduleReviewRequestForPositiveFeedback({ guestId, restaurantId });
+  return result?.job ?? null;
+}
+
+export function buildGoogleReviewUrl(params: {
+  googlePlaceId?: string | null;
+  restaurantName?: string | null;
+}): string | null {
+  if (params.googlePlaceId) {
+    return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(params.googlePlaceId)}`;
+  }
+  if (params.restaurantName) {
+    return `https://www.google.com/search?q=${encodeURIComponent(`${params.restaurantName} Google review`)}`;
+  }
+  return null;
+}
+
+export async function scheduleReviewRequestForPositiveFeedback(params: {
+  guestId: string;
+  restaurantId: string;
+}): Promise<{ job: EngagementJobRow; reviewUrl: string | null; delayHours: number } | null> {
   const [guest] = await db
     .select()
     .from(guests)
-    .where(eq(guests.id, guestId))
+    .where(eq(guests.id, params.guestId))
     .limit(1);
 
-  if (!guest || guest.visitCount < 3) return null;
+  const [restaurant] = await db
+    .select({
+      name: restaurants.name,
+      googlePlaceId: restaurants.googlePlaceId,
+    })
+    .from(restaurants)
+    .where(eq(restaurants.id, params.restaurantId))
+    .limit(1);
 
-  const triggerAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  return scheduleEngagementJob({ guestId, restaurantId, type: "review_request", triggerAt });
+  if (!guest || !restaurant) return null;
+
+  const delayMs = guest.visitCount <= 1 ? FIRST_TIME_REVIEW_DELAY_MS : REGULAR_REVIEW_DELAY_MS;
+  const triggerAt = await applyRestaurantQuietHours(params.restaurantId, new Date(Date.now() + delayMs));
+  const job = await scheduleEngagementJob({
+    guestId: params.guestId,
+    restaurantId: params.restaurantId,
+    type: "review_request",
+    triggerAt,
+  });
+
+  return {
+    job,
+    reviewUrl: buildGoogleReviewUrl(restaurant),
+    delayHours: delayMs / (60 * 60 * 1000),
+  };
+}
+
+export async function routeNegativeFeedbackForRecovery(params: {
+  guestId: string;
+  restaurantId: string;
+}): Promise<{
+  skippedReviewRequests: number;
+  ownerContact: string | null;
+  recoveryActions: string[];
+}> {
+  const skippedReviewRequests = await skipPendingEngagementJobs({
+    guestId: params.guestId,
+    restaurantId: params.restaurantId,
+    type: "review_request",
+    reason: "negative_feedback_service_recovery",
+  });
+
+  const [restaurant] = await db
+    .select({
+      ownerWhatsapp: restaurants.ownerWhatsapp,
+      ownerPhone: restaurants.ownerPhone,
+    })
+    .from(restaurants)
+    .where(eq(restaurants.id, params.restaurantId))
+    .limit(1);
+
+  return {
+    skippedReviewRequests,
+    ownerContact: restaurant?.ownerWhatsapp ?? restaurant?.ownerPhone ?? null,
+    recoveryActions: [
+      "send_personal_apology",
+      "offer_next_visit_discount",
+      "schedule_owner_call",
+      "escalate_to_manager",
+    ],
+  };
 }
 
 interface WinBackResult {

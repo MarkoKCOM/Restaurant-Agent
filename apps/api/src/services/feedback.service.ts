@@ -2,6 +2,10 @@ import type { FastifyBaseLogger } from "fastify";
 import { and, eq, desc, gte, lte, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { visitLogs, guests } from "../db/schema.js";
+import {
+  routeNegativeFeedbackForRecovery,
+  scheduleReviewRequestForPositiveFeedback,
+} from "./engagement.service.js";
 
 // ── Types ─────────────────────────────────────────────
 
@@ -30,9 +34,26 @@ export interface FeedbackSummary {
   }>;
 }
 
+export interface ReviewRoutingResult {
+  route: "public_review" | "private_recovery" | "neutral_followup";
+  sentiment: "positive" | "neutral" | "negative";
+  reviewUrl?: string | null;
+  engagementJobId?: string | null;
+  engagementJobStatus?: string | null;
+  delayHours?: number | null;
+  ownerContact?: string | null;
+  skippedReviewRequests?: number;
+  recoveryActions?: string[];
+}
+
+export interface SubmitFeedbackResult {
+  visit: typeof visitLogs.$inferSelect;
+  reviewRouting: ReviewRoutingResult;
+}
+
 // ── Core Functions ────────────────────────────────────
 
-export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitFeedbackOptions = {}) {
+export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitFeedbackOptions = {}): Promise<SubmitFeedbackResult> {
   // Check if a visit log already exists for this reservation
   let existingVisit = null;
   if (data.reservationId) {
@@ -50,7 +71,7 @@ export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitF
   }
 
   // Determine sentiment from rating
-  let sentiment: string;
+  let sentiment: "positive" | "neutral" | "negative";
   if (data.rating >= 4) sentiment = "positive";
   else if (data.rating <= 2) sentiment = "negative";
   else sentiment = "neutral";
@@ -140,7 +161,65 @@ export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitF
       .where(eq(guests.id, data.guestId));
   }
 
-  return visit;
+  let reviewRouting: ReviewRoutingResult;
+  if (sentiment === "positive") {
+    const reviewRequest = await scheduleReviewRequestForPositiveFeedback({
+      guestId: data.guestId,
+      restaurantId: data.restaurantId,
+    });
+    reviewRouting = {
+      route: "public_review",
+      sentiment,
+      reviewUrl: reviewRequest?.reviewUrl ?? null,
+      engagementJobId: reviewRequest?.job.id ?? null,
+      engagementJobStatus: reviewRequest?.job.status ?? null,
+      delayHours: reviewRequest?.delayHours ?? null,
+    };
+    options.logger?.info(
+      {
+        restaurantId: data.restaurantId,
+        guestId: data.guestId,
+        reservationId: data.reservationId,
+        visitId: visit?.id,
+        engagementJobId: reviewRouting.engagementJobId,
+        engagementJobStatus: reviewRouting.engagementJobStatus,
+        delayHours: reviewRouting.delayHours,
+      },
+      "Positive feedback routed to public review request",
+    );
+  } else if (sentiment === "negative") {
+    const recovery = await routeNegativeFeedbackForRecovery({
+      guestId: data.guestId,
+      restaurantId: data.restaurantId,
+    });
+    reviewRouting = {
+      route: "private_recovery",
+      sentiment,
+      ownerContact: recovery.ownerContact,
+      skippedReviewRequests: recovery.skippedReviewRequests,
+      recoveryActions: recovery.recoveryActions,
+    };
+    options.logger?.warn(
+      {
+        restaurantId: data.restaurantId,
+        guestId: data.guestId,
+        reservationId: data.reservationId,
+        visitId: visit?.id,
+        ownerContactConfigured: Boolean(recovery.ownerContact),
+        skippedReviewRequests: recovery.skippedReviewRequests,
+        recoveryActions: recovery.recoveryActions,
+      },
+      "Negative feedback routed to private service recovery",
+    );
+  } else {
+    reviewRouting = {
+      route: "neutral_followup",
+      sentiment,
+    };
+  }
+
+  if (!visit) throw new Error("Failed to submit feedback");
+  return { visit, reviewRouting };
 }
 
 export async function getFeedbackSummary(

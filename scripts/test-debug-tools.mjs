@@ -87,6 +87,9 @@ const smokePath = await writeJson("smoke.json", {
     { step: "membership.processing-failures", openCount: 2, relatedOpenCount: 0 },
     { step: "engagement.jobs", jobCount: 2, statuses: ["pending"], types: ["thank_you", "review_request"], thankYouOutsideQuietHours: true },
     { step: "engagement.thank-you.cleanup", jobId: "engagement-job-test-1", markedSent: true },
+    { step: "engagement.review-routing-positive", route: "public_review", jobStatus: "pending", reviewUrlPresent: true, delayHours: 24 },
+    { step: "engagement.review-routing-negative", route: "private_recovery", pendingReviewRequest: false, recoveryActions: ["send_personal_apology", "offer_next_visit_discount"] },
+    { step: "engagement.review-request.cleanup", jobId: "review-job-test-1", markedSent: true },
     { step: "gamification.future-challenge.window", challengeId: "future-challenge-test-1", startDate: "2026-07-26", listedAsActive: false },
     { step: "gamification.future-challenge.cleanup", challengeId: "future-challenge-test-1", isActive: false },
     { step: "gamification.expired-challenge.window", challengeId: "expired-challenge-test-1", endDate: "2026-05-26", listedAsActive: false },
@@ -130,6 +133,9 @@ assertIncludes(smokeOutput, "Operational smoke:");
 assertIncludes(smokeOutput, "membership.processing-failures: open=2 related=0");
 assertIncludes(smokeOutput, "engagement.jobs: count=2 statuses=pending types=thank_you,review_request thankYouQuiet=ok");
 assertIncludes(smokeOutput, "engagement.thank-you.cleanup: markedSent=yes jobId=engagement-job-test-1");
+assertIncludes(smokeOutput, "engagement.review-routing-positive: route=public_review status=pending reviewUrl=yes delayHours=24");
+assertIncludes(smokeOutput, "engagement.review-routing-negative: route=private_recovery pendingReview=no recoveryActions=2");
+assertIncludes(smokeOutput, "engagement.review-request.cleanup: markedSent=yes jobId=review-job-test-1");
 assertIncludes(smokeOutput, "gamification.future-challenge.window: listedActive=no startDate=2026-07-26");
 assertIncludes(smokeOutput, "gamification.future-challenge.cleanup: active=no challengeId=future-challenge-test-1");
 assertIncludes(smokeOutput, "gamification.expired-challenge.window: listedActive=no endDate=2026-05-26");
@@ -320,6 +326,10 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
         anniversaries: {
           dueUnscheduledToday: 1,
         },
+        reviewSolicitation: {
+          pendingWithoutPositiveFeedback: 1,
+          negativeFeedbackWithPendingReview: 1,
+        },
       },
       queues: [
         { name: "membership-events", status: "ok", failed: 0 },
@@ -345,7 +355,7 @@ assertIncludes(
   debugBundleManifestOutput,
   "Gamification: attention activeChallenges=2 smokeChallenges=1 birthdayWeekActive=1 birthdayWeekDue=1 stuckChallenges=1 duplicateProgress=1 referralCodes=7 referralCreditMismatches=1 menuBadgeGuests=5",
 );
-assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overdue=1 failed=1 skipped=3 winBackDue=2 birthdayDue=1 anniversaryDue=1");
+assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overdue=1 failed=1 skipped=3 winBackDue=2 birthdayDue=1 anniversaryDue=1 reviewWithoutPositive=1 negativeWithReview=1");
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");
 assertIncludes(debugBundleManifestOutput, "Queues: membership-events:ok/failed=0");
 assertIncludes(debugBundleManifestOutput, "Failed commands: 1");

@@ -177,10 +177,13 @@ function record(step, details) {
   report.steps.push({ step, ...details });
 }
 
-async function markSmokeEngagementJobSent(jobId) {
+async function markSmokeEngagementJobSent(jobId, type = "thank_you") {
   if (!process.env.DATABASE_URL) return false;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(jobId)) {
     throw new Error(`Refusing to cleanup invalid engagement job id: ${jobId}`);
+  }
+  if (!["thank_you", "review_request"].includes(type)) {
+    throw new Error(`Refusing to cleanup unsupported engagement job type: ${type}`);
   }
 
   await execFileAsync("psql", [
@@ -188,7 +191,7 @@ async function markSmokeEngagementJobSent(jobId) {
     "-v",
     "ON_ERROR_STOP=1",
     "-c",
-    `update engagement_jobs set status = 'sent', sent_at = now(), skip_reason = 'smoke_cleanup' where id = '${jobId}' and status = 'pending' and type = 'thank_you'`,
+    `update engagement_jobs set status = 'sent', sent_at = now(), skip_reason = 'smoke_cleanup' where id = '${jobId}' and status = 'pending' and type = '${type}'`,
   ], { timeout: 10_000 });
 
   return true;
@@ -583,6 +586,74 @@ async function main() {
       markedSent: cleaned,
     });
   });
+
+  const positiveFeedback = await request("/api/v1/feedback", {
+    method: "POST",
+    body: {
+      restaurantId,
+      guestId: reservation.guestId,
+      reservationId: reservation.id,
+      rating: 5,
+      feedback: `Loved it ${runId}`,
+      channel: "web",
+    },
+  });
+  const positiveReviewJobId = positiveFeedback.reviewRouting?.engagementJobId;
+  record("engagement.review-routing-positive", {
+    route: positiveFeedback.reviewRouting?.route ?? null,
+    sentiment: positiveFeedback.reviewRouting?.sentiment ?? null,
+    reviewUrlPresent: Boolean(positiveFeedback.reviewRouting?.reviewUrl),
+    jobId: positiveReviewJobId ?? null,
+    jobStatus: positiveFeedback.reviewRouting?.engagementJobStatus ?? null,
+    delayHours: positiveFeedback.reviewRouting?.delayHours ?? null,
+  });
+  if (positiveFeedback.reviewRouting?.route !== "public_review" || !positiveReviewJobId || positiveFeedback.reviewRouting?.engagementJobStatus !== "pending") {
+    throw new Error(`Positive feedback did not route to a pending public review request: ${JSON.stringify(positiveFeedback.reviewRouting ?? {})}`);
+  }
+  cleanupTasks.push(async () => {
+    const cleaned = await markSmokeEngagementJobSent(positiveReviewJobId, "review_request");
+    record("engagement.review-request.cleanup", {
+      jobId: positiveReviewJobId,
+      markedSent: cleaned,
+    });
+  });
+
+  const negativeGuest = await request("/api/v1/guests", {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      name: `Smoke Negative Feedback ${runId}`,
+      phone: `052${String(Date.now()).slice(-7)}`,
+      language: "he",
+      source: "web",
+    },
+  });
+  const negativeGuestId = negativeGuest.guest?.id;
+  if (!negativeGuestId) throw new Error("Negative feedback smoke guest create endpoint did not return guest.id");
+  const negativeFeedback = await request("/api/v1/feedback", {
+    method: "POST",
+    body: {
+      restaurantId,
+      guestId: negativeGuestId,
+      rating: 1,
+      feedback: `Service recovery smoke ${runId}`,
+      channel: "web",
+    },
+  });
+  const negativeGuestJobs = await request(`/api/v1/engagement/jobs?restaurantId=${restaurantId}&guestId=${negativeGuestId}`, { token });
+  const hasNegativeReviewRequest = (negativeGuestJobs.jobs ?? []).some((job) => job.type === "review_request" && job.status === "pending");
+  record("engagement.review-routing-negative", {
+    route: negativeFeedback.reviewRouting?.route ?? null,
+    sentiment: negativeFeedback.reviewRouting?.sentiment ?? null,
+    ownerContactPresent: Boolean(negativeFeedback.reviewRouting?.ownerContact),
+    skippedReviewRequests: negativeFeedback.reviewRouting?.skippedReviewRequests ?? null,
+    recoveryActions: negativeFeedback.reviewRouting?.recoveryActions ?? [],
+    pendingReviewRequest: hasNegativeReviewRequest,
+  });
+  if (negativeFeedback.reviewRouting?.route !== "private_recovery" || hasNegativeReviewRequest) {
+    throw new Error(`Negative feedback was not routed privately: routing=${JSON.stringify(negativeFeedback.reviewRouting ?? {})} pendingReviewRequest=${hasNegativeReviewRequest}`);
+  }
 
   const birthdayGuest = await request("/api/v1/guests", {
     method: "POST",

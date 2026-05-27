@@ -31,6 +31,9 @@ jobs:
       - name: Build domain package
         run: pnpm --filter @openseat/domain build
 
+      - name: Test debugging tools
+        run: pnpm test:debug-tools
+
       - name: Type-check API
         run: pnpm --filter @openseat/api type-check
 

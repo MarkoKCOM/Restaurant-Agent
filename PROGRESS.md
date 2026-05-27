@@ -99,6 +99,8 @@
 - Debug bundle summaries now classify the bundle-run API log slice and print fresh warning/error counts, error codes, and samples, separating expected negative-path smoke warnings from unexpected runtime noise.
 - Owner delivery readiness now has a guarded single-restaurant repair mode that patches a known owner WhatsApp value through the API and immediately re-checks readiness.
 - Debug bundles can now fail after writing artifacts when `--fail-on-api-log-issues=true` finds unexpected warnings/errors in the bundle-run API log slice.
+- Debug artifact summaries now print the last smoke steps and recent requests for failed API smoke reports, so assertion failures in gamification, loyalty, membership, and retention checks point at the exact product area and request IDs.
+- Loyalty dashboard retention actions now include a next-best-action recommendation for each queued member, covering recovery, win-back, opt-in, referral, and recognition follow-up.
 
 ### Verified
 - `pnpm --filter @openseat/domain build`

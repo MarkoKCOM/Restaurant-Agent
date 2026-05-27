@@ -91,3 +91,4 @@ Next improvements should add:
 Completed from this list:
 - loyalty starter templates are now turned on during onboarding. New self-serve tenants start with active comeback, referral, and table-starter rewards so the Loyalty screen is not empty on first login.
 - the Loyalty dashboard now has a retention action queue. It highlights members who are lapsed, at-risk, opted out of campaigns, repeatedly no-showing, or repeat guests who still need a referral code.
+- the Loyalty dashboard retention queue now shows a recommended next action for each member, so owners and Jake can move from diagnosis to a concrete win-back, recovery, opt-in, referral, or recognition play.

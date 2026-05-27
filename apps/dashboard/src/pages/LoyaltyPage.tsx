@@ -50,6 +50,17 @@ function getRetentionReasons(guest: Guest, t: ReturnType<typeof useLang>["t"]) {
   return reasons;
 }
 
+function getRetentionAction(guest: Guest, t: ReturnType<typeof useLang>["t"]) {
+  const tags = guestTags(guest);
+
+  if (tags.has("at_risk") || guest.noShowCount >= 2) return t.loyalty.retentionActionRecovery;
+  if (tags.has("lapsed")) return t.loyalty.retentionActionWinBack;
+  if (guest.optedOutCampaigns) return t.loyalty.retentionActionOptIn;
+  if (guest.visitCount >= 3 && !guest.referralCode) return t.loyalty.retentionActionReferral;
+
+  return t.loyalty.retentionActionRecognize;
+}
+
 function retentionPriority(guest: Guest) {
   const tags = guestTags(guest);
   let score = 0;
@@ -148,6 +159,7 @@ export function LoyaltyPage() {
       .map((guest) => ({
         guest,
         reasons: getRetentionReasons(guest, t),
+        action: getRetentionAction(guest, t),
         priority: retentionPriority(guest),
       }))
       .filter((item) => item.reasons.length > 0)
@@ -279,7 +291,7 @@ export function LoyaltyPage() {
           </p>
         ) : (
           <div className="mt-5 grid gap-3 lg:grid-cols-2">
-            {retentionQueue.map(({ guest, reasons }) => (
+            {retentionQueue.map(({ guest, reasons, action }) => (
               <Link
                 key={guest.id}
                 to={`/guests/${guest.id}`}
@@ -305,6 +317,10 @@ export function LoyaltyPage() {
                       {reason}
                     </span>
                   ))}
+                </div>
+                <div className="mt-4 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800">{t.loyalty.retentionNextAction}</p>
+                  <p className="mt-1 text-sm font-medium text-amber-950">{action}</p>
                 </div>
               </Link>
             ))}

@@ -104,7 +104,7 @@ export async function createChallenge(
 export async function listActiveChallenges(
   restaurantId: string,
 ): Promise<ChallengeRow[]> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = formatJerusalemDate(new Date());
 
   return db
     .select()
@@ -310,7 +310,7 @@ export async function autoProgressVisitCountChallenges(
   guestId: string,
   restaurantId: string,
 ): Promise<Array<{ challengeId: string; completed: boolean; progress: number; target: number }>> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = formatJerusalemDate(new Date());
   const activeChallenges = await db
     .select({ id: challenges.id, type: challenges.type, metadata: challenges.metadata })
     .from(challenges)

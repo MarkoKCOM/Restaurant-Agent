@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import { execFile } from "node:child_process";
-import { createHmac, randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
+import { createSignedSuperAdminToken } from "./lib/debug-token.mjs";
 
 const execFileAsync = promisify(execFile);
 const args = process.argv.slice(2);
@@ -21,38 +21,6 @@ function readOption(name, fallback) {
 
 function stamp() {
   return new Date().toISOString().replace(/[:.]/g, "-");
-}
-
-function base64Url(value) {
-  return Buffer.from(value)
-    .toString("base64")
-    .replace(/=/g, "")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
-}
-
-function createSignedSuperAdminToken() {
-  const jwtSecret = process.env.JWT_SECRET;
-  if (!jwtSecret) return "";
-
-  const header = base64Url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-  const now = Math.floor(Date.now() / 1000);
-  const payload = base64Url(JSON.stringify({
-    id: randomUUID(),
-    email: "debug-bundle-super-admin@openseat.local",
-    restaurantId: null,
-    role: "super_admin",
-    iat: now,
-    exp: now + 60 * 10,
-  }));
-  const signature = createHmac("sha256", jwtSecret)
-    .update(`${header}.${payload}`)
-    .digest("base64")
-    .replace(/=/g, "")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
-
-  return `${header}.${payload}.${signature}`;
 }
 
 function decodeTokenRestaurantId(token) {

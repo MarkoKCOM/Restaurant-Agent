@@ -762,6 +762,8 @@ for (const expectedTokenHelper of [
 ]) {
   assertIncludes(debugTokenHelpers, expectedTokenHelper);
 }
+assertIncludes(debugBundleCollector, 'import { createSignedSuperAdminToken } from "./lib/debug-token.mjs";');
+assert(!debugBundleCollector.includes("function createSignedSuperAdminToken()"), "Expected debug bundle to use shared token helper");
 
 for (const requiredReadmeContent of [
   "# OpenSeat Debug Bundle",

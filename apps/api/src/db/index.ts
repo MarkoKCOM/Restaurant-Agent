@@ -10,3 +10,7 @@ const client = postgres(env.DATABASE_URL, {
 
 export const db = drizzle(client, { schema });
 export type DB = typeof db;
+
+export async function pingDatabase(): Promise<void> {
+  await client`select 1`;
+}

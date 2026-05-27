@@ -64,3 +64,21 @@ Use `pnpm debug:api` to inspect one endpoint quickly. It sends an `x-request-id`
 - `BODY='{"restaurantId":"..."}'`
 - `OPENSEAT_TOKEN=...`
 - `REQUEST_ID=debug-manual-1`
+
+## Dependency Diagnostics
+
+Super-admins can inspect runtime dependencies without exposing secrets:
+
+```bash
+OPENSEAT_TOKEN=... pnpm debug:api -- http://localhost:3001/api/v1/admin/diagnostics
+```
+
+The endpoint returns:
+
+- overall status: `ok` or `degraded`
+- database ping status and latency
+- Redis ping status and latency
+- sanitized failure name/code/message
+- runtime flags such as `NODE_ENV`, `LOG_LEVEL`, selected AI models, and whether OpenRouter is configured
+
+Use this when `/api/v1/health` is green but app workflows still fail.

@@ -3,6 +3,11 @@
 ## 2026-05-27 (Debugging infrastructure pass)
 
 ### Added
+- Protected super-admin dependency diagnostics at `GET /api/v1/admin/diagnostics`:
+  - database ping status and latency
+  - Redis ping status and latency
+  - sanitized dependency error name/code/message
+  - runtime flags without secret values
 - Request ID propagation for API requests:
   - API accepts trusted `x-request-id` values or generates a UUID per request
   - every API response now exposes `x-request-id`

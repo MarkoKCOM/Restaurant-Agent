@@ -3,8 +3,23 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { adminUsers, restaurants } from "../db/schema.js";
 import { requireSuperAdmin } from "../middleware/auth.js";
+import { getDiagnosticsReport } from "../services/diagnostics.service.js";
 
 export async function adminRoutes(app: FastifyInstance) {
+  // GET /diagnostics — dependency health snapshot (super_admin only)
+  app.get("/diagnostics", async (request, reply) => {
+    const user = request.user!;
+    const err = requireSuperAdmin(user);
+    if (err) return reply.status(403).send({ error: err });
+
+    const report = await getDiagnosticsReport();
+    const statusCode = report.status === "ok" ? 200 : 503;
+    return reply.status(statusCode).send({
+      ...report,
+      requestId: request.id,
+    });
+  });
+
   // GET /restaurants — list all restaurants (super_admin only)
   app.get("/restaurants", async (request, reply) => {
     const user = request.user!;

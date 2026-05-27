@@ -8,6 +8,7 @@ import { sql } from "drizzle-orm";
 import { env } from "../env.js";
 import { db, pingDatabase } from "../db/index.js";
 import { engagementQueue, reminderQueue, summaryQueue } from "../queue/index.js";
+import { membershipProcessingFailures } from "../db/schema.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -42,6 +43,9 @@ export interface DiagnosticsReport {
     redis: DiagnosticCheck;
   };
   queues: QueueDiagnostic[];
+  operational: {
+    membershipProcessing: MembershipProcessingDiagnostic;
+  };
 }
 
 export interface DeploymentDiagnostic {
@@ -107,6 +111,33 @@ export interface QueueDiagnostic {
     failedReason?: string;
     timestamp?: number;
     finishedOn?: number;
+  }>;
+  error?: DiagnosticCheck["error"];
+}
+
+export interface MembershipProcessingDiagnostic {
+  status: "ok" | "attention" | "error";
+  openCount?: number;
+  totalOpenAttempts?: number;
+  latestOpenAttemptAt?: string;
+  byStage?: Array<{
+    stage: string;
+    openCount: number;
+    maxAttempts: number;
+    latestOpenAttemptAt?: string;
+  }>;
+  openSamples?: Array<{
+    id: string;
+    restaurantId: string;
+    guestId: string;
+    reservationId: string | null;
+    stage: string;
+    attempts: number;
+    errorName: string | null;
+    errorCode: string | null;
+    errorMessage: string;
+    lastAttemptAt: string;
+    createdAt: string;
   }>;
   error?: DiagnosticCheck["error"];
 }
@@ -205,6 +236,98 @@ async function inspectQueue(name: string, queue: Queue): Promise<QueueDiagnostic
       name,
       status: "error",
       latencyMs: Date.now() - startedAt,
+      error: sanitizeError(error),
+    };
+  }
+}
+
+function toIsoString(value: unknown): string | undefined {
+  if (!value) return undefined;
+  if (value instanceof Date) return value.toISOString();
+  return String(value);
+}
+
+async function inspectMembershipProcessing(): Promise<MembershipProcessingDiagnostic> {
+  try {
+    const [summaryRows, stageRows, sampleRows] = await Promise.all([
+      db.execute(sql`
+        select
+          count(*)::int as open_count,
+          coalesce(sum(attempts), 0)::int as total_open_attempts,
+          max(last_attempt_at) as latest_open_attempt_at
+        from ${membershipProcessingFailures}
+        where status = 'open'
+      `) as Promise<Array<{
+        open_count: number;
+        total_open_attempts: number;
+        latest_open_attempt_at: Date | string | null;
+      }>>,
+      db.execute(sql`
+        select
+          stage,
+          count(*)::int as open_count,
+          max(attempts)::int as max_attempts,
+          max(last_attempt_at) as latest_open_attempt_at
+        from ${membershipProcessingFailures}
+        where status = 'open'
+        group by stage
+        order by open_count desc, stage asc
+      `) as Promise<Array<{
+        stage: string;
+        open_count: number;
+        max_attempts: number;
+        latest_open_attempt_at: Date | string | null;
+      }>>,
+      db
+        .select({
+          id: membershipProcessingFailures.id,
+          restaurantId: membershipProcessingFailures.restaurantId,
+          guestId: membershipProcessingFailures.guestId,
+          reservationId: membershipProcessingFailures.reservationId,
+          stage: membershipProcessingFailures.stage,
+          attempts: membershipProcessingFailures.attempts,
+          errorName: membershipProcessingFailures.errorName,
+          errorCode: membershipProcessingFailures.errorCode,
+          errorMessage: membershipProcessingFailures.errorMessage,
+          lastAttemptAt: membershipProcessingFailures.lastAttemptAt,
+          createdAt: membershipProcessingFailures.createdAt,
+        })
+        .from(membershipProcessingFailures)
+        .where(sql`${membershipProcessingFailures.status} = 'open'`)
+        .orderBy(sql`${membershipProcessingFailures.createdAt} desc`)
+        .limit(5),
+    ]);
+    const summary = summaryRows[0];
+    const openCount = Number(summary?.open_count ?? 0);
+
+    return {
+      status: openCount > 0 ? "attention" : "ok",
+      openCount,
+      totalOpenAttempts: Number(summary?.total_open_attempts ?? 0),
+      latestOpenAttemptAt: toIsoString(summary?.latest_open_attempt_at),
+      byStage: stageRows.map((row) => ({
+        stage: row.stage,
+        openCount: Number(row.open_count),
+        maxAttempts: Number(row.max_attempts),
+        latestOpenAttemptAt: toIsoString(row.latest_open_attempt_at),
+      })),
+      openSamples: sampleRows.map((row) => ({
+        id: row.id,
+        restaurantId: row.restaurantId,
+        guestId: row.guestId,
+        reservationId: row.reservationId,
+        stage: row.stage,
+        attempts: row.attempts,
+        errorName: row.errorName,
+        errorCode: row.errorCode,
+        errorMessage: row.errorMessage,
+        lastAttemptAt: row.lastAttemptAt.toISOString(),
+        createdAt: row.createdAt.toISOString(),
+      })),
+    };
+  } catch (error: unknown) {
+    return {
+      status: "error",
       error: sanitizeError(error),
     };
   }
@@ -382,10 +505,11 @@ async function inspectDeployment(): Promise<DeploymentDiagnostic> {
 }
 
 export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
-  const [database, redis, deployment, ...queues] = await Promise.all([
+  const [database, redis, deployment, membershipProcessing, ...queues] = await Promise.all([
     timedCheck(pingDatabase),
     timedCheck(pingRedis),
     inspectDeployment(),
+    inspectMembershipProcessing(),
     inspectQueue("reservation-reminders", reminderQueue),
     inspectQueue("daily-summary", summaryQueue),
     inspectQueue("engagement", engagementQueue),
@@ -396,6 +520,7 @@ export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
     && deployment.source.status === "ok"
     && deployment.codeMigrations.status === "ok"
     && deployment.databaseMigrations.status === "ok"
+    && membershipProcessing.status !== "error"
     && deployment.migrationDrift?.status !== "mismatch"
     ? "ok"
     : "degraded";
@@ -416,5 +541,8 @@ export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
     deployment,
     checks,
     queues,
+    operational: {
+      membershipProcessing,
+    },
   };
 }

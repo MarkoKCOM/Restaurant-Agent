@@ -160,6 +160,7 @@ for (const requiredReadmeContent of [
   "matches running build=",
   "Migration drift:",
   "Dependencies: database=",
+  "Membership processing:",
   "Queues:",
   "Diagnostics request:",
   "## Open First",

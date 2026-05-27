@@ -135,6 +135,7 @@ export async function runAllTests(): Promise<TestRunReport> {
     const deployment = (data as any).deployment;
     const migrationDrift = deployment?.migrationDrift;
     const source = deployment?.source;
+    const membershipProcessing = (data as any).operational?.membershipProcessing;
     if (!deployment || !migrationDrift) {
       throw new Error("Diagnostics response missing deployment migration state");
     }
@@ -147,7 +148,14 @@ export async function runAllTests(): Promise<TestRunReport> {
     if (migrationDrift.status !== "ok") {
       throw new Error(`Migration drift status is ${migrationDrift.status}`);
     }
-    return `status=${(data as any).status} build=${source.shortCommit} checkout=${source.checkout.shortCommit} migrations=${migrationDrift.codeLatestId}/${migrationDrift.databaseLatestId}`;
+    if (
+      !membershipProcessing
+      || !["ok", "attention"].includes(membershipProcessing.status)
+      || typeof membershipProcessing.openCount !== "number"
+    ) {
+      throw new Error("Diagnostics response missing membership processing summary");
+    }
+    return `status=${(data as any).status} build=${source.shortCommit} checkout=${source.checkout.shortCommit} migrations=${migrationDrift.codeLatestId}/${migrationDrift.databaseLatestId} membershipOpen=${membershipProcessing.openCount}`;
   }));
 
   results.push(await runTest("API Diagnostics: missing token envelope", async () => {

@@ -139,6 +139,7 @@ The endpoint returns:
 - deployment metadata: Node version, process ID, working directory, running build git commit/branch/dirty state, current checkout git state, whether checkout matches the running build, code migration count/latest file, applied DB migration count/latest ID/hash, and migration drift status
 - BullMQ queue counts for reservation reminders, daily summaries, and engagement jobs
 - up to two failed-job samples per queue, including job ID, name, attempts, and sanitized failure reason
+- open post-visit membership processing failures, grouped by stage with recent samples, so loyalty/retention repair work is visible without hitting a separate endpoint first
 - sanitized failure name/code/message
 - runtime flags such as `NODE_ENV`, `LOG_LEVEL`, selected AI models, and whether OpenRouter is configured
 

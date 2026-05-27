@@ -132,6 +132,10 @@ async function captureDiagnosticsHighlights(commandRecord) {
     const source = isObject(deployment.source) ? deployment.source : {};
     const migrationDrift = isObject(deployment.migrationDrift) ? deployment.migrationDrift : {};
     const checks = isObject(diagnostics.checks) ? diagnostics.checks : {};
+    const operational = isObject(diagnostics.operational) ? diagnostics.operational : {};
+    const membershipProcessing = isObject(operational.membershipProcessing)
+      ? operational.membershipProcessing
+      : {};
     const queues = Array.isArray(diagnostics.queues) ? diagnostics.queues : [];
 
     manifest.highlights.adminDiagnostics = {
@@ -154,6 +158,13 @@ async function captureDiagnosticsHighlights(commandRecord) {
       checks: {
         database: isObject(checks.database) ? checks.database.status : undefined,
         redis: isObject(checks.redis) ? checks.redis.status : undefined,
+      },
+      membershipProcessing: {
+        status: membershipProcessing.status,
+        openCount: membershipProcessing.openCount,
+        totalOpenAttempts: membershipProcessing.totalOpenAttempts,
+        latestOpenAttemptAt: membershipProcessing.latestOpenAttemptAt,
+        byStage: membershipProcessing.byStage,
       },
       queues: queues.map((queue) => ({
         name: queue.name,
@@ -202,6 +213,7 @@ async function writeReadme() {
       const checkout = source.checkout ?? {};
       const migrationDrift = adminDiagnostics.migrationDrift ?? {};
       const checks = adminDiagnostics.checks ?? {};
+      const membershipProcessing = adminDiagnostics.membershipProcessing ?? {};
       const queues = Array.isArray(adminDiagnostics.queues) ? adminDiagnostics.queues : [];
       lines.push(`- Admin diagnostics: ${adminDiagnostics.status ?? "unknown"}`);
       lines.push(
@@ -219,6 +231,9 @@ async function writeReadme() {
         `- Migration drift: ${migrationDrift.status ?? "unknown"} (${migrationDrift.codeLatestId ?? "?"}/${migrationDrift.databaseLatestId ?? "?"})`,
       );
       lines.push(`- Dependencies: database=${checks.database ?? "unknown"} redis=${checks.redis ?? "unknown"}`);
+      lines.push(
+        `- Membership processing: ${membershipProcessing.status ?? "unknown"} open=${membershipProcessing.openCount ?? "?"} attempts=${membershipProcessing.totalOpenAttempts ?? "?"}`,
+      );
       if (queues.length > 0) {
         lines.push(`- Queues: ${queues.map((queue) => `${queue.name}:${queue.status}/failed=${queue.failed ?? "?"}`).join(", ")}`);
       }

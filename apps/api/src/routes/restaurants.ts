@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/index.js";
@@ -34,6 +34,39 @@ function normalizeDashboardConfig(raw: unknown): Record<string, unknown> {
   };
 }
 
+function sendRestaurantError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  statusCode: number,
+  message: string,
+  code: string,
+  context: Record<string, unknown> = {},
+  extra: Record<string, unknown> = {},
+) {
+  const logPayload = {
+    ...context,
+    code,
+    requestId: request.id,
+    statusCode,
+    userId: request.user?.id,
+    restaurantId: request.user?.restaurantId,
+    role: request.user?.role,
+  };
+
+  if (statusCode >= 500) {
+    request.log.error(logPayload, "Restaurant request failed");
+  } else {
+    request.log.warn(logPayload, "Restaurant request rejected");
+  }
+
+  return reply.status(statusCode).send({
+    error: message,
+    code,
+    requestId: request.id,
+    ...extra,
+  });
+}
+
 export async function restaurantRoutes(app: FastifyInstance) {
   // GET / — list all restaurants
   app.get("/", async () => {
@@ -65,7 +98,14 @@ export async function restaurantRoutes(app: FastifyInstance) {
       .limit(1);
 
     if (!row) {
-      return reply.status(404).send({ error: "Restaurant not found" });
+      return sendRestaurantError(
+        request,
+        reply,
+        404,
+        "Restaurant not found",
+        "RESTAURANT_NOT_FOUND",
+        { restaurantLookupId: id },
+      );
     }
 
     return {
@@ -92,7 +132,14 @@ export async function restaurantRoutes(app: FastifyInstance) {
     const body = request.body as Record<string, unknown>;
     const err = enforceTenant(request.user!, id) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendRestaurantError(
+        request,
+        reply,
+        403,
+        err,
+        "RESTAURANT_FORBIDDEN",
+        { restaurantLookupId: id },
+      );
     }
 
     const updates: Record<string, unknown> = {};
@@ -116,13 +163,28 @@ export async function restaurantRoutes(app: FastifyInstance) {
     if (body.dashboardConfig !== undefined) {
       const parsed = dashboardConfigSchema.safeParse(body.dashboardConfig);
       if (!parsed.success) {
-        return reply.status(400).send({ error: "Invalid dashboardConfig", details: parsed.error.flatten() });
+        return sendRestaurantError(
+          request,
+          reply,
+          400,
+          "Invalid dashboardConfig",
+          "RESTAURANT_INVALID_DASHBOARD_CONFIG",
+          { restaurantLookupId: id },
+          { details: parsed.error.flatten() },
+        );
       }
       updates.dashboardConfig = normalizeDashboardConfig(parsed.data);
     }
 
     if (Object.keys(updates).length === 0) {
-      return reply.status(400).send({ error: "No valid fields to update" });
+      return sendRestaurantError(
+        request,
+        reply,
+        400,
+        "No valid fields to update",
+        "RESTAURANT_NO_VALID_FIELDS",
+        { restaurantLookupId: id },
+      );
     }
 
     updates.updatedAt = new Date();
@@ -134,7 +196,14 @@ export async function restaurantRoutes(app: FastifyInstance) {
       .returning();
 
     if (!updated) {
-      return reply.status(404).send({ error: "Restaurant not found" });
+      return sendRestaurantError(
+        request,
+        reply,
+        404,
+        "Restaurant not found",
+        "RESTAURANT_NOT_FOUND",
+        { restaurantLookupId: id },
+      );
     }
 
     return {
@@ -156,7 +225,14 @@ export async function restaurantRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const err = enforceTenant(request.user!, id);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendRestaurantError(
+        request,
+        reply,
+        403,
+        err,
+        "RESTAURANT_FORBIDDEN",
+        { restaurantLookupId: id },
+      );
     }
 
     const today = new Date().toISOString().slice(0, 10);
@@ -168,7 +244,14 @@ export async function restaurantRoutes(app: FastifyInstance) {
       .limit(1);
 
     if (!restaurant) {
-      return reply.status(404).send({ error: "Restaurant not found" });
+      return sendRestaurantError(
+        request,
+        reply,
+        404,
+        "Restaurant not found",
+        "RESTAURANT_NOT_FOUND",
+        { restaurantLookupId: id },
+      );
     }
 
     const todayReservations = await db
@@ -267,7 +350,14 @@ export async function restaurantRoutes(app: FastifyInstance) {
     const { date } = request.query as { date?: string };
     const err = enforceTenant(request.user!, id) ?? requireOperationalRole(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendRestaurantError(
+        request,
+        reply,
+        403,
+        err,
+        "RESTAURANT_FORBIDDEN",
+        { restaurantLookupId: id },
+      );
     }
 
     const [restaurant] = await db
@@ -277,7 +367,14 @@ export async function restaurantRoutes(app: FastifyInstance) {
       .limit(1);
 
     if (!restaurant) {
-      return reply.status(404).send({ error: "Restaurant not found" });
+      return sendRestaurantError(
+        request,
+        reply,
+        404,
+        "Restaurant not found",
+        "RESTAURANT_NOT_FOUND",
+        { restaurantLookupId: id },
+      );
     }
 
     const targetDate = date || new Date().toISOString().slice(0, 10);
@@ -290,7 +387,14 @@ export async function restaurantRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const err = enforceTenant(request.user!, id);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendRestaurantError(
+        request,
+        reply,
+        403,
+        err,
+        "RESTAURANT_FORBIDDEN",
+        { restaurantLookupId: id },
+      );
     }
 
     const today = new Date().toISOString().slice(0, 10);
@@ -394,7 +498,14 @@ export async function restaurantRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const err = enforceTenant(request.user!, id) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendRestaurantError(
+        request,
+        reply,
+        403,
+        err,
+        "RESTAURANT_FORBIDDEN",
+        { restaurantLookupId: id },
+      );
     }
 
     const [restaurant] = await db
@@ -404,7 +515,14 @@ export async function restaurantRoutes(app: FastifyInstance) {
       .limit(1);
 
     if (!restaurant) {
-      return reply.status(404).send({ error: "Restaurant not found" });
+      return sendRestaurantError(
+        request,
+        reply,
+        404,
+        "Restaurant not found",
+        "RESTAURANT_NOT_FOUND",
+        { restaurantLookupId: id },
+      );
     }
 
     const result = await db
@@ -420,7 +538,14 @@ export async function restaurantRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const err = enforceTenant(request.user!, id);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendRestaurantError(
+        request,
+        reply,
+        403,
+        err,
+        "RESTAURANT_FORBIDDEN",
+        { restaurantLookupId: id },
+      );
     }
 
     const rows = await db

@@ -131,6 +131,22 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
     return `code=${String(data.code)} requestId=${String(data.requestId)}`;
   }));
 
+  results.push(await runTest("API Diagnostics: validation envelope", async () => {
+    const requestId = `debug-validation-${runId}`;
+    const data = await api.expectDiagnosticError({
+      path: "/api/v1/reservations",
+      method: "POST",
+      body: {},
+      expectedStatus: 400,
+      expectedCode: "VALIDATION_ERROR",
+      requestId,
+    });
+    if (!data.details || typeof data.details !== "object") {
+      throw new Error("Validation envelope missing details");
+    }
+    return `code=${String(data.code)} requestId=${String(data.requestId)}`;
+  }));
+
   // 2. List restaurants
   results.push(await runTest("List Restaurants", async () => {
     const data = await api.listRestaurants();

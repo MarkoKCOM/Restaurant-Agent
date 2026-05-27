@@ -33,6 +33,36 @@ function isReferralReward(reward: {
   return reward.recommendedMoments?.includes("referral") || reward.templateKey?.includes("referral") || false;
 }
 
+function guestTags(guest: Guest) {
+  return new Set((guest.tags ?? []).map((tag) => tag.toLowerCase()));
+}
+
+function getRetentionReasons(guest: Guest, t: ReturnType<typeof useLang>["t"]) {
+  const tags = guestTags(guest);
+  const reasons: string[] = [];
+
+  if (tags.has("at_risk")) reasons.push(t.loyalty.retentionReasonAtRisk);
+  if (tags.has("lapsed")) reasons.push(t.loyalty.retentionReasonLapsed);
+  if (guest.optedOutCampaigns) reasons.push(t.loyalty.retentionReasonOptedOut);
+  if (guest.noShowCount >= 2) reasons.push(t.loyalty.retentionReasonNoShows);
+  if (guest.visitCount >= 3 && !guest.referralCode) reasons.push(t.loyalty.retentionReasonNoReferralCode);
+
+  return reasons;
+}
+
+function retentionPriority(guest: Guest) {
+  const tags = guestTags(guest);
+  let score = 0;
+
+  if (tags.has("at_risk")) score += 60;
+  if (tags.has("lapsed")) score += 50;
+  if (guest.optedOutCampaigns) score += 25;
+  if (guest.noShowCount >= 2) score += 20;
+  if (guest.visitCount >= 3 && !guest.referralCode) score += 10;
+
+  return score + Math.min(guest.visitCount, 20);
+}
+
 export function LoyaltyPage() {
   const { restaurant, isLoading } = useCurrentRestaurant();
   const { data: guests, isLoading: guestsLoading, error: guestsError } = useGuests(restaurant?.id);
@@ -46,6 +76,11 @@ export function LoyaltyPage() {
   const stats = useMemo(() => {
     const vipGuests = members.filter((guest) => guest.tier === "silver" || guest.tier === "gold").length;
     const optedOutGuests = members.filter((guest) => guest.optedOutCampaigns).length;
+    const atRiskGuests = members.filter((guest) => {
+      const tags = guestTags(guest);
+      return tags.has("at_risk") || tags.has("lapsed") || guest.noShowCount >= 2;
+    }).length;
+    const repeatWithoutReferralCode = members.filter((guest) => guest.visitCount >= 3 && !guest.referralCode).length;
     const activeRewards = rewards.filter((reward) => reward.isActive).length;
     const repeatGuests = members.filter((guest) => guest.visitCount >= 2).length;
     const advocates = members.filter((guest) => guest.referralCode).length;
@@ -57,6 +92,8 @@ export function LoyaltyPage() {
       vipGuests,
       activeRewards,
       optedOutGuests,
+      atRiskGuests,
+      repeatWithoutReferralCode,
       repeatGuests,
       advocates,
       referredMembers,
@@ -105,6 +142,21 @@ export function LoyaltyPage() {
   const referralRewards = useMemo(() => {
     return rewards.filter(isReferralReward).slice(0, 4);
   }, [rewards]);
+
+  const retentionQueue = useMemo(() => {
+    return members
+      .map((guest) => ({
+        guest,
+        reasons: getRetentionReasons(guest, t),
+        priority: retentionPriority(guest),
+      }))
+      .filter((item) => item.reasons.length > 0)
+      .sort((a, b) => {
+        if (b.priority !== a.priority) return b.priority - a.priority;
+        return sortGuestsByPriority(a.guest, b.guest);
+      })
+      .slice(0, 8);
+  }, [members, t]);
 
   const referralProgramSummary = stats.referralReadyRewards > 0
     ? t.loyalty.referralProgramReady.replace("{n}", String(stats.referralReadyRewards))
@@ -194,7 +246,7 @@ export function LoyaltyPage() {
           { label: t.loyalty.overviewRepeatGuests, value: stats.repeatGuests, tone: "bg-purple-50 text-purple-700" },
           { label: t.loyalty.overviewAdvocates, value: stats.advocates, tone: "bg-cyan-50 text-cyan-700" },
           { label: t.loyalty.overviewReferred, value: stats.referredMembers, tone: "bg-indigo-50 text-indigo-700" },
-          { label: t.loyalty.overviewRewards, value: stats.activeRewards, tone: "bg-emerald-50 text-emerald-700" },
+          { label: t.loyalty.overviewAtRisk, value: stats.atRiskGuests, tone: "bg-amber-50 text-amber-700" },
         ].map((card) => (
           <div key={card.label} className={`rounded-2xl p-5 ${card.tone}`}>
             <p className="text-sm font-medium">{card.label}</p>
@@ -202,6 +254,63 @@ export function LoyaltyPage() {
           </div>
         ))}
       </div>
+
+      <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-amber-950">{t.loyalty.retentionQueueTitle}</h3>
+            <p className="mt-1 max-w-3xl text-sm text-amber-900">{t.loyalty.retentionQueueHelp}</p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-sm">
+            <span className="rounded-full bg-white px-3 py-1 font-medium text-amber-800">
+              {stats.atRiskGuests} {t.loyalty.retentionAtRiskShort}
+            </span>
+            <span className="rounded-full bg-white px-3 py-1 font-medium text-amber-800">
+              {stats.repeatWithoutReferralCode} {t.loyalty.retentionNoReferralShort}
+            </span>
+          </div>
+        </div>
+
+        {guestsLoading ? (
+          <p className="mt-5 text-sm text-amber-900">{t.settings.loading}</p>
+        ) : retentionQueue.length === 0 ? (
+          <p className="mt-5 rounded-xl border border-dashed border-amber-300 bg-white/70 px-4 py-6 text-sm text-amber-900">
+            {t.loyalty.retentionQueueEmpty}
+          </p>
+        ) : (
+          <div className="mt-5 grid gap-3 lg:grid-cols-2">
+            {retentionQueue.map(({ guest, reasons }) => (
+              <Link
+                key={guest.id}
+                to={`/guests/${guest.id}`}
+                className="block rounded-xl border border-amber-200 bg-white px-4 py-3 transition-colors hover:bg-amber-50"
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="font-semibold text-gray-900">{guest.name}</p>
+                    <p className="mt-1 text-sm text-gray-500">{guest.phone}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-sm">
+                    <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 font-medium text-gray-700">
+                      {guest.visitCount} {t.loyalty.visitsLabel}
+                    </span>
+                    <span className="inline-flex rounded-full bg-red-50 px-2.5 py-1 font-medium text-red-700">
+                      {formatTier(guest.tier)}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {reasons.map((reason) => (
+                    <span key={reason} className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900">
+                      {reason}
+                    </span>
+                  ))}
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -406,6 +515,14 @@ export function LoyaltyPage() {
                 <span className="text-xl font-bold text-gray-900">{stats.optedOutGuests}</span>
               </div>
               <p className="mt-2 text-sm text-gray-500">{t.loyalty.optedOutHelp}</p>
+            </div>
+
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium text-gray-700">{t.loyalty.retentionAttentionGuests}</span>
+                <span className="text-xl font-bold text-gray-900">{stats.atRiskGuests}</span>
+              </div>
+              <p className="mt-2 text-sm text-gray-500">{t.loyalty.retentionAttentionHelp}</p>
             </div>
 
             <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">

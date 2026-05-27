@@ -39,10 +39,10 @@ function handle401() {
 
 async function fetchJSON<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers: authHeaders() });
-  if (res.status === 401) { handle401(); throw new Error("Unauthorized"); }
   if (!res.ok) {
     const error = await apiErrorFromResponse(res);
     logApiError(error);
+    if (res.status === 401) handle401();
     throw error;
   }
   return res.json();
@@ -53,7 +53,12 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
     ...options,
     headers: { ...authHeaders(), "Content-Type": "application/json", ...options.headers },
   });
-  if (res.status === 401) { handle401(); throw new Error("Unauthorized"); }
+  if (res.status === 401) {
+    const error = await apiErrorFromResponse(res, options.method ?? "REQUEST");
+    logApiError(error);
+    handle401();
+    throw error;
+  }
   return res;
 }
 

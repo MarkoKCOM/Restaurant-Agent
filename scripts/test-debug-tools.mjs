@@ -792,6 +792,8 @@ const campaignRoutes = await readFile("apps/api/src/routes/campaigns.ts", "utf8"
 const analyticsRoutes = await readFile("apps/api/src/routes/analytics.ts", "utf8");
 const engagementRoutes = await readFile("apps/api/src/routes/engagement.ts", "utf8");
 const engagementService = await readFile("apps/api/src/services/engagement.service.ts", "utf8");
+const loyaltyRoutes = await readFile("apps/api/src/routes/loyalty.ts", "utf8");
+const gamificationRoutes = await readFile("apps/api/src/routes/gamification.ts", "utf8");
 const outboundMessageService = await readFile("apps/api/src/services/outbound-message.service.ts", "utf8");
 const summaryService = await readFile("apps/api/src/services/summary.service.ts", "utf8");
 const debugTokenHelpers = await readFile("scripts/lib/debug-token.mjs", "utf8");
@@ -967,6 +969,28 @@ for (const requiredEngagementServiceContent of [
   "query.limit(Math.min(Math.max(params.limit, 1), 200))",
 ]) {
   assertIncludes(engagementService, requiredEngagementServiceContent);
+}
+
+for (const requiredLoyaltyPackageContent of [
+  "enforceLoyaltyAccess",
+  "requireGrowthPackage",
+  "requiredPackage: \"growth\"",
+  "packageAccess.code === \"RESTAURANT_NOT_FOUND\" ? 404 : 403",
+  "PACKAGE_GROWTH_REQUIRED",
+  "await enforceLoyaltyAccess",
+]) {
+  assertIncludes(loyaltyRoutes, requiredLoyaltyPackageContent);
+}
+
+for (const requiredGamificationPackageContent of [
+  "enforceGamificationAccess",
+  "requireGrowthPackage",
+  "requiredPackage: \"growth\"",
+  "packageAccess.code === \"RESTAURANT_NOT_FOUND\" ? 404 : 403",
+  "PACKAGE_GROWTH_REQUIRED",
+  "await enforceGamificationAccess",
+]) {
+  assertIncludes(gamificationRoutes, requiredGamificationPackageContent);
 }
 
 for (const requiredLogTraceContent of [

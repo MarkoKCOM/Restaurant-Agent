@@ -167,7 +167,7 @@ Use this when `/api/v1/health` is green but app workflows still fail.
 
 ## Package Enforcement
 
-Growth-only API surfaces should reject starter restaurants with a stable `PACKAGE_GROWTH_REQUIRED` error and include `requiredPackage: "growth"` plus the current `restaurantPackage` when known. Start with campaign, analytics, or engagement endpoints when checking this guard:
+Growth-only API surfaces should reject starter restaurants with a stable `PACKAGE_GROWTH_REQUIRED` error and include `requiredPackage: "growth"` plus the current `restaurantPackage` when known. Start with campaign, analytics, engagement, loyalty, or gamification endpoints when checking this guard:
 
 ```bash
 REQUEST_ID=debug-package-campaign \

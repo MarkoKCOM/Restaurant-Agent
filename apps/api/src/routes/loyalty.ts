@@ -24,6 +24,7 @@ import {
 } from "../services/membership-processing.service.js";
 import {
   enforceTenant,
+  requireGrowthPackage,
   requireOperationalRole,
   requireRestaurantAdmin,
 } from "../middleware/auth.js";
@@ -141,21 +142,48 @@ function sendLoyaltyError(
   return sendLoyaltyEnvelopeError(request, reply, 400, message, code, context);
 }
 
+async function enforceLoyaltyAccess(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  restaurantId: string,
+  code: string,
+  context: Record<string, unknown> = {},
+  roleGuard: typeof requireRestaurantAdmin | typeof requireOperationalRole = requireRestaurantAdmin,
+) {
+  const accessError = enforceTenant(request.user!, restaurantId) ?? roleGuard(request.user!);
+  if (accessError) {
+    return sendLoyaltyEnvelopeError(
+      request,
+      reply,
+      403,
+      accessError,
+      code,
+      { ...context, restaurantId },
+    );
+  }
+
+  const packageAccess = await requireGrowthPackage(restaurantId);
+  if (!packageAccess.ok) {
+    return sendLoyaltyEnvelopeError(
+      request,
+      reply,
+      packageAccess.code === "RESTAURANT_NOT_FOUND" ? 404 : 403,
+      packageAccess.error ?? "Growth package required",
+      packageAccess.code ?? "PACKAGE_GROWTH_REQUIRED",
+      { ...context, restaurantId, restaurantPackage: packageAccess.restaurantPackage, requiredPackage: "growth" },
+      { restaurantId, restaurantPackage: packageAccess.restaurantPackage, requiredPackage: "growth" },
+    );
+  }
+
+  return null;
+}
+
 export async function loyaltyRoutes(app: FastifyInstance) {
   // GET /processing-failures — post-visit membership processing failures
   app.get("/processing-failures", async (request, reply) => {
     const query = processingFailuresQuerySchema.parse(request.query);
-    const err = enforceTenant(request.user!, query.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        403,
-        err,
-        "MEMBERSHIP_PROCESSING_FORBIDDEN",
-        { restaurantId: query.restaurantId },
-      );
-    }
+    const accessError = await enforceLoyaltyAccess(request, reply, query.restaurantId, "MEMBERSHIP_PROCESSING_FORBIDDEN");
+    if (accessError) return accessError;
 
     const failures = await listMembershipProcessingFailures(query);
     return { failures };
@@ -165,17 +193,14 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   app.post("/processing-failures/:failureId/retry", async (request, reply) => {
     const { failureId } = request.params as { failureId: string };
     const body = z.object({ restaurantId: z.string().uuid() }).parse(request.body);
-    const err = enforceTenant(request.user!, body.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        403,
-        err,
-        "MEMBERSHIP_PROCESSING_FORBIDDEN",
-        { failureId, restaurantId: body.restaurantId },
-      );
-    }
+    const accessError = await enforceLoyaltyAccess(
+      request,
+      reply,
+      body.restaurantId,
+      "MEMBERSHIP_PROCESSING_FORBIDDEN",
+      { failureId },
+    );
+    if (accessError) return accessError;
 
     try {
       const failure = await retryMembershipProcessingFailure({
@@ -224,17 +249,8 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        403,
-        err,
-        "LOYALTY_FORBIDDEN",
-        { guestId, restaurantId: guest.restaurantId },
-      );
-    }
+    const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
+    if (accessError) return accessError;
 
     const referralShare = await getReferralShare(guestId);
     return { referralShare };
@@ -255,17 +271,8 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        403,
-        err,
-        "LOYALTY_FORBIDDEN",
-        { guestId, restaurantId: guest.restaurantId },
-      );
-    }
+    const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
+    if (accessError) return accessError;
 
     const balance = await getPointsBalance(guestId);
     if (!balance) {
@@ -305,17 +312,8 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        403,
-        err,
-        "LOYALTY_FORBIDDEN",
-        { guestId, restaurantId: guest.restaurantId },
-      );
-    }
+    const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
+    if (accessError) return accessError;
 
     const parsedLimit = limit ? Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100) : 20;
     const transactions = await getTransactionHistory(guestId, parsedLimit);
@@ -343,17 +341,8 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        403,
-        err,
-        "LOYALTY_FORBIDDEN",
-        { guestId, restaurantId: guest.restaurantId },
-      );
-    }
+    const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
+    if (accessError) return accessError;
 
     const summary = await getMembershipSummary(guestId);
     if (!summary) {
@@ -386,17 +375,8 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        403,
-        err,
-        "LOYALTY_FORBIDDEN",
-        { guestId, restaurantId: guest.restaurantId },
-      );
-    }
+    const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
+    if (accessError) return accessError;
 
     const transaction = await awardPoints(
       guestId,
@@ -426,17 +406,8 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        403,
-        err,
-        "LOYALTY_FORBIDDEN",
-        { restaurantId },
-      );
-    }
+    const accessError = await enforceLoyaltyAccess(request, reply, restaurantId, "LOYALTY_FORBIDDEN");
+    if (accessError) return accessError;
 
     const rewardsList = await listRewards(restaurantId, includeInactive === "true");
     return { rewards: rewardsList };
@@ -446,18 +417,6 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   app.patch("/rewards/:rewardId", async (request, reply) => {
     const { rewardId } = request.params as { rewardId: string };
     const body = updateRewardSchema.parse(request.body ?? {});
-
-    const adminErr = requireRestaurantAdmin(request.user!);
-    if (adminErr) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        403,
-        adminErr,
-        "LOYALTY_FORBIDDEN",
-        { rewardId },
-      );
-    }
 
     const restaurantId = request.user!.restaurantId;
     if (!restaurantId) {
@@ -470,6 +429,9 @@ export async function loyaltyRoutes(app: FastifyInstance) {
         { rewardId },
       );
     }
+
+    const accessError = await enforceLoyaltyAccess(request, reply, restaurantId, "LOYALTY_FORBIDDEN", { rewardId });
+    if (accessError) return accessError;
 
     const updated = await updateReward(rewardId, restaurantId, body);
     if (!updated) {
@@ -489,17 +451,8 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   // POST /rewards — create a reward
   app.post("/rewards", async (request, reply) => {
     const parsed = createRewardSchema.parse(request.body);
-    const err = enforceTenant(request.user!, parsed.restaurantId!) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        403,
-        err,
-        "LOYALTY_FORBIDDEN",
-        { restaurantId: parsed.restaurantId },
-      );
-    }
+    const accessError = await enforceLoyaltyAccess(request, reply, parsed.restaurantId!, "LOYALTY_FORBIDDEN");
+    if (accessError) return accessError;
 
     const reward = await createReward({
       restaurantId: parsed.restaurantId!,
@@ -532,17 +485,15 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireOperationalRole(request.user!);
-    if (err) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        403,
-        err,
-        "LOYALTY_FORBIDDEN",
-        { guestId, rewardId, restaurantId: guest.restaurantId },
-      );
-    }
+    const accessError = await enforceLoyaltyAccess(
+      request,
+      reply,
+      guest.restaurantId,
+      "LOYALTY_FORBIDDEN",
+      { guestId, rewardId },
+      requireOperationalRole,
+    );
+    if (accessError) return accessError;
 
     try {
       const claim = await claimReward(guestId, rewardId, body.reservationId);
@@ -569,17 +520,15 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireOperationalRole(request.user!);
-    if (err) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        403,
-        err,
-        "LOYALTY_FORBIDDEN",
-        { guestId, rewardId, restaurantId: guest.restaurantId },
-      );
-    }
+    const accessError = await enforceLoyaltyAccess(
+      request,
+      reply,
+      guest.restaurantId,
+      "LOYALTY_FORBIDDEN",
+      { guestId, rewardId },
+      requireOperationalRole,
+    );
+    if (accessError) return accessError;
 
     try {
       const claim = await claimReward(guestId, rewardId, body.reservationId);
@@ -612,17 +561,15 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, claim.restaurantId) ?? requireOperationalRole(request.user!);
-    if (err) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        403,
-        err,
-        "LOYALTY_FORBIDDEN",
-        { claimCode, claimId: claim.id, restaurantId: claim.restaurantId },
-      );
-    }
+    const accessError = await enforceLoyaltyAccess(
+      request,
+      reply,
+      claim.restaurantId,
+      "LOYALTY_FORBIDDEN",
+      { claimCode, claimId: claim.id },
+      requireOperationalRole,
+    );
+    if (accessError) return accessError;
 
     return { claim };
   });
@@ -642,17 +589,15 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, claim.restaurantId) ?? requireOperationalRole(request.user!);
-    if (err) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        403,
-        err,
-        "LOYALTY_FORBIDDEN",
-        { claimId, restaurantId: claim.restaurantId },
-      );
-    }
+    const accessError = await enforceLoyaltyAccess(
+      request,
+      reply,
+      claim.restaurantId,
+      "LOYALTY_FORBIDDEN",
+      { claimId },
+      requireOperationalRole,
+    );
+    if (accessError) return accessError;
 
     try {
       const redeemedClaim = await redeemClaim(claimId, request.user!.id);
@@ -678,17 +623,15 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireOperationalRole(request.user!);
-    if (err) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        403,
-        err,
-        "LOYALTY_FORBIDDEN",
-        { guestId, restaurantId: guest.restaurantId },
-      );
-    }
+    const accessError = await enforceLoyaltyAccess(
+      request,
+      reply,
+      guest.restaurantId,
+      "LOYALTY_FORBIDDEN",
+      { guestId },
+      requireOperationalRole,
+    );
+    if (accessError) return accessError;
 
     const updated = await updateGuestPreferences(guestId, {
       optedOutCampaigns: body.optedOutCampaigns,
@@ -712,17 +655,8 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        403,
-        err,
-        "LOYALTY_FORBIDDEN",
-        { guestId, restaurantId: guest.restaurantId },
-      );
-    }
+    const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
+    if (accessError) return accessError;
 
     const stampCard = await checkStampCard(guestId);
     if (!stampCard) {

@@ -23,7 +23,7 @@ import {
 } from "../services/leaderboard.service.js";
 import { getGuestShareTemplates } from "../services/gamification-share.service.js";
 import { getGuestById } from "../services/guest.service.js";
-import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
+import { enforceTenant, requireGrowthPackage, requireRestaurantAdmin } from "../middleware/auth.js";
 
 function sendGamificationError(
   request: FastifyRequest,
@@ -32,6 +32,7 @@ function sendGamificationError(
   message: string,
   code: string,
   context: Record<string, unknown> = {},
+  extra: Record<string, unknown> = {},
 ) {
   request.log.warn(
     {
@@ -50,6 +51,7 @@ function sendGamificationError(
     error: message,
     code,
     requestId: request.id,
+    ...extra,
   });
 }
 
@@ -81,6 +83,36 @@ function sendCaughtGamificationError(
   });
 }
 
+async function enforceGamificationAccess(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  restaurantId: string,
+  context: Record<string, unknown> = {},
+) {
+  const accessError = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
+  if (accessError) {
+    return sendGamificationError(request, reply, 403, accessError, "GAMIFICATION_FORBIDDEN", {
+      ...context,
+      restaurantId,
+    });
+  }
+
+  const packageAccess = await requireGrowthPackage(restaurantId);
+  if (!packageAccess.ok) {
+    return sendGamificationError(
+      request,
+      reply,
+      packageAccess.code === "RESTAURANT_NOT_FOUND" ? 404 : 403,
+      packageAccess.error ?? "Growth package required",
+      packageAccess.code ?? "PACKAGE_GROWTH_REQUIRED",
+      { ...context, restaurantId, restaurantPackage: packageAccess.restaurantPackage, requiredPackage: "growth" },
+      { restaurantId, restaurantPackage: packageAccess.restaurantPackage, requiredPackage: "growth" },
+    );
+  }
+
+  return null;
+}
+
 export async function gamificationRoutes(app: FastifyInstance) {
   // ── Referrals ─────────────────────────────────────────
 
@@ -92,13 +124,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
       return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
     }
 
-    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", {
-        guestId,
-        restaurantId: guest.restaurantId,
-      });
-    }
+    const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
+    if (accessError) return accessError;
 
     try {
       const code = await generateReferralCode(guestId);
@@ -122,13 +149,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
       return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
     }
 
-    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", {
-        guestId,
-        restaurantId: guest.restaurantId,
-      });
-    }
+    const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
+    if (accessError) return accessError;
 
     try {
       const result = await applyReferral(guestId, referralCode);
@@ -154,13 +176,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
       return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
     }
 
-    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", {
-        guestId,
-        restaurantId: guest.restaurantId,
-      });
-    }
+    const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
+    if (accessError) return accessError;
 
     try {
       const stats = await getReferralStats(guestId);
@@ -186,10 +203,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", { restaurantId });
-    }
+    const accessError = await enforceGamificationAccess(request, reply, restaurantId);
+    if (accessError) return accessError;
 
     const activeChallenges = await listActiveChallenges(restaurantId);
     return { challenges: activeChallenges };
@@ -211,12 +226,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
   app.post("/challenges", async (request, reply) => {
     const parsed = createChallengeSchema.parse(request.body);
 
-    const err = enforceTenant(request.user!, parsed.restaurantId!) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", {
-        restaurantId: parsed.restaurantId,
-      });
-    }
+    const accessError = await enforceGamificationAccess(request, reply, parsed.restaurantId!);
+    if (accessError) return accessError;
 
     try {
       const challenge = await createChallenge({
@@ -269,13 +280,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, challenge.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", {
-        challengeId,
-        restaurantId: challenge.restaurantId,
-      });
-    }
+    const accessError = await enforceGamificationAccess(request, reply, challenge.restaurantId, { challengeId });
+    if (accessError) return accessError;
 
     try {
       const updated = await updateChallenge(challengeId, challenge.restaurantId, parsed);
@@ -302,10 +308,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", { restaurantId });
-    }
+    const accessError = await enforceGamificationAccess(request, reply, restaurantId);
+    if (accessError) return accessError;
 
     try {
       const result = await checkBirthdayWeekChallenges(restaurantId);
@@ -338,13 +342,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
       return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
     }
 
-    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", {
-        guestId,
-        restaurantId: guest.restaurantId,
-      });
-    }
+    const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
+    if (accessError) return accessError;
 
     try {
       const shareTemplates = await getGuestShareTemplates(guestId, query);
@@ -367,12 +366,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
 
   app.get("/leaderboard", async (request, reply) => {
     const query = leaderboardQuerySchema.parse(request.query);
-    const err = enforceTenant(request.user!, query.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", {
-        restaurantId: query.restaurantId,
-      });
-    }
+    const accessError = await enforceGamificationAccess(request, reply, query.restaurantId);
+    if (accessError) return accessError;
 
     try {
       const leaderboard = await getLeaderboard(query.restaurantId, query.period, query.limit ?? 10);
@@ -393,12 +388,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
 
   app.post("/leaderboard/finalize", async (request, reply) => {
     const parsed = finalizeLeaderboardSchema.parse(request.body ?? {});
-    const err = enforceTenant(request.user!, parsed.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", {
-        restaurantId: parsed.restaurantId,
-      });
-    }
+    const accessError = await enforceGamificationAccess(request, reply, parsed.restaurantId);
+    if (accessError) return accessError;
 
     try {
       const result = await finalizeMonthlyLeaderboard(parsed);
@@ -418,13 +409,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
       return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
     }
 
-    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", {
-        guestId,
-        restaurantId: guest.restaurantId,
-      });
-    }
+    const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
+    if (accessError) return accessError;
 
     try {
       const leaderboard = await setLeaderboardOptIn(guestId, true);
@@ -442,13 +428,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
       return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
     }
 
-    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", {
-        guestId,
-        restaurantId: guest.restaurantId,
-      });
-    }
+    const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
+    if (accessError) return accessError;
 
     try {
       const leaderboard = await setLeaderboardOptIn(guestId, false);
@@ -479,10 +460,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
       return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
     }
 
-    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", { guestId, restaurantId });
-    }
+    const accessError = await enforceGamificationAccess(request, reply, restaurantId, { guestId });
+    if (accessError) return accessError;
     if (guest.restaurantId !== restaurantId) {
       return sendGamificationError(
         request,
@@ -522,14 +501,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, challenge.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", {
-        guestId,
-        challengeId,
-        restaurantId: challenge.restaurantId,
-      });
-    }
+    const accessError = await enforceGamificationAccess(request, reply, challenge.restaurantId, { guestId, challengeId });
+    if (accessError) return accessError;
     if (guest.restaurantId !== challenge.restaurantId) {
       return sendGamificationError(
         request,
@@ -562,13 +535,8 @@ export async function gamificationRoutes(app: FastifyInstance) {
       return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
     }
 
-    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", {
-        guestId,
-        restaurantId: guest.restaurantId,
-      });
-    }
+    const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
+    if (accessError) return accessError;
 
     try {
       const streak = await getStreak(guestId);

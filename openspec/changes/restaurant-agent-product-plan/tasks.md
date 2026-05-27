@@ -121,7 +121,7 @@
 ## 12. Multi-Restaurant & Billing
 
 - [ ] 12.1 Implement row-level security (RLS) policies on all tables for tenant isolation
-- [ ] 12.2 Implement package enforcement middleware — check restaurant package before allowing Growth-only endpoints
+- [x] 12.2 Implement package enforcement middleware — check restaurant package before allowing Growth-only endpoints
 - [ ] 12.3 Implement restaurant onboarding wizard — step-by-step config: details, tables, hours, menu upload, agent personality, WhatsApp setup
 - [ ] 12.4 Implement seat-based tier enforcement — S/M/L/XL tiers, validate seat count against package limits
 - [ ] 12.5 Implement billing integration — PayPlus (Israel) and Stripe (international), monthly subscription, tier upgrade/downgrade

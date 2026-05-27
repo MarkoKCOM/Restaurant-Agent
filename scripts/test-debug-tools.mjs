@@ -362,6 +362,15 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
         status: "ok",
         openCount: 2,
         totalOpenAttempts: 3,
+        openSamples: [
+          {
+            id: "mpf-1",
+            stage: "loyalty",
+            guestId: "guest-1",
+            reservationId: "res-1",
+            errorCode: "POINTS_WRITE_FAILED",
+          },
+        ],
       },
       gamification: {
         status: "attention",
@@ -372,10 +381,16 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
           birthdayWeekDueUncreated: 1,
           stuckCompletions: 1,
           duplicateProgressGroups: 1,
+          stuckSamples: [
+            { id: "progress-1", guestId: "guest-2", challengeId: "challenge-1", currentValue: 5, targetValue: 3 },
+          ],
         },
         referrals: {
           guestsWithReferralCode: 7,
           referrerCreditMismatches: 1,
+          referrerCreditMismatchSamples: [
+            { referrerId: "guest-3", referralCount: 2, bonusCount: 1 },
+          ],
         },
         menuExploration: {
           guestsWithBadges: 5,
@@ -385,17 +400,26 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
           firstVisitMissing: 1,
           tenVisitMissing: 1,
           invalid: 1,
+          samples: [
+            { guestId: "guest-4", visitCount: 10, issue: "ten_visits_achievement_missing" },
+          ],
         },
         leaderboard: {
           optedIn: 3,
           topThreeRewardMissing: 1,
           invalid: 1,
+          samples: [
+            { guestId: "guest-5", issue: "leaderboard_monthly_reward_missing" },
+          ],
         },
         streaks: {
           active: 3,
           stale: 1,
           invalid: 1,
           milestoneBonusMissing: 1,
+          samples: [
+            { guestId: "guest-6", current: 5, best: 5, lastVisitWeek: "2026-W19", issue: "stale_active_streak" },
+          ],
         },
       },
       engagement: {
@@ -419,6 +443,9 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
           pendingWithoutPositiveFeedback: 1,
           negativeFeedbackWithPendingReview: 1,
         },
+        recentAttentionSamples: [
+          { id: "engagement-1", guestId: "guest-7", type: "win_back_30", status: "skipped", skipReason: "guest_opted_out_promotional" },
+        ],
       },
       campaigns: {
         status: "attention",
@@ -436,6 +463,9 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
           skippedRateLimitedWeek: 1,
           skippedRateLimitedMonth: 1,
         },
+        overdueSamples: [
+          { id: "campaign-1", restaurantId: "restaurant-1", scheduledAt: "2026-05-27T09:00:00.000Z", name: "May win-back" },
+        ],
       },
       outboundMessages: {
         status: "attention",
@@ -453,6 +483,16 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
         byErrorCode: {
           OUTBOUND_RECIPIENT_MISSING: 1,
         },
+        samples: [
+          {
+            id: "outbound-1",
+            restaurantId: "restaurant-1",
+            guestId: null,
+            messageType: "daily_morning_summary",
+            status: "skipped",
+            errorCode: "OUTBOUND_RECIPIENT_MISSING",
+          },
+        ],
       },
       queues: [
         {
@@ -470,6 +510,12 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
           },
         },
         { name: "membership-events", status: "ok", failed: 0 },
+      ],
+      attentionSamples: [
+        "membership id=mpf-1 stage=loyalty guest=guest-1 reservation=res-1 error=POINTS_WRITE_FAILED",
+        "gamification.stuck-challenge progress=progress-1 guest=guest-2 challenge=challenge-1 value=5/3",
+        "campaign.overdue campaign=campaign-1 restaurant=restaurant-1 scheduledAt=2026-05-27T09:00:00.000Z name=May win-back",
+        "outbound message=outbound-1 restaurant=restaurant-1 guest=none type=daily_morning_summary status=skipped error=OUTBOUND_RECIPIENT_MISSING",
       ],
     },
     agentMembershipIntents: {
@@ -500,6 +546,11 @@ assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4"
 assertIncludes(debugBundleManifestOutput, "Queues: daily-summary:ok/failed=0/repeat=0, membership-events:ok/failed=0/repeat=?");
 assertIncludes(debugBundleManifestOutput, "Summary schedules: restaurants=9 morning expected=9 found=9 pattern=0 9 * * * status=ok closing expected=9 found=9 pattern=0 23 * * * status=ok timezones=Asia/Jerusalem:9");
 assertIncludes(debugBundleManifestOutput, "Operational attention: Gamification, Engagement, Campaigns, Outbound messages");
+assertIncludes(debugBundleManifestOutput, "Attention samples:");
+assertIncludes(debugBundleManifestOutput, "- membership id=mpf-1 stage=loyalty guest=guest-1 reservation=res-1 error=POINTS_WRITE_FAILED");
+assertIncludes(debugBundleManifestOutput, "- gamification.stuck-challenge progress=progress-1 guest=guest-2 challenge=challenge-1 value=5/3");
+assertIncludes(debugBundleManifestOutput, "- campaign.overdue campaign=campaign-1 restaurant=restaurant-1 scheduledAt=2026-05-27T09:00:00.000Z name=May win-back");
+assertIncludes(debugBundleManifestOutput, "- outbound message=outbound-1 restaurant=restaurant-1 guest=none type=daily_morning_summary status=skipped error=OUTBOUND_RECIPIENT_MISSING");
 assertIncludes(debugBundleManifestOutput, "Failed commands: 1");
 assertIncludes(debugBundleManifestOutput, "- api-smoke: exitCode=1 output=/tmp/openseat-debug-bundle/api-smoke.txt");
 assertIncludes(debugBundleManifestOutput, "Skipped commands: 1");
@@ -922,6 +973,12 @@ for (const requiredReadmeContent of [
   "campaigns",
   "Campaigns:",
   "Operational attention:",
+  "Attention samples:",
+  "attentionSamples",
+  "buildAttentionSamples",
+  "pushAttentionSamples",
+  "openSamples",
+  "recentAttentionSamples",
   "outboundMessages",
   "manifest.highlights.agentMembershipIntents",
   "membershipDebugRestaurantId",

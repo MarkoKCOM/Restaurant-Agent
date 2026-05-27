@@ -506,6 +506,13 @@ async function summarizeDebugBundleManifest(report) {
   if (operationalAttention.length > 0) {
     printLine("Operational attention", operationalAttention.join(", "));
   }
+  const attentionSamples = asArray(adminDiagnostics.attentionSamples);
+  if (attentionSamples.length > 0) {
+    console.log("Attention samples:");
+    for (const sample of attentionSamples.slice(0, 12)) {
+      console.log(`- ${sample}`);
+    }
+  }
 
   if (failed.length === 0 && skipped.length === 0) {
     console.log(operationalAttention.length > 0 ? "Bundle command issues: none" : "Bundle issues: none");

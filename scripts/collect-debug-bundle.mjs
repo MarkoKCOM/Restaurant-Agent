@@ -36,6 +36,96 @@ function decodeTokenRestaurantId(token) {
   }
 }
 
+function isObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value);
+}
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function cleanToken(value) {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .replace(/[|`]/g, "")
+    .trim();
+}
+
+function formatAttentionValue(value, fallback = "?") {
+  const cleaned = cleanToken(value);
+  return cleaned || fallback;
+}
+
+function pushAttentionSamples(samples, label, rows, formatter, limit = 2) {
+  for (const row of asArray(rows).slice(0, limit)) {
+    if (!isObject(row)) continue;
+    samples.push(`${label} ${formatter(row)}`);
+  }
+}
+
+function buildAttentionSamples({ membershipProcessing, gamification, engagement, campaigns, outboundMessages }, limit = 12) {
+  const samples = [];
+  pushAttentionSamples(samples, "membership", membershipProcessing.openSamples, (row) =>
+    `id=${formatAttentionValue(row.id)} stage=${formatAttentionValue(row.stage)} guest=${formatAttentionValue(row.guestId)} reservation=${formatAttentionValue(row.reservationId, "none")} error=${formatAttentionValue(row.errorCode ?? row.errorName ?? row.errorMessage)}`);
+
+  const challenges = isObject(gamification.challenges) ? gamification.challenges : {};
+  pushAttentionSamples(samples, "gamification.stuck-challenge", challenges.stuckSamples, (row) =>
+    `progress=${formatAttentionValue(row.id)} guest=${formatAttentionValue(row.guestId)} challenge=${formatAttentionValue(row.challengeId)} value=${formatAttentionValue(row.currentValue)}/${formatAttentionValue(row.targetValue)}`);
+  pushAttentionSamples(samples, "gamification.duplicate-progress", challenges.duplicateProgressSamples, (row) =>
+    `guest=${formatAttentionValue(row.guestId)} challenge=${formatAttentionValue(row.challengeId)} rows=${formatAttentionValue(row.rowCount)}`);
+
+  const referrals = isObject(gamification.referrals) ? gamification.referrals : {};
+  pushAttentionSamples(samples, "gamification.referral-credit", referrals.referrerCreditMismatchSamples, (row) =>
+    `referrer=${formatAttentionValue(row.referrerId)} referrals=${formatAttentionValue(row.referralCount)} bonuses=${formatAttentionValue(row.bonusCount)}`);
+
+  const achievements = isObject(gamification.achievements) ? gamification.achievements : {};
+  pushAttentionSamples(samples, "gamification.achievement", achievements.samples, (row) =>
+    `guest=${formatAttentionValue(row.guestId)} visits=${formatAttentionValue(row.visitCount)} issue=${formatAttentionValue(row.issue)}`);
+
+  const leaderboard = isObject(gamification.leaderboard) ? gamification.leaderboard : {};
+  pushAttentionSamples(samples, "gamification.leaderboard", leaderboard.samples, (row) =>
+    `guest=${formatAttentionValue(row.guestId)} issue=${formatAttentionValue(row.issue)}`);
+
+  const luckySpin = isObject(gamification.luckySpin) ? gamification.luckySpin : {};
+  pushAttentionSamples(samples, "gamification.lucky-spin", luckySpin.samples, (row) =>
+    `guest=${formatAttentionValue(row.guestId)} reservation=${formatAttentionValue(row.reservationId, "none")} issue=${formatAttentionValue(row.issue)}`);
+
+  const streaks = isObject(gamification.streaks) ? gamification.streaks : {};
+  pushAttentionSamples(samples, "gamification.streak", streaks.samples, (row) =>
+    `guest=${formatAttentionValue(row.guestId)} current=${formatAttentionValue(row.current)} best=${formatAttentionValue(row.best)} week=${formatAttentionValue(row.lastVisitWeek)} issue=${formatAttentionValue(row.issue)}`);
+
+  const winBack = isObject(engagement.winBack) ? engagement.winBack : {};
+  pushAttentionSamples(samples, "engagement.win-back", winBack.samples, (row) =>
+    `guest=${formatAttentionValue(row.guestId)} restaurant=${formatAttentionValue(row.restaurantId)} lastVisit=${formatAttentionValue(row.lastVisitDate)} type=${formatAttentionValue(row.dueType)}`);
+
+  const birthdays = isObject(engagement.birthdays) ? engagement.birthdays : {};
+  pushAttentionSamples(samples, "engagement.birthday", birthdays.samples, (row) =>
+    `guest=${formatAttentionValue(row.guestId)} restaurant=${formatAttentionValue(row.restaurantId)} birthday=${formatAttentionValue(row.birthday)}`);
+
+  const anniversaries = isObject(engagement.anniversaries) ? engagement.anniversaries : {};
+  pushAttentionSamples(samples, "engagement.anniversary", anniversaries.samples, (row) =>
+    `guest=${formatAttentionValue(row.guestId)} restaurant=${formatAttentionValue(row.restaurantId)} firstVisit=${formatAttentionValue(row.firstVisitDate)}`);
+
+  const quietHours = isObject(engagement.quietHours) ? engagement.quietHours : {};
+  pushAttentionSamples(samples, "engagement.quiet-hours", quietHours.samples, (row) =>
+    `job=${formatAttentionValue(row.id)} guest=${formatAttentionValue(row.guestId)} restaurant=${formatAttentionValue(row.restaurantId)} triggerAt=${formatAttentionValue(row.triggerAt)}`);
+
+  const reviewSolicitation = isObject(engagement.reviewSolicitation) ? engagement.reviewSolicitation : {};
+  pushAttentionSamples(samples, "engagement.review", reviewSolicitation.samples, (row) =>
+    `job=${formatAttentionValue(row.id)} guest=${formatAttentionValue(row.guestId)} issue=${formatAttentionValue(row.issue)} triggerAt=${formatAttentionValue(row.triggerAt)}`);
+
+  pushAttentionSamples(samples, "engagement.recent", engagement.recentAttentionSamples, (row) =>
+    `job=${formatAttentionValue(row.id)} guest=${formatAttentionValue(row.guestId)} type=${formatAttentionValue(row.type)} status=${formatAttentionValue(row.status)} reason=${formatAttentionValue(row.skipReason, "none")}`);
+
+  pushAttentionSamples(samples, "campaign.overdue", campaigns.overdueSamples, (row) =>
+    `campaign=${formatAttentionValue(row.id)} restaurant=${formatAttentionValue(row.restaurantId)} scheduledAt=${formatAttentionValue(row.scheduledAt, "none")} name=${formatAttentionValue(row.name)}`);
+
+  pushAttentionSamples(samples, "outbound", outboundMessages.samples, (row) =>
+    `message=${formatAttentionValue(row.id)} restaurant=${formatAttentionValue(row.restaurantId)} guest=${formatAttentionValue(row.guestId, "none")} type=${formatAttentionValue(row.messageType)} status=${formatAttentionValue(row.status)} error=${formatAttentionValue(row.errorCode, "none")}`);
+
+  return samples.slice(0, limit);
+}
+
 const apiUrl = (process.env.OPENSEAT_API_URL || "http://127.0.0.1:3001").replace(/\/$/, "");
 const since = readOption("since", "30 minutes ago");
 const service = readOption("service", "openseat-api");
@@ -155,10 +245,6 @@ async function waitForApiReady() {
 
 async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
-}
-
-function isObject(value) {
-  return value && typeof value === "object" && !Array.isArray(value);
 }
 
 function formatSummaryScheduleHealth(queues) {
@@ -287,6 +373,7 @@ async function captureDiagnosticsHighlights(commandRecord) {
         totalOpenAttempts: membershipProcessing.totalOpenAttempts,
         latestOpenAttemptAt: membershipProcessing.latestOpenAttemptAt,
         byStage: membershipProcessing.byStage,
+        openSamples: membershipProcessing.openSamples,
       },
       gamification: {
         status: gamification.status,
@@ -295,6 +382,7 @@ async function captureDiagnosticsHighlights(commandRecord) {
         menuExploration: gamification.menuExploration,
         achievements: gamification.achievements,
         leaderboard: gamification.leaderboard,
+        luckySpin: gamification.luckySpin,
         streaks: gamification.streaks,
         error: gamification.error,
       },
@@ -304,8 +392,10 @@ async function captureDiagnosticsHighlights(commandRecord) {
         winBack: engagement.winBack,
         birthdays: engagement.birthdays,
         anniversaries: engagement.anniversaries,
+        quietHours: engagement.quietHours,
         reviewSolicitation: engagement.reviewSolicitation,
         skippedByReason: engagement.skippedByReason,
+        recentAttentionSamples: engagement.recentAttentionSamples,
         error: engagement.error,
       },
       campaigns: {
@@ -342,6 +432,13 @@ async function captureDiagnosticsHighlights(commandRecord) {
           ? queue.scheduleHealth
           : undefined,
       })),
+      attentionSamples: buildAttentionSamples({
+        membershipProcessing,
+        gamification,
+        engagement,
+        campaigns,
+        outboundMessages,
+      }),
     };
   } catch (error) {
     manifest.highlights.adminDiagnostics = {
@@ -453,6 +550,13 @@ async function writeReadme() {
       const attention = operationalAttentionLabels(adminDiagnostics);
       if (attention.length > 0) {
         lines.push(`- Operational attention: ${attention.join(", ")}`);
+      }
+      const attentionSamples = asArray(adminDiagnostics.attentionSamples);
+      if (attentionSamples.length > 0) {
+        lines.push("- Attention samples:");
+        for (const sample of attentionSamples.slice(0, 12)) {
+          lines.push(`  - ${sample}`);
+        }
       }
       if (adminDiagnostics.requestId) {
         lines.push(`- Diagnostics request: ${adminDiagnostics.requestId}`);

@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useAnalyticsSummary } from "../hooks/api.js";
+import { useAnalyticsSummary, useDailyMorningSummary, useLogDailyMorningSummary } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useLang } from "../i18n.js";
 import { formatApiErrorMessage } from "../lib/apiError.js";
@@ -59,6 +60,19 @@ const copy = {
     occupancy: "תפוסה לפי שעה",
     topGuests: "לקוחות מובילים לפי CLV",
     openGuest: "פתח פרופיל",
+    morningSummary: "סיכום בוקר לוואטסאפ",
+    morningSummarySub: "הודעת הבוקר שבעלים מקבל: אתמול, היום, אורחים חשובים והתראות.",
+    ownerReady: "וואטסאפ בעלים",
+    ownerReadyYes: "מוגדר",
+    ownerReadyNo: "חסר",
+    summaryDate: "תאריך סיכום",
+    notableGuests: "אורחים חשובים",
+    alerts: "התראות",
+    sendPreview: "רשום הודעה",
+    sendingPreview: "רושם...",
+    logSuccess: "הודעה נרשמה",
+    morningSummaryError: "לא ניתן לטעון את סיכום הבוקר",
+    morningSummaryLogError: "לא ניתן לרשום את הודעת הבוקר",
     empty: "אין נתונים לתקופה.",
     loading: "טוען אנליטיקה...",
     error: "לא ניתן לטעון אנליטיקה",
@@ -98,6 +112,19 @@ const copy = {
     occupancy: "Occupancy by slot",
     topGuests: "Top guests by CLV",
     openGuest: "Open profile",
+    morningSummary: "WhatsApp morning summary",
+    morningSummarySub: "The owner morning message: yesterday, today, notable guests, and alerts.",
+    ownerReady: "Owner WhatsApp",
+    ownerReadyYes: "Configured",
+    ownerReadyNo: "Missing",
+    summaryDate: "Summary date",
+    notableGuests: "Notable guests",
+    alerts: "Alerts",
+    sendPreview: "Log message",
+    sendingPreview: "Logging...",
+    logSuccess: "Message logged",
+    morningSummaryError: "Could not load morning summary",
+    morningSummaryLogError: "Could not log morning summary",
     empty: "No data for this period.",
     loading: "Loading analytics...",
     error: "Could not load analytics",
@@ -132,9 +159,12 @@ export function AnalyticsPage() {
   const { restaurant, isLoading } = useCurrentRestaurant();
   const { lang } = useLang();
   const t = copy[lang];
+  const [logFeedback, setLogFeedback] = useState("");
   const from = dateKey(-120);
   const to = dateKey(1);
   const analytics = useAnalyticsSummary({ restaurantId: restaurant?.id, from, to });
+  const morningSummary = useDailyMorningSummary(restaurant?.id);
+  const logMorningSummary = useLogDailyMorningSummary();
   const queries = [analytics.reservations, analytics.retention, analytics.loyalty, analytics.clv, analytics.campaignRoi];
   const loading = isLoading || queries.some((query) => query.isLoading);
   const error = queries.find((query) => query.error)?.error;
@@ -159,8 +189,20 @@ export function AnalyticsPage() {
   const loyalty = analytics.loyalty.data?.loyalty;
   const clv = analytics.clv.data?.clv;
   const campaign = analytics.campaignRoi.data?.campaignRoi.totals;
+  const morning = morningSummary.data?.summary;
   const maxTier = Math.max(1, ...(clv?.byTier ?? []).map((tier) => tier.guests));
   const maxSlot = Math.max(1, ...(reservations?.occupancyBySlot ?? []).map((slot) => slot.covers));
+
+  async function handleLogMorningSummary() {
+    if (!restaurant?.id) return;
+    setLogFeedback("");
+    try {
+      const result = await logMorningSummary.mutateAsync({ restaurantId: restaurant.id });
+      setLogFeedback(`${t.logSuccess}: ${result.outboundMessage.id}`);
+    } catch (err) {
+      setLogFeedback(formatApiErrorMessage(err, t.morningSummaryLogError));
+    }
+  }
 
   return (
     <div className="p-4 md:p-8 space-y-8">
@@ -171,6 +213,49 @@ export function AnalyticsPage() {
         </div>
         <span className="text-sm font-medium text-gray-500">{t.range}</span>
       </header>
+
+      <section className="rounded-lg border border-gray-200 bg-white p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-950">{t.morningSummary}</h2>
+            <p className="mt-1 max-w-3xl text-sm text-gray-500">{t.morningSummarySub}</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleLogMorningSummary}
+            disabled={!restaurant?.id || logMorningSummary.isPending}
+            className="rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-gray-300"
+          >
+            {logMorningSummary.isPending ? t.sendingPreview : t.sendPreview}
+          </button>
+        </div>
+
+        {morningSummary.isLoading ? (
+          <p className="mt-5 text-sm text-gray-500">{t.loading}</p>
+        ) : morningSummary.error ? (
+          <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {formatApiErrorMessage(morningSummary.error, t.morningSummaryError)}
+          </div>
+        ) : morning ? (
+          <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
+            <div className="grid gap-3 sm:grid-cols-4">
+              <Metric label={t.summaryDate} value={morning.summaryDate} embedded />
+              <Metric
+                label={t.ownerReady}
+                value={morning.ownerWhatsappConfigured ? t.ownerReadyYes : t.ownerReadyNo}
+                tone={morning.ownerWhatsappConfigured ? "good" : "warn"}
+                embedded
+              />
+              <Metric label={t.notableGuests} value={number(morning.notableGuests.length)} embedded />
+              <Metric label={t.alerts} value={number(morning.alerts.length)} tone={morning.alerts.length > 0 ? "warn" : "good"} embedded />
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words text-sm leading-6 text-gray-800">{morningSummary.data?.message}</pre>
+            </div>
+          </div>
+        ) : null}
+        {logFeedback && <p className="mt-4 text-sm font-medium text-gray-700">{logFeedback}</p>}
+      </section>
 
       <section className="grid gap-4 md:grid-cols-4">
         <Metric label={t.bookings} value={number(reservations?.bookings)} />

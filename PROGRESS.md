@@ -47,6 +47,9 @@
   - agent tools now include membership summary and membership-message opt-out actions
   - `/api/v1/agent/debug/membership-intent` maps common WhatsApp membership phrases to expected tools without an LLM call
   - E2E probes cover Hebrew/English balance, rewards, referral, and opt-out intents
+- Owner-facing morning summary operations:
+  - analytics dashboard now previews the WhatsApp-style daily morning summary with owner-recipient readiness, notable guests, and alerts
+  - admins can manually log the morning summary to the outbound message trail for delivery debugging and support follow-up
 - Protected super-admin dependency diagnostics at `GET /api/v1/admin/diagnostics`:
   - database ping status and latency
   - Redis ping status and latency

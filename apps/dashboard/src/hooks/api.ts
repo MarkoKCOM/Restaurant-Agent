@@ -248,6 +248,65 @@ export interface CampaignRoiAnalytics {
   };
 }
 
+export interface DailyMorningSummary {
+  restaurantId: string;
+  restaurantName: string;
+  timezone: string;
+  locale: string;
+  generatedAt: string;
+  summaryDate: string;
+  yesterdayDate: string;
+  ownerWhatsappConfigured: boolean;
+  ownerRecipientMasked: string | null;
+  yesterday: {
+    totalReservations: number;
+    totalCovers: number;
+    completedCount: number;
+    cancelledCount: number;
+    noShowCount: number;
+    occupancyPeak: { slot: string; covers: number } | null;
+  };
+  today: {
+    totalReservations: number;
+    totalCovers: number;
+    pendingCount: number;
+    confirmedCount: number;
+    seatedCount: number;
+    occupancyPeak: { slot: string; covers: number } | null;
+  };
+  notableGuests: Array<{
+    guestId: string;
+    name: string;
+    time: string;
+    partySize: number;
+    tier: string | null;
+    visits: number;
+    tags: string[];
+    reasons: string[];
+  }>;
+  alerts: Array<{
+    code: string;
+    severity: "info" | "warning" | "critical";
+    message: string;
+  }>;
+}
+
+export interface DailyMorningSummaryResponse {
+  summary: DailyMorningSummary;
+  message: string;
+}
+
+export interface DailyMorningSummaryLogResponse extends DailyMorningSummaryResponse {
+  outboundMessage: {
+    id: string;
+    status: string;
+    messageType: string;
+    provider: string;
+    recipientMasked: string | null;
+    createdAt: string;
+  };
+}
+
 function analyticsQuery(params: { restaurantId?: string; from?: string; to?: string; extra?: Record<string, string> }) {
   const searchParams = new URLSearchParams();
   if (params.restaurantId) searchParams.set("restaurantId", params.restaurantId);
@@ -294,6 +353,34 @@ export function useAnalyticsSummary(params: {
       enabled,
     }),
   };
+}
+
+export function useDailyMorningSummary(restaurantId?: string) {
+  const searchParams = new URLSearchParams();
+  if (restaurantId) searchParams.set("restaurantId", restaurantId);
+
+  return useQuery<DailyMorningSummaryResponse>({
+    queryKey: ["analytics", "daily-morning-summary", restaurantId],
+    queryFn: () => fetchJSON(`${API}/analytics/daily-morning-summary?${searchParams}`),
+    enabled: !!restaurantId,
+  });
+}
+
+export function useLogDailyMorningSummary() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ restaurantId }: { restaurantId: string }) => {
+      const res = await fetchWithAuth(`${API}/analytics/daily-morning-summary/log`, {
+        method: "POST",
+        body: JSON.stringify({ restaurantId }),
+      });
+      if (!res.ok) await throwApiError(res, "POST");
+      return res.json() as Promise<DailyMorningSummaryLogResponse>;
+    },
+    onSuccess: (_data, { restaurantId }) => {
+      qc.invalidateQueries({ queryKey: ["analytics", "daily-morning-summary", restaurantId] });
+    },
+  });
 }
 
 // --- Reservations ---

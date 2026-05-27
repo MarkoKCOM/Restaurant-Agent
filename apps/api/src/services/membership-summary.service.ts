@@ -8,6 +8,7 @@ import { getGuestClaims } from "./reward-claims.service.js";
 import { getMenuExplorationFromPreferences } from "./visit.service.js";
 import { getAchievementsFromPreferences } from "./achievement.service.js";
 import { currentLeaderboardPeriod, getGuestLeaderboardRank, getLeaderboardPreference } from "./leaderboard.service.js";
+import { getGuestShareTemplates, type ShareTemplate } from "./gamification-share.service.js";
 
 export interface MembershipSummary {
   guestId: string;
@@ -93,6 +94,7 @@ export interface MembershipSummary {
     pointsEarned: number | null;
     period: string | null;
   };
+  shareTemplates: ShareTemplate[];
   optedOutCampaigns: boolean;
 }
 
@@ -107,7 +109,7 @@ export async function getMembershipSummary(
 
   if (!guest) return null;
 
-  const [stampCard, allClaims, referralStats, streak, rewardRows, leaderboardRank] = await Promise.all([
+  const [stampCard, allClaims, referralStats, streak, rewardRows, leaderboardRank, shareTemplateSet] = await Promise.all([
     checkStampCard(guestId),
     getGuestClaims(guestId),
     getReferralStats(guestId),
@@ -117,6 +119,7 @@ export async function getMembershipSummary(
       .from(rewards)
       .where(and(eq(rewards.restaurantId, guest.restaurantId), eq(rewards.isActive, true))),
     getGuestLeaderboardRank(guestId, guest.restaurantId),
+    getGuestShareTemplates(guestId),
   ]);
   const leaderboardPreference = getLeaderboardPreference(guest.preferences);
 
@@ -186,6 +189,7 @@ export async function getMembershipSummary(
       pointsEarned: leaderboardRank?.pointsEarned ?? null,
       period: leaderboardRank ? currentLeaderboardPeriod() : null,
     },
+    shareTemplates: shareTemplateSet?.templates ?? [],
     optedOutCampaigns: guest.optedOutCampaigns,
   };
 }

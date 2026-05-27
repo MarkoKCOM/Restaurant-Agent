@@ -80,7 +80,7 @@
 - [ ] 8.1 Implement visit streaks — track consecutive weeks with visit, bonus multiplier, streak broken notification
 - [ ] 8.2 Implement challenges — owner creates time-limited challenges, track progress per guest, award on completion
 - [x] 8.3 Implement achievements — permanent badges (first visit, 10th visit, tried tasting menu, etc.)
-- [ ] 8.4 Implement social sharing templates — branded images for tier promotions, challenge completions, streak milestones
+- [x] 8.4 Implement social sharing templates — branded images for tier promotions, challenge completions, streak milestones
 - [ ] 8.5 Implement lucky spin — configurable prize pool with weighted probabilities, trigger every Nth visit, WhatsApp reward delivery
 - [x] 8.6 Implement group dining rewards — bonus "host" points for parties above threshold (default: 6+)
 - [x] 8.7 Implement menu exploration badges — track categories tried, award badges for exploration milestones

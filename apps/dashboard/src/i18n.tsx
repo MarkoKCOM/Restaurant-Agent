@@ -487,6 +487,8 @@ export const translations = {
       memberLeaderboard: "לידרבורד",
       memberLeaderboardOptedIn: "משתתף",
       memberLeaderboardOptedOut: "לא משתתף",
+      memberShareTemplates: "תבניות שיתוף",
+      memberNoShareTemplates: "אין עדיין רגעים מוכנים לשיתוף",
       // Hospitality signals
       signalBirthday: "יום הולדת",
       signalCelebration: "חגיגה",
@@ -1200,6 +1202,8 @@ export const translations = {
       memberLeaderboard: "Leaderboard",
       memberLeaderboardOptedIn: "Opted in",
       memberLeaderboardOptedOut: "Not opted in",
+      memberShareTemplates: "Share templates",
+      memberNoShareTemplates: "No share-ready moments yet",
       // Hospitality signals
       signalBirthday: "Birthday",
       signalCelebration: "Celebration",

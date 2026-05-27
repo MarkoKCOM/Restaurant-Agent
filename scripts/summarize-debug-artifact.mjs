@@ -122,6 +122,7 @@ function summarizeSmoke(report) {
       || step.step === "gamification.leaderboard.finalize"
       || step.step === "gamification.leaderboard.cleanup"
       || step.step === "gamification.leaderboard.opt-out"
+      || step.step === "gamification.share-templates"
       || step.step === "loyalty.off-peak-multiplier"
       || step.step === "gamification.menu-exploration"
       || step.step === "gamification.birthday-week-challenge"
@@ -179,6 +180,8 @@ function summarizeSmoke(report) {
         console.log(`- gamification.leaderboard.cleanup: markedSent=${step.markedSent === true ? "yes" : "no"} jobId=${step.jobId ?? "?"}`);
       } else if (step.step === "gamification.leaderboard.opt-out") {
         console.log(`- gamification.leaderboard.opt-out: optedIn=${step.optedIn === true ? "yes" : "no"}`);
+      } else if (step.step === "gamification.share-templates") {
+        console.log(`- gamification.share-templates: count=${step.count ?? "?"} moments=${asArray(step.moments).join(",") || "none"} firstVisit=${step.hasFirstVisit === true ? "yes" : "no"} streak=${step.hasStreak === true ? "yes" : "no"} leaderboard=${step.hasLeaderboard === true ? "yes" : "no"} format=${step.storyFormat ?? "?"}`);
       } else if (step.step === "loyalty.off-peak-multiplier") {
         console.log(`- loyalty.off-peak-multiplier: visitPoints=${step.actualVisitPoints ?? "?"}/${step.expectedVisitPoints ?? "?"} reason=${step.reason ?? "?"}`);
       } else if (step.step === "gamification.menu-exploration") {

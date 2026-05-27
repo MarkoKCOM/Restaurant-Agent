@@ -564,6 +564,26 @@ export interface MembershipSummaryData {
     pointsEarned: number | null;
     period: string | null;
   };
+  shareTemplates: {
+    key: string;
+    moment: string;
+    eligible: boolean;
+    title: { he: string; en: string };
+    subtitle: { he: string; en: string };
+    shareText: { he: string; en: string };
+    image: {
+      format: string;
+      aspectRatio: string;
+      backgroundColor: string;
+      accentColor: string;
+      logoUrl: string | null;
+      headline: string;
+      subline: string;
+      footer: string;
+      badgeLabel: string;
+    };
+    cta: { he: string; en: string };
+  }[];
   optedOutCampaigns: boolean;
 }
 

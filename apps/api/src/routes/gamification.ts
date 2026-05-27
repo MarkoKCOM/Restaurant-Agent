@@ -21,6 +21,7 @@ import {
   getGuestLeaderboardRank,
   setLeaderboardOptIn,
 } from "../services/leaderboard.service.js";
+import { getGuestShareTemplates } from "../services/gamification-share.service.js";
 import { getGuestById } from "../services/guest.service.js";
 import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
 
@@ -311,6 +312,48 @@ export async function gamificationRoutes(app: FastifyInstance) {
       return { result };
     } catch (err: unknown) {
       return sendCaughtGamificationError(request, reply, err, "BIRTHDAY_WEEK_CHECK_FAILED", { restaurantId });
+    }
+  });
+
+  // ── Social sharing ───────────────────────────────────
+
+  const shareTemplateQuerySchema = z.object({
+    moment: z.enum([
+      "achievement",
+      "tier_promotion",
+      "challenge_completion",
+      "streak_milestone",
+      "leaderboard_rank",
+      "birthday_week",
+    ]).optional(),
+    achievementKey: z.string().min(1).optional(),
+    challengeName: z.string().min(1).optional(),
+  });
+
+  app.get("/:guestId/share-templates", async (request, reply) => {
+    const { guestId } = request.params as { guestId: string };
+    const query = shareTemplateQuerySchema.parse(request.query ?? {});
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
+    }
+
+    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", {
+        guestId,
+        restaurantId: guest.restaurantId,
+      });
+    }
+
+    try {
+      const shareTemplates = await getGuestShareTemplates(guestId, query);
+      if (!shareTemplates) {
+        return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
+      }
+      return { shareTemplates };
+    } catch (err: unknown) {
+      return sendCaughtGamificationError(request, reply, err, "SHARE_TEMPLATES_FAILED", { guestId });
     }
   });
 

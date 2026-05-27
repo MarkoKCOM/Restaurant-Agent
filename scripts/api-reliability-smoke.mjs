@@ -669,6 +669,30 @@ async function main() {
   if (!leaderboardWinner || leaderboardWinner.rewardPoints !== 30 || !leaderboardWinner.summaryJobId) {
     throw new Error(`Leaderboard finalization did not reward/schedule smoke guest: ${JSON.stringify(finalizedLeaderboard.result ?? null)}`);
   }
+
+  const shareTemplateResult = await request(
+    `/api/v1/gamification/${reservation.guestId}/share-templates?achievementKey=first_visit`,
+    { token },
+  );
+  const shareTemplates = shareTemplateResult.shareTemplates?.templates ?? [];
+  const shareMoments = shareTemplates.map((template) => template.moment);
+  const firstVisitShareTemplate = shareTemplates.find((template) => template.key === "achievement:first_visit");
+  record("gamification.share-templates", {
+    count: shareTemplates.length,
+    moments: shareMoments,
+    hasFirstVisit: Boolean(firstVisitShareTemplate),
+    hasStreak: shareMoments.includes("streak_milestone"),
+    hasLeaderboard: shareMoments.includes("leaderboard_rank"),
+    storyFormat: firstVisitShareTemplate?.image?.format ?? null,
+    accentColor: firstVisitShareTemplate?.image?.accentColor ?? null,
+  });
+  if (!firstVisitShareTemplate || firstVisitShareTemplate.image?.format !== "story" || !firstVisitShareTemplate.shareText?.en) {
+    throw new Error(`Share templates did not include a first-visit story template: ${JSON.stringify(shareTemplateResult.shareTemplates ?? null)}`);
+  }
+  if (!shareMoments.includes("streak_milestone") || !shareMoments.includes("leaderboard_rank")) {
+    throw new Error(`Share templates did not include expected streak and leaderboard moments: ${shareMoments.join(",") || "none"}`);
+  }
+
   cleanupTasks.push(async () => {
     const cleaned = await markSmokeEngagementJobSent(leaderboardWinner.summaryJobId, "leaderboard_summary");
     record("gamification.leaderboard.cleanup", {

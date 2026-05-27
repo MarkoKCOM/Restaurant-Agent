@@ -571,6 +571,27 @@ export function GuestDetailPage() {
             ) : null}
           </div>
 
+          <div className="rounded-xl border border-gray-200 p-4 mb-4">
+            <h4 className="font-medium text-gray-900 mb-3">{t.guestDetail.memberShareTemplates}</h4>
+            {membershipSummary.summary.shareTemplates.length === 0 ? (
+              <p className="text-sm text-gray-500">{t.guestDetail.memberNoShareTemplates}</p>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {membershipSummary.summary.shareTemplates.slice(0, 4).map((template) => (
+                  <div key={template.key} className="rounded-lg bg-slate-50 px-3 py-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-medium text-slate-900">{lang === "he" ? template.title.he : template.title.en}</p>
+                      <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                        {template.image.badgeLabel}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-600">{lang === "he" ? template.subtitle.he : template.subtitle.en}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="grid md:grid-cols-2 gap-4">
             <div className="rounded-xl border border-gray-200 p-4">
               <h4 className="font-medium text-gray-900 mb-3">{t.guestDetail.memberActiveClaims}</h4>

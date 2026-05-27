@@ -285,6 +285,47 @@ export interface LeaderboardMemberSummary {
   period: string | null;
 }
 
+export type ShareTemplateMoment =
+  | "achievement"
+  | "tier_promotion"
+  | "challenge_completion"
+  | "streak_milestone"
+  | "leaderboard_rank"
+  | "birthday_week";
+
+export interface ShareTemplate {
+  key: string;
+  moment: ShareTemplateMoment;
+  eligible: boolean;
+  title: {
+    he: string;
+    en: string;
+  };
+  subtitle: {
+    he: string;
+    en: string;
+  };
+  shareText: {
+    he: string;
+    en: string;
+  };
+  image: {
+    format: "story";
+    aspectRatio: "9:16";
+    backgroundColor: string;
+    accentColor: string;
+    logoUrl: string | null;
+    headline: string;
+    subline: string;
+    footer: string;
+    badgeLabel: string;
+  };
+  cta: {
+    he: string;
+    en: string;
+  };
+}
+
 export interface MembershipSummary {
   guestId: string;
   restaurantId: string;
@@ -312,5 +353,6 @@ export interface MembershipSummary {
   menuExploration: MenuExplorationSummary;
   achievements: AchievementSummary;
   leaderboard: LeaderboardMemberSummary;
+  shareTemplates: ShareTemplate[];
   optedOutCampaigns: boolean;
 }

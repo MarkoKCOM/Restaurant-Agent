@@ -141,10 +141,13 @@ export async function runAllTests(): Promise<TestRunReport> {
     if (source?.status !== "ok" || typeof source.shortCommit !== "string") {
       throw new Error("Diagnostics response missing deployment source revision");
     }
+    if (source.checkout?.status !== "ok" || typeof source.checkout.shortCommit !== "string") {
+      throw new Error("Diagnostics response missing deployment checkout revision");
+    }
     if (migrationDrift.status !== "ok") {
       throw new Error(`Migration drift status is ${migrationDrift.status}`);
     }
-    return `status=${(data as any).status} source=${source.shortCommit} migrations=${migrationDrift.codeLatestId}/${migrationDrift.databaseLatestId}`;
+    return `status=${(data as any).status} build=${source.shortCommit} checkout=${source.checkout.shortCommit} migrations=${migrationDrift.codeLatestId}/${migrationDrift.databaseLatestId}`;
   }));
 
   results.push(await runTest("API Diagnostics: missing token envelope", async () => {

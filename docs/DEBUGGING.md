@@ -136,7 +136,7 @@ The endpoint returns:
 - overall status: `ok` or `degraded`
 - database ping status and latency
 - Redis ping status and latency
-- deployment metadata: Node version, process ID, working directory, source git commit/branch/dirty state, code migration count/latest file, applied DB migration count/latest ID/hash, and migration drift status
+- deployment metadata: Node version, process ID, working directory, running build git commit/branch/dirty state, current checkout git state, whether checkout matches the running build, code migration count/latest file, applied DB migration count/latest ID/hash, and migration drift status
 - BullMQ queue counts for reservation reminders, daily summaries, and engagement jobs
 - up to two failed-job samples per queue, including job ID, name, attempts, and sanitized failure reason
 - sanitized failure name/code/message

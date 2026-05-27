@@ -142,6 +142,9 @@ async function captureDiagnosticsHighlights(commandRecord) {
         shortCommit: source.shortCommit,
         branch: source.branch,
         dirty: source.dirty,
+        builtAt: source.builtAt,
+        checkout: source.checkout,
+        checkoutMatchesBuild: source.checkoutMatchesBuild,
       },
       migrationDrift: {
         status: migrationDrift.status,
@@ -196,13 +199,22 @@ async function writeReadme() {
       lines.push(`- Admin diagnostics could not be parsed: ${adminDiagnostics.error}`);
     } else {
       const source = adminDiagnostics.source ?? {};
+      const checkout = source.checkout ?? {};
       const migrationDrift = adminDiagnostics.migrationDrift ?? {};
       const checks = adminDiagnostics.checks ?? {};
       const queues = Array.isArray(adminDiagnostics.queues) ? adminDiagnostics.queues : [];
       lines.push(`- Admin diagnostics: ${adminDiagnostics.status ?? "unknown"}`);
       lines.push(
-        `- Source: ${source.shortCommit ?? "unknown"} on ${source.branch ?? "unknown"}${source.dirty === true ? " (dirty)" : ""}`,
+        `- Running build: ${source.shortCommit ?? "unknown"} on ${source.branch ?? "unknown"}${source.dirty === true ? " (dirty)" : ""}`,
       );
+      if (source.builtAt) {
+        lines.push(`- Built at: ${source.builtAt}`);
+      }
+      if (checkout.status) {
+        lines.push(
+          `- Checkout: ${checkout.shortCommit ?? "unknown"} on ${checkout.branch ?? "unknown"}${checkout.dirty === true ? " (dirty)" : ""}; matches running build=${source.checkoutMatchesBuild === true ? "yes" : "no"}`,
+        );
+      }
       lines.push(
         `- Migration drift: ${migrationDrift.status ?? "unknown"} (${migrationDrift.codeLatestId ?? "?"}/${migrationDrift.databaseLatestId ?? "?"})`,
       );

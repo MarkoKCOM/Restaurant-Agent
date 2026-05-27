@@ -1,4 +1,4 @@
-import { readdir } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -54,6 +54,16 @@ export interface DeploymentDiagnostic {
     shortCommit?: string;
     branch?: string;
     dirty?: boolean;
+    builtAt?: string;
+    checkout?: {
+      status: DiagnosticStatus;
+      commit?: string;
+      shortCommit?: string;
+      branch?: string;
+      dirty?: boolean;
+      error?: DiagnosticCheck["error"];
+    };
+    checkoutMatchesBuild?: boolean;
     error?: DiagnosticCheck["error"];
   };
   codeMigrations: {
@@ -99,6 +109,14 @@ export interface QueueDiagnostic {
     finishedOn?: number;
   }>;
   error?: DiagnosticCheck["error"];
+}
+
+interface BuildInfo {
+  commit?: string;
+  shortCommit?: string;
+  branch?: string;
+  dirty?: boolean;
+  builtAt?: string;
 }
 
 function sanitizeError(error: unknown): DiagnosticCheck["error"] {
@@ -272,24 +290,55 @@ async function runGit(args: string[]): Promise<string> {
 }
 
 async function inspectSourceRevision(): Promise<DeploymentDiagnostic["source"]> {
+  let buildInfo: BuildInfo;
+
+  try {
+    buildInfo = JSON.parse(
+      await readFile(new URL("../build-info.json", import.meta.url), "utf8"),
+    ) as BuildInfo;
+  } catch (error: unknown) {
+    return {
+      status: "error",
+      error: sanitizeError(error),
+    };
+  }
+
   try {
     const [commit, branch, status] = await Promise.all([
       runGit(["rev-parse", "HEAD"]),
       runGit(["rev-parse", "--abbrev-ref", "HEAD"]),
       runGit(["status", "--porcelain"]),
     ]);
-
-    return {
-      status: "ok",
+    const checkout = {
+      status: "ok" as const,
       commit,
       shortCommit: commit.slice(0, 12),
       branch,
       dirty: status.length > 0,
     };
+
+    return {
+      status: "ok",
+      commit: buildInfo.commit,
+      shortCommit: buildInfo.shortCommit ?? buildInfo.commit?.slice(0, 12),
+      branch: buildInfo.branch,
+      dirty: buildInfo.dirty,
+      builtAt: buildInfo.builtAt,
+      checkout,
+      checkoutMatchesBuild: Boolean(buildInfo.commit && buildInfo.commit === checkout.commit),
+    };
   } catch (error: unknown) {
     return {
-      status: "error",
-      error: sanitizeError(error),
+      status: "ok",
+      commit: buildInfo.commit,
+      shortCommit: buildInfo.shortCommit ?? buildInfo.commit?.slice(0, 12),
+      branch: buildInfo.branch,
+      dirty: buildInfo.dirty,
+      builtAt: buildInfo.builtAt,
+      checkout: {
+        status: "error",
+        error: sanitizeError(error),
+      },
     };
   }
 }
@@ -344,6 +393,7 @@ export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
   const checks = { database, redis };
   const status = Object.values(checks).every((check) => check.status === "ok")
     && queues.every((queue) => queue.status === "ok")
+    && deployment.source.status === "ok"
     && deployment.codeMigrations.status === "ok"
     && deployment.databaseMigrations.status === "ok"
     && deployment.migrationDrift?.status !== "mismatch"

@@ -108,6 +108,7 @@ function summarizeSmoke(report) {
       || step.step === "gamification.future-challenge.cleanup"
       || step.step === "gamification.expired-challenge.window"
       || step.step === "gamification.expired-challenge.cleanup"
+      || step.step === "gamification.challenge-idempotency"
     )
   );
   if (operationalSteps.length > 0) {
@@ -129,6 +130,8 @@ function summarizeSmoke(report) {
         console.log(`- gamification.expired-challenge.window: listedActive=${step.listedAsActive === true ? "yes" : "no"} endDate=${step.endDate ?? "?"}`);
       } else if (step.step === "gamification.expired-challenge.cleanup") {
         console.log(`- gamification.expired-challenge.cleanup: active=${step.isActive === false ? "no" : "yes"} challengeId=${step.challengeId ?? "?"}`);
+      } else if (step.step === "gamification.challenge-idempotency") {
+        console.log(`- gamification.challenge-idempotency: progress=${step.progress ?? "?"}/${step.target ?? "?"} points=${step.pointsBefore ?? "?"}->${step.pointsAfter ?? "?"} duplicateAward=${step.pointsBefore === step.pointsAfter ? "no" : "yes"}`);
       }
     }
   }

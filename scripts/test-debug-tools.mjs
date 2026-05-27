@@ -91,6 +91,7 @@ const smokePath = await writeJson("smoke.json", {
     { step: "gamification.expired-challenge.window", challengeId: "expired-challenge-test-1", endDate: "2026-05-26", listedAsActive: false },
     { step: "gamification.expired-challenge.cleanup", challengeId: "expired-challenge-test-1", isActive: false },
     { step: "gamification.challenge-progress", progress: 1, target: 1, status: "completed", completed: true },
+    { step: "gamification.challenge-idempotency", challengeId: "challenge-test-1", progress: 1, target: 1, completed: true, pointsBefore: 15, pointsAfter: 15 },
     { step: "gamification.challenge.cleanup", challengeId: "challenge-test-1", isActive: false },
   ],
   requests: [
@@ -126,6 +127,7 @@ assertIncludes(smokeOutput, "gamification.future-challenge.cleanup: active=no ch
 assertIncludes(smokeOutput, "gamification.expired-challenge.window: listedActive=no endDate=2026-05-26");
 assertIncludes(smokeOutput, "gamification.expired-challenge.cleanup: active=no challengeId=expired-challenge-test-1");
 assertIncludes(smokeOutput, "gamification.challenge-progress: progress=1/1 status=completed completed=yes");
+assertIncludes(smokeOutput, "gamification.challenge-idempotency: progress=1/1 points=15->15 duplicateAward=no");
 assertIncludes(smokeOutput, "gamification.challenge.cleanup: active=no challengeId=challenge-test-1");
 assertIncludes(smokeOutput, "Unhandled HTTP failures: 1");
 assertIncludes(smokeOutput, "POST /api/v1/reservations -> 500 code=INTERNAL_ERROR requestId=smoke-test-2");

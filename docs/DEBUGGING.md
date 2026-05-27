@@ -76,7 +76,7 @@ The bundle is written to `artifacts/debug-bundles/<timestamp>/`. Set `OPENSEAT_T
 
 The bundle also runs deterministic membership-intent probes against `/api/v1/agent/debug/membership-intent`, covering balance, reward, referral, and promotional opt-out phrases. These checks do not call the LLM; they prove the agent debugging layer still maps common membership questions to the expected tools.
 
-The API reliability smoke creates future-dated and expired challenges to verify launch windows are respected, creates a short-lived current visit-count challenge, completes a test reservation, verifies that the guest challenge progress is created and completed, then deactivates all smoke challenges. This catches regressions where challenges leak outside their active window or the retention/gamification stage stops running even though the reservation itself completed successfully.
+The API reliability smoke creates future-dated and expired challenges to verify launch windows are respected, creates a short-lived current visit-count challenge, completes a test reservation, verifies that the guest challenge progress is created and completed, retries the completed challenge to prove points are not awarded twice, then deactivates all smoke challenges. This catches regressions where challenges leak outside their active window, duplicate completion rewards are issued, or the retention/gamification stage stops running even though the reservation itself completed successfully.
 
 Before endpoint probes run, the bundle waits for `/api/v1/health` to become ready. Tune startup waiting with `OPENSEAT_BUNDLE_READY_TIMEOUT_MS` and `OPENSEAT_BUNDLE_READY_INTERVAL_MS` when collecting immediately after a restart.
 

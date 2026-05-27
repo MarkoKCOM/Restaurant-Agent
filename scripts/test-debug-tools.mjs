@@ -1386,6 +1386,7 @@ assertNotIncludes(loyaltyRoutes, "if (accessError) return accessError;");
 
 for (const requiredReservationRouteContent of [
   "sendCaughtReservationError",
+  "RESERVATION_AVAILABILITY_FAILED",
   "RESERVATION_CREATE_FAILED",
   "RESERVATION_WALK_IN_CREATE_FAILED",
   "RESERVATION_LIST_FAILED",

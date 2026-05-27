@@ -104,10 +104,18 @@ function sendCaughtReservationError(
 
 export async function reservationRoutes(app: FastifyInstance) {
   // GET /availability
-  app.get("/availability", async (request) => {
+  app.get("/availability", async (request, reply) => {
     const query = availabilityQuerySchema.parse(request.query) as Parameters<typeof checkAvailability>[0];
-    const slots = await checkAvailability(query);
-    return { slots };
+    try {
+      const slots = await checkAvailability(query);
+      return { slots };
+    } catch (error) {
+      return sendCaughtReservationError(request, reply, error, "RESERVATION_AVAILABILITY_FAILED", {
+        restaurantLookupId: query.restaurantId,
+        date: query.date,
+        partySize: query.partySize,
+      });
+    }
   });
 
   // POST / — create reservation

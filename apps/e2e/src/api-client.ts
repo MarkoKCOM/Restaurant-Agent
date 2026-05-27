@@ -69,6 +69,45 @@ async function expectStatus(fn: () => Promise<unknown>, expectedStatus: number):
   throw new Error(`Expected HTTP ${expectedStatus}, but request succeeded`);
 }
 
+export async function expectDiagnosticError(input: {
+  path: string;
+  expectedStatus: number;
+  expectedCode: string;
+  requestId: string;
+  method?: string;
+  token?: string;
+  body?: unknown;
+}): Promise<Record<string, unknown>> {
+  const method = input.method ?? "GET";
+  const res = await fetch(`${BASE_URL}${input.path}`, {
+    method,
+    headers: {
+      "x-request-id": input.requestId,
+      ...(input.body ? { "Content-Type": "application/json" } : {}),
+      ...(input.token ? { Authorization: `Bearer ${input.token}` } : {}),
+    },
+    body: input.body ? JSON.stringify(input.body) : undefined,
+  });
+
+  const text = await res.text();
+  const data = text ? JSON.parse(text) as Record<string, unknown> : {};
+
+  if (res.status !== input.expectedStatus) {
+    throw new Error(`${method} ${input.path} -> expected ${input.expectedStatus}, got ${res.status}: ${text}`);
+  }
+  if (data.code !== input.expectedCode) {
+    throw new Error(`${method} ${input.path} -> expected code ${input.expectedCode}, got ${String(data.code)}`);
+  }
+  if (data.requestId !== input.requestId) {
+    throw new Error(`${method} ${input.path} -> expected requestId ${input.requestId}, got ${String(data.requestId)}`);
+  }
+  if (res.headers.get("x-request-id") !== input.requestId) {
+    throw new Error(`${method} ${input.path} -> x-request-id header mismatch`);
+  }
+
+  return data;
+}
+
 export async function loginWithCredentials(email: string, password: string) {
   return request("/api/v1/auth/login", {
     method: "POST",

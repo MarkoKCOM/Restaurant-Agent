@@ -107,6 +107,30 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
     return `status=${(data as any).status} migrations=${migrationDrift.codeLatestId}/${migrationDrift.databaseLatestId}`;
   }));
 
+  results.push(await runTest("API Diagnostics: missing token envelope", async () => {
+    const requestId = `debug-missing-token-${runId}`;
+    const data = await api.expectDiagnosticError({
+      path: "/api/v1/admin/restaurants",
+      expectedStatus: 401,
+      expectedCode: "AUTH_TOKEN_MISSING",
+      requestId,
+    });
+    return `code=${String(data.code)} requestId=${String(data.requestId)}`;
+  }));
+
+  results.push(await runTest("API Diagnostics: route not found envelope", async () => {
+    const requestId = `debug-route-not-found-${runId}`;
+    const token = await api.getSuperAdminToken();
+    const data = await api.expectDiagnosticError({
+      path: "/api/v1/debug/not-found",
+      expectedStatus: 404,
+      expectedCode: "ROUTE_NOT_FOUND",
+      requestId,
+      token,
+    });
+    return `code=${String(data.code)} requestId=${String(data.requestId)}`;
+  }));
+
   // 2. List restaurants
   results.push(await runTest("List Restaurants", async () => {
     const data = await api.listRestaurants();

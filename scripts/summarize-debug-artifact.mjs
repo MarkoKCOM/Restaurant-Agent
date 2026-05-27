@@ -161,6 +161,7 @@ function summarizeDebugBundleManifest(report) {
   const failed = commands.filter((command) => command.status === "failed");
   const skipped = commands.filter((command) => command.status === "skipped");
   const passed = commands.filter((command) => command.status === "passed");
+  const membershipDebugSummary = commands.find((command) => command.name === "membership-debug-summary");
   const highlights = report.highlights ?? {};
   const adminDiagnostics = highlights.adminDiagnostics ?? {};
   const source = adminDiagnostics.source ?? {};
@@ -211,6 +212,11 @@ function summarizeDebugBundleManifest(report) {
       "Membership processing",
       `${membershipProcessing.status} open=${membershipProcessing.openCount ?? "?"} attempts=${membershipProcessing.totalOpenAttempts ?? "?"}`,
     );
+  }
+  if (membershipDebugSummary) {
+    const output = membershipDebugSummary.outputPath ? ` output=${membershipDebugSummary.outputPath}` : "";
+    const reason = membershipDebugSummary.reason ? ` reason=${membershipDebugSummary.reason}` : "";
+    printLine("Membership repair summary", `${membershipDebugSummary.status}${output}${reason}`);
   }
   if (gamification.status) {
     printLine(

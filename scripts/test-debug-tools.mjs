@@ -287,6 +287,7 @@ assertIncludes(debugBundleManifestOutput, "Commands: 2/4 passed");
 assertIncludes(debugBundleManifestOutput, "Running build: abc1234 checkout=abc1234 matches=true");
 assertIncludes(debugBundleManifestOutput, "Migration drift: ok code=202605270001 database=202605270001");
 assertIncludes(debugBundleManifestOutput, "Membership processing: ok open=2 attempts=3");
+assertIncludes(debugBundleManifestOutput, "Membership repair summary: passed output=/tmp/openseat-debug-bundle/membership-debug-summary.txt");
 assertIncludes(
   debugBundleManifestOutput,
   "Gamification: attention activeChallenges=2 stuckChallenges=1 referralCodes=7 referralCreditMismatches=1",
@@ -304,6 +305,7 @@ for (const expectedSummarizerContent of [
   "summarizeDebugBundleManifest",
   "Type: debug-bundle",
   "Membership processing",
+  "Membership repair summary",
   "Gamification",
   "Engagement",
   "Agent membership intents",

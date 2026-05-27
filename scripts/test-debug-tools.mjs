@@ -1000,6 +1000,7 @@ const analyticsRoutes = await readFile("apps/api/src/routes/analytics.ts", "utf8
 const agentRoutes = await readFile("apps/api/src/routes/agent.ts", "utf8");
 const engagementRoutes = await readFile("apps/api/src/routes/engagement.ts", "utf8");
 const visitsRoutes = await readFile("apps/api/src/routes/visits.ts", "utf8");
+const reservationRoutes = await readFile("apps/api/src/routes/reservations.ts", "utf8");
 const engagementService = await readFile("apps/api/src/services/engagement.service.ts", "utf8");
 const challengeService = await readFile("apps/api/src/services/challenge.service.ts", "utf8");
 const loyaltyRoutes = await readFile("apps/api/src/routes/loyalty.ts", "utf8");
@@ -1382,6 +1383,20 @@ for (const requiredLoyaltyPackageContent of [
   assertIncludes(loyaltyRoutes, requiredLoyaltyPackageContent);
 }
 assertNotIncludes(loyaltyRoutes, "if (accessError) return accessError;");
+
+for (const requiredReservationRouteContent of [
+  "sendCaughtReservationError",
+  "RESERVATION_CREATE_FAILED",
+  "RESERVATION_WALK_IN_CREATE_FAILED",
+  "RESERVATION_LIST_FAILED",
+  "RESERVATION_UPDATE_FAILED",
+  "RESERVATION_NO_SHOW_FAILED",
+  "RESERVATION_CANCEL_FAILED",
+  "return sendReservationError(request, reply, 500, message, fallbackCode",
+  "request.log.error(logPayload, \"Reservation request failed\")",
+]) {
+  assertIncludes(reservationRoutes, requiredReservationRouteContent);
+}
 
 for (const requiredGamificationPackageContent of [
   "enforceGamificationAccess",

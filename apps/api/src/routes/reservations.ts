@@ -77,6 +77,31 @@ function sendReservationError(
   });
 }
 
+function sendCaughtReservationError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  err: unknown,
+  fallbackCode: string,
+  context: Record<string, unknown> = {},
+) {
+  if (isReservationHttpError(err)) {
+    return sendReservationError(
+      request,
+      reply,
+      err.statusCode,
+      err.message,
+      reservationErrorCode(err.message, fallbackCode),
+      context,
+    );
+  }
+
+  const message = err instanceof Error ? err.message : "Reservation operation failed";
+  return sendReservationError(request, reply, 500, message, fallbackCode, {
+    ...context,
+    err,
+  });
+}
+
 export async function reservationRoutes(app: FastifyInstance) {
   // GET /availability
   app.get("/availability", async (request) => {
@@ -102,23 +127,13 @@ export async function reservationRoutes(app: FastifyInstance) {
       reply.code(201);
       return { reservation };
     } catch (err) {
-      if (isReservationHttpError(err)) {
-        return sendReservationError(
-          request,
-          reply,
-          err.statusCode,
-          err.message,
-          reservationErrorCode(err.message, "RESERVATION_CREATE_FAILED"),
-          {
-            restaurantLookupId: parsed.restaurantId,
-            date: parsed.date,
-            timeStart: parsed.timeStart,
-            partySize: parsed.partySize,
-            source: parsed.source,
-          },
-        );
-      }
-      throw err;
+      return sendCaughtReservationError(request, reply, err, "RESERVATION_CREATE_FAILED", {
+        restaurantLookupId: parsed.restaurantId,
+        date: parsed.date,
+        timeStart: parsed.timeStart,
+        partySize: parsed.partySize,
+        source: parsed.source,
+      });
     }
   });
 
@@ -144,21 +159,11 @@ export async function reservationRoutes(app: FastifyInstance) {
       reply.code(201);
       return { reservation };
     } catch (error) {
-      if (isReservationHttpError(error)) {
-        return sendReservationError(
-          request,
-          reply,
-          error.statusCode,
-          error.message,
-          reservationErrorCode(error.message, "RESERVATION_WALK_IN_CREATE_FAILED"),
-          {
-            restaurantLookupId: body.restaurantId,
-            partySize: body.partySize,
-            seatImmediately: body.seatImmediately,
-          },
-        );
-      }
-      throw error;
+      return sendCaughtReservationError(request, reply, error, "RESERVATION_WALK_IN_CREATE_FAILED", {
+        restaurantLookupId: body.restaurantId,
+        partySize: body.partySize,
+        seatImmediately: body.seatImmediately,
+      });
     }
   });
 
@@ -189,8 +194,15 @@ export async function reservationRoutes(app: FastifyInstance) {
     }
 
     const scopedRestaurantId = resolveRestaurantId(user, restaurantId);
-    const reservationList = await listReservations({ restaurantId: scopedRestaurantId ?? undefined, date });
-    return { reservations: reservationList };
+    try {
+      const reservationList = await listReservations({ restaurantId: scopedRestaurantId ?? undefined, date });
+      return { reservations: reservationList };
+    } catch (error) {
+      return sendCaughtReservationError(request, reply, error, "RESERVATION_LIST_FAILED", {
+        restaurantLookupId: scopedRestaurantId,
+        date,
+      });
+    }
   });
 
   // PATCH /:id — update reservation
@@ -240,17 +252,11 @@ export async function reservationRoutes(app: FastifyInstance) {
       }
       return { reservation: updated };
     } catch (e) {
-      if (isReservationHttpError(e)) {
-        return sendReservationError(
-          request,
-          reply,
-          e.statusCode,
-          e.message,
-          reservationErrorCode(e.message, "RESERVATION_UPDATE_FAILED"),
-          { reservationId: id, restaurantLookupId: reservationRow.restaurantId, status: body.status },
-        );
-      }
-      throw e;
+      return sendCaughtReservationError(request, reply, e, "RESERVATION_UPDATE_FAILED", {
+        reservationId: id,
+        restaurantLookupId: reservationRow.restaurantId,
+        status: body.status,
+      });
     }
   });
 
@@ -300,17 +306,10 @@ export async function reservationRoutes(app: FastifyInstance) {
       }
       return { reservation };
     } catch (e) {
-      if (isReservationHttpError(e)) {
-        return sendReservationError(
-          request,
-          reply,
-          e.statusCode,
-          e.message,
-          reservationErrorCode(e.message, "RESERVATION_NO_SHOW_FAILED"),
-          { reservationId: id, restaurantLookupId: reservationRow.restaurantId },
-        );
-      }
-      throw e;
+      return sendCaughtReservationError(request, reply, e, "RESERVATION_NO_SHOW_FAILED", {
+        reservationId: id,
+        restaurantLookupId: reservationRow.restaurantId,
+      });
     }
   });
 
@@ -364,17 +363,10 @@ export async function reservationRoutes(app: FastifyInstance) {
         waitlistMatch: result.waitlistMatch,
       };
     } catch (e) {
-      if (isReservationHttpError(e)) {
-        return sendReservationError(
-          request,
-          reply,
-          e.statusCode,
-          e.message,
-          reservationErrorCode(e.message, "RESERVATION_CANCEL_FAILED"),
-          { reservationId: id, restaurantLookupId: reservationRow.restaurantId },
-        );
-      }
-      throw e;
+      return sendCaughtReservationError(request, reply, e, "RESERVATION_CANCEL_FAILED", {
+        reservationId: id,
+        restaurantLookupId: reservationRow.restaurantId,
+      });
     }
   });
 }

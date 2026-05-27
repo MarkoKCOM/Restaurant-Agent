@@ -59,6 +59,10 @@ const apiUrl = (process.env.OPENSEAT_API_URL || "http://127.0.0.1:3001").replace
 const since = readOption("since", "30 minutes ago");
 const service = readOption("service", "openseat-api");
 const outDir = resolve(process.cwd(), readOption("out", `artifacts/debug-bundles/${stamp()}`));
+const membershipDebugRestaurantId =
+  process.env.OPENSEAT_RESTAURANT_ID ||
+  process.env.OPENSEAT_BUNDLE_RESTAURANT_ID ||
+  "";
 const manifest = {
   createdAt: new Date().toISOString(),
   apiUrl,
@@ -356,6 +360,7 @@ async function writeReadme() {
     lines.push("- Open failed step files first, then use request IDs inside them with `pnpm debug:logs <request-id>`.");
   } else {
     lines.push("- `admin-diagnostics.txt` for database, Redis, migration drift, queue, and runtime health.");
+    lines.push("- `membership-debug-summary.txt` for open membership repair rows, engagement job counts, and retry commands.");
     lines.push("- `api-smoke-summary.txt` for end-to-end API flow status and any failing request IDs.");
     lines.push("- `recent-api-logs.txt` for service-side context around this bundle run.");
   }
@@ -440,9 +445,31 @@ if (diagnosticsToken.token) {
   });
   diagnosticsCommand.tokenSource = diagnosticsToken.source;
   await captureDiagnosticsHighlights(diagnosticsCommand);
+
+  if (membershipDebugRestaurantId) {
+    const membershipCommand = await runStep("membership-debug-summary", "node", ["scripts/membership-debug-summary.mjs"], {
+      env: {
+        OPENSEAT_API_URL: apiUrl,
+        OPENSEAT_TOKEN: diagnosticsToken.token,
+        OPENSEAT_RESTAURANT_ID: membershipDebugRestaurantId,
+      },
+    });
+    membershipCommand.tokenSource = diagnosticsToken.source;
+  } else {
+    manifest.commands.push({
+      name: "membership-debug-summary",
+      status: "skipped",
+      reason: "OPENSEAT_RESTAURANT_ID or OPENSEAT_BUNDLE_RESTAURANT_ID is not set",
+    });
+  }
 } else {
   manifest.commands.push({
     name: "admin-diagnostics",
+    status: "skipped",
+    reason: diagnosticsToken.reason,
+  });
+  manifest.commands.push({
+    name: "membership-debug-summary",
     status: "skipped",
     reason: diagnosticsToken.reason,
   });

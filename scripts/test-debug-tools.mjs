@@ -217,6 +217,7 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
   readiness: { status: "ready", attempts: 1 },
   commands: [
     { name: "health-probe", status: "passed", outputPath: "/tmp/openseat-debug-bundle/health-probe.txt" },
+    { name: "membership-debug-summary", status: "passed", outputPath: "/tmp/openseat-debug-bundle/membership-debug-summary.txt" },
     {
       name: "api-smoke",
       status: "failed",
@@ -282,7 +283,7 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
 const debugBundleManifestOutput = await summarize(debugBundleManifestPath);
 assertIncludes(debugBundleManifestOutput, "Type: debug-bundle");
 assertIncludes(debugBundleManifestOutput, "Readiness: ready after 1 attempt(s)");
-assertIncludes(debugBundleManifestOutput, "Commands: 1/3 passed");
+assertIncludes(debugBundleManifestOutput, "Commands: 2/4 passed");
 assertIncludes(debugBundleManifestOutput, "Running build: abc1234 checkout=abc1234 matches=true");
 assertIncludes(debugBundleManifestOutput, "Migration drift: ok code=202605270001 database=202605270001");
 assertIncludes(debugBundleManifestOutput, "Membership processing: ok open=2 attempts=3");
@@ -540,6 +541,9 @@ for (const requiredReadmeContent of [
   "Agent membership intents:",
   "agent-membership-intents",
   "agent-membership-intents.json",
+  "membership-debug-summary",
+  "membership-debug-summary.txt",
+  "OPENSEAT_BUNDLE_RESTAURANT_ID",
   "waitForApiReady",
   "OPENSEAT_BUNDLE_READY_TIMEOUT_MS",
   "Queues:",
@@ -555,6 +559,7 @@ for (const requiredReadmeContent of [
   "gamification",
   "engagement",
   "manifest.highlights.agentMembershipIntents",
+  "membershipDebugRestaurantId",
   "readme: readmePath",
 ]) {
   assertIncludes(debugBundleCollector, requiredReadmeContent);

@@ -66,13 +66,13 @@ pnpm debug:api -- http://localhost:3001/api/v1/health
 
 Vercel production deploys are path-filtered. Changes limited to debugging scripts, E2E tooling, or docs should still run CI/API Smoke, but should not spend Vercel deployment quota. Frontend app, package, lockfile, workspace, Turbo, or deploy-workflow changes still trigger the deploy workflow.
 
-Collect a timestamped debug bundle with health probe output, optional admin diagnostics, optional smoke output, summary files, and recent API logs:
+Collect a timestamped debug bundle with health probe output, optional admin diagnostics, optional membership repair summary, optional smoke output, summary files, and recent API logs:
 
 ```bash
 pnpm debug:bundle --since "30 minutes ago"
 ```
 
-The bundle is written to `artifacts/debug-bundles/<timestamp>/`. Set `OPENSEAT_TOKEN`, `JWT_SECRET`, or super-admin credentials to include `/api/v1/admin/diagnostics`, and set the normal smoke credentials to include the API smoke run. Use `--out /tmp/openseat-debug` to choose a specific folder.
+The bundle is written to `artifacts/debug-bundles/<timestamp>/`. Set `OPENSEAT_TOKEN`, `JWT_SECRET`, or super-admin credentials to include `/api/v1/admin/diagnostics`, set `OPENSEAT_RESTAURANT_ID` or `OPENSEAT_BUNDLE_RESTAURANT_ID` to include `pnpm debug:membership`, and set the normal smoke credentials to include the API smoke run. Use `--out /tmp/openseat-debug` to choose a specific folder.
 
 The bundle also runs deterministic membership-intent probes against `/api/v1/agent/debug/membership-intent`, covering balance, reward, referral, and promotional opt-out phrases. These checks do not call the LLM; they prove the agent debugging layer still maps common membership questions to the expected tools.
 

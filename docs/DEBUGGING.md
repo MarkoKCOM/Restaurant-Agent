@@ -76,6 +76,13 @@ The push-time API Smoke workflow also uploads an `api-reliability-smoke` artifac
 OPENSEAT_SMOKE_ARTIFACT_PATH=/tmp/openseat-smoke.json node scripts/api-reliability-smoke.mjs
 ```
 
+Summarize either smoke or E2E artifacts without reading the full JSON:
+
+```bash
+pnpm debug:artifact /tmp/openseat-smoke.json
+pnpm debug:artifact apps/e2e/artifacts/e2e-....json
+```
+
 Use `pnpm debug:api` to inspect one endpoint quickly. It sends an `x-request-id`, then prints the response status, elapsed time, returned request ID, content type, and body. Optional environment variables:
 
 - `METHOD=POST`

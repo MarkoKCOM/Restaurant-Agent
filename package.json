@@ -7,6 +7,7 @@
     "lint": "turbo lint",
     "type-check": "turbo type-check",
     "debug:api": "node scripts/api-debug-probe.mjs",
+    "debug:artifact": "node scripts/summarize-debug-artifact.mjs",
     "db:generate": "pnpm --filter @openseat/api db:generate",
     "db:migrate": "pnpm --filter @openseat/api db:migrate",
     "db:seed": "pnpm --filter @openseat/api db:seed"

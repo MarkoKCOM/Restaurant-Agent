@@ -139,7 +139,7 @@ function sendLoyaltyError(
   if (message.includes("already")) {
     return sendLoyaltyEnvelopeError(request, reply, 409, message, code, context);
   }
-  return sendLoyaltyEnvelopeError(request, reply, 400, message, code, context);
+  return sendLoyaltyEnvelopeError(request, reply, 500, message, code, context);
 }
 
 async function enforceLoyaltyAccess(

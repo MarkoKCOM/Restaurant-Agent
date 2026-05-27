@@ -1375,6 +1375,9 @@ for (const requiredLoyaltyPackageContent of [
   "if (accessError) return reply;",
   "return true;",
   "return false;",
+  "LOYALTY_OPERATION_FAILED",
+  "return sendLoyaltyEnvelopeError(request, reply, 500, message, code, context)",
+  "request.log.error(logPayload, \"Loyalty request failed\")",
 ]) {
   assertIncludes(loyaltyRoutes, requiredLoyaltyPackageContent);
 }

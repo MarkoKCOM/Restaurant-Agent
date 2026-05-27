@@ -140,6 +140,7 @@ function summarizeSmoke(report) {
       || step.step === "campaign.audience-preview"
       || step.step === "campaign.creation-scheduling"
       || step.step === "campaign.delivery"
+      || step.step === "campaign.delivery-events"
       || step.step === "campaign.opt-out-keyword"
     )
   );
@@ -227,6 +228,8 @@ function summarizeSmoke(report) {
         console.log(`- campaign.creation-scheduling: templates=${step.templateCount ?? "?"} winBack=${step.hasWinBackTemplate === true ? "yes" : "no"} quietWarning=${step.quietWarning === true ? "yes" : "no"} adjusted=${step.adjusted === true ? "yes" : "no"} status=${step.status ?? "?"} variables=${asArray(step.variables).join(",") || "none"}`);
       } else if (step.step === "campaign.delivery") {
         console.log(`- campaign.delivery: firstSent=${step.firstSent ?? "?"} firstOptOut=${step.firstSkippedOptOut ?? "?"} secondSent=${step.secondSent ?? "?"} thirdSent=${step.thirdSent ?? "?"} thirdWeekLimit=${step.thirdSkippedWeek ?? "?"} preview=${step.hasMessagePreview === true ? "yes" : "no"} rateLimitedTarget=${step.rateLimitedTarget === true ? "yes" : "no"}`);
+      } else if (step.step === "campaign.delivery-events") {
+        console.log(`- campaign.delivery-events: delivered=${step.delivered ?? "?"} read=${step.read ?? "?"} replied=${step.replied ?? "?"} deliveredAt=${step.hasDeliveredAt === true ? "yes" : "no"} readAt=${step.hasReadAt === true ? "yes" : "no"} repliedAt=${step.hasRepliedAt === true ? "yes" : "no"}`);
       } else if (step.step === "campaign.opt-out-keyword") {
         console.log(`- campaign.opt-out-keyword: optedOut=${step.optedOut === true ? "yes" : "no"} llmRounds=${step.llmRounds ?? "?"} action=${step.deterministicAction ?? "?"} tool=${step.tool ?? "?"} sent=${step.deliverySent ?? "?"} skippedOptOut=${step.deliverySkippedOptOut ?? "?"}`);
       }

@@ -1452,6 +1452,56 @@ async function main() {
     throw new Error(`Campaign delivery/rate-limit behavior failed: ${JSON.stringify({ firstCampaignDelivery, secondCampaignDelivery, thirdCampaignDelivery })}`);
   }
 
+  const campaignDeliveryEventGuestId = firstSentRecipients[0]?.guestId;
+  if (!firstCampaignDelivery.campaign?.id || !campaignDeliveryEventGuestId) {
+    throw new Error(`Campaign delivery event target missing: ${JSON.stringify(firstCampaignDelivery)}`);
+  }
+  const deliveredEvent = await request(`/api/v1/campaigns/${firstCampaignDelivery.campaign.id}/delivery-events`, {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      guestId: campaignDeliveryEventGuestId,
+      event: "delivered",
+    },
+  });
+  const readEvent = await request(`/api/v1/campaigns/${firstCampaignDelivery.campaign.id}/delivery-events`, {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      guestId: campaignDeliveryEventGuestId,
+      event: "read",
+    },
+  });
+  const repliedEvent = await request(`/api/v1/campaigns/${firstCampaignDelivery.campaign.id}/delivery-events`, {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      guestId: campaignDeliveryEventGuestId,
+      event: "replied",
+    },
+  });
+  record("campaign.delivery-events", {
+    delivered: deliveredEvent.delivery?.delivered ?? null,
+    read: readEvent.delivery?.read ?? null,
+    replied: repliedEvent.delivery?.replied ?? null,
+    hasDeliveredAt: typeof deliveredEvent.recipient?.deliveredAt === "string",
+    hasReadAt: typeof readEvent.recipient?.readAt === "string",
+    hasRepliedAt: typeof repliedEvent.recipient?.repliedAt === "string",
+  });
+  if (
+    deliveredEvent.delivery?.delivered !== 1
+    || readEvent.delivery?.read !== 1
+    || repliedEvent.delivery?.replied !== 1
+    || typeof repliedEvent.recipient?.deliveredAt !== "string"
+    || typeof repliedEvent.recipient?.readAt !== "string"
+    || typeof repliedEvent.recipient?.repliedAt !== "string"
+  ) {
+    throw new Error(`Campaign delivery event tracking failed: ${JSON.stringify({ deliveredEvent, readEvent, repliedEvent })}`);
+  }
+
   const agentOptOut = await request("/api/v1/agent/message", {
     method: "POST",
     body: {

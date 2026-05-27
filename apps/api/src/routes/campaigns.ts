@@ -7,6 +7,7 @@ import {
   getCampaignTemplates,
   previewCampaignAudience,
   previewCampaignSchedule,
+  recordCampaignDeliveryEvent,
 } from "../services/campaign.service.js";
 
 const audienceFilterSchema = z.object({
@@ -57,6 +58,12 @@ const campaignParamsSchema = z.object({
 
 const deliverySchema = z.object({
   restaurantId: z.string().uuid(),
+});
+
+const deliveryEventSchema = z.object({
+  restaurantId: z.string().uuid(),
+  guestId: z.string().uuid(),
+  event: z.enum(["delivered", "read", "replied"]),
 });
 
 function sendCampaignError(
@@ -240,6 +247,61 @@ export async function campaignRoutes(app: FastifyInstance) {
         return sendCampaignError(request, reply, 409, message, "CAMPAIGN_DELIVERY_STATUS_INVALID", {
           restaurantId: parsed.restaurantId,
           campaignId: params.campaignId,
+        });
+      }
+      throw err;
+    }
+  });
+
+  app.post("/:campaignId/delivery-events", async (request, reply) => {
+    const params = campaignParamsSchema.parse(request.params ?? {});
+    const parsed = deliveryEventSchema.parse(request.body ?? {});
+    const err = enforceTenant(request.user!, parsed.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return sendCampaignError(request, reply, 403, err, "CAMPAIGN_FORBIDDEN", {
+        restaurantId: parsed.restaurantId,
+        campaignId: params.campaignId,
+        guestId: parsed.guestId,
+      });
+    }
+
+    try {
+      const result = await recordCampaignDeliveryEvent({
+        campaignId: params.campaignId,
+        restaurantId: parsed.restaurantId,
+        guestId: parsed.guestId,
+        event: parsed.event,
+      });
+
+      request.log.info(
+        {
+          restaurantId: parsed.restaurantId,
+          requestId: request.id,
+          campaignId: params.campaignId,
+          guestId: parsed.guestId,
+          event: parsed.event,
+          delivered: result.delivery.delivered,
+          read: result.delivery.read,
+          replied: result.delivery.replied,
+        },
+        "Campaign delivery event recorded",
+      );
+
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Campaign delivery event failed";
+      if (message.includes("not found") && message.includes("recipient")) {
+        return sendCampaignError(request, reply, 404, message, "CAMPAIGN_RECIPIENT_NOT_FOUND", {
+          restaurantId: parsed.restaurantId,
+          campaignId: params.campaignId,
+          guestId: parsed.guestId,
+        });
+      }
+      if (message.includes("not found")) {
+        return sendCampaignError(request, reply, 404, message, "CAMPAIGN_NOT_FOUND", {
+          restaurantId: parsed.restaurantId,
+          campaignId: params.campaignId,
+          guestId: parsed.guestId,
         });
       }
       throw err;

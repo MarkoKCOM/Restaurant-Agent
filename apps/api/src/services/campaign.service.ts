@@ -60,9 +60,14 @@ interface CampaignDeliveryRecipient {
   status: "sent" | "skipped";
   reason?: "guest_opted_out_campaigns" | "campaign_weekly_limit_reached" | "campaign_monthly_limit_reached";
   sentAt?: string;
+  deliveredAt?: string;
+  readAt?: string;
+  repliedAt?: string;
   skippedAt?: string;
   messagePreview?: string;
 }
+
+export type CampaignDeliveryEvent = "delivered" | "read" | "replied";
 
 interface CampaignStats {
   delivery?: {
@@ -74,7 +79,10 @@ interface CampaignStats {
     skippedOptedOut?: number;
     skippedRateLimitedWeek?: number;
     skippedRateLimitedMonth?: number;
+    lastSentAt?: string;
     lastDeliveredAt?: string;
+    lastReadAt?: string;
+    lastRepliedAt?: string;
   };
   deliveryRecipients?: CampaignDeliveryRecipient[];
   schedule?: unknown;
@@ -268,6 +276,26 @@ function countPriorCampaignSends(params: {
       return sentAt >= params.since && sentAt <= params.before;
     }).length;
   }, 0);
+}
+
+function recomputeDeliveryStats(params: {
+  existingDelivery: CampaignStats["delivery"];
+  recipients: CampaignDeliveryRecipient[];
+}) {
+  const sentRecipients = params.recipients.filter((recipient) => recipient.status === "sent");
+  const skippedRecipients = params.recipients.filter((recipient) => recipient.status === "skipped");
+
+  return {
+    ...(params.existingDelivery ?? {}),
+    sent: sentRecipients.length,
+    delivered: sentRecipients.filter((recipient) => recipient.deliveredAt || recipient.readAt || recipient.repliedAt).length,
+    read: sentRecipients.filter((recipient) => recipient.readAt || recipient.repliedAt).length,
+    replied: sentRecipients.filter((recipient) => recipient.repliedAt).length,
+    skipped: skippedRecipients.length,
+    skippedOptedOut: skippedRecipients.filter((recipient) => recipient.reason === "guest_opted_out_campaigns").length,
+    skippedRateLimitedWeek: skippedRecipients.filter((recipient) => recipient.reason === "campaign_weekly_limit_reached").length,
+    skippedRateLimitedMonth: skippedRecipients.filter((recipient) => recipient.reason === "campaign_monthly_limit_reached").length,
+  };
 }
 
 async function selectCampaignAudience(params: {
@@ -614,7 +642,7 @@ export async function deliverCampaign(params: {
     skippedOptedOut,
     skippedRateLimitedWeek,
     skippedRateLimitedMonth,
-    lastDeliveredAt: now.toISOString(),
+    lastSentAt: now.toISOString(),
   };
 
   const [updatedCampaign] = await db
@@ -642,5 +670,75 @@ export async function deliverCampaign(params: {
     campaign: updatedCampaign,
     delivery,
     recipients,
+  };
+}
+
+export async function recordCampaignDeliveryEvent(params: {
+  campaignId: string;
+  restaurantId: string;
+  guestId: string;
+  event: CampaignDeliveryEvent;
+  now?: Date;
+}) {
+  const now = params.now ?? new Date();
+  const timestamp = now.toISOString();
+  const [campaign] = await db
+    .select()
+    .from(campaigns)
+    .where(and(eq(campaigns.id, params.campaignId), eq(campaigns.restaurantId, params.restaurantId)))
+    .limit(1);
+
+  if (!campaign) throw new Error("Campaign not found");
+
+  const existingStats = asCampaignStats(campaign.stats);
+  const recipients = [...(existingStats.deliveryRecipients ?? [])];
+  const recipientIndex = recipients.findIndex((recipient) =>
+    recipient.guestId === params.guestId && recipient.status === "sent"
+  );
+  if (recipientIndex === -1) {
+    throw new Error("Campaign sent recipient not found");
+  }
+
+  const recipient = { ...recipients[recipientIndex] };
+  if (params.event === "delivered") {
+    recipient.deliveredAt ??= timestamp;
+  } else if (params.event === "read") {
+    recipient.deliveredAt ??= timestamp;
+    recipient.readAt ??= timestamp;
+  } else {
+    recipient.deliveredAt ??= timestamp;
+    recipient.readAt ??= timestamp;
+    recipient.repliedAt ??= timestamp;
+  }
+  recipients[recipientIndex] = recipient;
+
+  const delivery = {
+    ...recomputeDeliveryStats({
+      existingDelivery: existingStats.delivery,
+      recipients,
+    }),
+    ...(params.event === "delivered" ? { lastDeliveredAt: timestamp } : {}),
+    ...(params.event === "read" ? { lastReadAt: timestamp } : {}),
+    ...(params.event === "replied" ? { lastRepliedAt: timestamp } : {}),
+  };
+
+  const [updatedCampaign] = await db
+    .update(campaigns)
+    .set({
+      stats: {
+        ...existingStats,
+        delivery,
+        deliveryRecipients: recipients,
+      },
+    })
+    .where(eq(campaigns.id, params.campaignId))
+    .returning();
+
+  if (!updatedCampaign) throw new Error("Failed to update campaign delivery event");
+
+  return {
+    campaign: updatedCampaign,
+    delivery,
+    recipient,
   };
 }

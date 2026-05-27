@@ -83,13 +83,13 @@ function dayKeyForDate(value) {
   return ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][new Date(`${value}T12:00:00`).getDay()];
 }
 
-function jerusalemDateParts() {
+function jerusalemDateParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Jerusalem",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).formatToParts(new Date());
+  }).formatToParts(date);
   const year = parts.find((part) => part.type === "year")?.value;
   const month = parts.find((part) => part.type === "month")?.value;
   const day = parts.find((part) => part.type === "day")?.value;

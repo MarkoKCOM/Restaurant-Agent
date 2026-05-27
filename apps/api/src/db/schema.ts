@@ -351,3 +351,24 @@ export const rewardClaims = pgTable("reward_claims", {
   redeemedBy: uuid("redeemed_by").references(() => adminUsers.id),
   reservationId: uuid("reservation_id").references(() => reservations.id),
 });
+
+export const membershipProcessingFailures = pgTable("membership_processing_failures", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  restaurantId: uuid("restaurant_id")
+    .notNull()
+    .references(() => restaurants.id),
+  guestId: uuid("guest_id")
+    .notNull()
+    .references(() => guests.id),
+  reservationId: uuid("reservation_id").references(() => reservations.id),
+  stage: varchar("stage", { length: 40 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("open"),
+  errorName: varchar("error_name", { length: 100 }),
+  errorCode: varchar("error_code", { length: 100 }),
+  errorMessage: text("error_message").notNull(),
+  attempts: integer("attempts").notNull().default(1),
+  lastAttemptAt: timestamp("last_attempt_at").notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});

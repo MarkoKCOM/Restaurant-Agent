@@ -375,13 +375,45 @@ export async function onVisitCompleted(
   const pointsForVisit = Math.round(POINTS_PER_VISIT * multiplier);
 
   // Award visit points
-  await awardPoints(guestId, restaurantId, pointsForVisit, "visit_completion", reservationId);
+  const [existingVisitCompletion] = await db
+    .select({ id: loyaltyTransactions.id })
+    .from(loyaltyTransactions)
+    .where(
+      and(
+        eq(loyaltyTransactions.guestId, guestId),
+        eq(loyaltyTransactions.restaurantId, restaurantId),
+        eq(loyaltyTransactions.reservationId, reservationId),
+        eq(loyaltyTransactions.type, "earn"),
+        eq(loyaltyTransactions.reason, "visit_completion"),
+      ),
+    )
+    .limit(1);
+
+  if (!existingVisitCompletion) {
+    await awardPoints(guestId, restaurantId, pointsForVisit, "visit_completion", reservationId);
+  }
 
   // Check stamp card — every 10th visit gets bonus
   let stampBonus = false;
   if (guest.visitCount % STAMP_CARD_SIZE === 0 && guest.visitCount > 0) {
-    await awardPoints(guestId, restaurantId, STAMP_BONUS_POINTS, "stamp_card_bonus", reservationId);
-    stampBonus = true;
+    const [existingStampBonus] = await db
+      .select({ id: loyaltyTransactions.id })
+      .from(loyaltyTransactions)
+      .where(
+        and(
+          eq(loyaltyTransactions.guestId, guestId),
+          eq(loyaltyTransactions.restaurantId, restaurantId),
+          eq(loyaltyTransactions.reservationId, reservationId),
+          eq(loyaltyTransactions.type, "earn"),
+          eq(loyaltyTransactions.reason, "stamp_card_bonus"),
+        ),
+      )
+      .limit(1);
+
+    if (!existingStampBonus) {
+      await awardPoints(guestId, restaurantId, STAMP_BONUS_POINTS, "stamp_card_bonus", reservationId);
+      stampBonus = true;
+    }
   }
 
   // Evaluate tier

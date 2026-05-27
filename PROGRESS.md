@@ -8,6 +8,10 @@
   - Redis ping status and latency
   - sanitized dependency error name/code/message
   - runtime flags without secret values
+- Post-visit membership processing failure repair visibility:
+  - new `membership_processing_failures` table
+  - reservation completion now records failed membership stages with stage/error context
+  - owner/admin API can list open/resolved failures and retry a failed stage
 - Request ID propagation for API requests:
   - API accepts trusted `x-request-id` values or generates a UUID per request
   - every API response now exposes `x-request-id`

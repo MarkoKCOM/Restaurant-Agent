@@ -13,7 +13,7 @@
 ## 3. Lifecycle wiring
 - [x] 3.1 Audit reservation completion hook chain end-to-end
 - [x] 3.2 Ensure completion triggers points, stamps, tier evaluation, streak update, and eligible challenge progress consistently
-- [ ] 3.3 Add repair/retry visibility for post-visit membership processing failures
+- [x] 3.3 Add repair/retry visibility for post-visit membership processing failures
 
 ## 4. Owner/staff product surfaces
 - [x] 4.1 Add owner/admin reward and club management surfaces

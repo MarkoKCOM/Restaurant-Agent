@@ -19,6 +19,10 @@ import {
 } from "./table.service.js";
 import { onVisitCompleted } from "./loyalty.service.js";
 import { autoProgressVisitCountChallenges, updateStreak } from "./challenge.service.js";
+import {
+  recordMembershipProcessingFailure,
+  type MembershipProcessingStage,
+} from "./membership-processing.service.js";
 
 export type ReservationRow = InferSelectModel<typeof reservations>;
 
@@ -36,6 +40,33 @@ function makeReservationError(message: string, statusCode = 400): ReservationHtt
   const err = new Error(message) as ReservationHttpError;
   err.statusCode = statusCode;
   return err;
+}
+
+async function recordCompletionFailure(input: {
+  stage: MembershipProcessingStage;
+  reservationId: string;
+  guestId: string;
+  restaurantId: string;
+  error: unknown;
+}): Promise<void> {
+  console.error(`reservation completion: failed ${input.stage}`, {
+    reservationId: input.reservationId,
+    guestId: input.guestId,
+    restaurantId: input.restaurantId,
+    error: input.error,
+  });
+
+  try {
+    await recordMembershipProcessingFailure(input);
+  } catch (recordError: unknown) {
+    console.error("reservation completion: failed to record membership processing failure", {
+      stage: input.stage,
+      reservationId: input.reservationId,
+      guestId: input.guestId,
+      restaurantId: input.restaurantId,
+      error: recordError,
+    });
+  }
 }
 
 /** Throws a 409 error if the transition is not allowed. */
@@ -670,7 +701,8 @@ export async function updateReservation(
     try {
       await refreshVisitAutoTags(updated.guestId);
     } catch (error) {
-      console.error("reservation completion: failed to refresh visit auto tags", {
+      await recordCompletionFailure({
+        stage: "visit_auto_tags",
         reservationId: updated.id,
         guestId: updated.guestId,
         restaurantId: updated.restaurantId,
@@ -681,7 +713,8 @@ export async function updateReservation(
     try {
       await onVisitCompleted(updated.guestId, updated.restaurantId, updated.id);
     } catch (error) {
-      console.error("reservation completion: failed to award loyalty updates", {
+      await recordCompletionFailure({
+        stage: "loyalty_updates",
         reservationId: updated.id,
         guestId: updated.guestId,
         restaurantId: updated.restaurantId,
@@ -692,7 +725,8 @@ export async function updateReservation(
     try {
       await updateStreak(updated.guestId, updated.restaurantId);
     } catch (error) {
-      console.error("reservation completion: failed to update streak", {
+      await recordCompletionFailure({
+        stage: "streak_update",
         reservationId: updated.id,
         guestId: updated.guestId,
         restaurantId: updated.restaurantId,
@@ -703,7 +737,8 @@ export async function updateReservation(
     try {
       await autoProgressVisitCountChallenges(updated.guestId, updated.restaurantId);
     } catch (error) {
-      console.error("reservation completion: failed to progress visit_count challenges", {
+      await recordCompletionFailure({
+        stage: "challenge_progress",
         reservationId: updated.id,
         guestId: updated.guestId,
         restaurantId: updated.restaurantId,
@@ -715,7 +750,8 @@ export async function updateReservation(
       await scheduleThankYou(updated.guestId, updated.restaurantId, updated.id);
       await scheduleReviewRequest(updated.guestId, updated.restaurantId, updated.id);
     } catch (error) {
-      console.error("reservation completion: failed to schedule engagement jobs", {
+      await recordCompletionFailure({
+        stage: "engagement_scheduling",
         reservationId: updated.id,
         guestId: updated.guestId,
         restaurantId: updated.restaurantId,

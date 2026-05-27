@@ -82,3 +82,31 @@ The endpoint returns:
 - runtime flags such as `NODE_ENV`, `LOG_LEVEL`, selected AI models, and whether OpenRouter is configured
 
 Use this when `/api/v1/health` is green but app workflows still fail.
+
+## Membership Processing Failures
+
+When a reservation is completed, OpenSeat runs several post-visit membership stages:
+
+- visit auto-tags
+- loyalty points/stamps/tier updates
+- streak updates
+- challenge progress
+- thank-you / review engagement scheduling
+
+If one stage fails, the reservation completion still returns, but the failed stage is persisted for repair:
+
+```bash
+OPENSEAT_TOKEN=... pnpm debug:api -- \
+  'http://localhost:3001/api/v1/loyalty/processing-failures?restaurantId=...&status=open'
+```
+
+Retry one failed stage:
+
+```bash
+METHOD=POST \
+BODY='{"restaurantId":"..."}' \
+OPENSEAT_TOKEN=... \
+pnpm debug:api -- http://localhost:3001/api/v1/loyalty/processing-failures/.../retry
+```
+
+The retry marks the failure `resolved` on success. If it fails again, the API keeps it `open`, increments `attempts`, updates the sanitized error fields, and returns the updated failure in the response. Challenge-progress failures are visible but intentionally not auto-retried yet because the current challenge progress model does not have per-reservation idempotency.

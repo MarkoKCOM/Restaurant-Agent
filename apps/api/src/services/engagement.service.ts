@@ -14,6 +14,21 @@ export async function scheduleThankYou(
   restaurantId: string,
   _reservationId: string,
 ): Promise<EngagementJobRow> {
+  const [existingJob] = await db
+    .select()
+    .from(engagementJobs)
+    .where(
+      and(
+        eq(engagementJobs.guestId, guestId),
+        eq(engagementJobs.restaurantId, restaurantId),
+        eq(engagementJobs.type, "thank_you"),
+        eq(engagementJobs.status, "pending"),
+      ),
+    )
+    .limit(1);
+
+  if (existingJob) return existingJob;
+
   const triggerAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
   const [job] = await db
@@ -115,6 +130,21 @@ export async function scheduleReviewRequest(
     .limit(1);
 
   if (!guest || guest.visitCount < 3) return null;
+
+  const [existingJob] = await db
+    .select()
+    .from(engagementJobs)
+    .where(
+      and(
+        eq(engagementJobs.guestId, guestId),
+        eq(engagementJobs.restaurantId, restaurantId),
+        eq(engagementJobs.type, "review_request"),
+        eq(engagementJobs.status, "pending"),
+      ),
+    )
+    .limit(1);
+
+  if (existingJob) return existingJob;
 
   const triggerAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 

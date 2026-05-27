@@ -18,6 +18,10 @@ import {
 } from "../services/reward-claims.service.js";
 import { getGuestById, toDomainGuest, updateGuestPreferences } from "../services/guest.service.js";
 import {
+  listMembershipProcessingFailures,
+  retryMembershipProcessingFailure,
+} from "../services/membership-processing.service.js";
+import {
   enforceTenant,
   requireOperationalRole,
   requireRestaurantAdmin,
@@ -61,6 +65,12 @@ const messagingPreferencesSchema = z.object({
   optedOutCampaigns: z.boolean(),
 });
 
+const processingFailuresQuerySchema = z.object({
+  restaurantId: z.string().uuid(),
+  status: z.enum(["open", "resolved"]).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+
 function sendLoyaltyError(reply: { code: (status: number) => unknown }, err: unknown) {
   const message = err instanceof Error ? err.message : "Loyalty operation failed";
   if (message.includes("Insufficient points")) {
@@ -84,6 +94,51 @@ function sendLoyaltyError(reply: { code: (status: number) => unknown }, err: unk
 }
 
 export async function loyaltyRoutes(app: FastifyInstance) {
+  // GET /processing-failures — post-visit membership processing failures
+  app.get("/processing-failures", async (request, reply) => {
+    const query = processingFailuresQuerySchema.parse(request.query);
+    const err = enforceTenant(request.user!, query.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
+    const failures = await listMembershipProcessingFailures(query);
+    return { failures };
+  });
+
+  // POST /processing-failures/:failureId/retry — retry one failed post-visit stage
+  app.post("/processing-failures/:failureId/retry", async (request, reply) => {
+    const { failureId } = request.params as { failureId: string };
+    const body = z.object({ restaurantId: z.string().uuid() }).parse(request.body);
+    const err = enforceTenant(request.user!, body.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
+    try {
+      const failure = await retryMembershipProcessingFailure({
+        failureId,
+        restaurantId: body.restaurantId,
+      });
+
+      if (!failure) {
+        return reply.status(404).send({ error: "Membership processing failure not found" });
+      }
+
+      return { failure };
+    } catch (error: unknown) {
+      const failure = (error as { failure?: unknown }).failure;
+      request.log.warn(
+        { error, failureId, restaurantId: body.restaurantId },
+        "Membership processing retry failed",
+      );
+      return reply.status(409).send({
+        error: error instanceof Error ? error.message : "Membership processing retry failed",
+        failure,
+      });
+    }
+  });
+
   // GET /:guestId/balance — points balance + tier + stamp progress
   app.get("/:guestId/balance", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };

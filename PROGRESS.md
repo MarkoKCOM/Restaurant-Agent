@@ -104,6 +104,7 @@
 - Queue debug failed-job samples now include processed/finished timestamps and the first stacktrace lines, making delayed automation and retention job failures easier to match to logs and source code.
 - Membership debug summaries now call out overdue pending and failed engagement jobs with trigger timestamps and age, so retention automation issues are visible from the bundle without scanning the full job list first.
 - Debug artifact summaries now parse membership debug output and surface overdue/failed engagement-job counts plus skipped retention reasons in the top-level bundle summary.
+- Debug artifact summaries now parse campaign queue diagnostics and surface skipped campaign reasons plus overdue campaign sample counts in the top-level bundle summary.
 - Loyalty dashboard retention actions now include a next-best-action recommendation for each queued member, covering recovery, win-back, opt-in, referral, and recognition follow-up.
 - Gamification route catches now classify service failures by status and log unexpected persistence/internal failures at error level instead of flattening every caught failure into a warning-level HTTP 400.
 - Campaign route catches now preserve campaign-specific context for unexpected delivery/create/event failures and return error-level HTTP 500 envelopes instead of falling through to less specific global handling.

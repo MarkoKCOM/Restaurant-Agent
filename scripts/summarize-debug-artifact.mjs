@@ -153,6 +153,42 @@ async function parseMembershipEngagementDebug(command) {
   return `overduePending=${overdue ?? "?"} failed=${failed ?? "?"} skippedReasons=${skippedReasons} output=${command.outputPath}`;
 }
 
+async function parseCampaignDeliveryDebug(commands) {
+  const queueCommand = commands.find((command) => command.name === "queue-debug-summary" && command.outputPath);
+  if (!queueCommand) return null;
+
+  let text;
+  try {
+    text = await readFile(queueCommand.outputPath, "utf8");
+  } catch {
+    return null;
+  }
+
+  const lines = text.split(/\r?\n/);
+  const skippedStart = lines.findIndex((line) => line.trim() === "campaign skipped reasons:");
+  const overdueStart = lines.findIndex((line) => line.trim() === "overdue campaign samples:");
+  if (skippedStart < 0 && overdueStart < 0) return null;
+
+  const skippedReasons = [];
+  if (skippedStart >= 0) {
+    for (const line of lines.slice(skippedStart + 1)) {
+      if (!line.startsWith("- ")) break;
+      const value = line.slice(2);
+      if (value !== "none") skippedReasons.push(value);
+    }
+  }
+
+  let overdueSamples = 0;
+  if (overdueStart >= 0) {
+    for (const line of lines.slice(overdueStart + 1)) {
+      if (!line.startsWith("- ")) break;
+      if (line.slice(2) !== "none") overdueSamples++;
+    }
+  }
+
+  return `skippedReasons=${skippedReasons.join(",") || "none"} overdueSamples=${overdueSamples} output=${queueCommand.outputPath}`;
+}
+
 function formatQueueScheduleHealthFromDiagnostics(queues, queueName, labels = {}) {
   const queue = queues.find((item) => item.name === queueName && item.scheduleHealth);
   const health = queue?.scheduleHealth;
@@ -539,6 +575,7 @@ async function summarizeDebugBundleManifest(report) {
   const engagementScheduleHealth = formatEngagementScheduleHealthFromDiagnostics(queues)
     ?? await parseEngagementScheduleHealth(commands);
   const membershipEngagementDebug = await parseMembershipEngagementDebug(membershipDebugSummary);
+  const campaignDeliveryDebug = await parseCampaignDeliveryDebug(commands);
   const operationalAttention = operationalAttentionLabels(adminDiagnostics);
 
   console.log(`Artifact: ${basename(artifactPath)}`);
@@ -607,6 +644,9 @@ async function summarizeDebugBundleManifest(report) {
       "Campaigns",
       `${campaigns.status} total=${campaignTotals.total ?? "?"} draft=${campaignTotals.draft ?? "?"} scheduled=${campaignTotals.scheduled ?? "?"} sent=${campaignTotals.sent ?? "?"} overdue=${campaignTotals.overdueScheduled ?? "?"} deliverySent=${campaignDelivery.sent ?? "?"} skipped=${campaignDelivery.skipped ?? "?"} optedOut=${campaignDelivery.skippedOptedOut ?? "?"} weekLimit=${campaignDelivery.skippedRateLimitedWeek ?? "?"} monthLimit=${campaignDelivery.skippedRateLimitedMonth ?? "?"}`,
     );
+  }
+  if (campaignDeliveryDebug) {
+    printLine("Campaign delivery debug", campaignDeliveryDebug);
   }
   if (outboundMessages.status) {
     const outboundReasons = asArray(outboundMessages.statusReasons).join(",") || "none";

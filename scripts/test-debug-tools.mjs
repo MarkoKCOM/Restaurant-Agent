@@ -332,6 +332,15 @@ await writeFile(queueDebugSummaryPath, [
   "- anniversary-check expected=9 found=9 pattern=15 9 * * * status=ok",
   "- birthday-week-challenge-check expected=9 found=9 pattern=30 9 * * * status=ok",
   "- restaurantTimezones=Asia/Jerusalem:9",
+  "Queue: campaign-delivery",
+  "campaign delivery health:",
+  "- status=attention total=6 draft=1 scheduled=2 sent=3 overdue=1",
+  "- deliverySent=12 skipped=4 optedOut=2 weekLimit=1 monthLimit=1 recipientRows=16",
+  "campaign skipped reasons:",
+  "- guest_opted_out_campaigns: 2",
+  "- campaign_weekly_limit_reached: 1",
+  "overdue campaign samples:",
+  "- May win-back id=campaign-1 restaurantId=restaurant-1 scheduledAt=2026-05-27T09:00:00.000Z",
   "failed samples:",
   "- none",
   "",
@@ -692,6 +701,7 @@ assertIncludes(
 );
 assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overdue=1 failed=1 skipped=3 winBackDue=2 birthdayDue=1 anniversaryDue=1 reviewWithoutPositive=1 negativeWithReview=1");
 assertIncludes(debugBundleManifestOutput, "Campaigns: attention total=6 draft=1 scheduled=2 sent=3 overdue=1 deliverySent=12 skipped=4 optedOut=2 weekLimit=1 monthLimit=1");
+assertIncludes(debugBundleManifestOutput, `Campaign delivery debug: skippedReasons=guest_opted_out_campaigns: 2,campaign_weekly_limit_reached: 1 overdueSamples=1 output=${queueDebugSummaryPath}`);
 assertIncludes(debugBundleManifestOutput, "Outbound messages: attention reasons=failed_outbound_messages,historical_delivery_errors,owner_whatsapp_config_missing total=5 logged=4 sent=0 skipped=0 failed=1 ownerWhatsappMissing=2 ownerDeliveryBlocked=no configOnly=yes types=daily_morning_summary:2,thank_you:3 errors=OUTBOUND_RECIPIENT_MISSING:1[2026-05-27T09:00:00.000Z..2026-05-27T09:30:00.000Z]");
 assertIncludes(debugBundleManifestOutput, "Owner delivery readiness: ok total=9 configured=7 missing=2 output=/tmp/openseat-debug-bundle/owner-delivery-readiness.json");
 assertIncludes(debugBundleManifestOutput, "Owner delivery recipients: configured=8 missing=1 fallbackAvailable=1");
@@ -729,6 +739,9 @@ for (const expectedSummarizerContent of [
   "Gamification",
   "Engagement",
   "Campaigns",
+  "Campaign delivery debug",
+  "parseCampaignDeliveryDebug",
+  "campaign skipped reasons",
   "Owner delivery readiness",
   "Owner delivery repair samples",
   "Bundle-run API logs",

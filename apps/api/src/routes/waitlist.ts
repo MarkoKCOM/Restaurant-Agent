@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import {
@@ -23,6 +23,37 @@ const addToWaitlistSchema = z.object({
   partySize: z.coerce.number().int().min(1).max(50),
 });
 
+function sendWaitlistError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  statusCode: number,
+  message: string,
+  code: string,
+  context: Record<string, unknown> = {},
+) {
+  const logPayload = {
+    ...context,
+    code,
+    requestId: request.id,
+    statusCode,
+    userId: request.user?.id,
+    restaurantId: request.user?.restaurantId,
+    role: request.user?.role,
+  };
+
+  if (statusCode >= 500) {
+    request.log.error(logPayload, "Waitlist request failed");
+  } else {
+    request.log.warn(logPayload, "Waitlist request rejected");
+  }
+
+  return reply.status(statusCode).send({
+    error: message,
+    code,
+    requestId: request.id,
+  });
+}
+
 export async function waitlistRoutes(app: FastifyInstance) {
   // POST / — add to waitlist
   app.post("/", async (request, reply) => {
@@ -32,7 +63,14 @@ export async function waitlistRoutes(app: FastifyInstance) {
     if (user) {
       const err = enforceTenant(user, parsed.restaurantId!);
       if (err) {
-        return reply.status(403).send({ error: err });
+        return sendWaitlistError(
+          request,
+          reply,
+          403,
+          err,
+          "WAITLIST_FORBIDDEN",
+          { restaurantLookupId: parsed.restaurantId },
+        );
       }
     }
 
@@ -59,7 +97,14 @@ export async function waitlistRoutes(app: FastifyInstance) {
     if (restaurantId) {
       const err = enforceTenant(request.user!, restaurantId);
       if (err) {
-        return reply.status(403).send({ error: err });
+        return sendWaitlistError(
+          request,
+          reply,
+          403,
+          err,
+          "WAITLIST_FORBIDDEN",
+          { restaurantLookupId: restaurantId },
+        );
       }
     }
 
@@ -84,19 +129,38 @@ export async function waitlistRoutes(app: FastifyInstance) {
       .limit(1);
 
     if (!waitlistRow) {
-      reply.code(404);
-      return { error: "Waitlist entry not found" };
+      return sendWaitlistError(
+        request,
+        reply,
+        404,
+        "Waitlist entry not found",
+        "WAITLIST_ENTRY_NOT_FOUND",
+        { waitlistId: id },
+      );
     }
 
     const err = enforceTenant(request.user!, waitlistRow.restaurantId);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendWaitlistError(
+        request,
+        reply,
+        403,
+        err,
+        "WAITLIST_FORBIDDEN",
+        { waitlistId: id, restaurantLookupId: waitlistRow.restaurantId },
+      );
     }
 
     const entry = await offerSlot(id);
     if (!entry) {
-      reply.code(404);
-      return { error: "Waitlist entry not found" };
+      return sendWaitlistError(
+        request,
+        reply,
+        404,
+        "Waitlist entry not found",
+        "WAITLIST_ENTRY_NOT_FOUND",
+        { waitlistId: id, restaurantLookupId: waitlistRow.restaurantId },
+      );
     }
     return { waitlistEntry: entry };
   });
@@ -111,22 +175,41 @@ export async function waitlistRoutes(app: FastifyInstance) {
       .limit(1);
 
     if (!waitlistRow) {
-      reply.code(404);
-      return { error: "Waitlist entry not found or not in offered state" };
+      return sendWaitlistError(
+        request,
+        reply,
+        404,
+        "Waitlist entry not found or not in offered state",
+        "WAITLIST_OFFER_NOT_FOUND",
+        { waitlistId: id },
+      );
     }
 
     const user = request.user;
     if (user) {
       const err = enforceTenant(user, waitlistRow.restaurantId);
       if (err) {
-        return reply.status(403).send({ error: err });
+        return sendWaitlistError(
+          request,
+          reply,
+          403,
+          err,
+          "WAITLIST_FORBIDDEN",
+          { waitlistId: id, restaurantLookupId: waitlistRow.restaurantId },
+        );
       }
     }
 
     const result = await acceptOffer(id);
     if (!result) {
-      reply.code(404);
-      return { error: "Waitlist entry not found or not in offered state" };
+      return sendWaitlistError(
+        request,
+        reply,
+        404,
+        "Waitlist entry not found or not in offered state",
+        "WAITLIST_OFFER_NOT_FOUND",
+        { waitlistId: id, restaurantLookupId: waitlistRow.restaurantId },
+      );
     }
     return {
       waitlistEntry: result.waitlistEntry,
@@ -144,19 +227,38 @@ export async function waitlistRoutes(app: FastifyInstance) {
       .limit(1);
 
     if (!waitlistRow) {
-      reply.code(404);
-      return { error: "Waitlist entry not found" };
+      return sendWaitlistError(
+        request,
+        reply,
+        404,
+        "Waitlist entry not found",
+        "WAITLIST_ENTRY_NOT_FOUND",
+        { waitlistId: id },
+      );
     }
 
     const err = enforceTenant(request.user!, waitlistRow.restaurantId);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendWaitlistError(
+        request,
+        reply,
+        403,
+        err,
+        "WAITLIST_FORBIDDEN",
+        { waitlistId: id, restaurantLookupId: waitlistRow.restaurantId },
+      );
     }
 
     const entry = await cancelWaitlistEntry(id);
     if (!entry) {
-      reply.code(404);
-      return { error: "Waitlist entry not found" };
+      return sendWaitlistError(
+        request,
+        reply,
+        404,
+        "Waitlist entry not found",
+        "WAITLIST_ENTRY_NOT_FOUND",
+        { waitlistId: id, restaurantLookupId: waitlistRow.restaurantId },
+      );
     }
     return { waitlistEntry: entry };
   });

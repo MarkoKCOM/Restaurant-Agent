@@ -188,13 +188,17 @@ const report = {
 let requestSeq = 0;
 const cleanupTasks = [];
 
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
 function record(step, details) {
   report.steps.push({ step, ...details });
 }
 
 async function markSmokeEngagementJobSent(jobId, type = "thank_you") {
   if (!process.env.DATABASE_URL) return false;
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(jobId)) {
+  if (!isUuid(jobId)) {
     throw new Error(`Refusing to cleanup invalid engagement job id: ${jobId}`);
   }
   if (!["thank_you", "review_request"].includes(type)) {
@@ -214,7 +218,7 @@ async function markSmokeEngagementJobSent(jobId, type = "thank_you") {
 
 async function seedSmokeGuestStreak(guestId, streak) {
   if (!process.env.DATABASE_URL) return false;
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(guestId)) {
+  if (!isUuid(guestId)) {
     throw new Error(`Refusing to seed streak for invalid guest id: ${guestId}`);
   }
 
@@ -471,6 +475,17 @@ async function main() {
   });
   const smokeChallengeId = challenge.challenge?.id;
   if (!smokeChallengeId) throw new Error("Challenge create endpoint did not return challenge.id");
+  cleanupTasks.push(async () => {
+    const cleanedChallenge = await request(`/api/v1/gamification/challenges/${smokeChallengeId}`, {
+      method: "PATCH",
+      token,
+      body: { isActive: false },
+    });
+    record("gamification.challenge.cleanup-deferred", {
+      challengeId: smokeChallengeId,
+      isActive: cleanedChallenge.challenge?.isActive,
+    });
+  });
   record("gamification.challenge.create", {
     challengeId: smokeChallengeId,
     type: challenge.challenge.type,

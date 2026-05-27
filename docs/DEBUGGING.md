@@ -58,6 +58,18 @@ pnpm debug:api -- http://localhost:3001/api/v1/health
 
 After pulling changes that touch `packages/domain`, rebuild it before checking apps that import `@openseat/domain`.
 
+The main E2E runner writes a JSON artifact for every CLI run. By default it lands under `apps/e2e/artifacts/<runId>.json` and includes the API URL, timings, pass/fail counts, and per-test details:
+
+```bash
+pnpm --filter @openseat/e2e test
+```
+
+Set `OPENSEAT_E2E_ARTIFACT_PATH` to write the artifact somewhere specific, such as a CI workspace path:
+
+```bash
+OPENSEAT_E2E_ARTIFACT_PATH=/tmp/openseat-e2e.json pnpm --filter @openseat/e2e test
+```
+
 Use `pnpm debug:api` to inspect one endpoint quickly. It sends an `x-request-id`, then prints the response status, elapsed time, returned request ID, content type, and body. Optional environment variables:
 
 - `METHOD=POST`

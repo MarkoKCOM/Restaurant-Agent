@@ -5,16 +5,40 @@
  * Can run standalone (CLI) or triggered by the bot via /test command.
  */
 
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import * as api from "./api-client.js";
 
 // BFF Raanana restaurant ID (seeded)
 const RESTAURANT_ID = "c3c22e37-a309-4fde-aa6c-6e714212a3bc";
+const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const defaultArtifactDir = resolve(packageRoot, "artifacts");
+const apiUrl = process.env.OPENSEAT_API_URL || "http://localhost:3001";
 
 interface TestResult {
   name: string;
   pass: boolean;
   detail: string;
   durationMs: number;
+}
+
+interface TestRunReport {
+  runId: string;
+  startedAt: string;
+  finishedAt: string;
+  apiUrl: string;
+  total: number;
+  passed: number;
+  failed: number;
+  totalMs: number;
+  environment: {
+    cwd: string;
+    nodeVersion: string;
+    pid: number;
+  };
+  results: TestResult[];
+  summary: string;
 }
 
 function plusDays(n: number): string {
@@ -33,8 +57,20 @@ async function runTest(name: string, fn: () => Promise<string>): Promise<TestRes
   }
 }
 
-export async function runAllTests(): Promise<{ results: TestResult[]; summary: string }> {
+async function writeRunArtifact(report: TestRunReport): Promise<string> {
+  const artifactPath = process.env.OPENSEAT_E2E_ARTIFACT_PATH
+    ? resolve(process.cwd(), process.env.OPENSEAT_E2E_ARTIFACT_PATH)
+    : resolve(defaultArtifactDir, `${report.runId}.json`);
+
+  await mkdir(dirname(artifactPath), { recursive: true });
+  await writeFile(artifactPath, `${JSON.stringify(report, null, 2)}\n`);
+
+  return artifactPath;
+}
+
+export async function runAllTests(): Promise<TestRunReport> {
   const runId = `e2e-${Date.now()}`;
+  const startedAt = new Date();
   const results: TestResult[] = [];
   let reservationId = "";
   let guestId = "";
@@ -675,14 +711,33 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
     ...lines,
   ].join("\n");
 
-  return { results, summary };
+  return {
+    runId,
+    startedAt: startedAt.toISOString(),
+    finishedAt: new Date().toISOString(),
+    apiUrl,
+    total: results.length,
+    passed,
+    failed,
+    totalMs,
+    environment: {
+      cwd: process.cwd(),
+      nodeVersion: process.version,
+      pid: process.pid,
+    },
+    results,
+    summary,
+  };
 }
 
 // CLI mode
 if (process.argv[1]?.endsWith("test-runner.ts") || process.argv[1]?.endsWith("test-runner.js")) {
   runAllTests()
-    .then(({ summary, results }) => {
+    .then(async (report) => {
+      const { summary, results } = report;
+      const artifactPath = await writeRunArtifact(report);
       console.log(summary);
+      console.log(`\nArtifact: ${artifactPath}`);
       const failed = results.filter((r) => !r.pass);
       process.exit(failed.length > 0 ? 1 : 0);
     })

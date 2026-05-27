@@ -429,6 +429,20 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
         },
       },
       queues: [
+        {
+          name: "daily-summary",
+          status: "ok",
+          failed: 0,
+          repeatableJobs: [],
+          scheduleHealth: {
+            restaurantCount: 9,
+            restaurantTimezones: { "Asia/Jerusalem": 9 },
+            checks: [
+              { name: "daily-morning-summary", expected: 9, found: 9, pattern: "0 9 * * *", status: "ok" },
+              { name: "daily-summary", expected: 9, found: 9, pattern: "0 23 * * *", status: "ok" },
+            ],
+          },
+        },
         { name: "membership-events", status: "ok", failed: 0 },
       ],
     },
@@ -455,7 +469,7 @@ assertIncludes(
 assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overdue=1 failed=1 skipped=3 winBackDue=2 birthdayDue=1 anniversaryDue=1 reviewWithoutPositive=1 negativeWithReview=1");
 assertIncludes(debugBundleManifestOutput, "Outbound messages: attention total=5 logged=4 sent=0 failed=1 types=daily_morning_summary:2,thank_you:3");
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");
-assertIncludes(debugBundleManifestOutput, "Queues: membership-events:ok/failed=0");
+assertIncludes(debugBundleManifestOutput, "Queues: daily-summary:ok/failed=0/repeat=0, membership-events:ok/failed=0/repeat=?");
 assertIncludes(debugBundleManifestOutput, "Summary schedules: restaurants=9 morning expected=9 found=9 pattern=0 9 * * * status=ok closing expected=9 found=9 pattern=0 23 * * * status=ok timezones=Asia/Jerusalem:9");
 assertIncludes(debugBundleManifestOutput, "Failed commands: 1");
 assertIncludes(debugBundleManifestOutput, "- api-smoke: exitCode=1 output=/tmp/openseat-debug-bundle/api-smoke.txt");
@@ -472,6 +486,7 @@ for (const expectedSummarizerContent of [
   "Engagement",
   "Summary schedules",
   "parseSummaryScheduleHealth",
+  "formatSummaryScheduleHealthFromDiagnostics",
   "Agent membership intents",
 ]) {
   assertIncludes(artifactSummarizer, expectedSummarizerContent);
@@ -670,6 +685,7 @@ const apiLogTrace = await readFile("scripts/api-log-trace.mjs", "utf8");
 const membershipDebugSummary = await readFile("scripts/membership-debug-summary.mjs", "utf8");
 const outboundDebugSummary = await readFile("scripts/outbound-debug-summary.mjs", "utf8");
 const queueDebugSummary = await readFile("apps/api/scripts/queue-debug-summary.mjs", "utf8");
+const diagnosticsService = await readFile("apps/api/src/services/diagnostics.service.ts", "utf8");
 const outboundMessageService = await readFile("apps/api/src/services/outbound-message.service.ts", "utf8");
 const debugTokenHelpers = await readFile("scripts/lib/debug-token.mjs", "utf8");
 const debugErrorHelpers = await readFile("scripts/lib/debug-errors.mjs", "utf8");
@@ -754,6 +770,18 @@ for (const requiredQueueDebugContent of [
   "[redacted]",
 ]) {
   assertIncludes(queueDebugSummary, requiredQueueDebugContent);
+}
+
+for (const requiredDiagnosticsContent of [
+  "scheduleHealth",
+  "inspectSummaryScheduleHealth",
+  "buildScheduleCheck",
+  "daily-morning-summary",
+  "0 9 * * *",
+  "0 23 * * *",
+  "queue.scheduleHealth?.status !== \"attention\"",
+]) {
+  assertIncludes(diagnosticsService, requiredDiagnosticsContent);
 }
 
 for (const requiredLogTraceContent of [

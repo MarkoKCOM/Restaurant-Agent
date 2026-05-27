@@ -80,6 +80,30 @@ async function parseSummaryScheduleHealth(commands) {
   return parts.length > 0 ? parts.join(" ") : null;
 }
 
+function formatSummaryScheduleHealthFromDiagnostics(queues) {
+  const dailySummaryQueue = queues.find((queue) => queue.name === "daily-summary" && queue.scheduleHealth);
+  const health = dailySummaryQueue?.scheduleHealth;
+  if (!health) return null;
+
+  const parts = [`restaurants=${health.restaurantCount ?? "?"}`];
+  for (const check of asArray(health.checks)) {
+    const label = check.name === "daily-morning-summary"
+      ? "morning"
+      : check.name === "daily-summary"
+        ? "closing"
+        : check.name;
+    const wrong = check.wrongPattern ? ` wrongPattern=${check.wrongPattern}` : "";
+    parts.push(`${label} expected=${check.expected ?? "?"} found=${check.found ?? "?"} pattern=${check.pattern ?? "?"} status=${check.status ?? "?"}${wrong}`);
+  }
+
+  const timezones = health.restaurantTimezones && typeof health.restaurantTimezones === "object"
+    ? Object.entries(health.restaurantTimezones).map(([timezone, count]) => `${timezone}:${count}`).join(",")
+    : "";
+  if (timezones) parts.push(`timezones=${timezones}`);
+
+  return parts.join(" ");
+}
+
 function summarizeE2e(report) {
   const results = asArray(report.results);
   const failed = results.filter((result) => !result.pass);
@@ -373,7 +397,8 @@ async function summarizeDebugBundleManifest(report) {
   const outboundByType = outboundMessages.byType ?? {};
   const agentMembershipIntents = highlights.agentMembershipIntents ?? {};
   const queues = asArray(adminDiagnostics.queues);
-  const summaryScheduleHealth = await parseSummaryScheduleHealth(commands);
+  const summaryScheduleHealth = formatSummaryScheduleHealthFromDiagnostics(queues)
+    ?? await parseSummaryScheduleHealth(commands);
 
   console.log(`Artifact: ${basename(artifactPath)}`);
   console.log("Type: debug-bundle");

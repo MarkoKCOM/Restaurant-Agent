@@ -136,6 +136,19 @@ export interface QueueDiagnostic {
     tz?: string;
     next?: number;
   }>;
+  scheduleHealth?: {
+    status: "ok" | "attention";
+    restaurantCount: number;
+    restaurantTimezones: Record<string, number>;
+    checks: Array<{
+      name: string;
+      pattern: string;
+      expected: number;
+      found: number;
+      wrongPattern: number;
+      status: "ok" | "attention";
+    }>;
+  };
   error?: DiagnosticCheck["error"];
 }
 
@@ -412,6 +425,17 @@ async function inspectQueue(name: string, queue: Queue): Promise<QueueDiagnostic
       queue.getRepeatableJobs(0, 20),
     ]);
 
+    const normalizedRepeatableJobs = repeatableJobs.map((job) => ({
+      name: job.name,
+      pattern: job.pattern ?? undefined,
+      tz: job.tz ?? undefined,
+      next: job.next,
+    }));
+
+    const scheduleHealth = name === "daily-summary"
+      ? await inspectSummaryScheduleHealth(normalizedRepeatableJobs)
+      : undefined;
+
     return {
       name,
       status: "ok",
@@ -432,12 +456,8 @@ async function inspectQueue(name: string, queue: Queue): Promise<QueueDiagnostic
         timestamp: job.timestamp,
         finishedOn: job.finishedOn,
       })),
-      repeatableJobs: repeatableJobs.map((job) => ({
-        name: job.name,
-        pattern: job.pattern ?? undefined,
-        tz: job.tz ?? undefined,
-        next: job.next,
-      })),
+      repeatableJobs: normalizedRepeatableJobs,
+      scheduleHealth,
     };
   } catch (error: unknown) {
     return {
@@ -447,6 +467,52 @@ async function inspectQueue(name: string, queue: Queue): Promise<QueueDiagnostic
       error: sanitizeError(error),
     };
   }
+}
+
+async function inspectSummaryScheduleHealth(
+  repeatableJobs: NonNullable<QueueDiagnostic["repeatableJobs"]>,
+): Promise<NonNullable<QueueDiagnostic["scheduleHealth"]>> {
+  const restaurantRows = await db
+    .select({
+      timezone: restaurants.timezone,
+    })
+    .from(restaurants);
+  const restaurantCount = restaurantRows.length;
+  const restaurantTimezones: Record<string, number> = {};
+  for (const restaurant of restaurantRows) {
+    const timezone = restaurant.timezone || "Asia/Jerusalem";
+    restaurantTimezones[timezone] = (restaurantTimezones[timezone] ?? 0) + 1;
+  }
+
+  const checks = [
+    buildScheduleCheck(repeatableJobs, "daily-morning-summary", "0 9 * * *", restaurantCount),
+    buildScheduleCheck(repeatableJobs, "daily-summary", "0 23 * * *", restaurantCount),
+  ];
+
+  return {
+    status: checks.every((check) => check.status === "ok") ? "ok" : "attention",
+    restaurantCount,
+    restaurantTimezones,
+    checks,
+  };
+}
+
+function buildScheduleCheck(
+  repeatableJobs: NonNullable<QueueDiagnostic["repeatableJobs"]>,
+  name: string,
+  pattern: string,
+  expected: number,
+) {
+  const found = repeatableJobs.filter((job) => job.name === name && job.pattern === pattern).length;
+  const wrongPattern = repeatableJobs.filter((job) => job.name === name && job.pattern !== pattern).length;
+  return {
+    name,
+    pattern,
+    expected,
+    found,
+    wrongPattern,
+    status: found === expected && wrongPattern === 0 ? "ok" as const : "attention" as const,
+  };
 }
 
 function toIsoString(value: unknown): string | undefined {
@@ -1960,6 +2026,7 @@ export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
   const checks = { database, redis };
   const status = Object.values(checks).every((check) => check.status === "ok")
     && queues.every((queue) => queue.status === "ok")
+    && queues.every((queue) => queue.scheduleHealth?.status !== "attention")
     && deployment.source.status === "ok"
     && deployment.codeMigrations.status === "ok"
     && deployment.databaseMigrations.status === "ok"

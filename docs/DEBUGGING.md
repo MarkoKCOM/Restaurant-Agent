@@ -150,7 +150,7 @@ The endpoint returns:
 - database ping status and latency
 - Redis ping status and latency
 - deployment metadata: Node version, process ID, working directory, running build git commit/branch/dirty state, current checkout git state, whether checkout matches the running build, code migration count/latest file, applied DB migration count/latest ID/hash, and migration drift status
-- BullMQ queue counts for reservation reminders, daily summaries, and engagement jobs
+- BullMQ queue counts for reservation reminders, daily summaries, and engagement jobs, including daily owner-summary schedule health for the expected 09:00 morning and 23:00 closing repeatables per restaurant
 - up to two failed-job samples per queue, including job ID, name, attempts, and sanitized failure reason
 - open post-visit membership processing failures, grouped by stage with recent samples, so loyalty/retention repair work is visible without hitting a separate endpoint first
 - gamification health for active challenges, targeted birthday-week challenge creation, stuck challenge completions, referral-code adoption, referral reward-credit mismatches, achievement drift such as missing first-visit/10-visit badges, leaderboard opt-ins/reward finalization drift, and streak state problems such as stale streaks, invalid streak preferences, or missing milestone bonuses. The smoke test seeds a returning streak, verifies the milestone bonus is tied to the completed reservation, verifies challenge-completion and broken-streak recovery scheduling, confirms reservation/manual visits unlock membership achievements, exercises lucky-spin reward delivery and opt-in leaderboard ranking/finalization, and confirms social sharing templates remain available for the agent/dashboard.

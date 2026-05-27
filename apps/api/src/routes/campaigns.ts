@@ -137,7 +137,7 @@ export async function campaignRoutes(app: FastifyInstance) {
   app.post("/audience-preview", async (request, reply) => {
     const parsed = audiencePreviewSchema.parse(request.body ?? {});
     const accessError = await enforceCampaignAccess(request, reply, parsed.restaurantId);
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     const preview = await previewCampaignAudience({
       restaurantId: parsed.restaurantId,
@@ -163,7 +163,7 @@ export async function campaignRoutes(app: FastifyInstance) {
   app.post("/schedule-preview", async (request, reply) => {
     const parsed = schedulePreviewSchema.parse(request.body ?? {});
     const accessError = await enforceCampaignAccess(request, reply, parsed.restaurantId);
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     const schedule = await previewCampaignSchedule({
       restaurantId: parsed.restaurantId,
@@ -177,7 +177,7 @@ export async function campaignRoutes(app: FastifyInstance) {
   app.post("/", async (request, reply) => {
     const parsed = createCampaignSchema.parse(request.body ?? {});
     const accessError = await enforceCampaignAccess(request, reply, parsed.restaurantId);
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const result = await createCampaign({
@@ -231,7 +231,7 @@ export async function campaignRoutes(app: FastifyInstance) {
     const accessError = await enforceCampaignAccess(request, reply, parsed.restaurantId, {
       campaignId: params.campaignId,
     });
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const result = await deliverCampaign({
@@ -279,7 +279,7 @@ export async function campaignRoutes(app: FastifyInstance) {
       campaignId: params.campaignId,
       guestId: parsed.guestId,
     });
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const result = await recordCampaignDeliveryEvent({

@@ -88,7 +88,7 @@ export async function engagementRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceEngagementAccess(request, reply, restaurantId);
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     const parsedLimit = limit ? Number(limit) : undefined;
     const messages = await listOutboundMessages({
@@ -121,7 +121,7 @@ export async function engagementRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceEngagementAccess(request, reply, restaurantId);
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     const parsedLimit = limit ? Number(limit) : undefined;
     const jobs = await listEngagementJobs({
@@ -149,7 +149,7 @@ export async function engagementRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceEngagementAccess(request, reply, restaurantId);
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const result = await checkBirthdays(restaurantId);
@@ -181,7 +181,7 @@ export async function engagementRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceEngagementAccess(request, reply, restaurantId);
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const result = await checkAnniversaries(restaurantId);
@@ -213,7 +213,7 @@ export async function engagementRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceEngagementAccess(request, reply, restaurantId);
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const result = await checkWinBack(restaurantId);

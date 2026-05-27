@@ -1144,9 +1144,11 @@ for (const requiredCampaignPackageContent of [
   "requiredPackage: \"growth\"",
   "packageAccess.code === \"RESTAURANT_NOT_FOUND\" ? 404 : 403",
   "PACKAGE_GROWTH_REQUIRED",
+  "if (accessError) return reply;",
 ]) {
   assertIncludes(campaignRoutes, requiredCampaignPackageContent);
 }
+assertNotIncludes(campaignRoutes, "if (accessError) return accessError;");
 
 for (const requiredAnalyticsPackageContent of [
   "async function enforceAnalyticsAccess",
@@ -1155,9 +1157,11 @@ for (const requiredAnalyticsPackageContent of [
   "packageAccess.code === \"RESTAURANT_NOT_FOUND\" ? 404 : 403",
   "PACKAGE_GROWTH_REQUIRED",
   "await enforceAnalyticsAccess",
+  "if (accessError) return reply;",
 ]) {
   assertIncludes(analyticsRoutes, requiredAnalyticsPackageContent);
 }
+assertNotIncludes(analyticsRoutes, "if (accessError) return accessError;");
 
 for (const requiredEngagementPackageContent of [
   "enforceEngagementAccess",
@@ -1166,11 +1170,13 @@ for (const requiredEngagementPackageContent of [
   "packageAccess.code === \"RESTAURANT_NOT_FOUND\" ? 404 : 403",
   "PACKAGE_GROWTH_REQUIRED",
   "await enforceEngagementAccess",
+  "if (accessError) return reply;",
   "limit?: string",
   "limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined",
 ]) {
   assertIncludes(engagementRoutes, requiredEngagementPackageContent);
 }
+assertNotIncludes(engagementRoutes, "if (accessError) return accessError;");
 
 for (const requiredEngagementServiceContent of [
   "limit?: number",
@@ -1186,9 +1192,11 @@ for (const requiredLoyaltyPackageContent of [
   "packageAccess.code === \"RESTAURANT_NOT_FOUND\" ? 404 : 403",
   "PACKAGE_GROWTH_REQUIRED",
   "await enforceLoyaltyAccess",
+  "if (accessError) return reply;",
 ]) {
   assertIncludes(loyaltyRoutes, requiredLoyaltyPackageContent);
 }
+assertNotIncludes(loyaltyRoutes, "if (accessError) return accessError;");
 
 for (const requiredGamificationPackageContent of [
   "enforceGamificationAccess",
@@ -1197,9 +1205,11 @@ for (const requiredGamificationPackageContent of [
   "packageAccess.code === \"RESTAURANT_NOT_FOUND\" ? 404 : 403",
   "PACKAGE_GROWTH_REQUIRED",
   "await enforceGamificationAccess",
+  "if (accessError) return reply;",
 ]) {
   assertIncludes(gamificationRoutes, requiredGamificationPackageContent);
 }
+assertNotIncludes(gamificationRoutes, "if (accessError) return accessError;");
 
 for (const requiredLogTraceContent of [
   "parseJsonFromLine",

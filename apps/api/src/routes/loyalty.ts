@@ -183,7 +183,7 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   app.get("/processing-failures", async (request, reply) => {
     const query = processingFailuresQuerySchema.parse(request.query);
     const accessError = await enforceLoyaltyAccess(request, reply, query.restaurantId, "MEMBERSHIP_PROCESSING_FORBIDDEN");
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     const failures = await listMembershipProcessingFailures(query);
     return { failures };
@@ -200,7 +200,7 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       "MEMBERSHIP_PROCESSING_FORBIDDEN",
       { failureId },
     );
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const failure = await retryMembershipProcessingFailure({
@@ -250,7 +250,7 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     const referralShare = await getReferralShare(guestId);
     return { referralShare };
@@ -272,7 +272,7 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     const balance = await getPointsBalance(guestId);
     if (!balance) {
@@ -313,7 +313,7 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     const parsedLimit = limit ? Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100) : 20;
     const transactions = await getTransactionHistory(guestId, parsedLimit);
@@ -342,7 +342,7 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     const summary = await getMembershipSummary(guestId);
     if (!summary) {
@@ -376,7 +376,7 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     const transaction = await awardPoints(
       guestId,
@@ -407,7 +407,7 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceLoyaltyAccess(request, reply, restaurantId, "LOYALTY_FORBIDDEN");
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     const rewardsList = await listRewards(restaurantId, includeInactive === "true");
     return { rewards: rewardsList };
@@ -431,7 +431,7 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceLoyaltyAccess(request, reply, restaurantId, "LOYALTY_FORBIDDEN", { rewardId });
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     const updated = await updateReward(rewardId, restaurantId, body);
     if (!updated) {
@@ -452,7 +452,7 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   app.post("/rewards", async (request, reply) => {
     const parsed = createRewardSchema.parse(request.body);
     const accessError = await enforceLoyaltyAccess(request, reply, parsed.restaurantId!, "LOYALTY_FORBIDDEN");
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     const reward = await createReward({
       restaurantId: parsed.restaurantId!,
@@ -493,7 +493,7 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       { guestId, rewardId },
       requireOperationalRole,
     );
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const claim = await claimReward(guestId, rewardId, body.reservationId);
@@ -528,7 +528,7 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       { guestId, rewardId },
       requireOperationalRole,
     );
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const claim = await claimReward(guestId, rewardId, body.reservationId);
@@ -569,7 +569,7 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       { claimCode, claimId: claim.id },
       requireOperationalRole,
     );
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     return { claim };
   });
@@ -597,7 +597,7 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       { claimId },
       requireOperationalRole,
     );
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const redeemedClaim = await redeemClaim(claimId, request.user!.id);
@@ -631,7 +631,7 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       { guestId },
       requireOperationalRole,
     );
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     const updated = await updateGuestPreferences(guestId, {
       optedOutCampaigns: body.optedOutCampaigns,
@@ -656,7 +656,7 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     const stampCard = await checkStampCard(guestId);
     if (!stampCard) {

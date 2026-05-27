@@ -125,7 +125,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const code = await generateReferralCode(guestId);
@@ -150,7 +150,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const result = await applyReferral(guestId, referralCode);
@@ -177,7 +177,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const stats = await getReferralStats(guestId);
@@ -204,7 +204,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceGamificationAccess(request, reply, restaurantId);
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     const activeChallenges = await listActiveChallenges(restaurantId);
     return { challenges: activeChallenges };
@@ -227,7 +227,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
     const parsed = createChallengeSchema.parse(request.body);
 
     const accessError = await enforceGamificationAccess(request, reply, parsed.restaurantId!);
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const challenge = await createChallenge({
@@ -281,7 +281,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceGamificationAccess(request, reply, challenge.restaurantId, { challengeId });
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const updated = await updateChallenge(challengeId, challenge.restaurantId, parsed);
@@ -309,7 +309,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceGamificationAccess(request, reply, restaurantId);
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const result = await checkBirthdayWeekChallenges(restaurantId, { guestId });
@@ -343,7 +343,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const shareTemplates = await getGuestShareTemplates(guestId, query);
@@ -367,7 +367,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
   app.get("/leaderboard", async (request, reply) => {
     const query = leaderboardQuerySchema.parse(request.query);
     const accessError = await enforceGamificationAccess(request, reply, query.restaurantId);
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const leaderboard = await getLeaderboard(query.restaurantId, query.period, query.limit ?? 10);
@@ -389,7 +389,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
   app.post("/leaderboard/finalize", async (request, reply) => {
     const parsed = finalizeLeaderboardSchema.parse(request.body ?? {});
     const accessError = await enforceGamificationAccess(request, reply, parsed.restaurantId);
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const result = await finalizeMonthlyLeaderboard(parsed);
@@ -410,7 +410,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const leaderboard = await setLeaderboardOptIn(guestId, true);
@@ -429,7 +429,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const leaderboard = await setLeaderboardOptIn(guestId, false);
@@ -461,7 +461,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceGamificationAccess(request, reply, restaurantId, { guestId });
-    if (accessError) return accessError;
+    if (accessError) return reply;
     if (guest.restaurantId !== restaurantId) {
       return sendGamificationError(
         request,
@@ -502,7 +502,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceGamificationAccess(request, reply, challenge.restaurantId, { guestId, challengeId });
-    if (accessError) return accessError;
+    if (accessError) return reply;
     if (guest.restaurantId !== challenge.restaurantId) {
       return sendGamificationError(
         request,
@@ -536,7 +536,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
     }
 
     const accessError = await enforceGamificationAccess(request, reply, guest.restaurantId, { guestId });
-    if (accessError) return accessError;
+    if (accessError) return reply;
 
     try {
       const streak = await getStreak(guestId);

@@ -348,6 +348,17 @@ for (const expectedE2eClientContent of [
   assertIncludes(e2eApiClient, expectedE2eClientContent);
 }
 
+const bookingWidget = await readFile("apps/booking-widget/src/BookingWidget.tsx", "utf8");
+for (const expectedBookingWidgetContent of [
+  "createRequestId",
+  "parseApiError",
+  "WidgetApiError",
+  '"x-request-id": requestId',
+  "מספר פנייה",
+]) {
+  assertIncludes(bookingWidget, expectedBookingWidgetContent);
+}
+
 const deployWorkflow = await readFile(".github/workflows/deploy.yml", "utf8");
 for (const requiredPath of [
   ".github/workflows/deploy.yml",

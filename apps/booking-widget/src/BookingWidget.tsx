@@ -20,6 +20,27 @@ interface WidgetConfig {
 type Step = "date" | "time" | "preferences" | "details" | "confirm";
 type Seating = "indoor" | "outdoor" | "bar";
 
+interface ApiErrorPayload {
+  error?: string;
+  message?: string;
+  code?: string;
+  requestId?: string;
+}
+
+class WidgetApiError extends Error {
+  readonly status?: number;
+  readonly code?: string;
+  readonly requestId?: string;
+
+  constructor(message: string, params: { status?: number; code?: string; requestId?: string } = {}) {
+    super(message);
+    this.name = "WidgetApiError";
+    this.status = params.status;
+    this.code = params.code;
+    this.requestId = params.requestId;
+  }
+}
+
 function isValidIsraeliPhone(phone: string): boolean {
   const digits = phone.replace(/[\s\-()]/g, "");
   if (digits.startsWith("+972")) return /^\+972\d{8,9}$/.test(digits);
@@ -30,6 +51,29 @@ function isValidIsraeliPhone(phone: string): boolean {
 const seatingIcons: Record<Seating, string> = { indoor: "🏠", outdoor: "🌿", bar: "🍷" };
 const seatingLabels: Record<Seating, string> = { indoor: "בפנים", outdoor: "בחוץ", bar: "בר" };
 const allergyOptions = ["אגוזים", "חלב", "גלוטן", "פירות ים", "ביצים", "סויה"];
+
+function createRequestId(): string {
+  return `widget-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+async function parseApiError(res: Response, fallback: string, requestId: string): Promise<WidgetApiError> {
+  const payload = await res.json().catch(() => null) as ApiErrorPayload | null;
+  const traceId = payload?.requestId ?? res.headers.get("x-request-id") ?? requestId;
+  const baseMessage = payload?.error ?? payload?.message ?? fallback;
+  const trace = traceId ? ` (מספר פנייה ${traceId})` : "";
+  return new WidgetApiError(`${baseMessage}${trace}`, {
+    status: res.status,
+    code: payload?.code,
+    requestId: traceId,
+  });
+}
+
+function messageFromError(error: unknown, fallback: string, requestId?: string): string {
+  if (error instanceof WidgetApiError && error.message) return error.message;
+  if (requestId) return `${fallback} (מספר פנייה ${requestId})`;
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
+}
 
 export function BookingWidget({ restaurantId, apiUrl }: Props) {
   const [step, setStep] = useState<Step>("date");
@@ -64,7 +108,10 @@ export function BookingWidget({ restaurantId, apiUrl }: Props) {
   const currentIdx = steps.indexOf(step);
 
   useEffect(() => {
-    fetch(`${baseUrl}/api/v1/restaurants/${restaurantId}`)
+    const requestId = createRequestId();
+    fetch(`${baseUrl}/api/v1/restaurants/${restaurantId}`, {
+      headers: { "x-request-id": requestId },
+    })
       .then((res) => res.json())
       .then((data) => { if (data.widgetConfig) setWidgetConfig(data.widgetConfig as WidgetConfig); })
       .catch(() => {});
@@ -75,24 +122,31 @@ export function BookingWidget({ restaurantId, apiUrl }: Props) {
     setLoadingSlots(true);
     setError("");
     const params = new URLSearchParams({ restaurantId, date, partySize: String(partySize) });
-    fetch(`${baseUrl}/api/v1/reservations/availability?${params}`)
-      .then((res) => res.json())
+    const requestId = createRequestId();
+    fetch(`${baseUrl}/api/v1/reservations/availability?${params}`, {
+      headers: { "x-request-id": requestId },
+    })
+      .then(async (res) => {
+        if (!res.ok) throw await parseApiError(res, "שגיאה בטעינת השעות", requestId);
+        return res.json();
+      })
       .then((data) => { setSlots(data.slots || []); setLoadingSlots(false); })
-      .catch(() => { setError("שגיאה בטעינת השעות"); setLoadingSlots(false); });
+      .catch((error) => { setError(messageFromError(error, "שגיאה בטעינת השעות", requestId)); setLoadingSlots(false); });
   }, [step, date, partySize, restaurantId, baseUrl]);
 
   const handleSubmit = async () => {
     setSubmitting(true);
     setError("");
+    const requestId = createRequestId();
     try {
       const res = await fetch(`${baseUrl}/api/v1/reservations`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-request-id": requestId },
         body: JSON.stringify({ restaurantId, guestName: name, guestPhone: phone, date, timeStart: time, partySize, source: "web", seating, smoking, allergies, specialRequests }),
       });
-      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || "שגיאה ביצירת ההזמנה"); }
+      if (!res.ok) throw await parseApiError(res, "שגיאה ביצירת ההזמנה", requestId);
       setStep("confirm");
-    } catch (e: any) { setError(e.message || "שגיאה ביצירת ההזמנה"); }
+    } catch (error: unknown) { setError(messageFromError(error, "שגיאה ביצירת ההזמנה", requestId)); }
     finally { setSubmitting(false); }
   };
 

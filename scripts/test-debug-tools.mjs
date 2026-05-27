@@ -830,6 +830,11 @@ for (const expectedBookingWidgetContent of [
   "createRequestId",
   "parseApiError",
   "WidgetApiError",
+  "widgetErrorDetails",
+  "logWidgetApiError",
+  "OpenSeat widget API request failed",
+  "debugCommand",
+  "HTTP ${error.status}",
   '"x-request-id": requestId',
   "מספר פנייה",
 ]) {

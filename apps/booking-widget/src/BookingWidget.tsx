@@ -60,19 +60,54 @@ async function parseApiError(res: Response, fallback: string, requestId: string)
   const payload = await res.json().catch(() => null) as ApiErrorPayload | null;
   const traceId = payload?.requestId ?? res.headers.get("x-request-id") ?? requestId;
   const baseMessage = payload?.error ?? payload?.message ?? fallback;
-  const trace = traceId ? ` (מספר פנייה ${traceId})` : "";
-  return new WidgetApiError(`${baseMessage}${trace}`, {
+  return new WidgetApiError(baseMessage, {
     status: res.status,
     code: payload?.code,
     requestId: traceId,
   });
 }
 
+function widgetErrorDetails(error: WidgetApiError, fallbackRequestId?: string): string {
+  return [
+    typeof error.status === "number" ? `HTTP ${error.status}` : undefined,
+    error.code,
+    error.requestId ?? fallbackRequestId ? `מספר פנייה ${error.requestId ?? fallbackRequestId}` : undefined,
+  ].filter(Boolean).join(" - ");
+}
+
 function messageFromError(error: unknown, fallback: string, requestId?: string): string {
-  if (error instanceof WidgetApiError && error.message) return error.message;
+  if (error instanceof WidgetApiError) {
+    const message = error.message && error.message !== fallback ? `${fallback}: ${error.message}` : fallback;
+    const details = widgetErrorDetails(error, requestId);
+    return details ? `${message} (${details})` : message;
+  }
   if (requestId) return `${fallback} (מספר פנייה ${requestId})`;
   if (error instanceof Error && error.message) return error.message;
   return fallback;
+}
+
+function logWidgetApiError(error: unknown, context: { operation: string; requestId?: string; url?: string }): void {
+  const payload = error instanceof WidgetApiError
+    ? {
+        operation: context.operation,
+        status: error.status,
+        code: error.code,
+        requestId: error.requestId ?? context.requestId,
+        debugCommand: error.requestId ?? context.requestId
+          ? `pnpm debug:logs ${error.requestId ?? context.requestId} --since "2 hours ago"`
+          : undefined,
+        url: context.url,
+        message: error.message,
+      }
+    : {
+        operation: context.operation,
+        requestId: context.requestId,
+        debugCommand: context.requestId ? `pnpm debug:logs ${context.requestId} --since "2 hours ago"` : undefined,
+        url: context.url,
+        message: error instanceof Error ? error.message : String(error),
+      };
+
+  console.error("OpenSeat widget API request failed", payload);
 }
 
 export function BookingWidget({ restaurantId, apiUrl }: Props) {
@@ -109,12 +144,16 @@ export function BookingWidget({ restaurantId, apiUrl }: Props) {
 
   useEffect(() => {
     const requestId = createRequestId();
-    fetch(`${baseUrl}/api/v1/restaurants/${restaurantId}`, {
+    const url = `${baseUrl}/api/v1/restaurants/${restaurantId}`;
+    fetch(url, {
       headers: { "x-request-id": requestId },
     })
-      .then((res) => res.json())
+      .then(async (res) => {
+        if (!res.ok) throw await parseApiError(res, "שגיאה בטעינת הגדרות הווידג׳ט", requestId);
+        return res.json();
+      })
       .then((data) => { if (data.widgetConfig) setWidgetConfig(data.widgetConfig as WidgetConfig); })
-      .catch(() => {});
+      .catch((error) => { logWidgetApiError(error, { operation: "widget_config", requestId, url }); });
   }, [restaurantId, baseUrl]);
 
   useEffect(() => {
@@ -123,7 +162,8 @@ export function BookingWidget({ restaurantId, apiUrl }: Props) {
     setError("");
     const params = new URLSearchParams({ restaurantId, date, partySize: String(partySize) });
     const requestId = createRequestId();
-    fetch(`${baseUrl}/api/v1/reservations/availability?${params}`, {
+    const url = `${baseUrl}/api/v1/reservations/availability?${params}`;
+    fetch(url, {
       headers: { "x-request-id": requestId },
     })
       .then(async (res) => {
@@ -131,22 +171,30 @@ export function BookingWidget({ restaurantId, apiUrl }: Props) {
         return res.json();
       })
       .then((data) => { setSlots(data.slots || []); setLoadingSlots(false); })
-      .catch((error) => { setError(messageFromError(error, "שגיאה בטעינת השעות", requestId)); setLoadingSlots(false); });
+      .catch((error) => {
+        logWidgetApiError(error, { operation: "availability", requestId, url });
+        setError(messageFromError(error, "שגיאה בטעינת השעות", requestId));
+        setLoadingSlots(false);
+      });
   }, [step, date, partySize, restaurantId, baseUrl]);
 
   const handleSubmit = async () => {
     setSubmitting(true);
     setError("");
     const requestId = createRequestId();
+    const url = `${baseUrl}/api/v1/reservations`;
     try {
-      const res = await fetch(`${baseUrl}/api/v1/reservations`, {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-request-id": requestId },
         body: JSON.stringify({ restaurantId, guestName: name, guestPhone: phone, date, timeStart: time, partySize, source: "web", seating, smoking, allergies, specialRequests }),
       });
       if (!res.ok) throw await parseApiError(res, "שגיאה ביצירת ההזמנה", requestId);
       setStep("confirm");
-    } catch (error: unknown) { setError(messageFromError(error, "שגיאה ביצירת ההזמנה", requestId)); }
+    } catch (error: unknown) {
+      logWidgetApiError(error, { operation: "reservation_create", requestId, url });
+      setError(messageFromError(error, "שגיאה ביצירת ההזמנה", requestId));
+    }
     finally { setSubmitting(false); }
   };
 

@@ -20,6 +20,8 @@ The dashboard preserves that ID in thrown `ApiError` messages, for example:
 Unable to create reservation (request 018f...)
 ```
 
+The dashboard and booking widget attach `x-request-id` to browser-originated API calls. Dashboard errors include HTTP status, stable API code, and request ID in visible error states or toasts. Booking-widget availability and reservation failures include the same details in the widget error text and log a browser-console payload with a ready-to-run `pnpm debug:logs <requestId> --since "2 hours ago"` command.
+
 Use that value to search API logs:
 
 ```bash

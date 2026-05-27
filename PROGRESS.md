@@ -84,6 +84,7 @@
   - logs API failures to the browser console with request IDs and ready `pnpm debug:logs ...` commands, while keeping validation details local-development only
   - replaces generic `API error: <status>` failures across dashboard hooks/auth flows
   - preserves auth API error codes through login and signup, so invalid credentials can stay user-friendly while real auth/onboarding failures keep request IDs for log tracing
+- Booking-widget availability and reservation failures now include HTTP status, stable API code, and request ID in visible errors, and log a browser-console debug payload with the matching `pnpm debug:logs` command.
 - `pnpm debug:api` probe script for quickly checking endpoint status, elapsed time, request ID, content type, and body.
 - `docs/DEBUGGING.md` with request-ID triage steps, log lookup commands, and debugging commands.
 

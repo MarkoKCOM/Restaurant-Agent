@@ -5,6 +5,7 @@ import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useLang } from "../i18n.js";
 import { LoyaltyRewardsManager } from "../components/LoyaltyRewardsManager.js";
 import { isFeatureEnabled, type Guest } from "@openseat/domain";
+import { formatApiErrorMessage } from "../lib/apiError.js";
 
 const TIER_WEIGHT: Record<string, number> = {
   gold: 3,
@@ -34,8 +35,8 @@ function isReferralReward(reward: {
 
 export function LoyaltyPage() {
   const { restaurant, isLoading } = useCurrentRestaurant();
-  const { data: guests, isLoading: guestsLoading } = useGuests(restaurant?.id);
-  const { data: rewardsData, isLoading: rewardsLoading } = useRewards(restaurant?.id, true);
+  const { data: guests, isLoading: guestsLoading, error: guestsError } = useGuests(restaurant?.id);
+  const { data: rewardsData, isLoading: rewardsLoading, error: rewardsError } = useRewards(restaurant?.id, true);
   const { t } = useLang();
 
   const loyaltyEnabled = isFeatureEnabled("loyalty", restaurant?.dashboardConfig);
@@ -134,6 +135,20 @@ export function LoyaltyPage() {
 
   return (
     <div className="space-y-6">
+      {(guestsError || rewardsError) ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <p className="font-semibold text-red-900">{t.loyalty.dataLoadErrorTitle}</p>
+          <ul className="mt-2 space-y-1">
+            {guestsError ? (
+              <li>{formatApiErrorMessage(guestsError, t.loyalty.dataLoadGuestsError)}</li>
+            ) : null}
+            {rewardsError ? (
+              <li>{formatApiErrorMessage(rewardsError, t.loyalty.dataLoadRewardsError)}</li>
+            ) : null}
+          </ul>
+        </div>
+      ) : null}
+
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
           <div>

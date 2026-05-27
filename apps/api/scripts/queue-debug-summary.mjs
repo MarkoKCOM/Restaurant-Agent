@@ -127,6 +127,70 @@ async function loadRestaurantScheduleContext() {
   }
 }
 
+async function loadCampaignDeliveryContext() {
+  const databaseUrl = readOption("database-url", process.env.DATABASE_URL ?? "");
+  if (!databaseUrl) {
+    return { status: "skipped", reason: "DATABASE_URL not configured" };
+  }
+
+  const sql = postgres(databaseUrl, { max: 1 });
+  try {
+    const [summaryRows, deliveryRows, skippedRows, overdueRows] = await Promise.all([
+      sql`
+        select
+          count(*)::int as total,
+          count(*) filter (where status = 'draft')::int as draft,
+          count(*) filter (where status = 'scheduled')::int as scheduled,
+          count(*) filter (where status = 'sent')::int as sent,
+          count(*) filter (where status = 'scheduled' and scheduled_at < now() - interval '15 minutes')::int as overdue_scheduled
+        from campaigns
+      `,
+      sql`
+        select
+          coalesce(sum((stats -> 'delivery' ->> 'sent')::int), 0)::int as sent,
+          coalesce(sum((stats -> 'delivery' ->> 'skipped')::int), 0)::int as skipped,
+          coalesce(sum((stats -> 'delivery' ->> 'skippedOptedOut')::int), 0)::int as skipped_opted_out,
+          coalesce(sum((stats -> 'delivery' ->> 'skippedRateLimitedWeek')::int), 0)::int as skipped_rate_limited_week,
+          coalesce(sum((stats -> 'delivery' ->> 'skippedRateLimitedMonth')::int), 0)::int as skipped_rate_limited_month,
+          coalesce(sum(jsonb_array_length(coalesce(stats -> 'deliveryRecipients', '[]'::jsonb))), 0)::int as recipient_rows
+        from campaigns
+      `,
+      sql`
+        select coalesce(recipient ->> 'reason', 'unknown') as reason, count(*)::int as count
+        from campaigns
+        cross join lateral jsonb_array_elements(coalesce(stats -> 'deliveryRecipients', '[]'::jsonb)) recipient
+        where recipient ->> 'status' = 'skipped'
+        group by coalesce(recipient ->> 'reason', 'unknown')
+        order by count desc, reason asc
+        limit 5
+      `,
+      sql`
+        select id, restaurant_id, name, scheduled_at
+        from campaigns
+        where status = 'scheduled'
+          and scheduled_at < now() - interval '15 minutes'
+        order by scheduled_at asc
+        limit 5
+      `,
+    ]);
+
+    return {
+      status: "loaded",
+      summary: summaryRows[0] ?? {},
+      delivery: deliveryRows[0] ?? {},
+      skippedByReason: skippedRows,
+      overdueSamples: overdueRows,
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      error: sanitizeConnectionError(error),
+    };
+  } finally {
+    await sql.end({ timeout: 1 });
+  }
+}
+
 function countBy(values) {
   const counts = new Map();
   for (const value of values) {
@@ -174,6 +238,42 @@ function printSummaryScheduleHealth(repeatableJobs, scheduleContext) {
   console.log(`- restaurantTimezones=${countBy(restaurants.map((restaurant) => restaurant.timezone)) || "none"}`);
 }
 
+function printCampaignDeliveryHealth(campaignContext) {
+  console.log("campaign delivery health:");
+  if (campaignContext.status === "skipped") {
+    console.log(`- skipped reason=${campaignContext.reason}`);
+    return;
+  }
+  if (campaignContext.status === "error") {
+    console.log(`- error=${JSON.stringify(campaignContext.error)}`);
+    return;
+  }
+
+  const summary = campaignContext.summary ?? {};
+  const delivery = campaignContext.delivery ?? {};
+  const overdue = Number(summary.overdue_scheduled ?? 0);
+  console.log(`- status=${overdue > 0 ? "attention" : "ok"} total=${summary.total ?? 0} draft=${summary.draft ?? 0} scheduled=${summary.scheduled ?? 0} sent=${summary.sent ?? 0} overdue=${overdue}`);
+  console.log(`- deliverySent=${delivery.sent ?? 0} skipped=${delivery.skipped ?? 0} optedOut=${delivery.skipped_opted_out ?? 0} weekLimit=${delivery.skipped_rate_limited_week ?? 0} monthLimit=${delivery.skipped_rate_limited_month ?? 0} recipientRows=${delivery.recipient_rows ?? 0}`);
+
+  console.log("campaign skipped reasons:");
+  if (!campaignContext.skippedByReason?.length) {
+    console.log("- none");
+  } else {
+    for (const row of campaignContext.skippedByReason) {
+      console.log(`- ${row.reason}: ${row.count}`);
+    }
+  }
+
+  console.log("overdue campaign samples:");
+  if (!campaignContext.overdueSamples?.length) {
+    console.log("- none");
+  } else {
+    for (const row of campaignContext.overdueSamples) {
+      console.log(`- ${row.name} id=${row.id} restaurantId=${row.restaurant_id} scheduledAt=${row.scheduled_at ? new Date(row.scheduled_at).toISOString() : "none"}`);
+    }
+  }
+}
+
 const redisUrl = readOption("redis-url", process.env.REDIS_URL ?? "redis://localhost:6379");
 const queueNames = String(readOption("queues", DEFAULT_QUEUES.join(",")))
   .split(",")
@@ -184,6 +284,9 @@ const connection = parseRedisUrl(redisUrl);
 const queues = queueNames.map((name) => new Queue(name, { connection }));
 const scheduleContext = queueNames.includes("daily-summary")
   ? await loadRestaurantScheduleContext()
+  : null;
+const campaignContext = queueNames.includes("campaign-delivery")
+  ? await loadCampaignDeliveryContext()
   : null;
 
 console.log("OpenSeat Queue Debug Summary");
@@ -215,6 +318,9 @@ try {
 
     if (queue.name === "daily-summary" && scheduleContext) {
       printSummaryScheduleHealth(repeatableJobs, scheduleContext);
+    }
+    if (queue.name === "campaign-delivery" && campaignContext) {
+      printCampaignDeliveryHealth(campaignContext);
     }
 
     console.log("failed samples:");

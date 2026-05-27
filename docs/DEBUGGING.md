@@ -252,7 +252,7 @@ It prints BullMQ counts, repeatable schedules, failed samples, and delayed sampl
 - `engagement`
 - `campaign-delivery`
 
-Phone, WhatsApp, email, token, password, and secret-like fields in job payload samples are masked. This command is useful when the API request succeeded but the follow-up automation did not happen yet. For example, daily owner summaries should appear in `daily-summary` as repeatable `daily-morning-summary` jobs with `pattern=0 9 * * *` and the restaurant timezone. When `DATABASE_URL` is available, the queue summary also prints `summary schedule health` so missing or duplicate 09:00 morning summary and 23:00 closing summary repeatables are visible without manually counting restaurants.
+Phone, WhatsApp, email, token, password, and secret-like fields in job payload samples are masked. This command is useful when the API request succeeded but the follow-up automation did not happen yet. For example, daily owner summaries should appear in `daily-summary` as repeatable `daily-morning-summary` jobs with `pattern=0 9 * * *` and the restaurant timezone. When `DATABASE_URL` is available, the queue summary also prints `summary schedule health` so missing or duplicate 09:00 morning summary and 23:00 closing summary repeatables are visible without manually counting restaurants. It also prints `campaign delivery health` for the `campaign-delivery` queue, including overdue scheduled campaigns, delivery totals, and opt-out/rate-limit skip reasons.
 
 ## Referral Share Flow
 

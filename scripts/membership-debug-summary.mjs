@@ -148,6 +148,7 @@ const restaurantSlug = readOption("restaurant-slug", process.env.OPENSEAT_RESTAU
 const tokenRestaurantId = decodeTokenRestaurantId(token);
 const failureStatus = readOption("failure-status", "open");
 const failureLimit = readOption("failure-limit", "20");
+const engagementLimit = readOption("engagement-limit", "200");
 const engagementStatus = readOption("engagement-status", "");
 const messageCategory = readOption("message-category", "");
 
@@ -176,6 +177,7 @@ failuresUrl.searchParams.set("limit", failureLimit);
 
 const engagementUrl = new URL(`${apiUrl}/api/v1/engagement/jobs`);
 engagementUrl.searchParams.set("restaurantId", restaurantId);
+engagementUrl.searchParams.set("limit", engagementLimit);
 if (engagementStatus) engagementUrl.searchParams.set("status", engagementStatus);
 if (messageCategory) engagementUrl.searchParams.set("messageCategory", messageCategory);
 

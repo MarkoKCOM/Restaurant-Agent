@@ -968,6 +968,7 @@ export async function listEngagementJobs(params: {
   guestId?: string;
   status?: string;
   messageCategory?: EngagementMessageCategory;
+  limit?: number;
 }): Promise<EngagementJobRow[]> {
   const conditions = [eq(engagementJobs.restaurantId, params.restaurantId)];
 
@@ -981,9 +982,15 @@ export async function listEngagementJobs(params: {
     conditions.push(eq(engagementJobs.messageCategory, params.messageCategory));
   }
 
-  return db
+  const query = db
     .select()
     .from(engagementJobs)
     .where(and(...conditions))
     .orderBy(engagementJobs.triggerAt);
+
+  if (params.limit === undefined) {
+    return query;
+  }
+
+  return query.limit(Math.min(Math.max(params.limit, 1), 200));
 }

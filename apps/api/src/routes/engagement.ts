@@ -102,11 +102,12 @@ export async function engagementRoutes(app: FastifyInstance) {
 
   // GET /jobs — list engagement jobs with optional filters
   app.get("/jobs", async (request, reply) => {
-    const { restaurantId, guestId, status, messageCategory } = request.query as {
+    const { restaurantId, guestId, status, messageCategory, limit } = request.query as {
       restaurantId?: string;
       guestId?: string;
       status?: string;
       messageCategory?: "transactional" | "promotional";
+      limit?: string;
     };
 
     if (!restaurantId) {
@@ -122,7 +123,14 @@ export async function engagementRoutes(app: FastifyInstance) {
     const accessError = await enforceEngagementAccess(request, reply, restaurantId);
     if (accessError) return accessError;
 
-    const jobs = await listEngagementJobs({ restaurantId, guestId, status, messageCategory });
+    const parsedLimit = limit ? Number(limit) : undefined;
+    const jobs = await listEngagementJobs({
+      restaurantId,
+      guestId,
+      status,
+      messageCategory,
+      limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined,
+    });
     return { jobs };
   });
 

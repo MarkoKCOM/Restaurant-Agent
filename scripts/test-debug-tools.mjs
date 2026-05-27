@@ -791,6 +791,7 @@ const authMiddleware = await readFile("apps/api/src/middleware/auth.ts", "utf8")
 const campaignRoutes = await readFile("apps/api/src/routes/campaigns.ts", "utf8");
 const analyticsRoutes = await readFile("apps/api/src/routes/analytics.ts", "utf8");
 const engagementRoutes = await readFile("apps/api/src/routes/engagement.ts", "utf8");
+const engagementService = await readFile("apps/api/src/services/engagement.service.ts", "utf8");
 const outboundMessageService = await readFile("apps/api/src/services/outbound-message.service.ts", "utf8");
 const summaryService = await readFile("apps/api/src/services/summary.service.ts", "utf8");
 const debugTokenHelpers = await readFile("scripts/lib/debug-token.mjs", "utf8");
@@ -811,6 +812,8 @@ for (const requiredMembershipDebugContent of [
   "restaurantLookupRequestId=",
   "restaurantIdSource=",
   "tokenSource=",
+  "engagement-limit",
+  "engagementUrl.searchParams.set(\"limit\", engagementLimit)",
   "createSignedSuperAdminToken",
   "JWT_SECRET",
   "decodeTokenRestaurantId",
@@ -953,8 +956,17 @@ for (const requiredEngagementPackageContent of [
   "packageAccess.code === \"RESTAURANT_NOT_FOUND\" ? 404 : 403",
   "PACKAGE_GROWTH_REQUIRED",
   "await enforceEngagementAccess",
+  "limit?: string",
+  "limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined",
 ]) {
   assertIncludes(engagementRoutes, requiredEngagementPackageContent);
+}
+
+for (const requiredEngagementServiceContent of [
+  "limit?: number",
+  "query.limit(Math.min(Math.max(params.limit, 1), 200))",
+]) {
+  assertIncludes(engagementService, requiredEngagementServiceContent);
 }
 
 for (const requiredLogTraceContent of [

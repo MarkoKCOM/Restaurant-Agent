@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFile } from "node:child_process";
 import { createHmac, randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -66,6 +66,7 @@ const manifest = {
   since,
   outDir,
   commands: [],
+  highlights: {},
 };
 
 const superAdminEmail =
@@ -115,6 +116,57 @@ async function writeJson(name, value) {
   return outputPath;
 }
 
+function isObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value);
+}
+
+async function captureDiagnosticsHighlights(commandRecord) {
+  if (commandRecord.status !== "passed" || !commandRecord.outputPath) return;
+
+  try {
+    const output = JSON.parse(await readFile(commandRecord.outputPath, "utf8"));
+    const diagnostics = output.body;
+    if (!isObject(diagnostics)) return;
+
+    const deployment = isObject(diagnostics.deployment) ? diagnostics.deployment : {};
+    const source = isObject(deployment.source) ? deployment.source : {};
+    const migrationDrift = isObject(deployment.migrationDrift) ? deployment.migrationDrift : {};
+    const checks = isObject(diagnostics.checks) ? diagnostics.checks : {};
+    const queues = Array.isArray(diagnostics.queues) ? diagnostics.queues : [];
+
+    manifest.highlights.adminDiagnostics = {
+      status: diagnostics.status,
+      requestId: diagnostics.requestId,
+      source: {
+        status: source.status,
+        shortCommit: source.shortCommit,
+        branch: source.branch,
+        dirty: source.dirty,
+      },
+      migrationDrift: {
+        status: migrationDrift.status,
+        codeLatestId: migrationDrift.codeLatestId,
+        databaseLatestId: migrationDrift.databaseLatestId,
+      },
+      checks: {
+        database: isObject(checks.database) ? checks.database.status : undefined,
+        redis: isObject(checks.redis) ? checks.redis.status : undefined,
+      },
+      queues: queues.map((queue) => ({
+        name: queue.name,
+        status: queue.status,
+        failed: queue.counts?.failed,
+        delayed: queue.counts?.delayed,
+      })),
+    };
+  } catch (error) {
+    manifest.highlights.adminDiagnostics = {
+      status: "unparsed",
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 async function writeReadme() {
   const lines = [
     "# OpenSeat Debug Bundle",
@@ -133,6 +185,35 @@ async function writeReadme() {
     const file = command.outputPath ? command.outputPath.replace(`${outDir}/`, "") : "";
     const notes = command.reason ?? command.tokenSource ?? (command.exitCode !== undefined ? `exit ${command.exitCode}` : "");
     lines.push(`| ${command.name} | ${command.status} | ${file} | ${notes} |`);
+  }
+
+  const adminDiagnostics = manifest.highlights.adminDiagnostics;
+  if (adminDiagnostics) {
+    lines.push("");
+    lines.push("## Highlights");
+    lines.push("");
+    if (adminDiagnostics.status === "unparsed") {
+      lines.push(`- Admin diagnostics could not be parsed: ${adminDiagnostics.error}`);
+    } else {
+      const source = adminDiagnostics.source ?? {};
+      const migrationDrift = adminDiagnostics.migrationDrift ?? {};
+      const checks = adminDiagnostics.checks ?? {};
+      const queues = Array.isArray(adminDiagnostics.queues) ? adminDiagnostics.queues : [];
+      lines.push(`- Admin diagnostics: ${adminDiagnostics.status ?? "unknown"}`);
+      lines.push(
+        `- Source: ${source.shortCommit ?? "unknown"} on ${source.branch ?? "unknown"}${source.dirty === true ? " (dirty)" : ""}`,
+      );
+      lines.push(
+        `- Migration drift: ${migrationDrift.status ?? "unknown"} (${migrationDrift.codeLatestId ?? "?"}/${migrationDrift.databaseLatestId ?? "?"})`,
+      );
+      lines.push(`- Dependencies: database=${checks.database ?? "unknown"} redis=${checks.redis ?? "unknown"}`);
+      if (queues.length > 0) {
+        lines.push(`- Queues: ${queues.map((queue) => `${queue.name}:${queue.status}/failed=${queue.failed ?? "?"}`).join(", ")}`);
+      }
+      if (adminDiagnostics.requestId) {
+        lines.push(`- Diagnostics request: ${adminDiagnostics.requestId}`);
+      }
+    }
   }
 
   const failed = manifest.commands.filter((command) => command.status === "failed");
@@ -218,14 +299,15 @@ await runStep("health-probe", "node", ["scripts/api-debug-probe.mjs", `${apiUrl}
 
 const diagnosticsToken = await getDiagnosticsToken();
 if (diagnosticsToken.token) {
-  await runStep("admin-diagnostics", "node", ["scripts/api-debug-probe.mjs", `${apiUrl}/api/v1/admin/diagnostics`], {
+  const diagnosticsCommand = await runStep("admin-diagnostics", "node", ["scripts/api-debug-probe.mjs", `${apiUrl}/api/v1/admin/diagnostics`], {
     env: {
       OPENSEAT_TOKEN: diagnosticsToken.token,
       REQUEST_ID: `debug-bundle-diagnostics-${Date.now()}`,
       EXPECT_STATUS: "200",
     },
   });
-  manifest.commands.at(-1).tokenSource = diagnosticsToken.source;
+  diagnosticsCommand.tokenSource = diagnosticsToken.source;
+  await captureDiagnosticsHighlights(diagnosticsCommand);
 } else {
   manifest.commands.push({
     name: "admin-diagnostics",

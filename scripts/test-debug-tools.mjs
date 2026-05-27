@@ -1318,6 +1318,11 @@ for (const requiredEngagementPackageContent of [
   "return false;",
   "limit?: string",
   "limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined",
+  "OUTBOUND_MESSAGES_LIST_FAILED",
+  "ENGAGEMENT_JOBS_LIST_FAILED",
+  "Outbound message list failed",
+  "Engagement job list failed",
+  "request.log.error(logPayload, \"Engagement request failed\")",
 ]) {
   assertIncludes(engagementRoutes, requiredEngagementPackageContent);
 }

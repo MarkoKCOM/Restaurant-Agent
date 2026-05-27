@@ -92,14 +92,25 @@ export async function engagementRoutes(app: FastifyInstance) {
     const accessError = await enforceEngagementAccess(request, reply, restaurantId);
     if (accessError) return reply;
 
-    const parsedLimit = limit ? Number(limit) : undefined;
-    const messages = await listOutboundMessages({
-      restaurantId,
-      status,
-      messageType,
-      limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined,
-    });
-    return { messages };
+    try {
+      const parsedLimit = limit ? Number(limit) : undefined;
+      const messages = await listOutboundMessages({
+        restaurantId,
+        status,
+        messageType,
+        limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined,
+      });
+      return { messages };
+    } catch (error: unknown) {
+      return sendEngagementError(
+        request,
+        reply,
+        500,
+        "Outbound message list failed",
+        "OUTBOUND_MESSAGES_LIST_FAILED",
+        { err: error, restaurantId, status, messageType },
+      );
+    }
   });
 
   // GET /jobs — list engagement jobs with optional filters
@@ -125,15 +136,26 @@ export async function engagementRoutes(app: FastifyInstance) {
     const accessError = await enforceEngagementAccess(request, reply, restaurantId);
     if (accessError) return reply;
 
-    const parsedLimit = limit ? Number(limit) : undefined;
-    const jobs = await listEngagementJobs({
-      restaurantId,
-      guestId,
-      status,
-      messageCategory,
-      limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined,
-    });
-    return { jobs };
+    try {
+      const parsedLimit = limit ? Number(limit) : undefined;
+      const jobs = await listEngagementJobs({
+        restaurantId,
+        guestId,
+        status,
+        messageCategory,
+        limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined,
+      });
+      return { jobs };
+    } catch (error: unknown) {
+      return sendEngagementError(
+        request,
+        reply,
+        500,
+        "Engagement job list failed",
+        "ENGAGEMENT_JOBS_LIST_FAILED",
+        { err: error, restaurantId, guestId, status, messageCategory },
+      );
+    }
   });
 
   // POST /birthdays/check — manually trigger birthday greeting check for a restaurant

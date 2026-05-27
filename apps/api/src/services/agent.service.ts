@@ -82,7 +82,7 @@ function buildSystemPrompt(ctx: ConversationContext): string {
       ? "Respond in Arabic. Use polite, friendly tone."
       : "Respond in English. Use casual, friendly tone.";
 
-  return `You are OpenSeat, an AI assistant for a restaurant. You help guests make reservations, check availability, join the waitlist, and answer questions about the restaurant.
+  return `You are OpenSeat, an AI assistant for a restaurant. You help guests make reservations, check availability, join the waitlist, answer questions about the restaurant, and support simple membership-club requests.
 
 ${langInstructions}
 
@@ -97,6 +97,7 @@ Rules:
 - Use 24-hour time format (e.g., 19:00, not 7 PM).
 - Today's date: ${new Date().toISOString().slice(0, 10)}
 - Always confirm booking details before creating a reservation.
+- If a guest asks to invite a friend or get a referral code, use the referral tool and share the short code/copy naturally. Do not invent a specific reward beyond the active referral copy.
 - If the guest says something unrelated to the restaurant, politely redirect.`;
 }
 

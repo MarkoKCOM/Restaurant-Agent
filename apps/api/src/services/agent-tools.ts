@@ -6,6 +6,7 @@
 import { checkAvailability, createReservation, cancelReservation } from "./reservation.service.js";
 import { findOrCreateGuest, toDomainGuest } from "./guest.service.js";
 import { addToWaitlist } from "./waitlist.service.js";
+import { getReferralShare } from "./referral.service.js";
 import { db } from "../db/index.js";
 import { guests, restaurants } from "../db/schema.js";
 import { and, eq } from "drizzle-orm";
@@ -92,6 +93,17 @@ export const agentTools: ToolDef[] = [
   {
     name: "get_guest_profile",
     description: "Look up a guest's profile by phone number to see their history and preferences",
+    parameters: {
+      type: "object",
+      properties: {
+        phone: { type: "string", description: "Guest phone number" },
+      },
+      required: ["phone"],
+    },
+  },
+  {
+    name: "get_referral_share",
+    description: "Generate or fetch a member's referral code and WhatsApp-ready share copy by phone number",
     parameters: {
       type: "object",
       properties: {
@@ -209,6 +221,25 @@ const executors: Record<string, ToolExecutor> = {
     if (existing) return toDomainGuest(existing);
 
     return { found: false, phone };
+  },
+
+  async get_referral_share(args, ctx) {
+    const { phone } = args as { phone: string };
+    const [existing] = await db
+      .select()
+      .from(guests)
+      .where(and(eq(guests.restaurantId, ctx.restaurantId), eq(guests.phone, phone)))
+      .limit(1);
+
+    if (!existing) {
+      return {
+        found: false,
+        phone,
+        message: "Guest must have a member profile before a referral code can be shared.",
+      };
+    }
+
+    return getReferralShare(existing.id);
   },
 };
 

@@ -201,6 +201,22 @@ export interface ReferralSummary {
   totalReferralPoints: number;
 }
 
+export interface ReferralShare {
+  guestId: string;
+  restaurantId: string;
+  referralCode: string;
+  referralCount: number;
+  totalReferralPoints: number;
+  benefitSummary: {
+    he: string;
+    en: string;
+  };
+  shareMessage: {
+    he: string;
+    en: string;
+  };
+}
+
 export interface StreakSummary {
   current: number;
   best: number;

@@ -3,6 +3,10 @@
 ## 2026-05-27 (Debugging infrastructure pass)
 
 ### Added
+- WhatsApp-ready referral retrieval/share flow:
+  - `GET /api/v1/loyalty/:guestId/referral-share` generates or returns a member referral code
+  - response includes referral stats and Hebrew/English share copy
+  - agent tool `get_referral_share` lets customer conversations fetch referral copy by phone
 - Protected super-admin dependency diagnostics at `GET /api/v1/admin/diagnostics`:
   - database ping status and latency
   - Redis ping status and latency

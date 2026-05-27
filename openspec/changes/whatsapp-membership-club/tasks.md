@@ -6,7 +6,7 @@
 ## 2. Agent/API tooling for WhatsApp membership flows
 - [x] 2.1 Add or normalize endpoints/tools for membership summary retrieval
 - [x] 2.2 Add reward discovery and claim flow suitable for WhatsApp conversations
-- [ ] 2.3 Add referral retrieval/share flow suitable for WhatsApp conversations
+- [x] 2.3 Add referral retrieval/share flow suitable for WhatsApp conversations
 - [x] 2.4 Add staff reward-verification/redemption flow
 - [x] 2.5 Add opt-in/opt-out handling for non-transactional membership messaging
 

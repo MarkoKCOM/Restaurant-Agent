@@ -110,3 +110,14 @@ pnpm debug:api -- http://localhost:3001/api/v1/loyalty/processing-failures/.../r
 ```
 
 The retry marks the failure `resolved` on success. If it fails again, the API keeps it `open`, increments `attempts`, updates the sanitized error fields, and returns the updated failure in the response. Challenge-progress failures are visible but intentionally not auto-retried yet because the current challenge progress model does not have per-reservation idempotency.
+
+## Referral Share Flow
+
+For WhatsApp membership referral issues, inspect the normalized share payload:
+
+```bash
+OPENSEAT_TOKEN=... pnpm debug:api -- \
+  http://localhost:3001/api/v1/loyalty/.../referral-share
+```
+
+The response includes the reusable referral code, referral counts/points, and Hebrew/English share copy. The customer-facing agent can retrieve the same payload with the `get_referral_share` tool by guest phone number.

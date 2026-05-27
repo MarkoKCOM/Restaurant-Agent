@@ -10,6 +10,7 @@ import {
   updateReward,
 } from "../services/loyalty.service.js";
 import { getMembershipSummary } from "../services/membership-summary.service.js";
+import { getReferralShare } from "../services/referral.service.js";
 import {
   claimReward,
   getClaimById,
@@ -137,6 +138,24 @@ export async function loyaltyRoutes(app: FastifyInstance) {
         failure,
       });
     }
+  });
+
+  // GET /:guestId/referral-share — WhatsApp-ready referral code/share copy
+  app.get("/:guestId/referral-share", async (request, reply) => {
+    const { guestId } = request.params as { guestId: string };
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      reply.code(404);
+      return { error: "Guest not found" };
+    }
+
+    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return reply.status(403).send({ error: err });
+    }
+
+    const referralShare = await getReferralShare(guestId);
+    return { referralShare };
   });
 
   // GET /:guestId/balance — points balance + tier + stamp progress

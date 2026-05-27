@@ -306,6 +306,29 @@ export async function runExtendedTests(): Promise<{ results: TestResult[]; summa
     return `count=${stats.referralCount} points=${stats.totalPointsEarned}`;
   }));
 
+  results.push(await runTest("Referral share payload", async () => {
+    const response = await api.getReferralShare(guestId) as Record<string, unknown>;
+    const share = response.referralShare as {
+      referralCode?: string;
+      referralCount?: number;
+      totalReferralPoints?: number;
+      shareMessage?: { he?: string; en?: string };
+    };
+    if (share?.referralCode !== referralCode) {
+      throw new Error(`Expected referralShare code=${referralCode}, got ${share?.referralCode}`);
+    }
+    if (!share?.shareMessage?.he?.includes(referralCode)) {
+      throw new Error(`Expected Hebrew share message to include code, got ${JSON.stringify(share?.shareMessage)}`);
+    }
+    if (!share?.shareMessage?.en?.includes(referralCode)) {
+      throw new Error(`Expected English share message to include code, got ${JSON.stringify(share?.shareMessage)}`);
+    }
+    if (share.referralCount !== 1 || share.totalReferralPoints !== 50) {
+      throw new Error(`Expected referral stats in share payload, got count=${share.referralCount} points=${share.totalReferralPoints}`);
+    }
+    return `code=${share.referralCode}`;
+  }));
+
   results.push(await runTest("Membership summary reflects referrals", async () => {
     const referrerSummaryResponse = await api.getMembershipSummary(guestId) as Record<string, unknown>;
     const referrerSummary = referrerSummaryResponse.summary as Record<string, any>;

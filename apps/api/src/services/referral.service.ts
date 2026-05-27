@@ -141,3 +141,51 @@ export async function getReferralStats(
 
   return { referralCount, totalPointsEarned };
 }
+
+export interface ReferralShare {
+  guestId: string;
+  restaurantId: string;
+  referralCode: string;
+  referralCount: number;
+  totalReferralPoints: number;
+  benefitSummary: {
+    he: string;
+    en: string;
+  };
+  shareMessage: {
+    he: string;
+    en: string;
+  };
+}
+
+export async function getReferralShare(guestId: string): Promise<ReferralShare> {
+  const [guest] = await db
+    .select()
+    .from(guests)
+    .where(eq(guests.id, guestId))
+    .limit(1);
+
+  if (!guest) {
+    throw new Error("Guest not found");
+  }
+
+  const referralCode = await generateReferralCode(guestId);
+  const stats = await getReferralStats(guestId);
+  const benefitSummary = {
+    he: "שתפו את הקוד עם חבר. כשהחבר מצטרף דרך הקוד, המסעדה יכולה לזהות את ההפניה ולתת קרדיט במועדון לפי ההטבה הפעילה.",
+    en: "Share the code with a friend. When they join through it, the restaurant can recognize the referral and apply the active club benefit.",
+  };
+
+  return {
+    guestId,
+    restaurantId: guest.restaurantId,
+    referralCode,
+    referralCount: stats.referralCount,
+    totalReferralPoints: stats.totalPointsEarned,
+    benefitSummary,
+    shareMessage: {
+      he: `היי, קיבלתי קוד חבר מביא חבר למועדון: ${referralCode}. אפשר למסור אותו כשמצטרפים או מזמינים מקום.`,
+      en: `I have a bring-a-friend club code: ${referralCode}. Share it when joining or booking so the restaurant can recognize the referral.`,
+    },
+  };
+}

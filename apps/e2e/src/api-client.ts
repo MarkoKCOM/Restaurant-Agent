@@ -446,6 +446,11 @@ export async function getReferralStats(guestId: string) {
   return request(`/api/v1/gamification/${guestId}/referral-stats`, { token });
 }
 
+export async function getReferralShare(guestId: string) {
+  const token = await getToken();
+  return request(`/api/v1/loyalty/${guestId}/referral-share`, { token });
+}
+
 export async function listChallenges(restaurantId: string) {
   const token = await getToken();
   return request(`/api/v1/gamification/challenges?restaurantId=${restaurantId}`, { token });

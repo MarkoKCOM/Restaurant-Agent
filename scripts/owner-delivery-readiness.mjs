@@ -91,6 +91,12 @@ if (packageFilter) {
 
 const missing = restaurants.filter((restaurant) => restaurant?.ownerWhatsappConfigured !== true);
 const configured = restaurants.filter((restaurant) => restaurant?.ownerWhatsappConfigured === true);
+const hasOwnerDeliveryRecipient = (restaurant) =>
+  restaurant?.ownerWhatsappConfigured === true
+  || Boolean(restaurant?.ownerPhoneMasked || restaurant?.whatsappNumberMasked || restaurant?.phoneMasked);
+const recipientConfigured = restaurants.filter((restaurant) => hasOwnerDeliveryRecipient(restaurant));
+const recipientMissing = restaurants.filter((restaurant) => !hasOwnerDeliveryRecipient(restaurant));
+const fallbackAvailable = missing.filter((restaurant) => hasOwnerDeliveryRecipient(restaurant));
 const rows = onlyMissing ? missing : restaurants;
 const repairCommandFor = (restaurant) =>
   `METHOD=PATCH BODY='{"ownerWhatsapp":"<owner-whatsapp-number>"}' OPENSEAT_TOKEN=... pnpm debug:api -- ${apiUrl}/api/v1/restaurants/${restaurant.id}`;
@@ -106,6 +112,9 @@ const report = {
     restaurants: restaurants.length,
     ownerWhatsappConfigured: configured.length,
     ownerWhatsappMissing: missing.length,
+    ownerDeliveryRecipientConfigured: recipientConfigured.length,
+    ownerDeliveryRecipientMissing: recipientMissing.length,
+    ownerDeliveryFallbackAvailable: fallbackAvailable.length,
   },
   missingRestaurants: missing.map((restaurant) => ({
     id: restaurant.id,
@@ -133,6 +142,9 @@ if (packageFilter) console.log(`packageFilter=${packageFilter}`);
 console.log(`total=${restaurants.length}`);
 console.log(`ownerWhatsappConfigured=${configured.length}`);
 console.log(`ownerWhatsappMissing=${missing.length}`);
+console.log(`ownerDeliveryRecipientConfigured=${recipientConfigured.length}`);
+console.log(`ownerDeliveryRecipientMissing=${recipientMissing.length}`);
+console.log(`ownerDeliveryFallbackAvailable=${fallbackAvailable.length}`);
 console.log("");
 
 if (rows.length === 0) {

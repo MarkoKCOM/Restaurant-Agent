@@ -168,6 +168,8 @@ export async function analyticsRoutes(app: FastifyInstance) {
         notableGuestCount: summary.notableGuests.length,
         alertCount: summary.alerts.length,
         ownerWhatsappConfigured: summary.ownerWhatsappConfigured,
+        ownerRecipientConfigured: summary.ownerRecipientConfigured,
+        ownerRecipientSource: summary.ownerRecipientSource,
       },
       "Daily morning summary preview generated",
     );
@@ -198,6 +200,9 @@ export async function analyticsRoutes(app: FastifyInstance) {
         todayCovers: summary.today.totalCovers,
         notableGuestCount: summary.notableGuests.length,
         alertCount: summary.alerts.length,
+        ownerWhatsappConfigured: summary.ownerWhatsappConfigured,
+        ownerRecipientConfigured: summary.ownerRecipientConfigured,
+        ownerRecipientSource: summary.ownerRecipientSource,
       },
     });
     request.log.info(

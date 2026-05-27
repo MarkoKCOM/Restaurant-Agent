@@ -6,6 +6,7 @@ import {
   formatMorningSummaryMessage,
   getDailySummary,
   getMorningSummary,
+  getOwnerDeliveryContact,
 } from "../services/summary.service.js";
 import { recordOutboundDelivery } from "../services/outbound-message.service.js";
 
@@ -32,6 +33,8 @@ async function processSummary(job: Job<SummaryJobData>, logger: FastifyBaseLogge
         queue: "daily-summary",
         bullJobId: job.id,
         date: summary.summaryDate,
+        ownerRecipientSource: summary.ownerRecipientSource,
+        ownerRecipientConfigured: summary.ownerRecipientConfigured,
         yesterdayDate: summary.yesterdayDate,
         yesterdayCovers: summary.yesterday.totalCovers,
         todayBookings: summary.today.totalReservations,
@@ -57,6 +60,8 @@ async function processSummary(job: Job<SummaryJobData>, logger: FastifyBaseLogge
         notableGuestCount: summary.notableGuests.length,
         alertCount: summary.alerts.length,
         ownerWhatsappConfigured: summary.ownerWhatsappConfigured,
+        ownerRecipientConfigured: summary.ownerRecipientConfigured,
+        ownerRecipientSource: summary.ownerRecipientSource,
         messagePreview: message.slice(0, 500),
       },
       "Daily morning summary ready to send",
@@ -67,9 +72,11 @@ async function processSummary(job: Job<SummaryJobData>, logger: FastifyBaseLogge
   const today = new Date().toISOString().slice(0, 10);
 
   const summary = await getDailySummary(restaurantId, today);
+  const ownerContact = await getOwnerDeliveryContact(restaurantId);
   const text = `Daily summary for ${today}: ${summary.totalCovers} covers, ${summary.completedCount} completed, ${summary.cancelledCount} cancellations, ${summary.noShowCount} no-shows.`;
   const outbound = await recordOutboundDelivery({
     restaurantId,
+    recipientMasked: ownerContact.recipientMasked,
     messageType: "daily_closing_summary",
     messageCategory: "transactional",
     subjectType: "restaurant",
@@ -86,6 +93,9 @@ async function processSummary(job: Job<SummaryJobData>, logger: FastifyBaseLogge
       noShowCount: summary.noShowCount,
       occupancyPeak: summary.occupancyPeak,
       topGuestCount: summary.topGuests.length,
+      ownerWhatsappConfigured: ownerContact.ownerWhatsappConfigured,
+      ownerRecipientConfigured: ownerContact.recipientConfigured,
+      ownerRecipientSource: ownerContact.source,
     },
   });
 
@@ -105,6 +115,9 @@ async function processSummary(job: Job<SummaryJobData>, logger: FastifyBaseLogge
       noShowCount: summary.noShowCount,
       occupancyPeak: summary.occupancyPeak,
       topGuestCount: summary.topGuests.length,
+      ownerWhatsappConfigured: ownerContact.ownerWhatsappConfigured,
+      ownerRecipientConfigured: ownerContact.recipientConfigured,
+      ownerRecipientSource: ownerContact.source,
     },
     "Daily summary ready to send",
   );

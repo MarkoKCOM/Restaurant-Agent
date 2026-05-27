@@ -350,7 +350,8 @@ function summarizeSmoke(report) {
       } else if (step.step === "analytics.growth-summary") {
         console.log(`- analytics.growth-summary: bookings=${step.reservationBookings ?? "?"} covers=${step.reservationCovers ?? "?"} slots=${step.reservationSlots ?? "?"} cancelRate=${step.cancellationRate ?? "?"} noShowRate=${step.noShowRate ?? "?"} retentionGuests=${step.retentionUniqueGuests ?? "?"} windows=${asArray(step.retentionWindows).join(",") || "none"} members=${step.activeMembers ?? "?"} pointsIssued=${step.pointsIssued ?? "?"} bronze=${step.tierBronze ?? "?"} clvGuests=${step.clvGuests ?? "?"} clvRevenue=${step.clvRevenue ?? "?"} clvAvg=${step.clvAverage ?? "?"} clvTiers=${step.clvTierCount ?? "?"} clvTop=${step.clvTopGuests ?? "?"} campaigns=${step.campaigns ?? "?"} sent=${step.campaignSent ?? "?"} roi=${step.hasCampaignRoi === true ? "yes" : "no"}`);
       } else if (step.step === "analytics.daily-morning-summary") {
-        console.log(`- analytics.daily-morning-summary: date=${step.date ?? "?"} yesterdayCovers=${step.yesterdayCovers ?? "?"} todayBookings=${step.todayBookings ?? "?"} todayCovers=${step.todayCovers ?? "?"} notable=${step.notableGuestCount ?? "?"} alerts=${step.alertCount ?? "?"} message=${step.hasMessage === true ? "yes" : "no"}`);
+        const ownerRecipient = step.ownerRecipientConfigured === undefined ? "" : ` ownerRecipient=${step.ownerRecipientConfigured === true ? "yes" : "no"} source=${step.ownerRecipientSource ?? "none"}`;
+        console.log(`- analytics.daily-morning-summary: date=${step.date ?? "?"} yesterdayCovers=${step.yesterdayCovers ?? "?"} todayBookings=${step.todayBookings ?? "?"} todayCovers=${step.todayCovers ?? "?"} notable=${step.notableGuestCount ?? "?"} alerts=${step.alertCount ?? "?"} message=${step.hasMessage === true ? "yes" : "no"}${ownerRecipient}`);
       } else if (step.step === "outbound.daily-morning-summary-log") {
         console.log(`- outbound.daily-morning-summary-log: id=${step.outboundMessageId ?? "?"} status=${step.status ?? "?"} type=${step.messageType ?? "?"} listed=${step.listed === true ? "yes" : "no"} recipient=${step.recipientMasked ?? "?"}`);
       }
@@ -536,6 +537,10 @@ async function summarizeDebugBundleManifest(report) {
       printLine(
         "Owner delivery readiness",
         `${ownerDeliveryReadiness.status} total=${totals.restaurants ?? "?"} configured=${totals.ownerWhatsappConfigured ?? "?"} missing=${totals.ownerWhatsappMissing ?? "?"} output=${ownerDeliveryReadiness.outputPath ?? "?"}`,
+      );
+      printLine(
+        "Owner delivery recipients",
+        `configured=${totals.ownerDeliveryRecipientConfigured ?? "?"} missing=${totals.ownerDeliveryRecipientMissing ?? "?"} fallbackAvailable=${totals.ownerDeliveryFallbackAvailable ?? "?"}`,
       );
       const missingSamples = asArray(ownerDeliveryReadiness.missingSamples);
       if (missingSamples.length > 0) {

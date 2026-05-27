@@ -484,6 +484,9 @@ async function captureOwnerDeliveryHighlights(artifactPath, commandRecord) {
         restaurants: totals.restaurants,
         ownerWhatsappConfigured: totals.ownerWhatsappConfigured,
         ownerWhatsappMissing: totals.ownerWhatsappMissing,
+        ownerDeliveryRecipientConfigured: totals.ownerDeliveryRecipientConfigured,
+        ownerDeliveryRecipientMissing: totals.ownerDeliveryRecipientMissing,
+        ownerDeliveryFallbackAvailable: totals.ownerDeliveryFallbackAvailable,
       },
       missingSamples: missingRestaurants.slice(0, 5).map((restaurant) => ({
         id: restaurant.id,
@@ -737,6 +740,9 @@ async function writeReadme() {
         const totals = ownerDeliveryReadiness.totals ?? {};
         lines.push(
           `- Owner delivery readiness: ${ownerDeliveryReadiness.status ?? "unknown"} total=${totals.restaurants ?? "?"} configured=${totals.ownerWhatsappConfigured ?? "?"} missing=${totals.ownerWhatsappMissing ?? "?"}`,
+        );
+        lines.push(
+          `- Owner delivery recipients: configured=${totals.ownerDeliveryRecipientConfigured ?? "?"} missing=${totals.ownerDeliveryRecipientMissing ?? "?"} fallbackAvailable=${totals.ownerDeliveryFallbackAvailable ?? "?"}`,
         );
         const missingSamples = asArray(ownerDeliveryReadiness.missingSamples);
         if (missingSamples.length > 0) {

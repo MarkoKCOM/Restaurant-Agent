@@ -61,6 +61,8 @@ export interface MorningSummary {
   summaryDate: string;
   yesterdayDate: string;
   ownerWhatsappConfigured: boolean;
+  ownerRecipientConfigured: boolean;
+  ownerRecipientSource: "ownerWhatsapp" | "ownerPhone" | "whatsappNumber" | "phone" | null;
   ownerRecipientMasked: string | null;
   yesterday: DailySummary;
   today: DailySummary & {
@@ -83,6 +85,44 @@ export interface MorningSummary {
     severity: "info" | "warning" | "critical";
     message: string;
   }>;
+}
+
+export interface OwnerDeliveryContact {
+  recipient: string | null;
+  recipientMasked: string | null;
+  source: MorningSummary["ownerRecipientSource"];
+  ownerWhatsappConfigured: boolean;
+  recipientConfigured: boolean;
+}
+
+function resolveOwnerDeliveryContactFromRestaurant(
+  restaurant: InferSelectModel<typeof restaurants>,
+): OwnerDeliveryContact {
+  const candidates = [
+    { source: "ownerWhatsapp" as const, value: restaurant.ownerWhatsapp },
+    { source: "ownerPhone" as const, value: restaurant.ownerPhone },
+    { source: "whatsappNumber" as const, value: restaurant.whatsappNumber },
+    { source: "phone" as const, value: restaurant.phone },
+  ];
+  const match = candidates.find((candidate) => candidate.value?.trim());
+  return {
+    recipient: match?.value?.trim() ?? null,
+    recipientMasked: maskPhone(match?.value),
+    source: match?.source ?? null,
+    ownerWhatsappConfigured: Boolean(restaurant.ownerWhatsapp?.trim()),
+    recipientConfigured: Boolean(match),
+  };
+}
+
+export async function getOwnerDeliveryContact(restaurantId: string): Promise<OwnerDeliveryContact> {
+  const restaurant = await db.query.restaurants.findFirst({
+    where: eq(restaurants.id, restaurantId),
+  });
+  if (!restaurant) {
+    throw new Error("Restaurant not found");
+  }
+
+  return resolveOwnerDeliveryContactFromRestaurant(restaurant);
 }
 
 export async function getDailySummary(
@@ -279,11 +319,14 @@ export async function getMorningSummary(params: {
     .slice(0, 5);
 
   const alerts: MorningSummary["alerts"] = [];
-  if (!restaurant.ownerWhatsapp) {
+  const ownerContact = resolveOwnerDeliveryContactFromRestaurant(restaurant);
+  if (!ownerContact.ownerWhatsappConfigured) {
     alerts.push({
       code: "OWNER_WHATSAPP_MISSING",
-      severity: "warning",
-      message: "Owner WhatsApp number is not configured.",
+      severity: ownerContact.recipientConfigured ? "info" : "warning",
+      message: ownerContact.recipientConfigured
+        ? `Owner WhatsApp number is not configured; using ${ownerContact.source} fallback.`
+        : "Owner WhatsApp number is not configured.",
     });
   }
   if (yesterday.noShowCount > 0) {
@@ -316,8 +359,10 @@ export async function getMorningSummary(params: {
     generatedAt: new Date().toISOString(),
     summaryDate,
     yesterdayDate,
-    ownerWhatsappConfigured: Boolean(restaurant.ownerWhatsapp),
-    ownerRecipientMasked: maskPhone(restaurant.ownerWhatsapp),
+    ownerWhatsappConfigured: ownerContact.ownerWhatsappConfigured,
+    ownerRecipientConfigured: ownerContact.recipientConfigured,
+    ownerRecipientSource: ownerContact.source,
+    ownerRecipientMasked: ownerContact.recipientMasked,
     yesterday,
     today: {
       ...today,

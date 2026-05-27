@@ -50,12 +50,15 @@ export interface OutboundMessageDiagnostics {
   byErrorCode?: Record<string, number>;
   deliveryReadiness?: {
     ownerWhatsappMissing: number;
+    ownerDeliveryRecipientMissing: number;
+    ownerDeliveryFallbackAvailable: number;
     ownerWhatsappMissingSamples: Array<{
       restaurantId: string;
       slug: string;
       name: string;
       ownerPhoneMasked: string | null;
       whatsappNumberMasked: string | null;
+      phoneMasked: string | null;
     }>;
   };
   samples?: Array<{
@@ -204,7 +207,18 @@ export async function getOutboundMessageDiagnostics(params: {
         name: restaurants.name,
         ownerPhone: restaurants.ownerPhone,
         whatsappNumber: restaurants.whatsappNumber,
+        phone: restaurants.phone,
         missingCount: sql<number>`count(*) over()::int`,
+        recipientMissingCount: sql<number>`count(*) filter (
+          where (${restaurants.ownerPhone} is null or trim(${restaurants.ownerPhone}) = '')
+            and (${restaurants.whatsappNumber} is null or trim(${restaurants.whatsappNumber}) = '')
+            and (${restaurants.phone} is null or trim(${restaurants.phone}) = '')
+        ) over()::int`,
+        fallbackAvailableCount: sql<number>`count(*) filter (
+          where (${restaurants.ownerPhone} is not null and trim(${restaurants.ownerPhone}) <> '')
+            or (${restaurants.whatsappNumber} is not null and trim(${restaurants.whatsappNumber}) <> '')
+            or (${restaurants.phone} is not null and trim(${restaurants.phone}) <> '')
+        ) over()::int`,
       })
       .from(restaurants)
       .where(sql`${restaurants.ownerWhatsapp} is null or trim(${restaurants.ownerWhatsapp}) = ''`)
@@ -234,21 +248,26 @@ export async function getOutboundMessageDiagnostics(params: {
     byErrorCode[row.errorCode] = Number(row.count ?? 0);
   }
   const ownerWhatsappMissing = Number(ownerWhatsappMissingRows[0]?.missingCount ?? 0);
+  const ownerDeliveryRecipientMissing = Number(ownerWhatsappMissingRows[0]?.recipientMissingCount ?? 0);
+  const ownerDeliveryFallbackAvailable = Number(ownerWhatsappMissingRows[0]?.fallbackAvailableCount ?? 0);
 
   return {
-    status: totals.failed > 0 || Object.keys(byErrorCode).length > 0 || ownerWhatsappMissing > 0 ? "attention" : "ok",
+    status: totals.failed > 0 || Object.keys(byErrorCode).length > 0 || ownerDeliveryRecipientMissing > 0 || ownerWhatsappMissing > 0 ? "attention" : "ok",
     since: since.toISOString(),
     totals,
     byType,
     byErrorCode,
     deliveryReadiness: {
       ownerWhatsappMissing,
+      ownerDeliveryRecipientMissing,
+      ownerDeliveryFallbackAvailable,
       ownerWhatsappMissingSamples: ownerWhatsappMissingRows.map((row) => ({
         restaurantId: row.restaurantId,
         slug: row.slug,
         name: row.name,
         ownerPhoneMasked: maskRecipient(row.ownerPhone),
         whatsappNumberMasked: maskRecipient(row.whatsappNumber),
+        phoneMasked: maskRecipient(row.phone),
       })),
     },
     samples: sampleRows.map((row) => ({

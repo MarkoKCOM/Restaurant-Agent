@@ -132,7 +132,7 @@ const smokePath = await writeJson("smoke.json", {
     { step: "campaign.delivery-events", delivered: 1, read: 1, replied: 1, hasDeliveredAt: true, hasReadAt: true, hasRepliedAt: true },
     { step: "campaign.opt-out-keyword", optedOut: true, llmRounds: 0, deterministicAction: "campaign_opt_out", tool: "set_membership_messaging_opt_out", deliverySent: 0, deliverySkippedOptOut: 2 },
     { step: "analytics.growth-summary", reservationBookings: 12, reservationCovers: 34, reservationSlots: 5, cancellationRate: 0.1, noShowRate: 0.05, retentionUniqueGuests: 4, retentionWindows: [30, 60, 90], activeMembers: 9, pointsIssued: 120, tierBronze: 7, clvGuests: 9, clvRevenue: 4500, clvAverage: 500, clvTierCount: 3, clvTopGuests: 5, campaigns: 3, campaignSent: 2, hasCampaignRoi: true },
-    { step: "analytics.daily-morning-summary", date: "2026-05-27", yesterdayCovers: 18, todayBookings: 7, todayCovers: 22, notableGuestCount: 3, alertCount: 1, hasMessage: true },
+    { step: "analytics.daily-morning-summary", date: "2026-05-27", yesterdayCovers: 18, todayBookings: 7, todayCovers: 22, notableGuestCount: 3, alertCount: 1, ownerRecipientConfigured: true, ownerRecipientSource: "phone", hasMessage: true },
     { step: "outbound.daily-morning-summary-log", outboundMessageId: "outbound-test-1", status: "logged", messageType: "daily_morning_summary", listed: true, recipientMasked: "050****12" },
   ],
   requests: [
@@ -203,7 +203,7 @@ assertIncludes(smokeOutput, "campaign.delivery: firstSent=1 firstOptOut=1 second
 assertIncludes(smokeOutput, "campaign.delivery-events: delivered=1 read=1 replied=1 deliveredAt=yes readAt=yes repliedAt=yes");
 assertIncludes(smokeOutput, "campaign.opt-out-keyword: optedOut=yes llmRounds=0 action=campaign_opt_out tool=set_membership_messaging_opt_out sent=0 skippedOptOut=2");
 assertIncludes(smokeOutput, "analytics.growth-summary: bookings=12 covers=34 slots=5 cancelRate=0.1 noShowRate=0.05 retentionGuests=4 windows=30,60,90 members=9 pointsIssued=120 bronze=7 clvGuests=9 clvRevenue=4500 clvAvg=500 clvTiers=3 clvTop=5 campaigns=3 sent=2 roi=yes");
-assertIncludes(smokeOutput, "analytics.daily-morning-summary: date=2026-05-27 yesterdayCovers=18 todayBookings=7 todayCovers=22 notable=3 alerts=1 message=yes");
+assertIncludes(smokeOutput, "analytics.daily-morning-summary: date=2026-05-27 yesterdayCovers=18 todayBookings=7 todayCovers=22 notable=3 alerts=1 message=yes ownerRecipient=yes source=phone");
 assertIncludes(smokeOutput, "outbound.daily-morning-summary-log: id=outbound-test-1 status=logged type=daily_morning_summary listed=yes recipient=050****12");
 assertIncludes(smokeOutput, "Unhandled HTTP failures: 1");
 assertIncludes(smokeOutput, "POST /api/v1/reservations -> 500 code=INTERNAL_ERROR requestId=smoke-test-2");
@@ -575,6 +575,9 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
         restaurants: 9,
         ownerWhatsappConfigured: 7,
         ownerWhatsappMissing: 2,
+        ownerDeliveryRecipientConfigured: 8,
+        ownerDeliveryRecipientMissing: 1,
+        ownerDeliveryFallbackAvailable: 1,
       },
       missingSamples: [
         {
@@ -608,6 +611,7 @@ assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overd
 assertIncludes(debugBundleManifestOutput, "Campaigns: attention total=6 draft=1 scheduled=2 sent=3 overdue=1 deliverySent=12 skipped=4 optedOut=2 weekLimit=1 monthLimit=1");
 assertIncludes(debugBundleManifestOutput, "Outbound messages: attention total=5 logged=4 sent=0 skipped=0 failed=1 ownerWhatsappMissing=2 types=daily_morning_summary:2,thank_you:3 errors=OUTBOUND_RECIPIENT_MISSING:1");
 assertIncludes(debugBundleManifestOutput, "Owner delivery readiness: ok total=9 configured=7 missing=2 output=/tmp/openseat-debug-bundle/owner-delivery-readiness.json");
+assertIncludes(debugBundleManifestOutput, "Owner delivery recipients: configured=8 missing=1 fallbackAvailable=1");
 assertIncludes(debugBundleManifestOutput, "Owner delivery repair samples:");
 assertIncludes(debugBundleManifestOutput, "- restaurant-1 slug=bff repair=METHOD=PATCH BODY='{\"ownerWhatsapp\":\"<owner-whatsapp-number>\"}' OPENSEAT_TOKEN=... pnpm debug:api -- http://localhost:3001/api/v1/restaurants/restaurant-1");
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");
@@ -941,6 +945,9 @@ for (const requiredOwnerDeliveryContent of [
   "/api/v1/admin/restaurants",
   "ownerWhatsappConfigured",
   "ownerWhatsappMissing",
+  "ownerDeliveryRecipientConfigured",
+  "ownerDeliveryRecipientMissing",
+  "ownerDeliveryFallbackAvailable",
   "owner-delivery-readiness",
   "OPENSEAT_OWNER_DELIVERY_ARTIFACT_PATH",
   "missingRestaurants",
@@ -961,6 +968,8 @@ for (const requiredOutboundServiceContent of [
   "byErrorCode",
   "deliveryReadiness",
   "ownerWhatsappMissing",
+  "ownerDeliveryRecipientMissing",
+  "ownerDeliveryFallbackAvailable",
   "ownerWhatsappMissingSamples",
   "deliveryMode",
   "deliverySkipped",
@@ -971,8 +980,12 @@ for (const requiredOutboundServiceContent of [
 }
 
 for (const requiredSummaryServiceContent of [
-  "ownerWhatsappConfigured: Boolean(restaurant.ownerWhatsapp)",
-  "ownerRecipientMasked: maskPhone(restaurant.ownerWhatsapp)",
+  "ownerRecipientConfigured",
+  "ownerRecipientSource",
+  "ownerWhatsappConfigured: Boolean(restaurant.ownerWhatsapp?.trim())",
+  "recipientMasked: maskPhone(match?.value)",
+  "resolveOwnerDeliveryContactFromRestaurant",
+  "getOwnerDeliveryContact",
   "OWNER_WHATSAPP_MISSING",
 ]) {
   assertIncludes(summaryService, requiredSummaryServiceContent);

@@ -1593,6 +1593,8 @@ async function main() {
     notableGuestCount: morningSummary.summary?.notableGuests?.length ?? null,
     alertCount: morningSummary.summary?.alerts?.length ?? null,
     ownerWhatsappConfigured: morningSummary.summary?.ownerWhatsappConfigured ?? null,
+    ownerRecipientConfigured: morningSummary.summary?.ownerRecipientConfigured ?? null,
+    ownerRecipientSource: morningSummary.summary?.ownerRecipientSource ?? null,
     hasMessage: typeof morningSummary.message === "string" && morningSummary.message.includes(reservationDate),
   });
   if (
@@ -1624,7 +1626,7 @@ async function main() {
     recipientMasked: loggedMorningSummary.outboundMessage?.recipientMasked ?? null,
     errorCode: loggedMorningSummary.outboundMessage?.errorCode ?? null,
   });
-  const expectedMorningOutboundStatus = loggedMorningSummary.summary?.ownerWhatsappConfigured === false ? "skipped" : "logged";
+  const expectedMorningOutboundStatus = loggedMorningSummary.summary?.ownerRecipientConfigured === false ? "skipped" : "logged";
   if (
     !loggedMorningSummary.outboundMessage?.id
     || loggedMorningSummary.outboundMessage.status !== expectedMorningOutboundStatus

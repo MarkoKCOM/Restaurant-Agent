@@ -177,6 +177,14 @@ When a reservation is completed, OpenSeat runs several post-visit membership sta
 If one stage fails, the reservation completion still returns, but the failed stage is persisted for repair:
 
 ```bash
+OPENSEAT_TOKEN=... \
+OPENSEAT_RESTAURANT_ID=... \
+pnpm debug:membership
+```
+
+This prints open processing failures by stage/status, recent engagement-job counts, skipped engagement reasons, request IDs for both API reads, and ready-to-run retry commands for repairable membership processing failures.
+
+```bash
 OPENSEAT_TOKEN=... pnpm debug:api -- \
   'http://localhost:3001/api/v1/loyalty/processing-failures?restaurantId=...&status=open'
 ```

@@ -136,6 +136,18 @@ assertIncludes(failedProbe.stdout, '"requestId": "debug-fetch-failed-test"');
 assertIncludes(failedProbe.stdout, '"error"');
 assertIncludes(failedProbe.stdout, '"cause"');
 
+const missingMembershipDebugEnv = await expectCommandFailure("node", [
+  "scripts/membership-debug-summary.mjs",
+], {
+  env: {
+    ...process.env,
+    OPENSEAT_TOKEN: "",
+    OPENSEAT_RESTAURANT_ID: "",
+  },
+});
+assertIncludes(missingMembershipDebugEnv.stderr, "Missing OPENSEAT_TOKEN or OPENSEAT_RESTAURANT_ID");
+assertIncludes(missingMembershipDebugEnv.stderr, "pnpm debug:membership");
+
 const agentIntentPath = await writeJson("agent-intents.json", {
   type: "agent-membership-intent",
   status: "failed",
@@ -472,7 +484,24 @@ for (const [changedPath, expected] of [
 
 const debugBundleCollector = await readFile("scripts/collect-debug-bundle.mjs", "utf8");
 const apiLogTrace = await readFile("scripts/api-log-trace.mjs", "utf8");
+const membershipDebugSummary = await readFile("scripts/membership-debug-summary.mjs", "utf8");
 const debugErrorHelpers = await readFile("scripts/lib/debug-errors.mjs", "utf8");
+const rootPackageJson = await readFile("package.json", "utf8");
+assertIncludes(rootPackageJson, '"debug:membership": "node scripts/membership-debug-summary.mjs"');
+
+for (const requiredMembershipDebugContent of [
+  "Membership Debug Summary",
+  "Processing failures by stage:",
+  "Engagement jobs by status:",
+  "failuresRequestId=",
+  "engagementRequestId=",
+  "pnpm debug:logs",
+  "/api/v1/loyalty/processing-failures/",
+  "/api/v1/engagement/jobs",
+]) {
+  assertIncludes(membershipDebugSummary, requiredMembershipDebugContent);
+}
+
 for (const requiredLogTraceContent of [
   "parseJsonFromLine",
   "summarizeEvent",

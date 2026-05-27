@@ -67,7 +67,21 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
       });
 
       if (!res.ok) {
-        const providerBody = await res.text();
+        let providerBody = "";
+        try {
+          providerBody = await res.text();
+        } catch (bodyError: unknown) {
+          request.log.warn(
+            {
+              err: bodyError,
+              requestId: request.id,
+              providerStatus: res.status,
+              model: env.CHAT_MODEL,
+              elapsedMs: Date.now() - startedAt,
+            },
+            "Dashboard chat provider error body read failed",
+          );
+        }
         request.log.warn(
           {
             requestId: request.id,
@@ -85,8 +99,46 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
-      const text = data.choices?.[0]?.message?.content ?? "Sorry, I couldn't generate a response.";
+      let data: { choices?: Array<{ message?: { content?: string } }> };
+      try {
+        data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+      } catch (parseError: unknown) {
+        request.log.warn(
+          {
+            err: parseError,
+            requestId: request.id,
+            providerStatus: res.status,
+            model: env.CHAT_MODEL,
+            elapsedMs: Date.now() - startedAt,
+          },
+          "Dashboard chat provider response parse failed",
+        );
+        return reply.status(502).send({
+          error: "AI service returned an invalid response",
+          code: "CHAT_PROVIDER_RESPONSE_INVALID",
+          requestId: request.id,
+        });
+      }
+
+      const text = data.choices?.[0]?.message?.content;
+      if (!text) {
+        request.log.warn(
+          {
+            requestId: request.id,
+            providerStatus: res.status,
+            model: env.CHAT_MODEL,
+            elapsedMs: Date.now() - startedAt,
+            choiceCount: data.choices?.length ?? 0,
+          },
+          "Dashboard chat provider response missing content",
+        );
+        return reply.status(502).send({
+          error: "AI service returned an empty response",
+          code: "CHAT_PROVIDER_RESPONSE_EMPTY",
+          requestId: request.id,
+        });
+      }
+
       request.log.info(
         {
           requestId: request.id,

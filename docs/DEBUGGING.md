@@ -388,6 +388,8 @@ Dashboard chat provider failures return a stable code and request ID:
 
 - `CHAT_NOT_CONFIGURED`
 - `CHAT_PROVIDER_ERROR`
+- `CHAT_PROVIDER_RESPONSE_INVALID`
+- `CHAT_PROVIDER_RESPONSE_EMPTY`
 - `CHAT_PROVIDER_TIMEOUT`
 - `CHAT_INTERNAL_ERROR`
 

@@ -905,6 +905,18 @@ for (const expectedDashboardChatContent of [
   assertIncludes(dashboardChatWidget, expectedDashboardChatContent);
 }
 
+const chatRoutes = await readFile("apps/api/src/routes/chat.ts", "utf8");
+for (const requiredChatRouteContent of [
+  "CHAT_PROVIDER_RESPONSE_INVALID",
+  "CHAT_PROVIDER_RESPONSE_EMPTY",
+  "Dashboard chat provider response parse failed",
+  "Dashboard chat provider response missing content",
+  "providerStatus: res.status",
+  "elapsedMs: Date.now() - startedAt",
+]) {
+  assertIncludes(chatRoutes, requiredChatRouteContent);
+}
+
 const deployWorkflow = await readFile(".github/workflows/deploy.yml", "utf8");
 const debuggingGuide = await readFile("docs/DEBUGGING.md", "utf8");
 for (const requiredDebuggingGuideContent of [

@@ -1018,6 +1018,7 @@ const guestRoutes = await readFile("apps/api/src/routes/guests.ts", "utf8");
 const waitlistRoutes = await readFile("apps/api/src/routes/waitlist.ts", "utf8");
 const tableRoutes = await readFile("apps/api/src/routes/tables.ts", "utf8");
 const engagementService = await readFile("apps/api/src/services/engagement.service.ts", "utf8");
+const feedbackService = await readFile("apps/api/src/services/feedback.service.ts", "utf8");
 const challengeService = await readFile("apps/api/src/services/challenge.service.ts", "utf8");
 const loyaltyRoutes = await readFile("apps/api/src/routes/loyalty.ts", "utf8");
 const gamificationRoutes = await readFile("apps/api/src/routes/gamification.ts", "utf8");
@@ -1366,6 +1367,20 @@ for (const requiredVisitRouteContent of [
   "Auto-tag after feedback failed",
 ]) {
   assertIncludes(visitsRoutes, requiredVisitRouteContent);
+}
+
+for (const requiredFeedbackServiceContent of [
+  "sentimentLlmLogContext",
+  "FEEDBACK_SENTIMENT_LLM_FALLBACK",
+  "provider_error",
+  "invalid_provider_json",
+  "missing_content",
+  "invalid_content_json",
+  "invalid_sentiment",
+  "request_failed",
+  "feedbackLength",
+]) {
+  assertIncludes(feedbackService, requiredFeedbackServiceContent);
 }
 
 for (const requiredAgentRouteContent of [

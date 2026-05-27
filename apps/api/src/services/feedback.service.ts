@@ -77,6 +77,20 @@ const POSITIVE_FEEDBACK_PATTERNS = [
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const SENTIMENT_LLM_TIMEOUT_MS = 8_000;
 
+function sentimentLlmLogContext(params: {
+  rating: number;
+  ratingSentiment: "positive" | "neutral" | "negative";
+  feedback: string;
+}) {
+  return {
+    code: "FEEDBACK_SENTIMENT_LLM_FALLBACK",
+    model: env.SENTIMENT_MODEL,
+    rating: params.rating,
+    ratingSentiment: params.ratingSentiment,
+    feedbackLength: params.feedback.length,
+  };
+}
+
 function getRatingSentiment(rating: number): "positive" | "neutral" | "negative" {
   if (rating >= 4) return "positive";
   if (rating <= 2) return "negative";
@@ -132,17 +146,74 @@ async function analyzeAmbiguousFeedbackWithLlm(params: {
     });
 
     if (!res.ok) {
-      params.logger?.warn({ status: res.status, statusText: res.statusText }, "Feedback sentiment LLM request failed");
+      params.logger?.warn(
+        {
+          ...sentimentLlmLogContext(params),
+          reason: "provider_error",
+          providerStatus: res.status,
+          providerStatusText: res.statusText,
+        },
+        "Feedback sentiment LLM request failed",
+      );
       return null;
     }
 
-    const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) return null;
+    let data: { choices?: Array<{ message?: { content?: string } }> };
+    try {
+      data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+    } catch (error: unknown) {
+      params.logger?.warn(
+        {
+          ...sentimentLlmLogContext(params),
+          err: error,
+          reason: "invalid_provider_json",
+        },
+        "Feedback sentiment LLM response parse failed",
+      );
+      return null;
+    }
 
-    const parsed = JSON.parse(content) as Partial<FeedbackSentimentAnalysis>;
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) {
+      params.logger?.warn(
+        {
+          ...sentimentLlmLogContext(params),
+          reason: "missing_content",
+          choiceCount: data.choices?.length ?? 0,
+        },
+        "Feedback sentiment LLM response missing content",
+      );
+      return null;
+    }
+
+    let parsed: Partial<FeedbackSentimentAnalysis>;
+    try {
+      parsed = JSON.parse(content) as Partial<FeedbackSentimentAnalysis>;
+    } catch (error: unknown) {
+      params.logger?.warn(
+        {
+          ...sentimentLlmLogContext(params),
+          err: error,
+          reason: "invalid_content_json",
+          contentLength: content.length,
+        },
+        "Feedback sentiment LLM content parse failed",
+      );
+      return null;
+    }
+
     const sentiment = parsed.sentiment;
-    if (sentiment !== "positive" && sentiment !== "neutral" && sentiment !== "negative") return null;
+    if (sentiment !== "positive" && sentiment !== "neutral" && sentiment !== "negative") {
+      params.logger?.warn(
+        {
+          ...sentimentLlmLogContext(params),
+          reason: "invalid_sentiment",
+          sentiment,
+        },
+        "Feedback sentiment LLM returned invalid sentiment",
+      );
+      return null;
+    }
 
     return {
       sentiment,
@@ -153,7 +224,14 @@ async function analyzeAmbiguousFeedbackWithLlm(params: {
       ratingSentiment: params.ratingSentiment,
     };
   } catch (error: unknown) {
-    params.logger?.warn({ err: error }, "Feedback sentiment LLM analysis failed");
+    params.logger?.warn(
+      {
+        ...sentimentLlmLogContext(params),
+        err: error,
+        reason: error instanceof Error && error.name === "AbortError" ? "timeout" : "request_failed",
+      },
+      "Feedback sentiment LLM analysis failed",
+    );
     return null;
   } finally {
     clearTimeout(timeout);

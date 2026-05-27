@@ -107,6 +107,7 @@
 - Debug artifact summaries now parse campaign queue diagnostics and surface skipped campaign reasons plus overdue campaign sample counts in the top-level bundle summary.
 - Engagement list endpoints now wrap outbound-message and engagement-job read failures with stable error codes plus request IDs, so retention dashboard/debug reads can be traced directly in logs.
 - Visit and feedback routes now log persistence/read failures at error level with stable codes for visit history, insights, and feedback summaries, preserving request IDs on paths that feed loyalty/gamification state.
+- Feedback sentiment LLM fallback logs now include a stable code, safe failure reason, model, rating sentiment, and feedback length so review-routing regressions can be diagnosed without exposing guest text.
 - Guest CRM routes now wrap list, lookup, reservation history, profile, sentiment, auto-tag, preference, and update failures with guest-specific 500 codes and request IDs so hospitality and retention profile bugs point straight at the failing read/write.
 - Waitlist routes now wrap add, list, lookup, offer, accept, and cancel failures with stable waitlist-specific 500 codes and restaurant/waitlist context for faster reservation overflow triage.
 - Table routes now wrap list, create, lookup, update, and deactivate failures with stable table-specific 500 codes and table/restaurant context, tightening floor-plan and availability debugging.

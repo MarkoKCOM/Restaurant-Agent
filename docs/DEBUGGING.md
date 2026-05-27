@@ -412,3 +412,5 @@ journalctl -u openseat-api --since "30 minutes ago" | rg 'Auto-tag after|Feedbac
 ```
 
 Feedback logs include structured `restaurantId`, `guestId`, optional `reservationId`, rating, sentiment, sentiment source, confidence, rating-derived sentiment, matching positive/negative text signals, and channel fields. Clear complaint language such as cold food, long waits, rude service, or refund requests overrides a high star rating and routes privately to service recovery. Ambiguous neutral feedback can use the configured `SENTIMENT_MODEL` through OpenRouter, then falls back to rating sentiment if the model is unavailable.
+
+When ambiguous feedback sentiment falls back from the LLM, logs include `FEEDBACK_SENTIMENT_LLM_FALLBACK` with a safe reason such as `provider_error`, `invalid_provider_json`, `missing_content`, `invalid_content_json`, `invalid_sentiment`, `timeout`, or `request_failed`, plus model, rating, rating sentiment, and feedback length.

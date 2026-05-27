@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { sanitizeConnectionError } from "./lib/debug-errors.mjs";
 
 const positionalArgs = process.argv.slice(2).filter((arg) => arg !== "--");
 const targetUrl = positionalArgs[0] ?? `${process.env.OPENSEAT_API_URL ?? "http://localhost:3001"}/api/v1/health`;
@@ -10,28 +11,6 @@ const requestId = process.env.REQUEST_ID ?? `debug-${Date.now()}`;
 const expectedStatus = process.env.EXPECT_STATUS ? Number(process.env.EXPECT_STATUS) : undefined;
 const expectedCode = process.env.EXPECT_CODE;
 const expectedRequestId = process.env.EXPECT_REQUEST_ID ?? process.env.REQUEST_ID;
-
-function errorField(error, field) {
-  return error && typeof error === "object" && field in error ? error[field] : undefined;
-}
-
-function sanitizeConnectionCause(cause) {
-  if (!cause || typeof cause !== "object") return undefined;
-
-  const causes = Array.isArray(cause.errors)
-    ? cause.errors.map((nested) => sanitizeConnectionCause(nested))
-    : undefined;
-
-  return {
-    name: errorField(cause, "name"),
-    message: errorField(cause, "message"),
-    code: errorField(cause, "code"),
-    syscall: errorField(cause, "syscall"),
-    address: errorField(cause, "address"),
-    port: errorField(cause, "port"),
-    errors: causes?.filter(Boolean),
-  };
-}
 
 const headers = {
   "x-request-id": requestId,
@@ -59,7 +38,6 @@ try {
   });
 } catch (error) {
   const elapsedMs = Date.now() - startedAt;
-  const cause = sanitizeConnectionCause(errorField(error, "cause"));
   console.log(JSON.stringify({
     url: targetUrl,
     method,
@@ -68,11 +46,7 @@ try {
     elapsedMs,
     requestId,
     contentType: "",
-    error: {
-      name: error instanceof Error ? error.name : "UnknownError",
-      message: error instanceof Error ? error.message : String(error),
-      cause,
-    },
+    error: sanitizeConnectionError(error),
   }, null, 2));
   process.exitCode = 1;
   process.exit();

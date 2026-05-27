@@ -186,6 +186,7 @@ assertIncludes(agentIntentFetchFailureOutput, "fetch failed code=ECONNREFUSED re
 
 const agentIntentScript = await readFile("scripts/agent-membership-intent-smoke.mjs", "utf8");
 for (const expectedProbe of [
+  "sanitizeConnectionError",
   "כמה נקודות יש לי במועדון?",
   "Do I have any reward I can claim?",
   "אפשר קוד חבר מביא חבר?",
@@ -252,6 +253,14 @@ for (const changedPath of [
 }
 
 const debugBundleCollector = await readFile("scripts/collect-debug-bundle.mjs", "utf8");
+const debugErrorHelpers = await readFile("scripts/lib/debug-errors.mjs", "utf8");
+for (const expectedHelper of [
+  "sanitizeConnectionError",
+  "sanitizeConnectionCause",
+]) {
+  assertIncludes(debugErrorHelpers, expectedHelper);
+}
+
 for (const requiredReadmeContent of [
   "# OpenSeat Debug Bundle",
   "Readiness:",

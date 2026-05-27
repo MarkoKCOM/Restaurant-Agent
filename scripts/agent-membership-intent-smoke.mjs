@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { sanitizeConnectionError } from "./lib/debug-errors.mjs";
 
 const apiUrl = (process.env.OPENSEAT_API_URL || "http://127.0.0.1:3001").replace(/\/$/, "");
 const artifactPath = process.env.OPENSEAT_AGENT_INTENT_ARTIFACT_PATH;
@@ -35,28 +36,6 @@ const cases = [
   },
 ];
 
-function errorField(error, field) {
-  return error && typeof error === "object" && field in error ? error[field] : undefined;
-}
-
-function sanitizeConnectionCause(cause) {
-  if (!cause || typeof cause !== "object") return undefined;
-
-  const causes = Array.isArray(cause.errors)
-    ? cause.errors.map((nested) => sanitizeConnectionCause(nested))
-    : undefined;
-
-  return {
-    name: errorField(cause, "name"),
-    message: errorField(cause, "message"),
-    code: errorField(cause, "code"),
-    syscall: errorField(cause, "syscall"),
-    address: errorField(cause, "address"),
-    port: errorField(cause, "port"),
-    errors: causes?.filter(Boolean),
-  };
-}
-
 async function probe(testCase, index) {
   const startedAt = Date.now();
   const requestId = `${runId}-${index + 1}`;
@@ -84,11 +63,7 @@ async function probe(testCase, index) {
         language: testCase.language,
       },
       observed: null,
-      error: {
-        name: error instanceof Error ? error.name : "UnknownError",
-        message: error instanceof Error ? error.message : String(error),
-        cause: sanitizeConnectionCause(errorField(error, "cause")),
-      },
+      error: sanitizeConnectionError(error),
       mismatches: ["fetch failed"],
     };
   }

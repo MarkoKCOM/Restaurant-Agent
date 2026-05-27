@@ -471,7 +471,21 @@ for (const [changedPath, expected] of [
 }
 
 const debugBundleCollector = await readFile("scripts/collect-debug-bundle.mjs", "utf8");
+const apiLogTrace = await readFile("scripts/api-log-trace.mjs", "utf8");
 const debugErrorHelpers = await readFile("scripts/lib/debug-errors.mjs", "utf8");
+for (const requiredLogTraceContent of [
+  "parseJsonFromLine",
+  "summarizeEvent",
+  "Events:",
+  "event.req?.method",
+  "event.res?.statusCode",
+  "status=${statusCode}",
+  "code=${event.code}",
+  "restaurant=${event.restaurantId}",
+]) {
+  assertIncludes(apiLogTrace, requiredLogTraceContent);
+}
+
 for (const expectedHelper of [
   "sanitizeConnectionError",
   "sanitizeConnectionCause",

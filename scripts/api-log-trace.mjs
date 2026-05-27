@@ -25,6 +25,50 @@ const service = readOption("service", "openseat-api");
 const since = readOption("since", "2 hours ago");
 const context = Number(readOption("context", "2"));
 
+function parseJsonFromLine(line) {
+  const firstBrace = line.indexOf("{");
+  if (firstBrace < 0) return null;
+
+  for (let index = firstBrace; index >= 0 && index < line.length; index = line.indexOf("{", index + 1)) {
+    if (index < 0) return null;
+    try {
+      return JSON.parse(line.slice(index));
+    } catch {
+      // Keep scanning; short journal output may contain non-JSON prefixes.
+    }
+  }
+
+  return null;
+}
+
+function levelName(level) {
+  if (level >= 60) return "fatal";
+  if (level >= 50) return "error";
+  if (level >= 40) return "warn";
+  if (level >= 30) return "info";
+  if (level >= 20) return "debug";
+  if (level >= 10) return "trace";
+  return String(level ?? "unknown");
+}
+
+function summarizeEvent(event) {
+  const method = event.method ?? event.req?.method;
+  const url = event.url ?? event.req?.url;
+  const statusCode = event.statusCode ?? event.res?.statusCode;
+  const parts = [
+    levelName(event.level),
+    event.msg,
+    method,
+    url,
+    statusCode ? `status=${statusCode}` : undefined,
+    event.code ? `code=${event.code}` : undefined,
+    event.userId ? `user=${event.userId}` : undefined,
+    event.restaurantId ? `restaurant=${event.restaurantId}` : undefined,
+  ].filter(Boolean);
+
+  return parts.join(" ");
+}
+
 const journalArgs = [
   "-u",
   service,
@@ -79,6 +123,16 @@ child.on("close", (code) => {
   if (matchIndexes.length === 0) {
     console.error(`No log lines found for requestId=${requestId}`);
     process.exit(1);
+  }
+
+  const matchedEvents = matchIndexes
+    .map((index) => parseJsonFromLine(lines[index]))
+    .filter(Boolean);
+  if (matchedEvents.length > 0) {
+    console.log("Events:");
+    for (const event of matchedEvents) {
+      console.log(`- ${summarizeEvent(event)}`);
+    }
   }
 
   const printed = new Set();

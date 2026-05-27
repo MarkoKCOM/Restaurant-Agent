@@ -32,7 +32,7 @@ Or use the request-id tracer on the VPS:
 pnpm debug:logs 018f --since "30 minutes ago"
 ```
 
-Optional flags are `--service openseat-api` and `--context 2`. The script prints a small JSON header with match counts, then the matching journal lines with nearby context.
+Optional flags are `--service openseat-api` and `--context 2`. The script prints a small JSON header with match counts, a compact event summary when it can parse structured API logs, then the matching journal lines with nearby context.
 
 For local development, failed dashboard API requests are logged to the browser console with:
 

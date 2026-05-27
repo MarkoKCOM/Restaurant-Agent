@@ -450,6 +450,7 @@ async function summarizeDebugBundleManifest(report) {
   const outboundByErrorCode = outboundMessages.byErrorCode ?? {};
   const outboundDeliveryReadiness = outboundMessages.deliveryReadiness ?? {};
   const agentMembershipIntents = highlights.agentMembershipIntents ?? {};
+  const defaultRestaurantSelector = highlights.defaultRestaurantSelector ?? {};
   const queues = asArray(adminDiagnostics.queues);
   const summaryScheduleHealth = formatSummaryScheduleHealthFromDiagnostics(queues)
     ?? await parseSummaryScheduleHealth(commands);
@@ -528,6 +529,16 @@ async function summarizeDebugBundleManifest(report) {
       "Agent membership intents",
       `${agentMembershipIntents.status} ${agentMembershipIntents.passed ?? "?"}/${agentMembershipIntents.total ?? "?"}`,
     );
+  }
+  if (defaultRestaurantSelector.status === "resolved") {
+    const slug = defaultRestaurantSelector.restaurantSlug ? ` slug=${defaultRestaurantSelector.restaurantSlug}` : "";
+    const name = defaultRestaurantSelector.restaurantName ? ` name=${JSON.stringify(defaultRestaurantSelector.restaurantName)}` : "";
+    printLine(
+      "Default restaurant selector",
+      `${defaultRestaurantSelector.restaurantId ?? "?"}${slug}${name} source=${defaultRestaurantSelector.source ?? "unknown"}`,
+    );
+  } else if (defaultRestaurantSelector.status === "unresolved") {
+    printLine("Default restaurant selector", `unresolved reason=${defaultRestaurantSelector.reason ?? "unknown"}`);
   }
   if (queues.length > 0) {
     printLine("Queues", queues.map((queue) => `${queue.name}:${queue.status}/failed=${queue.failed ?? "?"}/repeat=${queue.repeatableJobs?.length ?? "?"}`).join(", "));

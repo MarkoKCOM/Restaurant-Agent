@@ -252,6 +252,38 @@ async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
 }
 
+async function getJson(url, token, requestId) {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        authorization: `Bearer ${token}`,
+        "x-request-id": requestId,
+      },
+    });
+    const text = await response.text();
+    let body = null;
+    try {
+      body = text ? JSON.parse(text) : null;
+    } catch {
+      body = text;
+    }
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      requestId: response.headers.get("x-request-id") ?? requestId,
+      body,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: null,
+      requestId,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 function formatQueueScheduleHealth(queues, queueName, labels = {}) {
   const queue = queues.find((item) => item.name === queueName && isObject(item.scheduleHealth));
   const health = queue?.scheduleHealth;
@@ -305,6 +337,110 @@ function operationalAttentionLabels(adminDiagnostics) {
     if (queue.scheduleHealth?.status === "attention") labels.push(`${queue.name} schedule`);
   }
   return labels;
+}
+
+function restaurantSelectorFromDiagnostics() {
+  const diagnostics = manifest.highlights.adminDiagnostics;
+  if (!isObject(diagnostics)) return null;
+
+  const outboundMessages = isObject(diagnostics.outboundMessages) ? diagnostics.outboundMessages : {};
+  const deliveryReadiness = isObject(outboundMessages.deliveryReadiness)
+    ? outboundMessages.deliveryReadiness
+    : {};
+  const ownerMissingSample = asArray(deliveryReadiness.ownerWhatsappMissingSamples)
+    .find((sample) => isObject(sample) && sample.restaurantId);
+  if (ownerMissingSample) {
+    return {
+      restaurantId: ownerMissingSample.restaurantId,
+      restaurantSlug: ownerMissingSample.slug ?? "",
+      restaurantName: ownerMissingSample.name ?? "",
+      source: "admin-diagnostics ownerWhatsappMissing sample",
+    };
+  }
+
+  const outboundSample = asArray(outboundMessages.samples)
+    .find((sample) => isObject(sample) && sample.restaurantId);
+  if (outboundSample) {
+    return {
+      restaurantId: outboundSample.restaurantId,
+      restaurantSlug: "",
+      restaurantName: "",
+      source: "admin-diagnostics outbound sample",
+    };
+  }
+
+  const membership = isObject(diagnostics.membershipProcessing) ? diagnostics.membershipProcessing : {};
+  const membershipSample = asArray(membership.openSamples)
+    .find((sample) => isObject(sample) && sample.restaurantId);
+  if (membershipSample) {
+    return {
+      restaurantId: membershipSample.restaurantId,
+      restaurantSlug: "",
+      restaurantName: "",
+      source: "admin-diagnostics membership sample",
+    };
+  }
+
+  const engagement = isObject(diagnostics.engagement) ? diagnostics.engagement : {};
+  const engagementSample = asArray(engagement.recentAttentionSamples)
+    .find((sample) => isObject(sample) && sample.restaurantId);
+  if (engagementSample) {
+    return {
+      restaurantId: engagementSample.restaurantId,
+      restaurantSlug: "",
+      restaurantName: "",
+      source: "admin-diagnostics engagement sample",
+    };
+  }
+
+  return null;
+}
+
+async function resolveBundleRestaurantSelector(token) {
+  const diagnosticsSelector = restaurantSelectorFromDiagnostics();
+  if (diagnosticsSelector) return diagnosticsSelector;
+
+  const result = await getJson(
+    new URL(`${apiUrl}/api/v1/admin/restaurants`),
+    token,
+    `debug-bundle-restaurant-selector-${Date.now()}`,
+  );
+  if (!result.ok) {
+    return {
+      restaurantId: "",
+      restaurantSlug: "",
+      restaurantName: "",
+      source: "",
+      reason: `default restaurant lookup failed with HTTP ${result.status ?? "network"} requestId=${result.requestId}`,
+    };
+  }
+
+  const restaurants = Array.isArray(result.body) ? result.body : [];
+  const restaurant = restaurants.find((row) => isObject(row) && row.id);
+  if (!restaurant) {
+    return {
+      restaurantId: "",
+      restaurantSlug: "",
+      restaurantName: "",
+      source: "",
+      reason: `default restaurant lookup returned no restaurants requestId=${result.requestId}`,
+    };
+  }
+
+  return {
+    restaurantId: restaurant.id,
+    restaurantSlug: restaurant.slug ?? "",
+    restaurantName: restaurant.name ?? "",
+    source: `admin/restaurants first result requestId=${result.requestId}`,
+  };
+}
+
+function formatRestaurantSelector(selector) {
+  if (!isObject(selector) || (!selector.restaurantId && !selector.restaurantSlug)) return "";
+  const id = selector.restaurantId ? `restaurant=${selector.restaurantId}` : "restaurant=slug-only";
+  const slug = selector.restaurantSlug ? ` slug=${selector.restaurantSlug}` : "";
+  const name = selector.restaurantName ? ` name=${JSON.stringify(selector.restaurantName)}` : "";
+  return `${id}${slug}${name} source=${selector.source ?? "unknown"}`;
 }
 
 async function captureAgentIntentHighlights(artifactPath) {
@@ -483,7 +619,12 @@ async function writeReadme() {
 
   for (const command of manifest.commands) {
     const file = command.outputPath ? command.outputPath.replace(`${outDir}/`, "") : "";
-    const notes = command.reason ?? command.tokenSource ?? (command.exitCode !== undefined ? `exit ${command.exitCode}` : "");
+    const notes = [
+      command.reason,
+      command.tokenSource,
+      command.restaurantSelector,
+      command.exitCode !== undefined ? `exit ${command.exitCode}` : "",
+    ].filter(Boolean).join("; ");
     lines.push(`| ${command.name} | ${command.status} | ${file} | ${notes} |`);
   }
 
@@ -558,6 +699,16 @@ async function writeReadme() {
         lines.push(
           `- Agent membership intents: ${agentMembershipIntents.status ?? "unknown"} ${agentMembershipIntents.passed ?? "?"}/${agentMembershipIntents.total ?? "?"}`,
         );
+      }
+      const defaultRestaurantSelector = manifest.highlights.defaultRestaurantSelector;
+      if (defaultRestaurantSelector?.status === "resolved") {
+        const slug = defaultRestaurantSelector.restaurantSlug ? ` slug=${defaultRestaurantSelector.restaurantSlug}` : "";
+        const name = defaultRestaurantSelector.restaurantName ? ` name=${JSON.stringify(defaultRestaurantSelector.restaurantName)}` : "";
+        lines.push(
+          `- Default restaurant selector: ${defaultRestaurantSelector.restaurantId}${slug}${name} source=${defaultRestaurantSelector.source ?? "unknown"}`,
+        );
+      } else if (defaultRestaurantSelector?.status === "unresolved") {
+        lines.push(`- Default restaurant selector: unresolved reason=${defaultRestaurantSelector.reason}`);
       }
       if (queues.length > 0) {
         lines.push(`- Queues: ${queues.map((queue) => `${queue.name}:${queue.status}/failed=${queue.failed ?? "?"}/repeat=${queue.repeatableJobs?.length ?? "?"}`).join(", ")}`);
@@ -709,43 +860,107 @@ if (diagnosticsToken.token) {
   ownerDeliveryCommand.tokenSource = diagnosticsToken.source;
 
   const tokenRestaurantId = decodeTokenRestaurantId(diagnosticsToken.token);
-  const resolvedMembershipDebugRestaurantId = membershipDebugRestaurantId || tokenRestaurantId;
-  const resolvedOutboundDebugRestaurantId = outboundDebugRestaurantId || tokenRestaurantId;
+  const needsDefaultRestaurantSelector =
+    (!membershipDebugRestaurantId && !membershipDebugRestaurantSlug && !tokenRestaurantId)
+    || (!outboundDebugRestaurantId && !outboundDebugRestaurantSlug && !tokenRestaurantId);
+  const defaultRestaurantSelector = needsDefaultRestaurantSelector
+    ? await resolveBundleRestaurantSelector(diagnosticsToken.token)
+    : null;
+  if (defaultRestaurantSelector?.reason) {
+    manifest.highlights.defaultRestaurantSelector = {
+      status: "unresolved",
+      reason: defaultRestaurantSelector.reason,
+    };
+  } else if (defaultRestaurantSelector?.restaurantId) {
+    manifest.highlights.defaultRestaurantSelector = {
+      status: "resolved",
+      restaurantId: defaultRestaurantSelector.restaurantId,
+      restaurantSlug: defaultRestaurantSelector.restaurantSlug,
+      restaurantName: defaultRestaurantSelector.restaurantName,
+      source: defaultRestaurantSelector.source,
+    };
+  }
+  const tokenSelector = tokenRestaurantId
+    ? {
+        restaurantId: tokenRestaurantId,
+        restaurantSlug: "",
+        restaurantName: "",
+        source: "token restaurantId",
+      }
+    : null;
+  const membershipSelector = membershipDebugRestaurantId
+    ? {
+        restaurantId: membershipDebugRestaurantId,
+        restaurantSlug: membershipDebugRestaurantSlug,
+        restaurantName: "",
+        source: "env",
+      }
+    : membershipDebugRestaurantSlug
+      ? {
+          restaurantId: "",
+          restaurantSlug: membershipDebugRestaurantSlug,
+          restaurantName: "",
+          source: "env slug",
+        }
+    : tokenSelector ?? defaultRestaurantSelector;
+  const outboundSelector = outboundDebugRestaurantId
+    ? {
+        restaurantId: outboundDebugRestaurantId,
+        restaurantSlug: outboundDebugRestaurantSlug,
+        restaurantName: "",
+        source: "env",
+      }
+    : outboundDebugRestaurantSlug
+      ? {
+          restaurantId: "",
+          restaurantSlug: outboundDebugRestaurantSlug,
+          restaurantName: "",
+          source: "env slug",
+        }
+    : tokenSelector ?? defaultRestaurantSelector;
+  const resolvedMembershipDebugRestaurantId = membershipSelector?.restaurantId ?? "";
+  const resolvedOutboundDebugRestaurantId = outboundSelector?.restaurantId ?? "";
+  const resolvedMembershipDebugRestaurantSlug = membershipDebugRestaurantSlug || "";
+  const resolvedOutboundDebugRestaurantSlug = outboundDebugRestaurantSlug || "";
 
-  if (resolvedMembershipDebugRestaurantId || membershipDebugRestaurantSlug) {
+  if (resolvedMembershipDebugRestaurantId || resolvedMembershipDebugRestaurantSlug) {
     const membershipCommand = await runStep("membership-debug-summary", "node", ["scripts/membership-debug-summary.mjs"], {
       env: {
         OPENSEAT_API_URL: apiUrl,
         OPENSEAT_TOKEN: diagnosticsToken.token,
         OPENSEAT_RESTAURANT_ID: resolvedMembershipDebugRestaurantId,
-        OPENSEAT_RESTAURANT_SLUG: membershipDebugRestaurantSlug,
+        OPENSEAT_RESTAURANT_SLUG: resolvedMembershipDebugRestaurantSlug,
       },
     });
     membershipCommand.tokenSource = diagnosticsToken.source;
+    membershipCommand.restaurantSelector = formatRestaurantSelector(membershipSelector);
   } else {
     manifest.commands.push({
       name: "membership-debug-summary",
       status: "skipped",
-      reason: "OPENSEAT_RESTAURANT_ID, OPENSEAT_BUNDLE_RESTAURANT_ID, OPENSEAT_RESTAURANT_SLUG, OPENSEAT_BUNDLE_RESTAURANT_SLUG, or a restaurant-scoped OPENSEAT_TOKEN is not set",
+      reason: defaultRestaurantSelector?.reason
+        ?? "OPENSEAT_RESTAURANT_ID, OPENSEAT_BUNDLE_RESTAURANT_ID, OPENSEAT_RESTAURANT_SLUG, OPENSEAT_BUNDLE_RESTAURANT_SLUG, a restaurant-scoped OPENSEAT_TOKEN, or an auto-selected restaurant is not available",
     });
   }
 
-  if (resolvedOutboundDebugRestaurantId || outboundDebugRestaurantSlug) {
+  if (resolvedOutboundDebugRestaurantId || resolvedOutboundDebugRestaurantSlug) {
     const outboundCommand = await runStep("outbound-debug-summary", "node", ["scripts/outbound-debug-summary.mjs"], {
       env: {
         OPENSEAT_API_URL: apiUrl,
         OPENSEAT_TOKEN: diagnosticsToken.token,
         OPENSEAT_RESTAURANT_ID: resolvedOutboundDebugRestaurantId,
-        OPENSEAT_RESTAURANT_SLUG: outboundDebugRestaurantSlug,
+        OPENSEAT_RESTAURANT_SLUG: resolvedOutboundDebugRestaurantSlug,
         OPENSEAT_OUTBOUND_DEBUG_LIMIT: process.env.OPENSEAT_OUTBOUND_DEBUG_LIMIT ?? "25",
       },
     });
     outboundCommand.tokenSource = diagnosticsToken.source;
+    outboundCommand.restaurantSelector = formatRestaurantSelector(outboundSelector);
   } else {
     manifest.commands.push({
       name: "outbound-debug-summary",
       status: "skipped",
-      reason: "OPENSEAT_OUTBOUND_RESTAURANT_ID, OPENSEAT_OUTBOUND_RESTAURANT_SLUG, OPENSEAT_RESTAURANT_ID, OPENSEAT_BUNDLE_RESTAURANT_ID, OPENSEAT_RESTAURANT_SLUG, OPENSEAT_BUNDLE_RESTAURANT_SLUG, or a restaurant-scoped OPENSEAT_TOKEN is not set",
+      reason: defaultRestaurantSelector?.reason
+        ?? "OPENSEAT_OUTBOUND_RESTAURANT_ID, OPENSEAT_OUTBOUND_RESTAURANT_SLUG, OPENSEAT_RESTAURANT_ID, OPENSEAT_BUNDLE_RESTAURANT_ID, OPENSEAT_RESTAURANT_SLUG, OPENSEAT_BUNDLE_RESTAURANT_SLUG, a restaurant-scoped OPENSEAT_TOKEN, or an auto-selected restaurant is not available",
     });
   }
 } else {

@@ -136,6 +136,7 @@ export async function runAllTests(): Promise<TestRunReport> {
     const migrationDrift = deployment?.migrationDrift;
     const source = deployment?.source;
     const membershipProcessing = (data as any).operational?.membershipProcessing;
+    const gamification = (data as any).operational?.gamification;
     if (!deployment || !migrationDrift) {
       throw new Error("Diagnostics response missing deployment migration state");
     }
@@ -155,7 +156,17 @@ export async function runAllTests(): Promise<TestRunReport> {
     ) {
       throw new Error("Diagnostics response missing membership processing summary");
     }
-    return `status=${(data as any).status} build=${source.shortCommit} checkout=${source.checkout.shortCommit} migrations=${migrationDrift.codeLatestId}/${migrationDrift.databaseLatestId} membershipOpen=${membershipProcessing.openCount}`;
+    if (
+      !gamification
+      || !["ok", "attention"].includes(gamification.status)
+      || typeof gamification.challenges?.active !== "number"
+      || typeof gamification.challenges?.stuckCompletions !== "number"
+      || typeof gamification.referrals?.guestsWithReferralCode !== "number"
+      || typeof gamification.referrals?.referrerCreditMismatches !== "number"
+    ) {
+      throw new Error("Diagnostics response missing gamification summary");
+    }
+    return `status=${(data as any).status} build=${source.shortCommit} checkout=${source.checkout.shortCommit} migrations=${migrationDrift.codeLatestId}/${migrationDrift.databaseLatestId} membershipOpen=${membershipProcessing.openCount} gamification=${gamification.status} activeChallenges=${gamification.challenges.active} stuckChallenges=${gamification.challenges.stuckCompletions} referralCreditMismatches=${gamification.referrals.referrerCreditMismatches}`;
   }));
 
   results.push(await runTest("API Diagnostics: missing token envelope", async () => {

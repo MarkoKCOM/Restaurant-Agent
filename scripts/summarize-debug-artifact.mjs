@@ -54,6 +54,19 @@ function summarizeE2e(report) {
   printLine("Finished", report.finishedAt);
   printLine("Total ms", report.totalMs);
 
+  const diagnosticResults = results.filter((result) =>
+    result.pass
+    && typeof result.name === "string"
+    && /diagnostics?/i.test(result.name)
+    && typeof result.detail === "string"
+  );
+  if (diagnosticResults.length > 0) {
+    console.log("Diagnostics:");
+    for (const result of diagnosticResults) {
+      console.log(`- ${result.name}: ${result.detail}`);
+    }
+  }
+
   if (failed.length === 0) {
     console.log("Failures: none");
     return;

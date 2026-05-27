@@ -296,6 +296,12 @@ const e2ePath = await writeJson("e2e.json", {
   totalMs: 15,
   results: [
     { name: "Health Check", pass: true, detail: "ok", durationMs: 1 },
+    {
+      name: "Admin Diagnostics",
+      pass: true,
+      detail: "status=ok membershipOpen=0 gamification=ok activeChallenges=6 stuckChallenges=0 referralCreditMismatches=0",
+      durationMs: 2,
+    },
     { name: "Create Reservation", pass: false, detail: "boom requestId=e2e-request-1", durationMs: 14 },
   ],
 });
@@ -303,8 +309,19 @@ const e2ePath = await writeJson("e2e.json", {
 const e2eOutput = await summarize(e2ePath);
 assertIncludes(e2eOutput, "Type: e2e");
 assertIncludes(e2eOutput, "Status: 1/2 passed");
+assertIncludes(e2eOutput, "Diagnostics:");
+assertIncludes(e2eOutput, "Admin Diagnostics: status=ok membershipOpen=0 gamification=ok activeChallenges=6");
 assertIncludes(e2eOutput, "- Create Reservation: boom requestId=e2e-request-1");
 assertIncludes(e2eOutput, 'pnpm debug:logs e2e-request-1 --since "2 hours ago"');
+
+const e2eRunner = await readFile("apps/e2e/src/test-runner.ts", "utf8");
+for (const expectedE2eRunnerContent of [
+  "Diagnostics response missing gamification summary",
+  "gamification=${gamification.status}",
+  "referralCreditMismatches=${gamification.referrals.referrerCreditMismatches}",
+]) {
+  assertIncludes(e2eRunner, expectedE2eRunnerContent);
+}
 
 const e2eApiClient = await readFile("apps/e2e/src/api-client.ts", "utf8");
 for (const expectedE2eClientContent of [

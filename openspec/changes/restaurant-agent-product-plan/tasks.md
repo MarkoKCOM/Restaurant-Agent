@@ -146,6 +146,7 @@
 - [x] 13.13 Add guarded owner delivery repair command — operators can patch one known owner WhatsApp value and immediately re-check delivery readiness
 - [x] 13.14 Add optional bundle failure gate for unexpected API log noise — CI/debug runs can fail after writing artifacts when bundle-run logs contain unexpected warnings or errors
 - [x] 13.15 Add gamification route preflight error envelopes — guest/challenge lookup and active-challenge listing failures keep gamification-specific codes, request IDs, and member/challenge context
+- [x] 13.16 Add loyalty route preflight error envelopes — guest/claim lookup failures keep loyalty-specific codes, request IDs, and member/reward context
 
 ## 14. Branding & Landing Page
 

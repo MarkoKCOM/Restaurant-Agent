@@ -161,6 +161,62 @@ function sendCaughtLoyaltyRouteError(
   });
 }
 
+async function loadLoyaltyGuest(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  guestId: string,
+  failureCode: string,
+  context: Record<string, unknown> = {},
+) {
+  try {
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        404,
+        "Guest not found",
+        "LOYALTY_GUEST_NOT_FOUND",
+        { ...context, guestId },
+      );
+      return null;
+    }
+
+    return guest;
+  } catch (error: unknown) {
+    sendCaughtLoyaltyRouteError(request, reply, error, failureCode, { ...context, guestId });
+    return null;
+  }
+}
+
+async function loadLoyaltyClaim(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  claimId: string,
+  failureCode: string,
+  context: Record<string, unknown> = {},
+) {
+  try {
+    const claim = await getClaimById(claimId);
+    if (!claim) {
+      sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        404,
+        "Claim not found",
+        "LOYALTY_CLAIM_NOT_FOUND",
+        { ...context, claimId },
+      );
+      return null;
+    }
+
+    return claim;
+  } catch (error: unknown) {
+    sendCaughtLoyaltyRouteError(request, reply, error, failureCode, { ...context, claimId });
+    return null;
+  }
+}
+
 async function enforceLoyaltyAccess(
   request: FastifyRequest,
   reply: FastifyReply,
@@ -268,17 +324,8 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   // GET /:guestId/referral-share — WhatsApp-ready referral code/share copy
   app.get("/:guestId/referral-share", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
-    const guest = await getGuestById(guestId);
-    if (!guest) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        404,
-        "Guest not found",
-        "LOYALTY_GUEST_NOT_FOUND",
-        { guestId },
-      );
-    }
+    const guest = await loadLoyaltyGuest(request, reply, guestId, "LOYALTY_REFERRAL_SHARE_GUEST_LOOKUP_FAILED");
+    if (!guest) return reply;
 
     const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
     if (accessError) return reply;
@@ -300,17 +347,8 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   // GET /:guestId/balance — points balance + tier + stamp progress
   app.get("/:guestId/balance", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
-    const guest = await getGuestById(guestId);
-    if (!guest) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        404,
-        "Guest not found",
-        "LOYALTY_GUEST_NOT_FOUND",
-        { guestId },
-      );
-    }
+    const guest = await loadLoyaltyGuest(request, reply, guestId, "LOYALTY_BALANCE_GUEST_LOOKUP_FAILED");
+    if (!guest) return reply;
 
     const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
     if (accessError) return reply;
@@ -351,17 +389,8 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   app.get("/:guestId/history", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
     const { limit } = request.query as { limit?: string };
-    const guest = await getGuestById(guestId);
-    if (!guest) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        404,
-        "Guest not found",
-        "LOYALTY_GUEST_NOT_FOUND",
-        { guestId },
-      );
-    }
+    const guest = await loadLoyaltyGuest(request, reply, guestId, "LOYALTY_HISTORY_GUEST_LOOKUP_FAILED", { limit });
+    if (!guest) return reply;
 
     const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
     if (accessError) return reply;
@@ -390,17 +419,8 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   // GET /:guestId/summary — normalized WhatsApp/member summary
   app.get("/:guestId/summary", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
-    const guest = await getGuestById(guestId);
-    if (!guest) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        404,
-        "Guest not found",
-        "LOYALTY_GUEST_NOT_FOUND",
-        { guestId },
-      );
-    }
+    const guest = await loadLoyaltyGuest(request, reply, guestId, "MEMBERSHIP_SUMMARY_GUEST_LOOKUP_FAILED");
+    if (!guest) return reply;
 
     const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
     if (accessError) return reply;
@@ -434,17 +454,11 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   app.post("/:guestId/award", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
     const body = awardPointsSchema.parse(request.body);
-    const guest = await getGuestById(guestId);
-    if (!guest) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        404,
-        "Guest not found",
-        "LOYALTY_GUEST_NOT_FOUND",
-        { guestId },
-      );
-    }
+    const guest = await loadLoyaltyGuest(request, reply, guestId, "LOYALTY_AWARD_GUEST_LOOKUP_FAILED", {
+      points: body.points,
+      reason: body.reason,
+    });
+    if (!guest) return reply;
 
     const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
     if (accessError) return reply;
@@ -584,17 +598,11 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   app.post("/:guestId/rewards/:rewardId/claim", async (request, reply) => {
     const { guestId, rewardId } = request.params as { guestId: string; rewardId: string };
     const body = claimRewardSchema.parse(request.body ?? {});
-    const guest = await getGuestById(guestId);
-    if (!guest) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        404,
-        "Guest not found",
-        "LOYALTY_GUEST_NOT_FOUND",
-        { guestId, rewardId },
-      );
-    }
+    const guest = await loadLoyaltyGuest(request, reply, guestId, "LOYALTY_REWARD_CLAIM_GUEST_LOOKUP_FAILED", {
+      rewardId,
+      reservationId: body.reservationId,
+    });
+    if (!guest) return reply;
 
     const accessError = await enforceLoyaltyAccess(
       request,
@@ -619,17 +627,11 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   app.post("/:guestId/redeem/:rewardId", async (request, reply) => {
     const { guestId, rewardId } = request.params as { guestId: string; rewardId: string };
     const body = claimRewardSchema.parse(request.body ?? {});
-    const guest = await getGuestById(guestId);
-    if (!guest) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        404,
-        "Guest not found",
-        "LOYALTY_GUEST_NOT_FOUND",
-        { guestId, rewardId },
-      );
-    }
+    const guest = await loadLoyaltyGuest(request, reply, guestId, "LOYALTY_REWARD_REDEEM_GUEST_LOOKUP_FAILED", {
+      rewardId,
+      reservationId: body.reservationId,
+    });
+    if (!guest) return reply;
 
     const accessError = await enforceLoyaltyAccess(
       request,
@@ -699,17 +701,8 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   // POST /claims/:claimId/redeem — mark a claim as honored by staff
   app.post("/claims/:claimId/redeem", async (request, reply) => {
     const { claimId } = request.params as { claimId: string };
-    const claim = await getClaimById(claimId);
-    if (!claim) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        404,
-        "Claim not found",
-        "LOYALTY_CLAIM_NOT_FOUND",
-        { claimId },
-      );
-    }
+    const claim = await loadLoyaltyClaim(request, reply, claimId, "LOYALTY_CLAIM_LOOKUP_FAILED");
+    if (!claim) return reply;
 
     const accessError = await enforceLoyaltyAccess(
       request,
@@ -733,17 +726,10 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   app.patch("/:guestId/messaging-preferences", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
     const body = messagingPreferencesSchema.parse(request.body ?? {});
-    const guest = await getGuestById(guestId);
-    if (!guest) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        404,
-        "Guest not found",
-        "LOYALTY_GUEST_NOT_FOUND",
-        { guestId },
-      );
-    }
+    const guest = await loadLoyaltyGuest(request, reply, guestId, "LOYALTY_MESSAGING_PREFERENCES_GUEST_LOOKUP_FAILED", {
+      optedOutCampaigns: body.optedOutCampaigns,
+    });
+    if (!guest) return reply;
 
     const accessError = await enforceLoyaltyAccess(
       request,
@@ -775,17 +761,8 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   // GET /:guestId/stamp-card — stamp card status
   app.get("/:guestId/stamp-card", async (request, reply) => {
     const { guestId } = request.params as { guestId: string };
-    const guest = await getGuestById(guestId);
-    if (!guest) {
-      return sendLoyaltyEnvelopeError(
-        request,
-        reply,
-        404,
-        "Guest not found",
-        "LOYALTY_GUEST_NOT_FOUND",
-        { guestId },
-      );
-    }
+    const guest = await loadLoyaltyGuest(request, reply, guestId, "LOYALTY_STAMP_CARD_GUEST_LOOKUP_FAILED");
+    if (!guest) return reply;
 
     const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
     if (accessError) return reply;

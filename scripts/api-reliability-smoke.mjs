@@ -918,6 +918,8 @@ async function main() {
   record("engagement.review-routing-positive", {
     route: positiveFeedback.reviewRouting?.route ?? null,
     sentiment: positiveFeedback.reviewRouting?.sentiment ?? null,
+    sentimentSource: positiveFeedback.reviewRouting?.sentimentAnalysis?.source ?? null,
+    sentimentConfidence: positiveFeedback.reviewRouting?.sentimentAnalysis?.confidence ?? null,
     reviewUrlPresent: Boolean(positiveFeedback.reviewRouting?.reviewUrl),
     jobId: positiveReviewJobId ?? null,
     jobStatus: positiveFeedback.reviewRouting?.engagementJobStatus ?? null,
@@ -952,8 +954,8 @@ async function main() {
     body: {
       restaurantId,
       guestId: negativeGuestId,
-      rating: 1,
-      feedback: `Service recovery smoke ${runId}`,
+      rating: 5,
+      feedback: `The food was cold and we waited 40 minutes ${runId}`,
       channel: "web",
     },
   });
@@ -962,6 +964,10 @@ async function main() {
   record("engagement.review-routing-negative", {
     route: negativeFeedback.reviewRouting?.route ?? null,
     sentiment: negativeFeedback.reviewRouting?.sentiment ?? null,
+    sentimentSource: negativeFeedback.reviewRouting?.sentimentAnalysis?.source ?? null,
+    sentimentConfidence: negativeFeedback.reviewRouting?.sentimentAnalysis?.confidence ?? null,
+    ratingSentiment: negativeFeedback.reviewRouting?.sentimentAnalysis?.ratingSentiment ?? null,
+    negativeSignalCount: negativeFeedback.reviewRouting?.sentimentAnalysis?.negativeSignals?.length ?? null,
     ownerContactPresent: Boolean(negativeFeedback.reviewRouting?.ownerContact),
     skippedReviewRequests: negativeFeedback.reviewRouting?.skippedReviewRequests ?? null,
     recoveryActions: negativeFeedback.reviewRouting?.recoveryActions ?? [],
@@ -969,6 +975,9 @@ async function main() {
   });
   if (negativeFeedback.reviewRouting?.route !== "private_recovery" || hasNegativeReviewRequest) {
     throw new Error(`Negative feedback was not routed privately: routing=${JSON.stringify(negativeFeedback.reviewRouting ?? {})} pendingReviewRequest=${hasNegativeReviewRequest}`);
+  }
+  if (negativeFeedback.reviewRouting?.sentimentAnalysis?.source !== "rules" || negativeFeedback.reviewRouting?.sentimentAnalysis?.ratingSentiment !== "positive") {
+    throw new Error(`Complaint text did not override positive rating via rule sentiment analysis: ${JSON.stringify(negativeFeedback.reviewRouting?.sentimentAnalysis ?? {})}`);
   }
 
   const birthdayGuest = await request("/api/v1/guests", {

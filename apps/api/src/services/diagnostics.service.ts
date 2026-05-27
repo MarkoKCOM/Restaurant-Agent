@@ -48,6 +48,7 @@ export interface DiagnosticsReport {
     apiPort: number;
     agentModel: string;
     chatModel: string;
+    sentimentModel: string;
     openRouterConfigured: boolean;
   };
   deployment: DeploymentDiagnostic;
@@ -1952,6 +1953,7 @@ export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
       apiPort: env.API_PORT,
       agentModel: env.AGENT_MODEL,
       chatModel: env.CHAT_MODEL,
+      sentimentModel: env.SENTIMENT_MODEL,
       openRouterConfigured: Boolean(env.OPENROUTER_API_KEY),
     },
     deployment,

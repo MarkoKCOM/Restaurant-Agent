@@ -154,7 +154,7 @@ The endpoint returns:
 - gamification health for active challenges, targeted birthday-week challenge creation, stuck challenge completions, referral-code adoption, referral reward-credit mismatches, achievement drift such as missing first-visit/10-visit badges, leaderboard opt-ins/reward finalization drift, and streak state problems such as stale streaks, invalid streak preferences, or missing milestone bonuses. The smoke test seeds a returning streak, verifies the milestone bonus is tied to the completed reservation, verifies challenge-completion and broken-streak recovery scheduling, confirms reservation/manual visits unlock membership achievements, exercises lucky-spin reward delivery and opt-in leaderboard ranking/finalization, and confirms social sharing templates remain available for the agent/dashboard.
 - engagement automation health for pending, overdue, failed, skipped, unscheduled win-back-due guests, unscheduled birthday greetings due today, unscheduled first-visit anniversary greetings due today, pending thank-you jobs accidentally inside quiet hours, and review requests that do not have positive feedback behind them, including top skip reasons for retention/promotional policy decisions
 - sanitized failure name/code/message
-- runtime flags such as `NODE_ENV`, `LOG_LEVEL`, selected AI models, and whether OpenRouter is configured
+- runtime flags such as `NODE_ENV`, `LOG_LEVEL`, selected AI/chat/sentiment models, and whether OpenRouter is configured
 
 Use this when `/api/v1/health` is green but app workflows still fail.
 
@@ -287,4 +287,4 @@ Visit logging and guest feedback can update guest tags asynchronously after the 
 journalctl -u openseat-api --since "30 minutes ago" | rg 'Auto-tag after|Feedback should'
 ```
 
-Feedback logs include structured `restaurantId`, `guestId`, optional `reservationId`, rating, sentiment, and channel fields.
+Feedback logs include structured `restaurantId`, `guestId`, optional `reservationId`, rating, sentiment, sentiment source, confidence, rating-derived sentiment, matching positive/negative text signals, and channel fields. Clear complaint language such as cold food, long waits, rude service, or refund requests overrides a high star rating and routes privately to service recovery. Ambiguous neutral feedback can use the configured `SENTIMENT_MODEL` through OpenRouter, then falls back to rating sentiment if the model is unavailable.

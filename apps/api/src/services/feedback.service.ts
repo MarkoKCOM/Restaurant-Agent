@@ -2,6 +2,7 @@ import type { FastifyBaseLogger } from "fastify";
 import { and, eq, desc, gte, lte, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { visitLogs, guests } from "../db/schema.js";
+import { env } from "../env.js";
 import {
   routeNegativeFeedbackForRecovery,
   scheduleReviewRequestForPositiveFeedback,
@@ -37,6 +38,7 @@ export interface FeedbackSummary {
 export interface ReviewRoutingResult {
   route: "public_review" | "private_recovery" | "neutral_followup";
   sentiment: "positive" | "neutral" | "negative";
+  sentimentAnalysis: FeedbackSentimentAnalysis;
   reviewUrl?: string | null;
   engagementJobId?: string | null;
   engagementJobStatus?: string | null;
@@ -49,6 +51,165 @@ export interface ReviewRoutingResult {
 export interface SubmitFeedbackResult {
   visit: typeof visitLogs.$inferSelect;
   reviewRouting: ReviewRoutingResult;
+}
+
+export interface FeedbackSentimentAnalysis {
+  sentiment: "positive" | "neutral" | "negative";
+  source: "rating" | "rules" | "llm" | "llm_fallback";
+  confidence: number;
+  positiveSignals: string[];
+  negativeSignals: string[];
+  ratingSentiment: "positive" | "neutral" | "negative";
+}
+
+const NEGATIVE_FEEDBACK_PATTERNS = [
+  /\b(cold|terrible|awful|bad|rude|slow|dirty|waited|waiting|late|wrong|burnt|overcooked|undercooked|disappointed|disappointing|complaint|refund|sick|inedible)\b/i,
+  /לא טוב|גרוע|נורא|קר|חיכינו|איחור|מלוכלך|גס|מאכזב|תלונה|החזר|לא אכיל/u,
+  /سيء|بارد|انتظرنا|متأخر|وسخ|شكوى|محبط|غير صالح/u,
+];
+
+const POSITIVE_FEEDBACK_PATTERNS = [
+  /\b(amazing|excellent|great|good|loved|love|perfect|delicious|wonderful|fantastic|friendly|recommend|best)\b/i,
+  /מעולה|מדהים|טעים|אהבנו|מושלם|נהדר|מצוין|נחזור|ממליץ/u,
+  /ممتاز|رائع|لذيذ|أحببنا|مثالي|جميل|سنعود/u,
+];
+
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const SENTIMENT_LLM_TIMEOUT_MS = 8_000;
+
+function getRatingSentiment(rating: number): "positive" | "neutral" | "negative" {
+  if (rating >= 4) return "positive";
+  if (rating <= 2) return "negative";
+  return "neutral";
+}
+
+function collectSignals(feedback: string | undefined, patterns: RegExp[]): string[] {
+  if (!feedback) return [];
+  return patterns
+    .filter((pattern) => pattern.test(feedback))
+    .map((pattern) => pattern.source)
+    .slice(0, 5);
+}
+
+async function analyzeAmbiguousFeedbackWithLlm(params: {
+  rating: number;
+  feedback: string;
+  ratingSentiment: "positive" | "neutral" | "negative";
+  logger?: FastifyBaseLogger;
+}): Promise<FeedbackSentimentAnalysis | null> {
+  if (!env.OPENROUTER_API_KEY) return null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), SENTIMENT_LLM_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(OPENROUTER_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: env.SENTIMENT_MODEL,
+        max_tokens: 120,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: "Classify restaurant guest feedback sentiment. Return JSON only: {\"sentiment\":\"positive|neutral|negative\",\"confidence\":0..1,\"positiveSignals\":[string],\"negativeSignals\":[string]}. Treat service complaints, cold food, long waits, rude staff, illness, refund requests, or disappointment as negative even if the star rating is high.",
+          },
+          {
+            role: "user",
+            content: JSON.stringify({
+              rating: params.rating,
+              ratingSentiment: params.ratingSentiment,
+              feedback: params.feedback.slice(0, 1000),
+            }),
+          },
+        ],
+      }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      params.logger?.warn({ status: res.status, statusText: res.statusText }, "Feedback sentiment LLM request failed");
+      return null;
+    }
+
+    const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return null;
+
+    const parsed = JSON.parse(content) as Partial<FeedbackSentimentAnalysis>;
+    const sentiment = parsed.sentiment;
+    if (sentiment !== "positive" && sentiment !== "neutral" && sentiment !== "negative") return null;
+
+    return {
+      sentiment,
+      source: "llm",
+      confidence: typeof parsed.confidence === "number" ? Math.max(0, Math.min(1, parsed.confidence)) : 0.6,
+      positiveSignals: Array.isArray(parsed.positiveSignals) ? parsed.positiveSignals.filter((item): item is string => typeof item === "string").slice(0, 5) : [],
+      negativeSignals: Array.isArray(parsed.negativeSignals) ? parsed.negativeSignals.filter((item): item is string => typeof item === "string").slice(0, 5) : [],
+      ratingSentiment: params.ratingSentiment,
+    };
+  } catch (error: unknown) {
+    params.logger?.warn({ err: error }, "Feedback sentiment LLM analysis failed");
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function analyzeFeedbackSentiment(params: {
+  rating: number;
+  feedback?: string;
+  logger?: FastifyBaseLogger;
+}): Promise<FeedbackSentimentAnalysis> {
+  const ratingSentiment = getRatingSentiment(params.rating);
+  const positiveSignals = collectSignals(params.feedback, POSITIVE_FEEDBACK_PATTERNS);
+  const negativeSignals = collectSignals(params.feedback, NEGATIVE_FEEDBACK_PATTERNS);
+
+  if (negativeSignals.length > 0) {
+    return {
+      sentiment: "negative",
+      source: "rules",
+      confidence: Math.min(0.95, 0.72 + negativeSignals.length * 0.08),
+      positiveSignals,
+      negativeSignals,
+      ratingSentiment,
+    };
+  }
+
+  if (positiveSignals.length > 0 && params.rating >= 3) {
+    return {
+      sentiment: "positive",
+      source: "rules",
+      confidence: Math.min(0.92, 0.7 + positiveSignals.length * 0.07),
+      positiveSignals,
+      negativeSignals,
+      ratingSentiment,
+    };
+  }
+
+  const feedback = params.feedback?.trim();
+  if (feedback && ratingSentiment === "neutral") {
+    const llmAnalysis = await analyzeAmbiguousFeedbackWithLlm({
+      rating: params.rating,
+      feedback,
+      ratingSentiment,
+      logger: params.logger,
+    });
+    if (llmAnalysis) return llmAnalysis;
+  }
+
+  return {
+    sentiment: ratingSentiment,
+    source: feedback && ratingSentiment === "neutral" ? "llm_fallback" : "rating",
+    confidence: ratingSentiment === "neutral" ? 0.5 : 0.68,
+    positiveSignals,
+    negativeSignals,
+    ratingSentiment,
+  };
 }
 
 // ── Core Functions ────────────────────────────────────
@@ -70,11 +231,12 @@ export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitF
     existingVisit = found ?? null;
   }
 
-  // Determine sentiment from rating
-  let sentiment: "positive" | "neutral" | "negative";
-  if (data.rating >= 4) sentiment = "positive";
-  else if (data.rating <= 2) sentiment = "negative";
-  else sentiment = "neutral";
+  const sentimentAnalysis = await analyzeFeedbackSentiment({
+    rating: data.rating,
+    feedback: data.feedback,
+    logger: options.logger,
+  });
+  const sentiment = sentimentAnalysis.sentiment;
 
   let visit;
   if (existingVisit) {
@@ -109,7 +271,7 @@ export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitF
     visit = created;
   }
 
-  // Auto-tag guest based on rating
+  // Auto-tag guest based on analyzed sentiment
   const [guest] = await db
     .select()
     .from(guests)
@@ -125,7 +287,16 @@ export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitF
     tagSet.delete("at_risk");
     tagSet.delete("neutral_feedback");
 
-    if (data.rating >= 4) {
+    const sentimentLog = {
+      sentiment,
+      sentimentSource: sentimentAnalysis.source,
+      sentimentConfidence: sentimentAnalysis.confidence,
+      ratingSentiment: sentimentAnalysis.ratingSentiment,
+      positiveSignals: sentimentAnalysis.positiveSignals,
+      negativeSignals: sentimentAnalysis.negativeSignals,
+    };
+
+    if (sentiment === "positive") {
       tagSet.add("happy");
       options.logger?.info(
         {
@@ -133,12 +304,12 @@ export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitF
           guestId: data.guestId,
           reservationId: data.reservationId,
           rating: data.rating,
-          sentiment,
+          ...sentimentLog,
           channel: data.channel,
         },
         "Feedback should trigger review prompt",
       );
-    } else if (data.rating <= 2) {
+    } else if (sentiment === "negative") {
       tagSet.add("at_risk");
       options.logger?.warn(
         {
@@ -146,7 +317,7 @@ export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitF
           guestId: data.guestId,
           reservationId: data.reservationId,
           rating: data.rating,
-          sentiment,
+          ...sentimentLog,
           channel: data.channel,
         },
         "Feedback should alert owner",
@@ -170,6 +341,7 @@ export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitF
     reviewRouting = {
       route: "public_review",
       sentiment,
+      sentimentAnalysis,
       reviewUrl: reviewRequest?.reviewUrl ?? null,
       engagementJobId: reviewRequest?.job.id ?? null,
       engagementJobStatus: reviewRequest?.job.status ?? null,
@@ -181,6 +353,11 @@ export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitF
         guestId: data.guestId,
         reservationId: data.reservationId,
         visitId: visit?.id,
+        sentimentSource: sentimentAnalysis.source,
+        sentimentConfidence: sentimentAnalysis.confidence,
+        ratingSentiment: sentimentAnalysis.ratingSentiment,
+        positiveSignals: sentimentAnalysis.positiveSignals,
+        negativeSignals: sentimentAnalysis.negativeSignals,
         engagementJobId: reviewRouting.engagementJobId,
         engagementJobStatus: reviewRouting.engagementJobStatus,
         delayHours: reviewRouting.delayHours,
@@ -195,6 +372,7 @@ export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitF
     reviewRouting = {
       route: "private_recovery",
       sentiment,
+      sentimentAnalysis,
       ownerContact: recovery.ownerContact,
       skippedReviewRequests: recovery.skippedReviewRequests,
       recoveryActions: recovery.recoveryActions,
@@ -205,6 +383,11 @@ export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitF
         guestId: data.guestId,
         reservationId: data.reservationId,
         visitId: visit?.id,
+        sentimentSource: sentimentAnalysis.source,
+        sentimentConfidence: sentimentAnalysis.confidence,
+        ratingSentiment: sentimentAnalysis.ratingSentiment,
+        positiveSignals: sentimentAnalysis.positiveSignals,
+        negativeSignals: sentimentAnalysis.negativeSignals,
         ownerContactConfigured: Boolean(recovery.ownerContact),
         skippedReviewRequests: recovery.skippedReviewRequests,
         recoveryActions: recovery.recoveryActions,
@@ -215,6 +398,7 @@ export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitF
     reviewRouting = {
       route: "neutral_followup",
       sentiment,
+      sentimentAnalysis,
     };
   }
 

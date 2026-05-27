@@ -21,6 +21,7 @@ const envSchema = z.object({
   OPENROUTER_API_KEY: z.string().optional(),
   AGENT_MODEL: z.string().default("google/gemini-2.5-flash"),
   CHAT_MODEL: z.string().default("openrouter/free"),
+  SENTIMENT_MODEL: z.string().default("anthropic/claude-3-haiku"),
 });
 
 export const env = envSchema.parse(process.env);

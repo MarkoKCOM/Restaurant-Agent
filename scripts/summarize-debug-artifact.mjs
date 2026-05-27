@@ -150,9 +150,9 @@ function summarizeSmoke(report) {
       } else if (step.step === "engagement.thank-you.cleanup") {
         console.log(`- engagement.thank-you.cleanup: markedSent=${step.markedSent === true ? "yes" : "no"} jobId=${step.jobId ?? "?"}`);
       } else if (step.step === "engagement.review-routing-positive") {
-        console.log(`- engagement.review-routing-positive: route=${step.route ?? "?"} status=${step.jobStatus ?? "?"} reviewUrl=${step.reviewUrlPresent === true ? "yes" : "no"} delayHours=${step.delayHours ?? "?"}`);
+        console.log(`- engagement.review-routing-positive: route=${step.route ?? "?"} status=${step.jobStatus ?? "?"} reviewUrl=${step.reviewUrlPresent === true ? "yes" : "no"} delayHours=${step.delayHours ?? "?"} source=${step.sentimentSource ?? "?"}`);
       } else if (step.step === "engagement.review-routing-negative") {
-        console.log(`- engagement.review-routing-negative: route=${step.route ?? "?"} pendingReview=${step.pendingReviewRequest === true ? "yes" : "no"} recoveryActions=${asArray(step.recoveryActions).length}`);
+        console.log(`- engagement.review-routing-negative: route=${step.route ?? "?"} pendingReview=${step.pendingReviewRequest === true ? "yes" : "no"} recoveryActions=${asArray(step.recoveryActions).length} source=${step.sentimentSource ?? "?"} ratingSentiment=${step.ratingSentiment ?? "?"} negativeSignals=${step.negativeSignalCount ?? "?"}`);
       } else if (step.step === "engagement.review-request.cleanup") {
         console.log(`- engagement.review-request.cleanup: markedSent=${step.markedSent === true ? "yes" : "no"} jobId=${step.jobId ?? "?"}`);
       } else if (step.step === "gamification.challenge-progress") {

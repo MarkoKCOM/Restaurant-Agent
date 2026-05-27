@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useLang } from "../i18n.js";
+import { apiErrorFromResponse, formatApiErrorMessage, logApiError } from "../lib/apiError.js";
 import { Tooltip } from "./Tooltip.js";
 
 interface Message {
@@ -88,16 +89,17 @@ export function ChatWidget() {
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? "Failed");
+        const error = await apiErrorFromResponse(res, "POST");
+        logApiError(error);
+        throw error;
       }
 
       const data = await res.json();
       setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
-    } catch {
+    } catch (error: unknown) {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: t.chat.error },
+        { role: "assistant", content: formatApiErrorMessage(error, t.chat.error) },
       ]);
     } finally {
       setLoading(false);

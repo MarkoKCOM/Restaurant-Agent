@@ -61,6 +61,22 @@ async function main() {
   assert(ownerTables.some((table) => table.name === "T1"), "Initial table T1 missing");
   assert(ownerTables.some((table) => table.name === "Bar 1"), "Initial table Bar 1 missing");
 
+  const ownerRewardsResponse = await api.listRewardsWithToken(restaurantId, ownerToken);
+  const ownerRewards = (ownerRewardsResponse.rewards as Array<{
+    isActive?: boolean;
+    templateKey?: string | null;
+    recommendedMoments?: string[] | null;
+  }> | undefined) ?? [];
+  const rewardTemplateKeys = new Set(ownerRewards.map((reward) => reward.templateKey));
+  assert(ownerRewards.length >= 3, `Expected starter loyalty rewards, got ${ownerRewards.length}`);
+  assert(ownerRewards.every((reward) => reward.isActive), "Starter loyalty rewards should be active");
+  assert(rewardTemplateKeys.has("dessert-next-visit"), "Starter comeback reward missing");
+  assert(rewardTemplateKeys.has("referral-dessert"), "Starter referral reward missing");
+  assert(
+    ownerRewards.some((reward) => reward.recommendedMoments?.includes("referral")),
+    "Starter loyalty rewards should include a referral-ready reward",
+  );
+
   const ownerLogin = await api.loginWithCredentials(ownerEmail, ownerPassword);
   const loginRestaurant = ownerLogin.restaurant as { id?: string } | null;
   assert(ownerLogin.role === "admin", `Expected admin role from login, got ${String(ownerLogin.role)}`);

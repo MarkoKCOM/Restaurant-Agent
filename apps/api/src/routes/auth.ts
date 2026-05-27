@@ -6,12 +6,13 @@ import {
   DASHBOARD_ACCESS_BY_ROLE,
   DEFAULT_FEATURES,
   DEFAULT_VISIBLE_PAGES,
+  BFF_REWARD_TEMPLATES,
   selfServeSignupSchema,
   type DashboardRole,
 } from "@openseat/domain";
 import { z } from "zod";
 import { db } from "../db/index.js";
-import { adminUsers, restaurants, tables } from "../db/schema.js";
+import { adminUsers, restaurants, rewards, tables } from "../db/schema.js";
 import { env } from "../env.js";
 
 const loginSchema = z.object({
@@ -159,6 +160,27 @@ function buildDashboardConfig(locale: "he" | "en") {
   };
 }
 
+function buildStarterRewardValues(restaurantId: string, packageName: "starter" | "growth") {
+  const starterTemplateIds = packageName === "growth"
+    ? ["dessert-next-visit", "referral-dessert", "starter-for-table", "birthday-table-treat"]
+    : ["dessert-next-visit", "referral-dessert", "starter-for-table"];
+
+  return BFF_REWARD_TEMPLATES
+    .filter((template) => starterTemplateIds.includes(template.id))
+    .map((template) => ({
+      restaurantId,
+      nameHe: template.rewardNameHe,
+      nameEn: template.rewardNameEn,
+      description: template.rewardDescriptionHe,
+      pointsCost: template.pointsCost,
+      templateKey: template.id,
+      recommendedMoments: [...template.recommendedMoments],
+      pitchHe: template.pitch.he,
+      pitchEn: template.pitch.en,
+      isActive: true,
+    }));
+}
+
 function getErrorCode(error: unknown): string | null {
   if (typeof error === "object" && error !== null && "code" in error) {
     const code = error.code;
@@ -300,6 +322,10 @@ export async function authRoutes(app: FastifyInstance) {
             combinableWith: [],
             isActive: true,
           })),
+        );
+
+        await tx.insert(rewards).values(
+          buildStarterRewardValues(createdRestaurant.id, restaurant.package),
         );
 
         return { createdUser, createdRestaurant };

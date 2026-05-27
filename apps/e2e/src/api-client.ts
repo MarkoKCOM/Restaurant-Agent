@@ -492,6 +492,10 @@ export async function listRewards(restaurantId: string) {
   return request(`/api/v1/loyalty/rewards?restaurantId=${restaurantId}`, { token });
 }
 
+export async function listRewardsWithToken(restaurantId: string, token: string) {
+  return request(`/api/v1/loyalty/rewards?restaurantId=${restaurantId}`, { token, retry: false });
+}
+
 export async function getStampCard(guestId: string) {
   const token = await getToken();
   return request(`/api/v1/loyalty/${guestId}/stamp-card`, { token });

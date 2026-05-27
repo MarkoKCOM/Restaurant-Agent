@@ -121,3 +121,38 @@ OPENSEAT_TOKEN=... pnpm debug:api -- \
 ```
 
 The response includes the reusable referral code, referral counts/points, and Hebrew/English share copy. The customer-facing agent can retrieve the same payload with the `get_referral_share` tool by guest phone number.
+
+## Agent Message Diagnostics
+
+Agent message responses include sanitized diagnostics:
+
+- `diagnostics.requestId`
+- `diagnostics.llmRounds`
+- `diagnostics.toolTrace[]` with tool name, success flag, elapsed milliseconds, and sanitized error text
+
+The API logs the same request ID, selected tools, and tool timings. Use this when Jake answers incorrectly or silently skips a tool:
+
+```bash
+REQUEST_ID=debug-agent-1 \
+METHOD=POST \
+BODY='{"restaurantId":"...","senderId":"debug-agent-1","guestPhone":"050...","message":"כמה נקודות יש לי במועדון?"}' \
+pnpm debug:api -- http://localhost:3001/api/v1/agent/message
+```
+
+If the LLM/provider fails before a response is generated, the route returns:
+
+```json
+{
+  "error": "Agent failed to process message",
+  "code": "AGENT_ERROR",
+  "requestId": "..."
+}
+```
+
+For deterministic membership intent checks that do not call the LLM:
+
+```bash
+METHOD=POST \
+BODY='{"message":"אפשר קוד חבר מביא חבר?"}' \
+pnpm debug:api -- http://localhost:3001/api/v1/agent/debug/membership-intent
+```

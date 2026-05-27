@@ -37,6 +37,13 @@ interface ConversationContext {
   messages: Message[];
 }
 
+export interface AgentToolTraceEvent {
+  tool: string;
+  success: boolean;
+  elapsedMs: number;
+  error?: string;
+}
+
 function contextKey(restaurantId: string, senderId: string): string {
   return `agent:conv:${restaurantId}:${senderId}`;
 }
@@ -169,6 +176,10 @@ export interface AgentResponse {
   reply: string;
   language: string;
   toolsUsed: string[];
+  diagnostics: {
+    llmRounds: number;
+    toolTrace: AgentToolTraceEvent[];
+  };
 }
 
 export async function handleMessage(req: AgentRequest): Promise<AgentResponse> {
@@ -199,6 +210,7 @@ export async function handleMessage(req: AgentRequest): Promise<AgentResponse> {
   }));
 
   const toolsUsed: string[] = [];
+  const toolTrace: AgentToolTraceEvent[] = [];
 
   // Agent loop — call LLM, execute tools, repeat until text response
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
@@ -221,11 +233,24 @@ export async function handleMessage(req: AgentRequest): Promise<AgentResponse> {
         toolsUsed.push(toolName);
 
         let toolResult: string;
+        const startedAt = Date.now();
         try {
           const output = await executeTool(toolName, toolArgs, ctx);
           toolResult = typeof output === "string" ? output : JSON.stringify(output);
+          toolTrace.push({
+            tool: toolName,
+            success: true,
+            elapsedMs: Date.now() - startedAt,
+          });
         } catch (err) {
-          toolResult = JSON.stringify({ error: String(err) });
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          toolTrace.push({
+            tool: toolName,
+            success: false,
+            elapsedMs: Date.now() - startedAt,
+            error: errorMessage,
+          });
+          toolResult = JSON.stringify({ error: errorMessage });
         }
 
         const toolMsg: Message = {
@@ -245,7 +270,15 @@ export async function handleMessage(req: AgentRequest): Promise<AgentResponse> {
     ctx.messages.push({ role: "assistant", content: reply });
     await saveContext(restaurantId, senderId, ctx);
 
-    return { reply, language: ctx.language, toolsUsed };
+    return {
+      reply,
+      language: ctx.language,
+      toolsUsed,
+      diagnostics: {
+        llmRounds: round + 1,
+        toolTrace,
+      },
+    };
   }
 
   // Max rounds exceeded
@@ -255,7 +288,15 @@ export async function handleMessage(req: AgentRequest): Promise<AgentResponse> {
   ctx.messages.push({ role: "assistant", content: fallback });
   await saveContext(restaurantId, senderId, ctx);
 
-  return { reply: fallback, language: ctx.language, toolsUsed };
+  return {
+    reply: fallback,
+    language: ctx.language,
+    toolsUsed,
+    diagnostics: {
+      llmRounds: MAX_TOOL_ROUNDS,
+      toolTrace,
+    },
+  };
 }
 
 // ── Reset Conversation ──────────────────────────────

@@ -26,15 +26,43 @@ export async function agentRoutes(app: FastifyInstance) {
 
     try {
       const result = await handleMessage(body);
+      request.log.info(
+        {
+          restaurantId: body.restaurantId,
+          senderId: body.senderId,
+          language: result.language,
+          toolsUsed: result.toolsUsed,
+          toolTrace: result.diagnostics.toolTrace,
+          llmRounds: result.diagnostics.llmRounds,
+        },
+        "Agent message processed",
+      );
       return {
         reply: result.reply,
         language: result.language,
         toolsUsed: result.toolsUsed,
+        diagnostics: {
+          requestId: request.id,
+          ...result.diagnostics,
+        },
       };
     } catch (err) {
-      app.log.error(err, "Agent error");
+      request.log.error(
+        {
+          err,
+          requestId: request.id,
+          restaurantId: body.restaurantId,
+          senderId: body.senderId,
+          messageLength: body.message.length,
+        },
+        "Agent error",
+      );
       reply.code(500);
-      return { error: "Agent failed to process message" };
+      return {
+        error: "Agent failed to process message",
+        code: "AGENT_ERROR",
+        requestId: request.id,
+      };
     }
   });
 

@@ -114,6 +114,47 @@ export async function getChallengeById(challengeId: string): Promise<ChallengeRo
   return challenge ?? null;
 }
 
+export async function updateChallenge(
+  challengeId: string,
+  restaurantId: string,
+  data: {
+    name?: string;
+    description?: string | null;
+    type?: string;
+    target?: number;
+    reward?: number;
+    startDate?: string | null;
+    endDate?: string | null;
+    isActive?: boolean;
+  },
+): Promise<ChallengeRow | null> {
+  const [existing] = await db
+    .select()
+    .from(challenges)
+    .where(and(eq(challenges.id, challengeId), eq(challenges.restaurantId, restaurantId)))
+    .limit(1);
+
+  if (!existing) return null;
+  if (Object.keys(data).length === 0) return existing;
+
+  const [updated] = await db
+    .update(challenges)
+    .set({
+      ...(data.name !== undefined ? { name: data.name } : {}),
+      ...(data.description !== undefined ? { description: data.description } : {}),
+      ...(data.type !== undefined ? { type: data.type } : {}),
+      ...(data.target !== undefined ? { targetValue: data.target } : {}),
+      ...(data.reward !== undefined ? { rewardPoints: data.reward } : {}),
+      ...(data.startDate !== undefined ? { startDate: data.startDate } : {}),
+      ...(data.endDate !== undefined ? { endDate: data.endDate } : {}),
+      ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+    })
+    .where(and(eq(challenges.id, challengeId), eq(challenges.restaurantId, restaurantId)))
+    .returning();
+
+  return updated ?? null;
+}
+
 export async function getGuestChallengeProgress(
   guestId: string,
   challengeId: string,

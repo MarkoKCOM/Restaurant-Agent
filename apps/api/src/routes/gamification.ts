@@ -12,6 +12,7 @@ import {
   getStreak,
   incrementChallengeProgress,
   listActiveChallenges,
+  updateChallenge,
 } from "../services/challenge.service.js";
 import { getGuestById } from "../services/guest.service.js";
 import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
@@ -225,6 +226,53 @@ export async function gamificationRoutes(app: FastifyInstance) {
       return sendCaughtGamificationError(request, reply, err, "CREATE_CHALLENGE_FAILED", {
         restaurantId: parsed.restaurantId,
         challengeType: parsed.type,
+      });
+    }
+  });
+
+  // PATCH /challenges/:challengeId — update/deactivate a challenge
+  const updateChallengeSchema = z.object({
+    name: z.string().min(1).optional(),
+    description: z.string().nullable().optional(),
+    type: z.string().min(1).optional(),
+    target: z.coerce.number().int().min(1).optional(),
+    reward: z.coerce.number().int().min(0).optional(),
+    startDate: z.string().nullable().optional(),
+    endDate: z.string().nullable().optional(),
+    isActive: z.boolean().optional(),
+  });
+
+  app.patch("/challenges/:challengeId", async (request, reply) => {
+    const { challengeId } = request.params as { challengeId: string };
+    const parsed = updateChallengeSchema.parse(request.body ?? {});
+
+    const challenge = await getChallengeById(challengeId);
+    if (!challenge) {
+      return sendGamificationError(
+        request,
+        reply,
+        404,
+        "Challenge not found",
+        "CHALLENGE_NOT_FOUND",
+        { challengeId },
+      );
+    }
+
+    const err = enforceTenant(request.user!, challenge.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", {
+        challengeId,
+        restaurantId: challenge.restaurantId,
+      });
+    }
+
+    try {
+      const updated = await updateChallenge(challengeId, challenge.restaurantId, parsed);
+      return { challenge: updated };
+    } catch (err: unknown) {
+      return sendCaughtGamificationError(request, reply, err, "UPDATE_CHALLENGE_FAILED", {
+        challengeId,
+        restaurantId: challenge.restaurantId,
       });
     }
   });

@@ -257,6 +257,18 @@ async function main() {
       `Reservation completion did not complete smoke challenge: ${smokeChallengeId} progress=${smokeChallengeAfter.progress.currentValue ?? "missing"} completedAt=${smokeChallengeAfter.progress.completedAt ?? "missing"}`,
     );
   }
+  const deactivatedChallenge = await request(`/api/v1/gamification/challenges/${smokeChallengeId}`, {
+    method: "PATCH",
+    token,
+    body: { isActive: false },
+  });
+  record("gamification.challenge.cleanup", {
+    challengeId: smokeChallengeId,
+    isActive: deactivatedChallenge.challenge?.isActive,
+  });
+  if (deactivatedChallenge.challenge?.isActive !== false) {
+    throw new Error(`Smoke challenge cleanup did not deactivate challenge: ${smokeChallengeId}`);
+  }
 
   const membershipFailures = await request(`/api/v1/loyalty/processing-failures?restaurantId=${restaurantId}&status=open&limit=20`, { token });
   const relatedMembershipFailures = (membershipFailures.failures ?? []).filter((failure) =>

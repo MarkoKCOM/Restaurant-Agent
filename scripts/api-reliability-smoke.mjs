@@ -1144,10 +1144,17 @@ async function main() {
       targetBirthdayWeekChallengeActive = deactivated.challenge?.isActive !== false;
     }
   }
+  const cleanupBirthday = jerusalemMonthDayPlusDays(30);
+  const cleanupBirthdayGuest = await request(`/api/v1/guests/${birthdayChallengeGuestId}`, {
+    method: "PATCH",
+    token,
+    body: { preferences: { birthday: cleanupBirthday } },
+  });
   record("gamification.birthday-week.cleanup", {
     challengeId: birthdayWeekChallenge.challenge.id,
     cleanedCount: smokeBirthdayWeekChallenges.length,
     isActive: targetBirthdayWeekChallengeActive,
+    birthday: cleanupBirthdayGuest.guest?.preferences?.birthday ?? null,
   });
   if (targetBirthdayWeekChallengeActive) {
     throw new Error(`Birthday-week smoke challenge cleanup did not deactivate challenge: ${birthdayWeekChallenge.challenge.id}`);

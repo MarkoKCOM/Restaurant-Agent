@@ -122,7 +122,7 @@ const smokePath = await writeJson("smoke.json", {
     { step: "gamification.menu-exploration", categoryCount: 2, badges: ["first_taste", "menu_explorer"] },
     { step: "gamification.achievements-after-visit", count: 2, badges: ["first_visit", "tasting_menu"] },
     { step: "gamification.birthday-week-challenge", created: 1, skippedExisting: 0, progress: 1, target: 1, completed: true, leakedToOtherGuest: false, pointsBefore: 0, pointsAfter: 50 },
-    { step: "gamification.birthday-week.cleanup", challengeId: "birthday-week-test-1", cleanedCount: 1, isActive: false },
+    { step: "gamification.birthday-week.cleanup", challengeId: "birthday-week-test-1", cleanedCount: 1, isActive: false, birthday: "06-27" },
     { step: "engagement.birthday-check", due: 1, scheduled: 1, skippedExisting: 0, skippedPolicy: 0, jobStatus: "pending" },
     { step: "engagement.anniversary-check", due: 1, scheduled: 1, skippedExisting: 0, skippedPolicy: 0, jobStatus: "pending" },
     { step: "engagement.win-back-overdue", scheduled30: 1, skippedExisting: 0, skippedPolicy: 0, jobStatus: "pending" },
@@ -193,7 +193,7 @@ assertIncludes(smokeOutput, "gamification.leaderboard.opt-out: optedIn=no");
 assertIncludes(smokeOutput, "gamification.menu-exploration: categories=2 badges=first_taste,menu_explorer");
 assertIncludes(smokeOutput, "gamification.achievements-after-visit: count=2 badges=first_visit,tasting_menu");
 assertIncludes(smokeOutput, "gamification.birthday-week-challenge: created=1 existing=0 progress=1/1 completed=yes leaked=no points=0->50");
-assertIncludes(smokeOutput, "gamification.birthday-week.cleanup: active=no cleaned=1 challengeId=birthday-week-test-1");
+assertIncludes(smokeOutput, "gamification.birthday-week.cleanup: active=no cleaned=1 challengeId=birthday-week-test-1 birthday=06-27");
 assertIncludes(smokeOutput, "engagement.birthday-check: due=1 scheduled=1 existing=0 policy=0 status=pending");
 assertIncludes(smokeOutput, "engagement.anniversary-check: due=1 scheduled=1 existing=0 policy=0 status=pending");
 assertIncludes(smokeOutput, "engagement.win-back-overdue: scheduled30=1 existing=0 policy=0 status=pending");
@@ -1070,6 +1070,8 @@ for (const requiredBirthdayWeekSmokeContent of [
   "targetGuestId: birthdayWeekCheck.result?.targetGuestId",
   "createdChallengeSamples: birthdayWeekCheck.result?.createdChallengeSamples",
   "skippedExistingSamples: birthdayWeekCheck.result?.skippedExistingSamples",
+  "const cleanupBirthday = jerusalemMonthDayPlusDays(30)",
+  "body: { preferences: { birthday: cleanupBirthday } }",
 ]) {
   assertIncludes(apiReliabilitySmoke, requiredBirthdayWeekSmokeContent);
 }

@@ -330,7 +330,7 @@ function summarizeSmoke(report) {
       } else if (step.step === "gamification.birthday-week-challenge") {
         console.log(`- gamification.birthday-week-challenge: created=${step.created ?? "?"} existing=${step.skippedExisting ?? "?"} progress=${step.progress ?? "?"}/${step.target ?? "?"} completed=${step.completed === true ? "yes" : "no"} leaked=${step.leakedToOtherGuest === true ? "yes" : "no"} points=${step.pointsBefore ?? "?"}->${step.pointsAfter ?? "?"}`);
       } else if (step.step === "gamification.birthday-week.cleanup") {
-        console.log(`- gamification.birthday-week.cleanup: active=${step.isActive === false ? "no" : "yes"} cleaned=${step.cleanedCount ?? "?"} challengeId=${step.challengeId ?? "?"}`);
+        console.log(`- gamification.birthday-week.cleanup: active=${step.isActive === false ? "no" : "yes"} cleaned=${step.cleanedCount ?? "?"} challengeId=${step.challengeId ?? "?"} birthday=${step.birthday ?? "?"}`);
       } else if (step.step === "engagement.birthday-check") {
         console.log(`- engagement.birthday-check: due=${step.due ?? "?"} scheduled=${step.scheduled ?? "?"} existing=${step.skippedExisting ?? "?"} policy=${step.skippedPolicy ?? "?"} status=${step.jobStatus ?? "?"}`);
       } else if (step.step === "engagement.anniversary-check") {

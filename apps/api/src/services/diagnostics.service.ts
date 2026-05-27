@@ -2218,17 +2218,20 @@ export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
     inspectQueue("campaign-delivery", campaignQueue),
   ]);
   const checks = { database, redis };
+  const operationalStatuses = [
+    membershipProcessing.status,
+    gamification.status,
+    engagement.status,
+    campaignDiagnostics.status,
+    outboundMessages.status,
+  ];
   const status = Object.values(checks).every((check) => check.status === "ok")
     && queues.every((queue) => queue.status === "ok")
     && queues.every((queue) => queue.scheduleHealth?.status !== "attention")
     && deployment.source.status === "ok"
     && deployment.codeMigrations.status === "ok"
     && deployment.databaseMigrations.status === "ok"
-    && membershipProcessing.status !== "error"
-    && gamification.status !== "error"
-    && engagement.status !== "error"
-    && campaignDiagnostics.status !== "error"
-    && outboundMessages.status !== "error"
+    && operationalStatuses.every((sectionStatus) => sectionStatus === "ok")
     && deployment.migrationDrift?.status !== "mismatch"
     ? "ok"
     : "degraded";

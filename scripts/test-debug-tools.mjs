@@ -337,7 +337,7 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
   ],
   highlights: {
     adminDiagnostics: {
-      status: "ok",
+      status: "degraded",
       source: {
         shortCommit: "abc1234",
         checkout: { shortCommit: "abc1234", branch: "main" },
@@ -478,6 +478,7 @@ const debugBundleManifestOutput = await summarize(debugBundleManifestPath);
 assertIncludes(debugBundleManifestOutput, "Type: debug-bundle");
 assertIncludes(debugBundleManifestOutput, "Readiness: ready after 1 attempt(s)");
 assertIncludes(debugBundleManifestOutput, "Commands: 3/5 passed");
+assertIncludes(debugBundleManifestOutput, "Admin diagnostics: degraded");
 assertIncludes(debugBundleManifestOutput, "Running build: abc1234 checkout=abc1234 matches=true");
 assertIncludes(debugBundleManifestOutput, "Migration drift: ok code=202605270001 database=202605270001");
 assertIncludes(debugBundleManifestOutput, "Membership processing: ok open=2 attempts=3");
@@ -823,6 +824,7 @@ for (const requiredDiagnosticsContent of [
   "0 9 * * *",
   "0 23 * * *",
   "queue.scheduleHealth?.status !== \"attention\"",
+  "operationalStatuses.every((sectionStatus) => sectionStatus === \"ok\")",
 ]) {
   assertIncludes(diagnosticsService, requiredDiagnosticsContent);
 }

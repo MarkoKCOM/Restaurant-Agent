@@ -148,7 +148,7 @@ OPENSEAT_TOKEN=... pnpm debug:api -- http://localhost:3001/api/v1/admin/diagnost
 
 The endpoint returns:
 
-- overall status: `ok` or `degraded`
+- overall status: `ok` or `degraded`; operational `attention` sections also make the report `degraded`
 - database ping status and latency
 - Redis ping status and latency
 - deployment metadata: Node version, process ID, working directory, running build git commit/branch/dirty state, current checkout git state, whether checkout matches the running build, code migration count/latest file, applied DB migration count/latest ID/hash, and migration drift status

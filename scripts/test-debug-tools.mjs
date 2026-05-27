@@ -371,6 +371,45 @@ for (const expectedBookingWidgetContent of [
   assertIncludes(bookingWidget, expectedBookingWidgetContent);
 }
 
+const dashboardApiError = await readFile("apps/dashboard/src/lib/apiError.ts", "utf8");
+for (const expectedDashboardApiErrorContent of [
+  "createRequestId",
+  "apiErrorFromFetchFailure",
+  "FETCH_FAILED",
+  "Network error (request",
+  "fallbackRequestId",
+]) {
+  assertIncludes(dashboardApiError, expectedDashboardApiErrorContent);
+}
+
+const dashboardApiHooks = await readFile("apps/dashboard/src/hooks/api.ts", "utf8");
+for (const expectedDashboardApiContent of [
+  "responseRequestIds",
+  '"x-request-id": requestId',
+  "apiErrorFromFetchFailure",
+  "responseRequestIds.get(res)",
+]) {
+  assertIncludes(dashboardApiHooks, expectedDashboardApiContent);
+}
+
+const dashboardAuth = await readFile("apps/dashboard/src/hooks/useAuth.tsx", "utf8");
+for (const expectedDashboardAuthContent of [
+  'createRequestId("dashboard-auth")',
+  '"x-request-id": requestId',
+  "apiErrorFromFetchFailure",
+]) {
+  assertIncludes(dashboardAuth, expectedDashboardAuthContent);
+}
+
+const dashboardChatWidget = await readFile("apps/dashboard/src/components/ChatWidget.tsx", "utf8");
+for (const expectedDashboardChatContent of [
+  'createRequestId("dashboard-chat")',
+  '"x-request-id": requestId',
+  "apiErrorFromFetchFailure",
+]) {
+  assertIncludes(dashboardChatWidget, expectedDashboardChatContent);
+}
+
 const deployWorkflow = await readFile(".github/workflows/deploy.yml", "utf8");
 for (const requiredPath of [
   ".github/workflows/deploy.yml",

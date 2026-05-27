@@ -6,9 +6,15 @@ import type {
   DashboardSnapshot,
   Table,
 } from "@openseat/domain";
-import { apiErrorFromResponse, logApiError } from "../lib/apiError";
+import {
+  apiErrorFromFetchFailure,
+  apiErrorFromResponse,
+  createRequestId,
+  logApiError,
+} from "../lib/apiError";
 
 const API = "/api/v1";
+const responseRequestIds = new WeakMap<Response, string>();
 
 function authHeaders(): Record<string, string> {
   const token = localStorage.getItem("openseat_token");
@@ -38,9 +44,20 @@ function handle401() {
 }
 
 async function fetchJSON<T>(url: string): Promise<T> {
-  const res = await fetch(url, { headers: authHeaders() });
+  const requestId = createRequestId();
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: { ...authHeaders(), "x-request-id": requestId },
+    });
+    responseRequestIds.set(res, requestId);
+  } catch (fetchError: unknown) {
+    const error = apiErrorFromFetchFailure({ error: fetchError, url, requestId });
+    logApiError(error);
+    throw error;
+  }
   if (!res.ok) {
-    const error = await apiErrorFromResponse(res);
+    const error = await apiErrorFromResponse(res, "GET", requestId);
     logApiError(error);
     if (res.status === 401) handle401();
     throw error;
@@ -49,12 +66,22 @@ async function fetchJSON<T>(url: string): Promise<T> {
 }
 
 async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
-  const res = await fetch(url, {
-    ...options,
-    headers: { ...authHeaders(), "Content-Type": "application/json", ...options.headers },
-  });
+  const method = options.method ?? "REQUEST";
+  const requestId = createRequestId();
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers: { ...authHeaders(), "Content-Type": "application/json", "x-request-id": requestId, ...options.headers },
+    });
+    responseRequestIds.set(res, requestId);
+  } catch (fetchError: unknown) {
+    const error = apiErrorFromFetchFailure({ error: fetchError, url, method, requestId });
+    logApiError(error);
+    throw error;
+  }
   if (res.status === 401) {
-    const error = await apiErrorFromResponse(res, options.method ?? "REQUEST");
+    const error = await apiErrorFromResponse(res, method, requestId);
     logApiError(error);
     handle401();
     throw error;
@@ -63,7 +90,7 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
 }
 
 async function throwApiError(res: Response, method = "REQUEST"): Promise<never> {
-  const error = await apiErrorFromResponse(res, method);
+  const error = await apiErrorFromResponse(res, method, responseRequestIds.get(res));
   logApiError(error);
   throw error;
 }

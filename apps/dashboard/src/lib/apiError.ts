@@ -34,12 +34,17 @@ export class ApiError extends Error {
   }
 }
 
+export function createRequestId(prefix = "dashboard"): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export async function apiErrorFromResponse(
   res: Response,
   method = "GET",
+  fallbackRequestId?: string,
 ): Promise<ApiError> {
   const payload = await res.json().catch(() => null) as ApiErrorPayload | null;
-  const requestId = payload?.requestId ?? res.headers.get("x-request-id") ?? undefined;
+  const requestId = payload?.requestId ?? res.headers.get("x-request-id") ?? fallbackRequestId;
   const baseMessage = payload?.error ?? payload?.message ?? `API error: ${res.status}`;
   const message = requestId ? `${baseMessage} (request ${requestId})` : baseMessage;
 
@@ -51,6 +56,23 @@ export async function apiErrorFromResponse(
     code: payload?.code,
     requestId,
     details: payload?.details,
+  });
+}
+
+export function apiErrorFromFetchFailure(params: {
+  error: unknown;
+  url: string;
+  method?: string;
+  requestId: string;
+}): ApiError {
+  const causeMessage = params.error instanceof Error ? params.error.message : String(params.error);
+  return new ApiError({
+    message: `Network error (request ${params.requestId}): ${causeMessage}`,
+    status: 0,
+    url: params.url,
+    method: params.method ?? "GET",
+    code: "FETCH_FAILED",
+    requestId: params.requestId,
   });
 }
 

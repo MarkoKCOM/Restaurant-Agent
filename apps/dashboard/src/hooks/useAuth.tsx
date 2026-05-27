@@ -13,7 +13,12 @@ import {
   type DashboardRole,
   type SelfServeSignupInput,
 } from "@openseat/domain";
-import { apiErrorFromResponse, logApiError } from "../lib/apiError";
+import {
+  apiErrorFromFetchFailure,
+  apiErrorFromResponse,
+  createRequestId,
+  logApiError,
+} from "../lib/apiError";
 
 const TOKEN_KEY = "openseat_token";
 const ROLE_KEY = "openseat_role";
@@ -187,17 +192,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await fetch(`${API}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+    const url = `${API}/auth/login`;
+    const requestId = createRequestId("dashboard-auth");
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-request-id": requestId },
+        body: JSON.stringify({ email, password }),
+      });
+    } catch (fetchError: unknown) {
+      const error = apiErrorFromFetchFailure({ error: fetchError, url, method: "POST", requestId });
+      logApiError(error);
+      throw error;
+    }
 
     if (!res.ok) {
       if (res.status === 401) {
         throw new Error("INVALID_CREDENTIALS");
       }
-      const error = await apiErrorFromResponse(res, "POST");
+      const error = await apiErrorFromResponse(res, "POST", requestId);
       logApiError(error);
       throw error;
     }
@@ -207,14 +221,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [persistAuthResponse]);
 
   const signup = useCallback(async (payload: SelfServeSignupInput) => {
-    const res = await fetch(`${API}/auth/signup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const url = `${API}/auth/signup`;
+    const requestId = createRequestId("dashboard-auth");
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-request-id": requestId },
+        body: JSON.stringify(payload),
+      });
+    } catch (fetchError: unknown) {
+      const error = apiErrorFromFetchFailure({ error: fetchError, url, method: "POST", requestId });
+      logApiError(error);
+      throw error;
+    }
 
     if (!res.ok) {
-      const error = await apiErrorFromResponse(res, "POST");
+      const error = await apiErrorFromResponse(res, "POST", requestId);
       logApiError(error);
       throw error;
     }

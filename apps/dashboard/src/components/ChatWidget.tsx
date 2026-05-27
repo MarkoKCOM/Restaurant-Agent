@@ -1,7 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useLang } from "../i18n.js";
-import { apiErrorFromResponse, formatApiErrorMessage, logApiError } from "../lib/apiError.js";
+import {
+  apiErrorFromFetchFailure,
+  apiErrorFromResponse,
+  createRequestId,
+  formatApiErrorMessage,
+  logApiError,
+} from "../lib/apiError.js";
 import { Tooltip } from "./Tooltip.js";
 
 interface Message {
@@ -79,17 +85,27 @@ export function ChatWidget() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${API}/chat`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("openseat_token") ?? ""}`,
-        },
-        body: JSON.stringify({ messages: newMessages }),
-      });
+      const url = `${API}/chat`;
+      const requestId = createRequestId("dashboard-chat");
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-request-id": requestId,
+            Authorization: `Bearer ${localStorage.getItem("openseat_token") ?? ""}`,
+          },
+          body: JSON.stringify({ messages: newMessages }),
+        });
+      } catch (fetchError: unknown) {
+        const error = apiErrorFromFetchFailure({ error: fetchError, url, method: "POST", requestId });
+        logApiError(error);
+        throw error;
+      }
 
       if (!res.ok) {
-        const error = await apiErrorFromResponse(res, "POST");
+        const error = await apiErrorFromResponse(res, "POST", requestId);
         logApiError(error);
         throw error;
       }

@@ -93,6 +93,7 @@
 - Active challenge listings and visit-triggered challenge auto-progress now evaluate date windows with the restaurant-local calendar day, matching birthday-week challenge creation and preventing midnight timezone gaps in gamification/member-visible challenges.
 - API reliability smoke date windows now use the same restaurant-local calendar day so live gamification checks exercise the product behavior instead of UTC-only artifacts.
 - Birthday-week challenge checks now accept an optional `guestId` for targeted support/smoke runs and return sample created/existing challenge IDs, so a failing retention challenge check points at concrete guest/challenge records instead of only aggregate counts.
+- Outbound diagnostics now include machine-readable status reasons plus `ownerDeliveryBlocked` and `ownerWhatsappConfigOnlyMissing`, so support can distinguish current delivery blockers from historical skipped rows and owner WhatsApp configuration cleanup.
 
 ### Verified
 - `pnpm --filter @openseat/domain build`

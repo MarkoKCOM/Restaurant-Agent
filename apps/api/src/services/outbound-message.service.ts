@@ -39,6 +39,7 @@ export interface ListOutboundMessagesParams {
 export interface OutboundMessageDiagnostics {
   status: "ok" | "attention" | "error";
   since?: string;
+  statusReasons?: string[];
   totals?: {
     total: number;
     logged: number;
@@ -52,6 +53,8 @@ export interface OutboundMessageDiagnostics {
     ownerWhatsappMissing: number;
     ownerDeliveryRecipientMissing: number;
     ownerDeliveryFallbackAvailable: number;
+    ownerDeliveryBlocked: boolean;
+    ownerWhatsappConfigOnlyMissing: boolean;
     ownerWhatsappMissingSamples: Array<{
       restaurantId: string;
       slug: string;
@@ -250,9 +253,17 @@ export async function getOutboundMessageDiagnostics(params: {
   const ownerWhatsappMissing = Number(ownerWhatsappMissingRows[0]?.missingCount ?? 0);
   const ownerDeliveryRecipientMissing = Number(ownerWhatsappMissingRows[0]?.recipientMissingCount ?? 0);
   const ownerDeliveryFallbackAvailable = Number(ownerWhatsappMissingRows[0]?.fallbackAvailableCount ?? 0);
+  const statusReasons: string[] = [];
+  if (totals.failed > 0) statusReasons.push("failed_outbound_messages");
+  if (Object.keys(byErrorCode).length > 0) statusReasons.push("historical_delivery_errors");
+  if (ownerDeliveryRecipientMissing > 0) statusReasons.push("owner_delivery_recipient_missing");
+  if (ownerWhatsappMissing > 0) statusReasons.push("owner_whatsapp_config_missing");
+  const ownerDeliveryBlocked = ownerDeliveryRecipientMissing > 0;
+  const ownerWhatsappConfigOnlyMissing = ownerWhatsappMissing > 0 && !ownerDeliveryBlocked;
 
   return {
-    status: totals.failed > 0 || Object.keys(byErrorCode).length > 0 || ownerDeliveryRecipientMissing > 0 || ownerWhatsappMissing > 0 ? "attention" : "ok",
+    status: statusReasons.length > 0 ? "attention" : "ok",
+    statusReasons,
     since: since.toISOString(),
     totals,
     byType,
@@ -261,6 +272,8 @@ export async function getOutboundMessageDiagnostics(params: {
       ownerWhatsappMissing,
       ownerDeliveryRecipientMissing,
       ownerDeliveryFallbackAvailable,
+      ownerDeliveryBlocked,
+      ownerWhatsappConfigOnlyMissing,
       ownerWhatsappMissingSamples: ownerWhatsappMissingRows.map((row) => ({
         restaurantId: row.restaurantId,
         slug: row.slug,

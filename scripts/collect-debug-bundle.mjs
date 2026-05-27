@@ -730,9 +730,10 @@ async function writeReadme() {
       const outboundByType = outboundMessages.byType ?? {};
       const outboundByErrorCode = outboundMessages.byErrorCode ?? {};
       const outboundDeliveryReadiness = outboundMessages.deliveryReadiness ?? {};
+      const outboundReasons = asArray(outboundMessages.statusReasons).join(",") || "none";
       const ownerDeliveryReadiness = manifest.highlights.ownerDeliveryReadiness;
       lines.push(
-        `- Outbound messages: ${outboundMessages.status ?? "unknown"} total=${outboundTotals.total ?? "?"} logged=${outboundTotals.logged ?? "?"} sent=${outboundTotals.sent ?? "?"} skipped=${outboundTotals.skipped ?? "?"} failed=${outboundTotals.failed ?? "?"} ownerWhatsappMissing=${outboundDeliveryReadiness.ownerWhatsappMissing ?? "?"} types=${Object.entries(outboundByType).map(([type, count]) => `${type}:${count}`).join(",") || "none"} errors=${Object.entries(outboundByErrorCode).map(([code, count]) => `${code}:${count}`).join(",") || "none"}`,
+        `- Outbound messages: ${outboundMessages.status ?? "unknown"} reasons=${outboundReasons} total=${outboundTotals.total ?? "?"} logged=${outboundTotals.logged ?? "?"} sent=${outboundTotals.sent ?? "?"} skipped=${outboundTotals.skipped ?? "?"} failed=${outboundTotals.failed ?? "?"} ownerWhatsappMissing=${outboundDeliveryReadiness.ownerWhatsappMissing ?? "?"} ownerDeliveryBlocked=${outboundDeliveryReadiness.ownerDeliveryBlocked === true ? "yes" : "no"} configOnly=${outboundDeliveryReadiness.ownerWhatsappConfigOnlyMissing === true ? "yes" : "no"} types=${Object.entries(outboundByType).map(([type, count]) => `${type}:${count}`).join(",") || "none"} errors=${Object.entries(outboundByErrorCode).map(([code, count]) => `${code}:${count}`).join(",") || "none"}`,
       );
       if (ownerDeliveryReadiness?.status === "unparsed") {
         lines.push(`- Owner delivery readiness: unparsed file=${ownerDeliveryReadiness.outputPath ?? "unknown"} error=${ownerDeliveryReadiness.error}`);

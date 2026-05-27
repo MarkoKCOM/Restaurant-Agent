@@ -521,9 +521,10 @@ async function summarizeDebugBundleManifest(report) {
     );
   }
   if (outboundMessages.status) {
+    const outboundReasons = asArray(outboundMessages.statusReasons).join(",") || "none";
     printLine(
       "Outbound messages",
-      `${outboundMessages.status} total=${outboundTotals.total ?? "?"} logged=${outboundTotals.logged ?? "?"} sent=${outboundTotals.sent ?? "?"} skipped=${outboundTotals.skipped ?? "?"} failed=${outboundTotals.failed ?? "?"} ownerWhatsappMissing=${outboundDeliveryReadiness.ownerWhatsappMissing ?? "?"} types=${Object.entries(outboundByType).map(([type, count]) => `${type}:${count}`).join(",") || "none"} errors=${Object.entries(outboundByErrorCode).map(([code, count]) => `${code}:${count}`).join(",") || "none"}`,
+      `${outboundMessages.status} reasons=${outboundReasons} total=${outboundTotals.total ?? "?"} logged=${outboundTotals.logged ?? "?"} sent=${outboundTotals.sent ?? "?"} skipped=${outboundTotals.skipped ?? "?"} failed=${outboundTotals.failed ?? "?"} ownerWhatsappMissing=${outboundDeliveryReadiness.ownerWhatsappMissing ?? "?"} ownerDeliveryBlocked=${outboundDeliveryReadiness.ownerDeliveryBlocked === true ? "yes" : "no"} configOnly=${outboundDeliveryReadiness.ownerWhatsappConfigOnlyMissing === true ? "yes" : "no"} types=${Object.entries(outboundByType).map(([type, count]) => `${type}:${count}`).join(",") || "none"} errors=${Object.entries(outboundByErrorCode).map(([code, count]) => `${code}:${count}`).join(",") || "none"}`,
     );
   }
   if (ownerDeliveryReadiness.status) {

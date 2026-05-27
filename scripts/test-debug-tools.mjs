@@ -477,6 +477,11 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
       },
       outboundMessages: {
         status: "attention",
+        statusReasons: [
+          "failed_outbound_messages",
+          "historical_delivery_errors",
+          "owner_whatsapp_config_missing",
+        ],
         totals: {
           total: 5,
           logged: 4,
@@ -493,6 +498,10 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
         },
         deliveryReadiness: {
           ownerWhatsappMissing: 2,
+          ownerDeliveryRecipientMissing: 0,
+          ownerDeliveryFallbackAvailable: 2,
+          ownerDeliveryBlocked: false,
+          ownerWhatsappConfigOnlyMissing: true,
           ownerWhatsappMissingSamples: [
             {
               restaurantId: "restaurant-1",
@@ -609,7 +618,7 @@ assertIncludes(
 );
 assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overdue=1 failed=1 skipped=3 winBackDue=2 birthdayDue=1 anniversaryDue=1 reviewWithoutPositive=1 negativeWithReview=1");
 assertIncludes(debugBundleManifestOutput, "Campaigns: attention total=6 draft=1 scheduled=2 sent=3 overdue=1 deliverySent=12 skipped=4 optedOut=2 weekLimit=1 monthLimit=1");
-assertIncludes(debugBundleManifestOutput, "Outbound messages: attention total=5 logged=4 sent=0 skipped=0 failed=1 ownerWhatsappMissing=2 types=daily_morning_summary:2,thank_you:3 errors=OUTBOUND_RECIPIENT_MISSING:1");
+assertIncludes(debugBundleManifestOutput, "Outbound messages: attention reasons=failed_outbound_messages,historical_delivery_errors,owner_whatsapp_config_missing total=5 logged=4 sent=0 skipped=0 failed=1 ownerWhatsappMissing=2 ownerDeliveryBlocked=no configOnly=yes types=daily_morning_summary:2,thank_you:3 errors=OUTBOUND_RECIPIENT_MISSING:1");
 assertIncludes(debugBundleManifestOutput, "Owner delivery readiness: ok total=9 configured=7 missing=2 output=/tmp/openseat-debug-bundle/owner-delivery-readiness.json");
 assertIncludes(debugBundleManifestOutput, "Owner delivery recipients: configured=8 missing=1 fallbackAvailable=1");
 assertIncludes(debugBundleManifestOutput, "Owner delivery repair samples:");
@@ -968,11 +977,16 @@ for (const requiredOutboundServiceContent of [
   "recordOutboundDelivery",
   "OUTBOUND_RECIPIENT_MISSING",
   "byErrorCode",
+  "statusReasons",
   "deliveryReadiness",
   "ownerWhatsappMissing",
   "ownerDeliveryRecipientMissing",
   "ownerDeliveryFallbackAvailable",
+  "ownerDeliveryBlocked",
+  "ownerWhatsappConfigOnlyMissing",
   "ownerWhatsappMissingSamples",
+  "historical_delivery_errors",
+  "owner_whatsapp_config_missing",
   "deliveryMode",
   "deliverySkipped",
   "status: missingRequiredRecipient ? \"skipped\" : \"logged\"",

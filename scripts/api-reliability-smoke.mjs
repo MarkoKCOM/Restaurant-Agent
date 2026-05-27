@@ -2,6 +2,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import process from "node:process";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 const baseUrl = (
   process.argv[2] ||
@@ -171,6 +175,23 @@ const cleanupTasks = [];
 
 function record(step, details) {
   report.steps.push({ step, ...details });
+}
+
+async function markSmokeEngagementJobSent(jobId) {
+  if (!process.env.DATABASE_URL) return false;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(jobId)) {
+    throw new Error(`Refusing to cleanup invalid engagement job id: ${jobId}`);
+  }
+
+  await execFileAsync("psql", [
+    process.env.DATABASE_URL,
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    `update engagement_jobs set status = 'sent', sent_at = now(), skip_reason = 'smoke_cleanup' where id = '${jobId}' and status = 'pending' and type = 'thank_you'`,
+  ], { timeout: 10_000 });
+
+  return true;
 }
 
 function markLastRequestHandled(reason) {
@@ -555,6 +576,13 @@ async function main() {
   if (!thankYouOutsideQuietHours) {
     throw new Error(`Thank-you job was scheduled inside quiet hours: trigger=${thankYouTriggerTime} quiet=${thankYouQuietHours.start}-${thankYouQuietHours.end}`);
   }
+  cleanupTasks.push(async () => {
+    const cleaned = await markSmokeEngagementJobSent(thankYouJob.id);
+    record("engagement.thank-you.cleanup", {
+      jobId: thankYouJob.id,
+      markedSent: cleaned,
+    });
+  });
 
   const birthdayGuest = await request("/api/v1/guests", {
     method: "POST",

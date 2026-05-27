@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import {
   listEngagementJobs,
+  checkAnniversaries,
   checkBirthdays,
   checkWinBack,
 } from "../services/engagement.service.js";
@@ -95,6 +96,40 @@ export async function engagementRoutes(app: FastifyInstance) {
         500,
         "Birthday check failed",
         "BIRTHDAY_CHECK_FAILED",
+        { err: error, restaurantId },
+      );
+    }
+  });
+
+  // POST /anniversaries/check — manually trigger first-visit anniversary check for a restaurant
+  app.post("/anniversaries/check", async (request, reply) => {
+    const { restaurantId } = request.query as { restaurantId?: string };
+
+    if (!restaurantId) {
+      return sendEngagementError(
+        request,
+        reply,
+        400,
+        "restaurantId query parameter is required",
+        "RESTAURANT_ID_REQUIRED",
+      );
+    }
+
+    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return sendEngagementError(request, reply, 403, err, "ENGAGEMENT_FORBIDDEN", { restaurantId });
+    }
+
+    try {
+      const result = await checkAnniversaries(restaurantId);
+      return { result };
+    } catch (error: unknown) {
+      return sendEngagementError(
+        request,
+        reply,
+        500,
+        "Anniversary check failed",
+        "ANNIVERSARY_CHECK_FAILED",
         { err: error, restaurantId },
       );
     }

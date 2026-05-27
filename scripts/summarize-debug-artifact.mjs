@@ -112,6 +112,7 @@ function summarizeSmoke(report) {
       || step.step === "loyalty.off-peak-multiplier"
       || step.step === "gamification.menu-exploration"
       || step.step === "engagement.birthday-check"
+      || step.step === "engagement.anniversary-check"
       || step.step === "engagement.win-back-overdue"
     )
   );
@@ -142,6 +143,8 @@ function summarizeSmoke(report) {
         console.log(`- gamification.menu-exploration: categories=${step.categoryCount ?? "?"} badges=${asArray(step.badges).join(",") || "none"}`);
       } else if (step.step === "engagement.birthday-check") {
         console.log(`- engagement.birthday-check: due=${step.due ?? "?"} scheduled=${step.scheduled ?? "?"} existing=${step.skippedExisting ?? "?"} policy=${step.skippedPolicy ?? "?"} status=${step.jobStatus ?? "?"}`);
+      } else if (step.step === "engagement.anniversary-check") {
+        console.log(`- engagement.anniversary-check: due=${step.due ?? "?"} scheduled=${step.scheduled ?? "?"} existing=${step.skippedExisting ?? "?"} policy=${step.skippedPolicy ?? "?"} status=${step.jobStatus ?? "?"}`);
       } else if (step.step === "engagement.win-back-overdue") {
         console.log(`- engagement.win-back-overdue: scheduled30=${step.scheduled30 ?? "?"} existing=${step.skippedExisting ?? "?"} policy=${step.skippedPolicy ?? "?"} status=${step.jobStatus ?? "?"}`);
       }
@@ -227,6 +230,7 @@ function summarizeDebugBundleManifest(report) {
   const engagementTotals = engagement.totals ?? {};
   const engagementWinBack = engagement.winBack ?? {};
   const engagementBirthdays = engagement.birthdays ?? {};
+  const engagementAnniversaries = engagement.anniversaries ?? {};
   const agentMembershipIntents = highlights.agentMembershipIntents ?? {};
   const queues = asArray(adminDiagnostics.queues);
 
@@ -281,7 +285,7 @@ function summarizeDebugBundleManifest(report) {
   if (engagement.status) {
     printLine(
       "Engagement",
-      `${engagement.status} pending=${engagementTotals.pending ?? "?"} overdue=${engagementTotals.overduePending ?? "?"} failed=${engagementTotals.failed ?? "?"} skipped=${engagementTotals.skipped ?? "?"} winBackDue=${engagementWinBack.dueUnscheduledTotal ?? "?"} birthdayDue=${engagementBirthdays.dueUnscheduledToday ?? "?"}`,
+      `${engagement.status} pending=${engagementTotals.pending ?? "?"} overdue=${engagementTotals.overduePending ?? "?"} failed=${engagementTotals.failed ?? "?"} skipped=${engagementTotals.skipped ?? "?"} winBackDue=${engagementWinBack.dueUnscheduledTotal ?? "?"} birthdayDue=${engagementBirthdays.dueUnscheduledToday ?? "?"} anniversaryDue=${engagementAnniversaries.dueUnscheduledToday ?? "?"}`,
     );
   }
   if (agentMembershipIntents.status) {

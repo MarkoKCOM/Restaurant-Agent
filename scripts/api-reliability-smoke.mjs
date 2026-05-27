@@ -83,15 +83,27 @@ function dayKeyForDate(value) {
   return ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][new Date(`${value}T12:00:00`).getDay()];
 }
 
-function jerusalemMonthDay() {
+function jerusalemDateParts() {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Jerusalem",
+    year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value;
   const month = parts.find((part) => part.type === "month")?.value;
   const day = parts.find((part) => part.type === "day")?.value;
+  return { year, month, day };
+}
+
+function jerusalemMonthDay() {
+  const { month, day } = jerusalemDateParts();
   return `${month}-${day}`;
+}
+
+function lastYearJerusalemDate() {
+  const { year, month, day } = jerusalemDateParts();
+  return `${Number(year) - 1}-${month}-${day}`;
 }
 
 const runId = `smoke-${Date.now()}`;
@@ -503,6 +515,53 @@ async function main() {
   });
   if (!birthdayJob || !["pending", "sent", "skipped"].includes(birthdayJob.status)) {
     throw new Error(`Birthday check did not create a birthday engagement job: ${JSON.stringify(birthdayCheck.result ?? {})}`);
+  }
+
+  const anniversaryGuest = await request("/api/v1/guests", {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      name: `Smoke Anniversary ${runId}`,
+      phone: `054${String(Date.now()).slice(-7)}`,
+      language: "he",
+      source: "web",
+    },
+  });
+  const anniversaryGuestId = anniversaryGuest.guest?.id;
+  if (!anniversaryGuestId) throw new Error("Anniversary smoke guest create endpoint did not return guest.id");
+
+  const firstVisitDate = lastYearJerusalemDate();
+  await request("/api/v1/visits", {
+    method: "POST",
+    token,
+    body: {
+      guestId: anniversaryGuestId,
+      restaurantId,
+      date: firstVisitDate,
+      partySize: 2,
+      items: [{ name: "Smoke anniversary meal", category: "main", price: 80, rating: 5 }],
+      totalSpend: 80,
+      channel: "web",
+    },
+  });
+  const anniversaryCheck = await request(`/api/v1/engagement/anniversaries/check?restaurantId=${restaurantId}`, {
+    method: "POST",
+    token,
+  });
+  const anniversaryJobs = await request(`/api/v1/engagement/jobs?restaurantId=${restaurantId}&guestId=${anniversaryGuestId}`, { token });
+  const anniversaryJob = (anniversaryJobs.jobs ?? []).find((job) => job.type === "anniversary");
+  record("engagement.anniversary-check", {
+    guestId: anniversaryGuestId,
+    firstVisitDate,
+    due: anniversaryCheck.result?.due ?? null,
+    scheduled: anniversaryCheck.result?.scheduled ?? null,
+    skippedExisting: anniversaryCheck.result?.skippedExisting ?? null,
+    skippedPolicy: anniversaryCheck.result?.skippedPolicy ?? null,
+    jobStatus: anniversaryJob?.status ?? null,
+  });
+  if (!anniversaryJob || !["pending", "sent", "skipped"].includes(anniversaryJob.status)) {
+    throw new Error(`Anniversary check did not create an anniversary engagement job: ${JSON.stringify(anniversaryCheck.result ?? {})}`);
   }
 
   const winBackGuest = await request("/api/v1/guests", {

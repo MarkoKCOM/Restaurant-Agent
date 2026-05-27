@@ -10,6 +10,7 @@ export type EngagementJobType =
   | "thank_you"
   | "review_request"
   | "birthday"
+  | "anniversary"
   | "win_back_30"
   | "win_back_60"
   | "win_back_90";
@@ -17,6 +18,7 @@ export type EngagementJobType =
 export const PROMOTIONAL_ENGAGEMENT_TYPES = [
   "review_request",
   "birthday",
+  "anniversary",
   "win_back_30",
   "win_back_60",
   "win_back_90",
@@ -343,6 +345,14 @@ export interface BirthdayCheckResult {
   due: number;
 }
 
+export interface AnniversaryCheckResult {
+  scheduled: number;
+  skippedExisting: number;
+  skippedPolicy: number;
+  skippedInvalidFirstVisit: number;
+  due: number;
+}
+
 /**
  * Find guests with birthdays today and schedule a promotional greeting.
  */
@@ -396,6 +406,85 @@ export async function checkBirthdays(restaurantId: string): Promise<BirthdayChec
       restaurantId,
       guestId: guest.id,
       type: "birthday",
+      triggerAt,
+    });
+
+    if (job.status === "pending") {
+      result.scheduled++;
+    } else if (job.status === "skipped") {
+      result.skippedPolicy++;
+    }
+  }
+
+  return result;
+}
+
+function getDateMonthDay(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const match = value.trim().match(/^(\d{4})-(\d{2}-\d{2})$/);
+  return match?.[2] ?? null;
+}
+
+function getDateYear(value: unknown): number | null {
+  if (typeof value !== "string") return null;
+  const match = value.trim().match(/^(\d{4})-\d{2}-\d{2}$/);
+  return match ? Number(match[1]) : null;
+}
+
+export async function checkAnniversaries(restaurantId: string): Promise<AnniversaryCheckResult> {
+  const result: AnniversaryCheckResult = {
+    scheduled: 0,
+    skippedExisting: 0,
+    skippedPolicy: 0,
+    skippedInvalidFirstVisit: 0,
+    due: 0,
+  };
+  const todayMonthDay = getJerusalemMonthDay();
+  const triggerAt = getBirthdayTriggerAt(todayMonthDay);
+  if (!triggerAt) return result;
+
+  const jerusalemYear = Number(new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jerusalem",
+    year: "numeric",
+  }).format(new Date()));
+  const windowStart = new Date(triggerAt);
+  windowStart.setUTCHours(0, 0, 0, 0);
+  const windowEnd = new Date(windowStart);
+  windowEnd.setUTCDate(windowEnd.getUTCDate() + 1);
+
+  const restaurantGuests = await db
+    .select()
+    .from(guests)
+    .where(eq(guests.restaurantId, restaurantId));
+
+  for (const guest of restaurantGuests) {
+    if (!guest.firstVisitDate) continue;
+
+    const monthDay = getDateMonthDay(guest.firstVisitDate);
+    const firstVisitYear = getDateYear(guest.firstVisitDate);
+    if (!monthDay || !firstVisitYear) {
+      result.skippedInvalidFirstVisit++;
+      continue;
+    }
+    if (monthDay !== todayMonthDay || firstVisitYear >= jerusalemYear) continue;
+
+    result.due++;
+    const existingJob = await findEngagementJobInWindow({
+      restaurantId,
+      guestId: guest.id,
+      type: "anniversary",
+      windowStart,
+      windowEnd,
+    });
+    if (existingJob) {
+      result.skippedExisting++;
+      continue;
+    }
+
+    const job = await scheduleEngagementJob({
+      restaurantId,
+      guestId: guest.id,
+      type: "anniversary",
       triggerAt,
     });
 

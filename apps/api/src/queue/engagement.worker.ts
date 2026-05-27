@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { redisConnection } from "./index.js";
 import { db } from "../db/index.js";
 import { engagementJobs, guests, restaurants } from "../db/schema.js";
-import { checkBirthdays, checkWinBack, shouldSendEngagementJob } from "../services/engagement.service.js";
+import { checkAnniversaries, checkBirthdays, checkWinBack, shouldSendEngagementJob } from "../services/engagement.service.js";
 
 export interface EngagementJobData {
   jobId?: string;
@@ -44,6 +44,19 @@ async function processEngagement(job: Job<EngagementJobData>, logger: FastifyBas
     logger.info(
       { queue: "engagement", jobId: job.id, restaurantId, engagementType: type, ...result },
       "Birthday check complete",
+    );
+    return;
+  }
+
+  if (type === "anniversary_cron") {
+    logger.info(
+      { queue: "engagement", jobId: job.id, restaurantId, engagementType: type },
+      "Running daily anniversary check",
+    );
+    const result = await checkAnniversaries(restaurantId);
+    logger.info(
+      { queue: "engagement", jobId: job.id, restaurantId, engagementType: type, ...result },
+      "Anniversary check complete",
     );
     return;
   }

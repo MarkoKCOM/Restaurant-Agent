@@ -234,6 +234,14 @@ export interface EngagementDiagnostic {
       birthday: string;
     }>;
   };
+  anniversaries?: {
+    dueUnscheduledToday: number;
+    samples: Array<{
+      guestId: string;
+      restaurantId: string;
+      firstVisitDate: string;
+    }>;
+  };
   skippedByReason?: Array<{
     reason: string;
     count: number;
@@ -685,7 +693,7 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
 
 async function inspectEngagement(): Promise<EngagementDiagnostic> {
   try {
-    const [summaryRows, skippedRows, sampleRows, winBackRows, winBackSampleRows, birthdayRows, birthdaySampleRows] = await Promise.all([
+    const [summaryRows, skippedRows, sampleRows, winBackRows, winBackSampleRows, birthdayRows, birthdaySampleRows, anniversaryRows, anniversarySampleRows] = await Promise.all([
       db.execute(sql`
         select
           count(*)::int as total,
@@ -891,17 +899,71 @@ async function inspectEngagement(): Promise<EngagementDiagnostic> {
         restaurant_id: string;
         birthday: string;
       }>>,
+      db.execute(sql`
+        with due as (
+          select g.id, g.restaurant_id, g.first_visit_date
+          from ${guests} g
+          where g.first_visit_date is not null
+            and to_char(g.first_visit_date::date, 'MM-DD') = to_char(now() at time zone 'Asia/Jerusalem', 'MM-DD')
+            and extract(year from g.first_visit_date::date)::int < extract(year from now() at time zone 'Asia/Jerusalem')::int
+        ),
+        unscheduled as (
+          select d.*
+          from due d
+          where not exists (
+            select 1
+            from ${engagementJobs} ej
+            where ej.guest_id = d.id
+              and ej.restaurant_id = d.restaurant_id
+              and ej.type = 'anniversary'
+              and ej.trigger_at >= date_trunc('day', now() at time zone 'Asia/Jerusalem') at time zone 'Asia/Jerusalem'
+              and ej.trigger_at < (date_trunc('day', now() at time zone 'Asia/Jerusalem') + interval '1 day') at time zone 'Asia/Jerusalem'
+          )
+        )
+        select count(*)::int as due_unscheduled_today
+        from unscheduled
+      `) as Promise<Array<{
+        due_unscheduled_today: number;
+      }>>,
+      db.execute(sql`
+        with due as (
+          select g.id, g.restaurant_id, g.first_visit_date
+          from ${guests} g
+          where g.first_visit_date is not null
+            and to_char(g.first_visit_date::date, 'MM-DD') = to_char(now() at time zone 'Asia/Jerusalem', 'MM-DD')
+            and extract(year from g.first_visit_date::date)::int < extract(year from now() at time zone 'Asia/Jerusalem')::int
+        )
+        select d.id, d.restaurant_id, d.first_visit_date
+        from due d
+        where not exists (
+          select 1
+          from ${engagementJobs} ej
+          where ej.guest_id = d.id
+            and ej.restaurant_id = d.restaurant_id
+            and ej.type = 'anniversary'
+            and ej.trigger_at >= date_trunc('day', now() at time zone 'Asia/Jerusalem') at time zone 'Asia/Jerusalem'
+            and ej.trigger_at < (date_trunc('day', now() at time zone 'Asia/Jerusalem') + interval '1 day') at time zone 'Asia/Jerusalem'
+        )
+        order by d.restaurant_id asc, d.id asc
+        limit 5
+      `) as Promise<Array<{
+        id: string;
+        restaurant_id: string;
+        first_visit_date: string;
+      }>>,
     ]);
     const summary = summaryRows[0];
     const winBackSummary = winBackRows[0];
     const birthdaySummary = birthdayRows[0];
+    const anniversarySummary = anniversaryRows[0];
     const failed = Number(summary?.failed ?? 0);
     const overduePending = Number(summary?.overdue_pending ?? 0);
     const dueUnscheduledTotal = Number(winBackSummary?.due_unscheduled_total ?? 0);
     const birthdayDueUnscheduledToday = Number(birthdaySummary?.due_unscheduled_today ?? 0);
+    const anniversaryDueUnscheduledToday = Number(anniversarySummary?.due_unscheduled_today ?? 0);
 
     return {
-      status: failed > 0 || overduePending > 0 || dueUnscheduledTotal > 0 || birthdayDueUnscheduledToday > 0 ? "attention" : "ok",
+      status: failed > 0 || overduePending > 0 || dueUnscheduledTotal > 0 || birthdayDueUnscheduledToday > 0 || anniversaryDueUnscheduledToday > 0 ? "attention" : "ok",
       totals: {
         total: Number(summary?.total ?? 0),
         pending: Number(summary?.pending ?? 0),
@@ -931,6 +993,14 @@ async function inspectEngagement(): Promise<EngagementDiagnostic> {
           guestId: row.id,
           restaurantId: row.restaurant_id,
           birthday: row.birthday,
+        })),
+      },
+      anniversaries: {
+        dueUnscheduledToday: anniversaryDueUnscheduledToday,
+        samples: anniversarySampleRows.map((row) => ({
+          guestId: row.id,
+          restaurantId: row.restaurant_id,
+          firstVisitDate: String(row.first_visit_date),
         })),
       },
       skippedByReason: skippedRows.map((row) => ({

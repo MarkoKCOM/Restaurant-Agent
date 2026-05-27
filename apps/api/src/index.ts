@@ -184,6 +184,18 @@ try {
       },
     );
 
+    await engagementQueue.add(
+      "anniversary-check",
+      { type: "anniversary_cron", restaurantId: restaurant.id },
+      {
+        repeat: {
+          pattern: "15 9 * * *",
+          tz: "Asia/Jerusalem",
+        },
+        jobId: `anniversary-cron-${restaurant.id}`,
+      },
+    );
+
     app.log.info(
       { restaurantId: restaurant.id, restaurantName: restaurant.name },
       "Scheduled recurring jobs for restaurant",

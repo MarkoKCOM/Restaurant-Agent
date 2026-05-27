@@ -19,6 +19,10 @@
   - daily restaurant birthday checks schedule a promotional birthday greeting for guests whose saved birthday is today
   - manual `POST /api/v1/engagement/birthdays/check` uses the same tenant checks and policy gates as other engagement automation
   - diagnostics/debug-bundle summaries expose unscheduled birthday greetings due today, and API smoke verifies the birthday path creates an engagement job
+- First-visit anniversary automation:
+  - daily restaurant anniversary checks schedule a promotional anniversary greeting for returning guests on their first-visit anniversary
+  - manual `POST /api/v1/engagement/anniversaries/check` uses the same tenant checks and policy gates as other engagement automation
+  - diagnostics/debug-bundle summaries expose unscheduled anniversary greetings due today, and API smoke verifies the anniversary path creates an engagement job
 - WhatsApp-ready referral retrieval/share flow:
   - `GET /api/v1/loyalty/:guestId/referral-share` generates or returns a member referral code
   - response includes referral stats and Hebrew/English share copy

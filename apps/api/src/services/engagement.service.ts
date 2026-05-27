@@ -15,7 +15,8 @@ export type EngagementJobType =
   | "win_back_60"
   | "win_back_90"
   | "leaderboard_summary"
-  | "lucky_spin_reward";
+  | "lucky_spin_reward"
+  | "streak_broken";
 
 export const PROMOTIONAL_ENGAGEMENT_TYPES = [
   "review_request",
@@ -25,6 +26,7 @@ export const PROMOTIONAL_ENGAGEMENT_TYPES = [
   "win_back_60",
   "win_back_90",
   "leaderboard_summary",
+  "streak_broken",
 ] as const;
 
 const PROMOTIONAL_WEEKLY_LIMIT = 2;
@@ -830,6 +832,28 @@ export async function scheduleLuckySpinReward(
     guestId,
     restaurantId,
     type: "lucky_spin_reward",
+    triggerAt,
+  });
+}
+
+export async function scheduleStreakBrokenRecovery(
+  guestId: string,
+  restaurantId: string,
+): Promise<EngagementJobRow> {
+  const triggerAt = await applyRestaurantQuietHours(restaurantId, new Date(Date.now() + 5 * 60 * 1000));
+  const existingJob = await findEngagementJobInWindow({
+    guestId,
+    restaurantId,
+    type: "streak_broken",
+    windowStart: new Date(triggerAt.getTime() - WEEK_MS),
+    windowEnd: new Date(triggerAt.getTime() + WEEK_MS),
+  });
+  if (existingJob) return existingJob;
+
+  return scheduleEngagementJob({
+    guestId,
+    restaurantId,
+    type: "streak_broken",
     triggerAt,
   });
 }

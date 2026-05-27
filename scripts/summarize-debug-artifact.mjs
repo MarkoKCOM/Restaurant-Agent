@@ -115,6 +115,9 @@ function summarizeSmoke(report) {
       || step.step === "gamification.challenge-idempotency"
       || step.step === "gamification.streak-after-completion"
       || step.step === "gamification.streak-milestone-bonus"
+      || step.step === "gamification.streak-broken-seed"
+      || step.step === "gamification.streak-broken-recovery"
+      || step.step === "gamification.streak-broken.cleanup"
       || step.step === "gamification.achievements-after-completion"
       || step.step === "gamification.achievements-after-visit"
       || step.step === "gamification.lucky-spin-config"
@@ -169,6 +172,12 @@ function summarizeSmoke(report) {
         console.log(`- gamification.streak-after-completion: current=${step.current ?? "?"} best=${step.best ?? "?"} week=${step.lastVisitWeek ?? "?"} seeded=${step.seeded ?? "?"}`);
       } else if (step.step === "gamification.streak-milestone-bonus") {
         console.log(`- gamification.streak-milestone-bonus: points=${step.actualBonusPoints ?? "?"}/${step.expectedBonusPoints ?? "?"} reason=${step.reason ?? "?"}`);
+      } else if (step.step === "gamification.streak-broken-seed") {
+        console.log(`- gamification.streak-broken-seed: current=${step.current ?? "?"} best=${step.best ?? "?"} week=${step.lastVisitWeek ?? "?"} seeded=${step.seeded ?? "?"}`);
+      } else if (step.step === "gamification.streak-broken-recovery") {
+        console.log(`- gamification.streak-broken-recovery: current=${step.current ?? "?"} best=${step.best ?? "?"} previous=${step.previousCurrent ?? "?"} status=${step.jobStatus ?? "?"}`);
+      } else if (step.step === "gamification.streak-broken.cleanup") {
+        console.log(`- gamification.streak-broken.cleanup: markedSent=${step.markedSent === true ? "yes" : "no"} jobId=${step.jobId ?? "?"}`);
       } else if (step.step === "gamification.achievements-after-completion") {
         console.log(`- gamification.achievements-after-completion: count=${step.count ?? "?"} badges=${asArray(step.badges).join(",") || "none"}`);
       } else if (step.step === "gamification.achievements-after-visit") {

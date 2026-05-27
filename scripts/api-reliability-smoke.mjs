@@ -92,6 +92,12 @@ function previousIsoWeek() {
   return isoWeek(d);
 }
 
+function isoWeekWeeksAgo(weeksAgo) {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - weeksAgo * 7);
+  return isoWeek(d);
+}
+
 function timePlusMinutes(value, minutesToAdd) {
   const [hours, minutes] = value.slice(0, 5).split(":").map(Number);
   const total = (hours * 60 + minutes + minutesToAdd) % (24 * 60);
@@ -201,7 +207,7 @@ async function markSmokeEngagementJobSent(jobId, type = "thank_you") {
   if (!isUuid(jobId)) {
     throw new Error(`Refusing to cleanup invalid engagement job id: ${jobId}`);
   }
-  if (!["thank_you", "review_request", "leaderboard_summary", "lucky_spin_reward"].includes(type)) {
+  if (!["thank_you", "review_request", "leaderboard_summary", "lucky_spin_reward", "streak_broken"].includes(type)) {
     throw new Error(`Refusing to cleanup unsupported engagement job type: ${type}`);
   }
 
@@ -753,6 +759,81 @@ async function main() {
   });
   if (deactivatedChallenge.challenge?.isActive !== false) {
     throw new Error(`Smoke challenge cleanup did not deactivate challenge: ${smokeChallengeId}`);
+  }
+
+  const brokenStreakReservationResult = await createReservationUsingAvailableSlot({
+    restaurantId,
+    guestName: `Smoke Broken Streak ${runId}`,
+    guestPhone: `051${String(Date.now()).slice(-7)}`,
+    notes: `${runId} broken-streak`,
+    source: "web",
+  });
+  const brokenStreakReservation = brokenStreakReservationResult.reservation;
+  const brokenStreakSeed = {
+    current: 3,
+    best: 3,
+    lastVisitWeek: isoWeekWeeksAgo(3),
+  };
+  const seededBrokenStreakInDb = await seedSmokeGuestStreak(brokenStreakReservation.guestId, brokenStreakSeed);
+  record("gamification.streak-broken-seed", {
+    guestId: brokenStreakReservation.guestId,
+    seeded: seededBrokenStreakInDb,
+    current: brokenStreakSeed.current,
+    best: brokenStreakSeed.best,
+    lastVisitWeek: brokenStreakSeed.lastVisitWeek,
+  });
+
+  for (const status of ["confirmed", "seated", "completed"]) {
+    await request(`/api/v1/reservations/${brokenStreakReservation.id}`, {
+      method: "PATCH",
+      token,
+      body: { status },
+    });
+  }
+
+  const brokenStreakSummary = await request(`/api/v1/loyalty/${brokenStreakReservation.guestId}/summary`, { token });
+  const brokenStreakAfter = brokenStreakSummary.summary?.streak;
+  const brokenStreakJobs = await request(`/api/v1/engagement/jobs?restaurantId=${restaurantId}&guestId=${brokenStreakReservation.guestId}`, { token });
+  const streakBrokenJob = (brokenStreakJobs.jobs ?? []).find((job) => job.type === "streak_broken");
+  const brokenLuckySpinJob = (brokenStreakJobs.jobs ?? []).find((job) => job.type === "lucky_spin_reward");
+  const brokenThankYouJob = (brokenStreakJobs.jobs ?? []).find((job) => job.type === "thank_you");
+  record("gamification.streak-broken-recovery", {
+    current: brokenStreakAfter?.current ?? null,
+    best: brokenStreakAfter?.best ?? null,
+    previousCurrent: brokenStreakSeed.current,
+    jobStatus: streakBrokenJob?.status ?? null,
+    jobId: streakBrokenJob?.id ?? null,
+  });
+  if (!brokenStreakAfter || brokenStreakAfter.current !== 1 || brokenStreakAfter.best < brokenStreakSeed.best) {
+    throw new Error(`Broken streak did not reset to one while preserving best: ${JSON.stringify(brokenStreakAfter ?? null)}`);
+  }
+  if (!streakBrokenJob || streakBrokenJob.status !== "pending") {
+    throw new Error(`Broken streak did not schedule a recovery job: ${JSON.stringify(brokenStreakJobs.jobs ?? [])}`);
+  }
+  cleanupTasks.push(async () => {
+    const cleaned = await markSmokeEngagementJobSent(streakBrokenJob.id, "streak_broken");
+    record("gamification.streak-broken.cleanup", {
+      jobId: streakBrokenJob.id,
+      markedSent: cleaned,
+    });
+  });
+  if (brokenLuckySpinJob) {
+    cleanupTasks.push(async () => {
+      const cleaned = await markSmokeEngagementJobSent(brokenLuckySpinJob.id, "lucky_spin_reward");
+      record("gamification.streak-broken-lucky-spin.cleanup", {
+        jobId: brokenLuckySpinJob.id,
+        markedSent: cleaned,
+      });
+    });
+  }
+  if (brokenThankYouJob) {
+    cleanupTasks.push(async () => {
+      const cleaned = await markSmokeEngagementJobSent(brokenThankYouJob.id, "thank_you");
+      record("gamification.streak-broken-thank-you.cleanup", {
+        jobId: brokenThankYouJob.id,
+        markedSent: cleaned,
+      });
+    });
   }
 
   const membershipFailures = await request(`/api/v1/loyalty/processing-failures?restaurantId=${restaurantId}&status=open&limit=20`, { token });

@@ -99,6 +99,9 @@ const smokePath = await writeJson("smoke.json", {
     { step: "gamification.challenge.cleanup", challengeId: "challenge-test-1", isActive: false },
     { step: "gamification.streak-after-completion", current: 3, best: 3, lastVisitWeek: "2026-W22", seeded: true },
     { step: "gamification.streak-milestone-bonus", expectedBonusPoints: 20, actualBonusPoints: 20, reason: "streak_milestone:3" },
+    { step: "gamification.streak-broken-seed", current: 3, best: 3, lastVisitWeek: "2026-W19", seeded: true },
+    { step: "gamification.streak-broken-recovery", current: 1, best: 3, previousCurrent: 3, jobStatus: "pending" },
+    { step: "gamification.streak-broken.cleanup", jobId: "streak-broken-job-test-1", markedSent: true },
     { step: "gamification.achievements-after-completion", count: 1, badges: ["first_visit"] },
     { step: "gamification.lucky-spin-config", enabled: true, triggerEvery: 1, prizeCount: 1, prizePoints: 15 },
     { step: "gamification.lucky-spin-award", points: 15, reason: "lucky_spin:smoke_bonus" },
@@ -158,6 +161,9 @@ assertIncludes(smokeOutput, "gamification.challenge-idempotency: progress=1/1 po
 assertIncludes(smokeOutput, "gamification.challenge.cleanup: active=no challengeId=challenge-test-1");
 assertIncludes(smokeOutput, "gamification.streak-after-completion: current=3 best=3 week=2026-W22 seeded=true");
 assertIncludes(smokeOutput, "gamification.streak-milestone-bonus: points=20/20 reason=streak_milestone:3");
+assertIncludes(smokeOutput, "gamification.streak-broken-seed: current=3 best=3 week=2026-W19 seeded=true");
+assertIncludes(smokeOutput, "gamification.streak-broken-recovery: current=1 best=3 previous=3 status=pending");
+assertIncludes(smokeOutput, "gamification.streak-broken.cleanup: markedSent=yes jobId=streak-broken-job-test-1");
 assertIncludes(smokeOutput, "gamification.achievements-after-completion: count=1 badges=first_visit");
 assertIncludes(smokeOutput, "gamification.lucky-spin-config: enabled=yes every=1 prizes=1 points=15");
 assertIncludes(smokeOutput, "gamification.lucky-spin-award: points=15 reason=lucky_spin:smoke_bonus");

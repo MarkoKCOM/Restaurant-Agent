@@ -8,6 +8,7 @@ import {
   loyaltyTransactions,
 } from "../db/schema.js";
 import { awardPoints } from "./loyalty.service.js";
+import { scheduleStreakBrokenRecovery } from "./engagement.service.js";
 
 export type ChallengeRow = InferSelectModel<typeof challenges>;
 export type ChallengeProgressRow = InferSelectModel<typeof challengeProgress>;
@@ -29,6 +30,7 @@ interface StreakUpdateResult extends StreakData {
   broken: boolean;
   milestoneReached: number | null;
   bonusPointsAwarded: number;
+  recoveryJobId: string | null;
 }
 
 function getISOWeek(date: Date): string {
@@ -519,6 +521,7 @@ export async function updateStreak(
       broken: false,
       milestoneReached: STREAK_MILESTONES.includes(streakData.current) ? streakData.current : null,
       bonusPointsAwarded,
+      recoveryJobId: null,
     };
   }
 
@@ -565,12 +568,16 @@ export async function updateStreak(
     reservationId: options.reservationId,
     visitPointsAwarded: options.visitPointsAwarded,
   });
+  const recoveryJob = broken
+    ? await scheduleStreakBrokenRecovery(guestId, restaurantId)
+    : null;
 
   return {
     ...newStreak,
     broken,
     milestoneReached,
     bonusPointsAwarded,
+    recoveryJobId: recoveryJob?.id ?? null,
   };
 }
 

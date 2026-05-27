@@ -1,11 +1,15 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { Redis } from "ioredis";
 import type { Queue } from "bullmq";
 import { sql } from "drizzle-orm";
 import { env } from "../env.js";
 import { db, pingDatabase } from "../db/index.js";
 import { engagementQueue, reminderQueue, summaryQueue } from "../queue/index.js";
+
+const execFileAsync = promisify(execFile);
 
 export type DiagnosticStatus = "ok" | "error";
 
@@ -44,6 +48,14 @@ export interface DeploymentDiagnostic {
   nodeVersion: string;
   pid: number;
   cwd: string;
+  source: {
+    status: DiagnosticStatus;
+    commit?: string;
+    shortCommit?: string;
+    branch?: string;
+    dirty?: boolean;
+    error?: DiagnosticCheck["error"];
+  };
   codeMigrations: {
     status: DiagnosticStatus;
     count?: number;
@@ -249,8 +261,42 @@ async function inspectDatabaseMigrations(): Promise<DeploymentDiagnostic["databa
   }
 }
 
+async function runGit(args: string[]): Promise<string> {
+  const { stdout } = await execFileAsync("git", args, {
+    cwd: process.cwd(),
+    timeout: 1_000,
+    maxBuffer: 64 * 1024,
+  });
+
+  return stdout.trim();
+}
+
+async function inspectSourceRevision(): Promise<DeploymentDiagnostic["source"]> {
+  try {
+    const [commit, branch, status] = await Promise.all([
+      runGit(["rev-parse", "HEAD"]),
+      runGit(["rev-parse", "--abbrev-ref", "HEAD"]),
+      runGit(["status", "--porcelain"]),
+    ]);
+
+    return {
+      status: "ok",
+      commit,
+      shortCommit: commit.slice(0, 12),
+      branch,
+      dirty: status.length > 0,
+    };
+  } catch (error: unknown) {
+    return {
+      status: "error",
+      error: sanitizeError(error),
+    };
+  }
+}
+
 async function inspectDeployment(): Promise<DeploymentDiagnostic> {
-  const [codeMigrations, databaseMigrations] = await Promise.all([
+  const [source, codeMigrations, databaseMigrations] = await Promise.all([
+    inspectSourceRevision(),
     inspectCodeMigrations(),
     inspectDatabaseMigrations(),
   ]);
@@ -279,6 +325,7 @@ async function inspectDeployment(): Promise<DeploymentDiagnostic> {
     nodeVersion: process.version,
     pid: process.pid,
     cwd: process.cwd(),
+    source,
     codeMigrations,
     databaseMigrations,
     migrationDrift,

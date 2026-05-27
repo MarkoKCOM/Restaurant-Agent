@@ -134,13 +134,17 @@ export async function runAllTests(): Promise<TestRunReport> {
     const data = await api.getAdminDiagnostics();
     const deployment = (data as any).deployment;
     const migrationDrift = deployment?.migrationDrift;
+    const source = deployment?.source;
     if (!deployment || !migrationDrift) {
       throw new Error("Diagnostics response missing deployment migration state");
+    }
+    if (source?.status !== "ok" || typeof source.shortCommit !== "string") {
+      throw new Error("Diagnostics response missing deployment source revision");
     }
     if (migrationDrift.status !== "ok") {
       throw new Error(`Migration drift status is ${migrationDrift.status}`);
     }
-    return `status=${(data as any).status} migrations=${migrationDrift.codeLatestId}/${migrationDrift.databaseLatestId}`;
+    return `status=${(data as any).status} source=${source.shortCommit} migrations=${migrationDrift.codeLatestId}/${migrationDrift.databaseLatestId}`;
   }));
 
   results.push(await runTest("API Diagnostics: missing token envelope", async () => {

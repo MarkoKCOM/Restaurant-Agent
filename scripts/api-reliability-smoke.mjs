@@ -73,8 +73,9 @@ async function request(path, { method = "GET", token, body } = {}) {
 
 function plusDays(days) {
   const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  d.setUTCDate(d.getUTCDate() + days);
+  const { year, month, day } = jerusalemDateParts(d);
+  return `${year}-${month}-${day}`;
 }
 
 function isoWeek(date = new Date()) {

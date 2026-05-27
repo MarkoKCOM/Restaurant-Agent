@@ -123,9 +123,9 @@ try {
   );
 
   // Start BullMQ workers
-  const reminderWorker = createReminderWorker();
-  const summaryWorker = createSummaryWorker();
-  const engagementWorker = createEngagementWorker();
+  const reminderWorker = createReminderWorker(app.log);
+  const summaryWorker = createSummaryWorker(app.log);
+  const engagementWorker = createEngagementWorker(app.log);
   app.log.info("BullMQ workers started: reminder, summary, engagement");
 
   // Schedule recurring jobs for all active restaurants

@@ -1,5 +1,6 @@
 import { Worker } from "bullmq";
 import type { Job } from "bullmq";
+import type { FastifyBaseLogger } from "fastify";
 import { redisConnection } from "./index.js";
 
 export interface ReminderJobData {
@@ -12,27 +13,59 @@ export interface ReminderJobData {
   partySize: number;
 }
 
-async function processReminder(job: Job<ReminderJobData>): Promise<void> {
+function maskPhone(phone: string): string {
+  return phone.length <= 4 ? "****" : `${phone.slice(0, 3)}****${phone.slice(-2)}`;
+}
+
+async function processReminder(job: Job<ReminderJobData>, logger: FastifyBaseLogger): Promise<void> {
   const { guestPhone, date, timeStart, partySize, reservationId } = job.data;
 
   // TODO: Replace with WhatsApp sender once Baileys integration is ready
-  console.log(
-    `REMINDER: Would send WhatsApp to ${guestPhone} for reservation at ${timeStart} on ${date} (party of ${partySize}, id: ${reservationId})`,
+  logger.info(
+    {
+      queue: "reservation-reminders",
+      jobId: job.id,
+      reservationId,
+      restaurantId: job.data.restaurantId,
+      guestId: job.data.guestId,
+      guestPhoneMasked: maskPhone(guestPhone),
+      date,
+      timeStart,
+      partySize,
+    },
+    "Reservation reminder ready to send",
   );
 }
 
-export function createReminderWorker(): Worker<ReminderJobData> {
-  const worker = new Worker<ReminderJobData>("reservation-reminders", processReminder, {
+export function createReminderWorker(logger: FastifyBaseLogger): Worker<ReminderJobData> {
+  const worker = new Worker<ReminderJobData>("reservation-reminders", (job) => processReminder(job, logger), {
     connection: redisConnection,
     concurrency: 5,
   });
 
   worker.on("completed", (job) => {
-    console.log(`Reminder job ${job.id} completed for reservation ${job.data.reservationId}`);
+    logger.info(
+      {
+        queue: "reservation-reminders",
+        jobId: job.id,
+        reservationId: job.data.reservationId,
+        restaurantId: job.data.restaurantId,
+      },
+      "Reminder job completed",
+    );
   });
 
   worker.on("failed", (job, err) => {
-    console.error(`Reminder job ${job?.id} failed:`, err.message);
+    logger.error(
+      {
+        err,
+        queue: "reservation-reminders",
+        jobId: job?.id,
+        reservationId: job?.data.reservationId,
+        restaurantId: job?.data.restaurantId,
+      },
+      "Reminder job failed",
+    );
   });
 
   return worker;

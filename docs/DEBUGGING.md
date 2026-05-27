@@ -87,6 +87,12 @@ Use this when `/api/v1/health` is green but app workflows still fail.
 
 Queue diagnostics are especially useful for failures that happen after an API request returns, such as delayed reminders, daily owner summaries, thank-you messages, review requests, win-back jobs, or membership engagement automation.
 
+Queue workers log structured fields through the API logger, including `queue`, job IDs, `restaurantId`, and relevant entity IDs. Guest phone numbers are masked in worker logs. Search by queue name or entity ID when investigating background behavior:
+
+```bash
+journalctl -u openseat-api --since "30 minutes ago" | rg '"queue":"engagement"|reservation-reminders|daily-summary'
+```
+
 ## Membership Processing Failures
 
 When a reservation is completed, OpenSeat runs several post-visit membership stages:

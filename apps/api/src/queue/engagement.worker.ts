@@ -1,5 +1,6 @@
 import { Worker } from "bullmq";
 import type { Job } from "bullmq";
+import type { FastifyBaseLogger } from "fastify";
 import { eq } from "drizzle-orm";
 import { redisConnection } from "./index.js";
 import { db } from "../db/index.js";
@@ -13,19 +14,32 @@ export interface EngagementJobData {
   restaurantId: string;
 }
 
-async function processEngagement(job: Job<EngagementJobData>): Promise<void> {
+function maskPhone(phone: string): string {
+  return phone.length <= 4 ? "****" : `${phone.slice(0, 3)}****${phone.slice(-2)}`;
+}
+
+async function processEngagement(job: Job<EngagementJobData>, logger: FastifyBaseLogger): Promise<void> {
   const { jobId, type, guestId, restaurantId } = job.data;
 
   // Handle win-back cron job (no specific guest, triggers checkWinBack)
   if (type === "win_back_cron") {
-    console.log(`Running daily win-back check for restaurant ${restaurantId}`);
+    logger.info(
+      { queue: "engagement", jobId: job.id, restaurantId, engagementType: type },
+      "Running daily win-back check",
+    );
     const result = await checkWinBack(restaurantId);
-    console.log(`Win-back check complete: 30-day=${result.scheduled30}, 60-day=${result.scheduled60}, 90-day=${result.scheduled90}`);
+    logger.info(
+      { queue: "engagement", jobId: job.id, restaurantId, engagementType: type, ...result },
+      "Win-back check complete",
+    );
     return;
   }
 
   if (!jobId || !guestId) {
-    console.error("Engagement job missing jobId or guestId");
+    logger.error(
+      { queue: "engagement", bullJobId: job.id, restaurantId, engagementType: type, hasJobId: Boolean(jobId), hasGuestId: Boolean(guestId) },
+      "Engagement job missing jobId or guestId",
+    );
     return;
   }
 
@@ -36,13 +50,19 @@ async function processEngagement(job: Job<EngagementJobData>): Promise<void> {
     .limit(1);
 
   if (!engagementJob) {
-    console.error(`Engagement job ${jobId}: DB row not found`);
+    logger.error(
+      { queue: "engagement", bullJobId: job.id, engagementJobId: jobId, restaurantId, guestId, engagementType: type },
+      "Engagement job DB row not found",
+    );
     return;
   }
 
   const sendDecision = await shouldSendEngagementJob(engagementJob);
   if (!sendDecision.allowed) {
-    console.log(`SKIP engagement job ${jobId} (${type}): ${sendDecision.reason}`);
+    logger.info(
+      { queue: "engagement", bullJobId: job.id, engagementJobId: jobId, restaurantId, guestId, engagementType: type, skipReason: sendDecision.reason },
+      "Engagement job skipped by policy",
+    );
     await db
       .update(engagementJobs)
       .set({
@@ -67,7 +87,10 @@ async function processEngagement(job: Job<EngagementJobData>): Promise<void> {
     .limit(1);
 
   if (!guest || !restaurant) {
-    console.error(`Engagement job ${jobId}: guest or restaurant not found`);
+    logger.error(
+      { queue: "engagement", bullJobId: job.id, engagementJobId: jobId, restaurantId, guestId, engagementType: type, guestFound: Boolean(guest), restaurantFound: Boolean(restaurant) },
+      "Engagement job guest or restaurant not found",
+    );
     await db
       .update(engagementJobs)
       .set({ status: "failed", skipReason: "guest_or_restaurant_not_found" })
@@ -75,54 +98,21 @@ async function processEngagement(job: Job<EngagementJobData>): Promise<void> {
     return;
   }
 
-  const phone = guest.phone;
-  const name = guest.name;
-  const restaurantName = restaurant.name;
-  const balance = guest.pointsBalance;
-
-  // Log the appropriate message based on type (WhatsApp sender coming later)
-  switch (type) {
-    case "thank_you":
-      console.log(
-        `SEND WhatsApp to ${phone}: Thank you for visiting ${restaurantName}! Your current member balance is ${balance} points.`,
-      );
-      break;
-
-    case "birthday":
-      console.log(
-        `SEND WhatsApp to ${phone}: Happy birthday ${name}! 🎂 Here's 100 bonus points on us`,
-      );
-      break;
-
-    case "review_request":
-      console.log(
-        `SEND WhatsApp to ${phone}: How was your visit to ${restaurantName}? We'd love your feedback`,
-      );
-      break;
-
-    case "win_back_30":
-      console.log(
-        `SEND WhatsApp to ${phone}: We miss you! Here's 20 bonus points`,
-      );
-      break;
-
-    case "win_back_60":
-      console.log(
-        `SEND WhatsApp to ${phone}: It's been a while! 50 bonus points waiting for you`,
-      );
-      break;
-
-    case "win_back_90":
-      console.log(
-        `SEND WhatsApp to ${phone}: We really miss you! 100 bonus points + free dessert`,
-      );
-      break;
-
-    default:
-      console.log(
-        `SEND WhatsApp to ${phone}: Engagement message type=${type} for ${restaurantName}`,
-      );
-  }
+  // TODO: Replace with WhatsApp sender once provider integration is ready.
+  logger.info(
+    {
+      queue: "engagement",
+      bullJobId: job.id,
+      engagementJobId: jobId,
+      restaurantId,
+      restaurantName: restaurant.name,
+      guestId,
+      guestPhoneMasked: maskPhone(guest.phone),
+      engagementType: type,
+      pointsBalance: guest.pointsBalance,
+    },
+    "Engagement message ready to send",
+  );
 
   // Mark job as sent
   await db
@@ -134,18 +124,24 @@ async function processEngagement(job: Job<EngagementJobData>): Promise<void> {
     .where(eq(engagementJobs.id, jobId));
 }
 
-export function createEngagementWorker(): Worker<EngagementJobData> {
-  const worker = new Worker<EngagementJobData>("engagement", processEngagement, {
+export function createEngagementWorker(logger: FastifyBaseLogger): Worker<EngagementJobData> {
+  const worker = new Worker<EngagementJobData>("engagement", (job) => processEngagement(job, logger), {
     connection: redisConnection,
     concurrency: 5,
   });
 
   worker.on("completed", (job) => {
-    console.log(`Engagement job ${job.id} completed (type: ${job.data.type})`);
+    logger.info(
+      { queue: "engagement", bullJobId: job.id, engagementJobId: job.data.jobId, restaurantId: job.data.restaurantId, engagementType: job.data.type },
+      "Engagement job completed",
+    );
   });
 
   worker.on("failed", (job, err) => {
-    console.error(`Engagement job ${job?.id} failed:`, err.message);
+    logger.error(
+      { err, queue: "engagement", bullJobId: job?.id, engagementJobId: job?.data.jobId, restaurantId: job?.data.restaurantId, engagementType: job?.data.type },
+      "Engagement job failed",
+    );
     // Mark as failed in DB
     if (job?.data?.jobId) {
       db.update(engagementJobs)

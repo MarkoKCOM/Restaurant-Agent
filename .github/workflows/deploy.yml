@@ -9,7 +9,6 @@ on:
       - "apps/dashboard/**"
       - "apps/marketing-site/**"
       - "packages/**"
-      - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "turbo.json"
@@ -21,7 +20,6 @@ on:
       - "apps/dashboard/**"
       - "apps/marketing-site/**"
       - "packages/**"
-      - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "turbo.json"
@@ -31,7 +29,45 @@ env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
 
 jobs:
+  detect-deploy-impact:
+    runs-on: ubuntu-latest
+    outputs:
+      should-deploy: ${{ steps.filter.outputs.should_deploy }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: filter
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base="${{ github.event.before }}"
+          fi
+
+          if [[ -z "$base" || "$base" =~ ^0+$ ]]; then
+            base="$(git rev-list --max-parents=0 HEAD)"
+          fi
+
+          should_deploy=false
+          while IFS= read -r path; do
+            case "$path" in
+              apps/booking-widget/*|apps/dashboard/*|apps/marketing-site/*|packages/*|pnpm-lock.yaml|pnpm-workspace.yaml|turbo.json)
+                should_deploy=true
+                ;;
+            esac
+          done < <(git diff --name-only "$base" "${{ github.sha }}")
+
+          echo "should_deploy=$should_deploy" >> "$GITHUB_OUTPUT"
+          echo "should_deploy=$should_deploy"
+
   deploy-dashboard:
+    needs: detect-deploy-impact
+    if: needs.detect-deploy-impact.outputs.should-deploy == 'true'
     runs-on: ubuntu-latest
     env:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_DASHBOARD_PROJECT_ID }}
@@ -65,6 +101,8 @@ jobs:
         run: vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN --cwd apps/dashboard
 
   deploy-marketing:
+    needs: detect-deploy-impact
+    if: needs.detect-deploy-impact.outputs.should-deploy == 'true'
     runs-on: ubuntu-latest
     env:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_MARKETING_PROJECT_ID }}
@@ -98,6 +136,8 @@ jobs:
         run: vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN --cwd apps/marketing-site
 
   deploy-widget:
+    needs: detect-deploy-impact
+    if: needs.detect-deploy-impact.outputs.should-deploy == 'true'
     runs-on: ubuntu-latest
     env:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_WIDGET_PROJECT_ID }}

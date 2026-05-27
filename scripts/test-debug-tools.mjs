@@ -36,18 +36,16 @@ function assert(condition, message) {
 
 function deployWorkflowMatches(path) {
   const exactMatches = new Set([
-    ".github/workflows/deploy.yml",
-    "package.json",
     "pnpm-lock.yaml",
     "pnpm-workspace.yaml",
     "turbo.json",
   ]);
   const prefixMatches = [
     "apps/booking-widget/",
-    "apps/dashboard/",
-    "apps/marketing-site/",
-    "packages/",
-  ];
+  "apps/dashboard/",
+  "apps/marketing-site/",
+  "packages/",
+];
 
   return exactMatches.has(path) || prefixMatches.some((prefix) => path.startsWith(prefix));
 }
@@ -131,10 +129,11 @@ for (const requiredPath of [
   "apps/dashboard/**",
   "apps/marketing-site/**",
   "packages/**",
-  "package.json",
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
   "turbo.json",
+  "detect-deploy-impact",
+  "should-deploy",
 ]) {
   assertIncludes(deployWorkflow, requiredPath);
 }
@@ -155,6 +154,8 @@ for (const changedPath of [
   "scripts/summarize-debug-artifact.mjs",
   "apps/e2e/src/test-runner.ts",
   ".github/workflows/ci.yml",
+  ".github/workflows/deploy.yml",
+  "package.json",
 ]) {
   assert(!deployWorkflowMatches(changedPath), `Expected ${changedPath} to skip Vercel deploy`);
 }

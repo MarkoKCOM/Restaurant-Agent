@@ -1470,6 +1470,15 @@ for (const requiredRestaurantRouteContent of [
   assertIncludes(restaurantRoutes, requiredRestaurantRouteContent);
 }
 
+for (const requiredAdminRouteContent of [
+  "sendCaughtAdminError",
+  "ADMIN_DIAGNOSTICS_FAILED",
+  "ADMIN_RESTAURANTS_LIST_FAILED",
+  "request.log.error(logPayload, \"Admin request failed\")",
+]) {
+  assertIncludes(adminRoutes, requiredAdminRouteContent);
+}
+
 for (const requiredGamificationPackageContent of [
   "enforceGamificationAccess",
   "requireGrowthPackage",

@@ -18,8 +18,10 @@ function sendAdminError(
   statusCode: number,
   message: string,
   code: string,
+  context: Record<string, unknown> = {},
 ) {
   const logPayload = {
+    ...context,
     code,
     requestId: request.id,
     statusCode,
@@ -41,6 +43,20 @@ function sendAdminError(
   });
 }
 
+function sendCaughtAdminError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  error: unknown,
+  code: string,
+  context: Record<string, unknown> = {},
+) {
+  const message = error instanceof Error ? error.message : "Admin operation failed";
+  return sendAdminError(request, reply, 500, message, code, {
+    ...context,
+    err: error,
+  });
+}
+
 export async function adminRoutes(app: FastifyInstance) {
   // GET /diagnostics — dependency health snapshot (super_admin only)
   app.get("/diagnostics", async (request, reply) => {
@@ -48,11 +64,15 @@ export async function adminRoutes(app: FastifyInstance) {
     const err = requireSuperAdmin(user);
     if (err) return sendAdminError(request, reply, 403, err, "ADMIN_FORBIDDEN");
 
-    const report = await getDiagnosticsReport();
-    return reply.status(200).send({
-      ...report,
-      requestId: request.id,
-    });
+    try {
+      const report = await getDiagnosticsReport();
+      return reply.status(200).send({
+        ...report,
+        requestId: request.id,
+      });
+    } catch (error: unknown) {
+      return sendCaughtAdminError(request, reply, error, "ADMIN_DIAGNOSTICS_FAILED");
+    }
   });
 
   // GET /restaurants — list all restaurants (super_admin only)
@@ -61,32 +81,50 @@ export async function adminRoutes(app: FastifyInstance) {
     const err = requireSuperAdmin(user);
     if (err) return sendAdminError(request, reply, 403, err, "ADMIN_FORBIDDEN");
 
-    const [restaurantRows, adminCountRows] = await Promise.all([
-      db
-        .select({
-          id: restaurants.id,
-          name: restaurants.name,
-          slug: restaurants.slug,
-          cuisineType: restaurants.cuisineType,
-          address: restaurants.address,
-          phone: restaurants.phone,
-          whatsappNumber: restaurants.whatsappNumber,
-          ownerPhone: restaurants.ownerPhone,
-          ownerWhatsapp: restaurants.ownerWhatsapp,
-          package: restaurants.package,
-          createdAt: restaurants.createdAt,
-        })
-        .from(restaurants)
-        .orderBy(restaurants.name),
-      db
-        .select({
-          restaurantId: adminUsers.restaurantId,
-          adminCount: sql<number>`count(*)::int`,
-        })
-        .from(adminUsers)
-        .where(eq(adminUsers.role, "admin"))
-        .groupBy(adminUsers.restaurantId),
-    ]);
+    let restaurantRows: Array<{
+      id: string;
+      name: string;
+      slug: string;
+      cuisineType: string | null;
+      address: string | null;
+      phone: string | null;
+      whatsappNumber: string | null;
+      ownerPhone: string | null;
+      ownerWhatsapp: string | null;
+      package: "starter" | "growth";
+      createdAt: Date;
+    }>;
+    let adminCountRows: Array<{ restaurantId: string | null; adminCount: number }>;
+    try {
+      [restaurantRows, adminCountRows] = await Promise.all([
+        db
+          .select({
+            id: restaurants.id,
+            name: restaurants.name,
+            slug: restaurants.slug,
+            cuisineType: restaurants.cuisineType,
+            address: restaurants.address,
+            phone: restaurants.phone,
+            whatsappNumber: restaurants.whatsappNumber,
+            ownerPhone: restaurants.ownerPhone,
+            ownerWhatsapp: restaurants.ownerWhatsapp,
+            package: restaurants.package,
+            createdAt: restaurants.createdAt,
+          })
+          .from(restaurants)
+          .orderBy(restaurants.name),
+        db
+          .select({
+            restaurantId: adminUsers.restaurantId,
+            adminCount: sql<number>`count(*)::int`,
+          })
+          .from(adminUsers)
+          .where(eq(adminUsers.role, "admin"))
+          .groupBy(adminUsers.restaurantId),
+      ]);
+    } catch (error: unknown) {
+      return sendCaughtAdminError(request, reply, error, "ADMIN_RESTAURANTS_LIST_FAILED");
+    }
 
     const adminCountByRestaurant = new Map(
       adminCountRows

@@ -154,15 +154,23 @@ function OccupancyHeatmap({
 
 function getServiceSignals(reservation: Reservation, t: ReturnType<typeof useLang>["t"]) {
   const tags = (reservation.guest?.tags ?? []).map((tag) => tag.toLowerCase());
-  const notes = `${reservation.notes ?? ""} ${reservation.guest?.notes ?? ""}`.toLowerCase();
+  const prefs = reservation.guest?.preferences && typeof reservation.guest.preferences === "object"
+    ? reservation.guest.preferences as Record<string, unknown>
+    : {};
+  const hospitalitySignals = Array.isArray(prefs.hospitalitySignals)
+    ? prefs.hospitalitySignals.filter((signal): signal is string => typeof signal === "string")
+    : [];
+  const notes = `${reservation.notes ?? ""} ${reservation.guest?.notes ?? ""} ${String(prefs.hospitalityNote ?? "")}`.toLowerCase();
   const items: string[] = [];
   if (tags.some((tag) => tag.includes("vip")) || reservation.guest?.tier === "gold") items.push(t.today.memberVip);
   if (tags.some((tag) => tag.includes("regular") || tag.includes("קבוע"))) items.push(t.today.memberRegular);
-  if (/birthday|יום הולדת/.test(notes)) items.push(t.guestDetail.signalBirthday);
-  if (/celebrat|anniversary|חוגג|חגיג/.test(notes)) items.push(t.guestDetail.signalCelebration);
-  if (/owner friend|חבר בעלים/.test(notes)) items.push(t.guestDetail.signalOwnerFriend);
-  if (/house comp|כבוד הבית|free stuff|comped/.test(notes)) items.push(t.guestDetail.signalHouseComp);
-  return items;
+  if (hospitalitySignals.includes("birthday") || /birthday|יום הולדת/.test(notes)) items.push(t.guestDetail.signalBirthday);
+  if (hospitalitySignals.includes("celebration") || /celebrat|anniversary|חוגג|חגיג/.test(notes)) items.push(t.guestDetail.signalCelebration);
+  if (hospitalitySignals.includes("vip")) items.push(t.guestDetail.signalVIP);
+  if (hospitalitySignals.includes("regular")) items.push(t.guestDetail.signalRegular);
+  if (hospitalitySignals.includes("owner_friend") || /owner friend|חבר בעלים/.test(notes)) items.push(t.guestDetail.signalOwnerFriend);
+  if (hospitalitySignals.includes("house_comp") || /house comp|כבוד הבית|free stuff|comped/.test(notes)) items.push(t.guestDetail.signalHouseComp);
+  return Array.from(new Set(items));
 }
 
 function TableMap({ tables }: { tables: TableStatusItem[] }) {

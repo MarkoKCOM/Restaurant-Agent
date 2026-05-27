@@ -101,6 +101,7 @@ Click any guest to open their profile, then edit:
 - **Seating**: Indoor, Outdoor, Bar
 - **Language**: Hebrew, English, Arabic, Russian
 - **Notes**: Free text (e.g., "always asks for corner table", "celebrating anniversary")
+- **Hospitality context**: Structured arrival signals such as birthday, celebration, VIP, regular, owner friend, or house comp, plus a staff-facing hospitality note. These signals appear again on future reservations so the floor team can recognize members and repeat guests without digging through old notes.
 
 **Auto-tagging:**
 The system automatically tags guests based on:

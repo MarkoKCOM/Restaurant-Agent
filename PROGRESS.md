@@ -7,6 +7,10 @@
   - `GET /api/v1/loyalty/:guestId/referral-share` generates or returns a member referral code
   - response includes referral stats and Hebrew/English share copy
   - agent tool `get_referral_share` lets customer conversations fetch referral copy by phone
+- Staff-editable hospitality context for future member arrivals:
+  - guest profiles can save structured signals like birthday, celebration, VIP, regular, owner friend, and house-comp
+  - guest profiles can save a staff-facing hospitality note
+  - Today and Reservations views surface saved hospitality signals on future arrivals
 - Protected super-admin dependency diagnostics at `GET /api/v1/admin/diagnostics`:
   - database ping status and latency
   - Redis ping status and latency

@@ -172,6 +172,8 @@ export async function guestRoutes(app: FastifyInstance) {
       seating: z.string().default("no_preference"),
       language: z.string().default("he"),
       notes: z.string().default(""),
+      hospitalitySignals: z.array(z.string()).default([]),
+      hospitalityNote: z.string().default(""),
     });
 
     const prefs = preferencesSchema.parse(request.body ?? {});

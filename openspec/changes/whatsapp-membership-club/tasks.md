@@ -21,7 +21,7 @@
 - [x] 4.2 Surface member signals and active claims in reservation/guest operational views
 - [x] 4.3 Allow employee role to verify/honor rewards without owner-level access
 - [x] 4.4 Surface special-attention guest signals (birthday, celebration, VIP, regular, owner friend, house-comp)
-- [ ] 4.5 Let owners/staff record hospitality context that should appear on future arrivals
+- [x] 4.5 Let owners/staff record hospitality context that should appear on future arrivals
 
 ## 5. WhatsApp journeys and automation
 - [x] 5.1 Define guest WhatsApp flows for balance, tier, rewards, referrals, and club questions

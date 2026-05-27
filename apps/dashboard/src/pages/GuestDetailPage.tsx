@@ -32,15 +32,42 @@ const HOSPITALITY_SIGNAL_STYLES: Record<string, string> = {
   house_comp: "bg-rose-50 text-rose-700 border-rose-200",
 };
 
+const HOSPITALITY_SIGNAL_KEYS = [
+  "birthday",
+  "celebration",
+  "vip",
+  "regular",
+  "owner_friend",
+  "house_comp",
+] as const;
+
+type HospitalitySignalKey = typeof HOSPITALITY_SIGNAL_KEYS[number];
+
+const HOSPITALITY_SIGNAL_LABEL_KEYS: Record<HospitalitySignalKey, keyof ReturnType<typeof useLang>["t"]["guestDetail"]> = {
+  birthday: "signalBirthday",
+  celebration: "signalCelebration",
+  vip: "signalVIP",
+  regular: "signalRegular",
+  owner_friend: "signalOwnerFriend",
+  house_comp: "signalHouseComp",
+};
+
+function getHospitalitySignalLabelKey(signal: string) {
+  return HOSPITALITY_SIGNAL_LABEL_KEYS[signal as HospitalitySignalKey];
+}
+
 function getHospitalitySignals(guest: { tags?: string[]; notes?: string; preferences?: unknown }) {
   const tags = (guest.tags ?? []).map((tag) => tag.toLowerCase());
   const notes = (guest.notes ?? "").toLowerCase();
-  const prefNotes = typeof guest.preferences === "object" && guest.preferences && "notes" in (guest.preferences as Record<string, unknown>)
-    ? String((guest.preferences as Record<string, unknown>).notes ?? "").toLowerCase()
-    : "";
+  const prefs = typeof guest.preferences === "object" && guest.preferences
+    ? guest.preferences as Record<string, unknown>
+    : {};
+  const structuredSignals = Array.isArray(prefs.hospitalitySignals)
+    ? prefs.hospitalitySignals.filter((signal): signal is string => typeof signal === "string")
+    : [];
+  const prefNotes = String(prefs.notes ?? "").toLowerCase();
   const haystack = `${tags.join(" ")} ${notes} ${prefNotes}`;
-
-  return [
+  const inferredSignals = [
     ["birthday", /birthday|יום הולדת/],
     ["celebration", /celebrat|anniversary|חוגג|חגיג|יום נישואין/],
     ["vip", /\bvip\b/],
@@ -48,6 +75,10 @@ function getHospitalitySignals(guest: { tags?: string[]; notes?: string; prefere
     ["owner_friend", /owner friend|friend of owner|חבר בעלים/],
     ["house_comp", /house comp|free stuff|comped|צ׳ופר|כבוד הבית/],
   ].filter(([, pattern]) => (pattern as RegExp).test(haystack)).map(([key]) => key as string);
+
+  return Array.from(new Set([...structuredSignals, ...inferredSignals])).filter((signal) =>
+    HOSPITALITY_SIGNAL_KEYS.includes(signal as HospitalitySignalKey),
+  );
 }
 
 export function GuestDetailPage() {
@@ -78,6 +109,8 @@ export function GuestDetailPage() {
   const [prefSeating, setPrefSeating] = useState("no_preference");
   const [prefLanguage, setPrefLanguage] = useState("he");
   const [prefNotes, setPrefNotes] = useState("");
+  const [hospitalitySignals, setHospitalitySignals] = useState<string[]>([]);
+  const [hospitalityNote, setHospitalityNote] = useState("");
 
   if (isLoading) {
     return (
@@ -96,7 +129,7 @@ export function GuestDetailPage() {
   }
 
   const { guest, reservations } = data;
-  const hospitalitySignals = getHospitalitySignals(guest);
+  const displayedHospitalitySignals = getHospitalitySignals(guest);
 
   function startEditNotes() {
     setNotesValue(guest.notes ?? "");
@@ -160,6 +193,8 @@ export function GuestDetailPage() {
     setPrefSeating(prefs.seating ?? "no_preference");
     setPrefLanguage(prefs.language ?? "he");
     setPrefNotes(prefs.notes ?? "");
+    setHospitalitySignals(prefs.hospitalitySignals ?? []);
+    setHospitalityNote(prefs.hospitalityNote ?? "");
     setEditingPrefs(true);
   }
 
@@ -183,6 +218,8 @@ export function GuestDetailPage() {
           seating: prefSeating,
           language: prefLanguage,
           notes: prefNotes,
+          hospitalitySignals,
+          hospitalityNote,
         },
       },
       {
@@ -192,6 +229,14 @@ export function GuestDetailPage() {
         },
         onError: () => showToast(t.guestDetail.toastPrefsError, "error"),
       },
+    );
+  }
+
+  function toggleHospitalitySignal(signal: string) {
+    setHospitalitySignals((prev) =>
+      prev.includes(signal)
+        ? prev.filter((item) => item !== signal)
+        : [...prev, signal],
     );
   }
 
@@ -226,11 +271,11 @@ export function GuestDetailPage() {
               <span className="font-mono">{guest.phone}</span>
               {guest.email && <span>{guest.email}</span>}
             </div>
-            {hospitalitySignals.length > 0 && (
+            {displayedHospitalitySignals.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-3">
-                {hospitalitySignals.map((signal) => (
+                {displayedHospitalitySignals.map((signal) => (
                   <span key={signal} className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${HOSPITALITY_SIGNAL_STYLES[signal] ?? "bg-gray-50 text-gray-700 border-gray-200"}`}>
-                    {t.guestDetail[`signal${signal.charAt(0).toUpperCase()}${signal.slice(1).replace(/_(.)/g, (_, ch) => ch.toUpperCase())}` as keyof typeof t.guestDetail] ?? signal}
+                    {t.guestDetail[getHospitalitySignalLabelKey(signal)] ?? signal}
                   </span>
                 ))}
               </div>
@@ -345,6 +390,41 @@ export function GuestDetailPage() {
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t.guestDetail.hospitalityContext}</label>
+              <div className="flex flex-wrap gap-2">
+                {HOSPITALITY_SIGNAL_KEYS.map((signal) => (
+                  <label
+                    key={signal}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition-colors ${
+                      hospitalitySignals.includes(signal)
+                        ? "bg-red-100 border-red-300 text-red-800"
+                        : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={hospitalitySignals.includes(signal)}
+                      onChange={() => toggleHospitalitySignal(signal)}
+                      className="sr-only"
+                    />
+                    {t.guestDetail[getHospitalitySignalLabelKey(signal)] ?? signal}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.guestDetail.hospitalityNote}</label>
+              <textarea
+                value={hospitalityNote}
+                onChange={(e) => setHospitalityNote(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none"
+                placeholder={t.guestDetail.hospitalityNotePlaceholder}
+              />
+            </div>
+
             {/* Save / Cancel */}
             <div className="flex items-center gap-2">
               <button
@@ -370,7 +450,9 @@ export function GuestDetailPage() {
               const hasSeating = prefs.seating && prefs.seating !== "no_preference";
               const hasLang = prefs.language;
               const hasPrefNotes = prefs.notes;
-              const hasAny = hasDietary || hasSeating || hasLang || hasPrefNotes;
+              const hasHospitalitySignals = Array.isArray(prefs.hospitalitySignals) && prefs.hospitalitySignals.length > 0;
+              const hasHospitalityNote = prefs.hospitalityNote;
+              const hasAny = hasDietary || hasSeating || hasLang || hasPrefNotes || hasHospitalitySignals || hasHospitalityNote;
 
               if (!hasAny) {
                 return <p className="text-gray-400">{t.guestDetail.noNotes}</p>;
@@ -406,6 +488,24 @@ export function GuestDetailPage() {
                     <div>
                       <span className="font-medium text-gray-700">{t.guestDetail.prefNotes}:</span>{" "}
                       {prefs.notes}
+                    </div>
+                  )}
+                  {hasHospitalitySignals && (
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-700">{t.guestDetail.hospitalityContext}:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {prefs.hospitalitySignals!.map((signal) => (
+                          <span key={signal} className={`px-2 py-0.5 rounded-full border text-xs ${HOSPITALITY_SIGNAL_STYLES[signal] ?? "bg-gray-50 text-gray-700 border-gray-200"}`}>
+                            {t.guestDetail[getHospitalitySignalLabelKey(signal)] ?? signal}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {hasHospitalityNote && (
+                    <div>
+                      <span className="font-medium text-gray-700">{t.guestDetail.hospitalityNote}:</span>{" "}
+                      {prefs.hospitalityNote}
                     </div>
                   )}
                 </>

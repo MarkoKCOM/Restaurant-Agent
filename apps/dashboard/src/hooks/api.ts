@@ -423,6 +423,8 @@ export interface GuestPreferences {
   seating: string;
   language: string;
   notes: string;
+  hospitalitySignals?: string[];
+  hospitalityNote?: string;
 }
 
 export function useUpdateGuestPreferences() {

@@ -296,7 +296,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
 
   // POST /birthday-week/check — create private birthday-week challenges for due guests
   app.post("/birthday-week/check", async (request, reply) => {
-    const { restaurantId } = request.query as { restaurantId?: string };
+    const { restaurantId, guestId } = request.query as { restaurantId?: string; guestId?: string };
 
     if (!restaurantId) {
       return sendGamificationError(
@@ -312,10 +312,10 @@ export async function gamificationRoutes(app: FastifyInstance) {
     if (accessError) return accessError;
 
     try {
-      const result = await checkBirthdayWeekChallenges(restaurantId);
+      const result = await checkBirthdayWeekChallenges(restaurantId, { guestId });
       return { result };
     } catch (err: unknown) {
-      return sendCaughtGamificationError(request, reply, err, "BIRTHDAY_WEEK_CHECK_FAILED", { restaurantId });
+      return sendCaughtGamificationError(request, reply, err, "BIRTHDAY_WEEK_CHECK_FAILED", { restaurantId, guestId });
     }
   });
 

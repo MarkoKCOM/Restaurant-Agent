@@ -1085,7 +1085,7 @@ async function main() {
     token,
     body: { preferences: { birthday: jerusalemMonthDayPlusDays(7) } },
   });
-  const birthdayWeekCheck = await request(`/api/v1/gamification/birthday-week/check?restaurantId=${restaurantId}`, {
+  const birthdayWeekCheck = await request(`/api/v1/gamification/birthday-week/check?restaurantId=${restaurantId}&guestId=${birthdayChallengeGuestId}`, {
     method: "POST",
     token,
   });
@@ -1094,7 +1094,7 @@ async function main() {
     item.challenge?.type === "birthday_week" && item.challenge?.metadata?.guestId === birthdayChallengeGuestId
   );
   if (!birthdayWeekChallenge?.challenge?.id) {
-    throw new Error(`Birthday-week check did not create a targeted challenge: ${JSON.stringify(birthdayWeekCheck.result ?? {})}`);
+    throw new Error(`Birthday-week check did not create a targeted challenge: guestId=${birthdayChallengeGuestId} result=${JSON.stringify(birthdayWeekCheck.result ?? {})}`);
   }
   const unrelatedGuestChallenges = await request(`/api/v1/gamification/${reservation.guestId}/challenges?restaurantId=${restaurantId}`, { token });
   const leakedBirthdayWeekChallenge = (unrelatedGuestChallenges.challenges ?? []).some((item) => item.challenge?.id === birthdayWeekChallenge.challenge.id);
@@ -1110,6 +1110,9 @@ async function main() {
     due: birthdayWeekCheck.result?.due ?? null,
     created: birthdayWeekCheck.result?.created ?? null,
     skippedExisting: birthdayWeekCheck.result?.skippedExisting ?? null,
+    targetGuestId: birthdayWeekCheck.result?.targetGuestId ?? null,
+    createdChallengeSamples: birthdayWeekCheck.result?.createdChallengeSamples ?? [],
+    skippedExistingSamples: birthdayWeekCheck.result?.skippedExistingSamples ?? [],
     target: birthdayWeekChallenge.challenge.targetValue,
     reward: birthdayWeekChallenge.challenge.rewardPoints,
     progress: birthdayWeekIncrement.progress,

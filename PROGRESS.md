@@ -92,6 +92,7 @@
 - README now links to the debugging guide.
 - Active challenge listings and visit-triggered challenge auto-progress now evaluate date windows with the restaurant-local calendar day, matching birthday-week challenge creation and preventing midnight timezone gaps in gamification/member-visible challenges.
 - API reliability smoke date windows now use the same restaurant-local calendar day so live gamification checks exercise the product behavior instead of UTC-only artifacts.
+- Birthday-week challenge checks now accept an optional `guestId` for targeted support/smoke runs and return sample created/existing challenge IDs, so a failing retention challenge check points at concrete guest/challenge records instead of only aggregate counts.
 
 ### Verified
 - `pnpm --filter @openseat/domain build`
@@ -101,6 +102,7 @@
 - `pnpm --filter @openseat/dashboard build`
 - `pnpm debug:api -- http://localhost:3001/api/v1/health`
 - `OPENSEAT_SMOKE_ARTIFACT_PATH=/tmp/openseat-smoke-64d8552.json node scripts/api-reliability-smoke.mjs`
+- `pnpm test:debug-tools`
 - `git diff --check`
 
 ### Notes

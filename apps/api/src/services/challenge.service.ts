@@ -347,6 +347,9 @@ interface BirthdayWeekChallengeResult {
   created: number;
   skippedExisting: number;
   skippedInvalidBirthday: number;
+  targetGuestId?: string;
+  createdChallengeSamples: Array<{ guestId: string; challengeId: string }>;
+  skippedExistingSamples: Array<{ guestId: string; challengeId: string }>;
 }
 
 function getMetadataGuestId(metadata: unknown): string | null {
@@ -433,18 +436,26 @@ async function findBirthdayWeekChallenge(params: {
 
 export async function checkBirthdayWeekChallenges(
   restaurantId: string,
+  options: { guestId?: string } = {},
 ): Promise<BirthdayWeekChallengeResult> {
   const result: BirthdayWeekChallengeResult = {
     due: 0,
     created: 0,
     skippedExisting: 0,
     skippedInvalidBirthday: 0,
+    ...(options.guestId ? { targetGuestId: options.guestId } : {}),
+    createdChallengeSamples: [],
+    skippedExistingSamples: [],
   };
 
   const restaurantGuests = await db
     .select()
     .from(guests)
-    .where(eq(guests.restaurantId, restaurantId));
+    .where(
+      options.guestId
+        ? and(eq(guests.restaurantId, restaurantId), eq(guests.id, options.guestId))
+        : eq(guests.restaurantId, restaurantId),
+    );
 
   for (const guest of restaurantGuests) {
     const prefs = parsePreferences(guest.preferences);
@@ -467,12 +478,15 @@ export async function checkBirthdayWeekChallenges(
     });
     if (existing) {
       result.skippedExisting++;
+      if (result.skippedExistingSamples.length < 5) {
+        result.skippedExistingSamples.push({ guestId: guest.id, challengeId: existing.id });
+      }
       continue;
     }
 
     const startDate = new Date(occurrence.occurrenceDate);
     startDate.setDate(startDate.getDate() - 7);
-    await createChallenge({
+    const created = await createChallenge({
       restaurantId,
       name: `Birthday week challenge: ${guest.name}`,
       description: "A private birthday-week visit challenge with bonus points for celebrating at the restaurant.",
@@ -489,6 +503,9 @@ export async function checkBirthdayWeekChallenges(
       },
     });
     result.created++;
+    if (result.createdChallengeSamples.length < 5) {
+      result.createdChallengeSamples.push({ guestId: guest.id, challengeId: created.id });
+    }
   }
 
   return result;

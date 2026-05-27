@@ -865,8 +865,10 @@ const campaignRoutes = await readFile("apps/api/src/routes/campaigns.ts", "utf8"
 const analyticsRoutes = await readFile("apps/api/src/routes/analytics.ts", "utf8");
 const engagementRoutes = await readFile("apps/api/src/routes/engagement.ts", "utf8");
 const engagementService = await readFile("apps/api/src/services/engagement.service.ts", "utf8");
+const challengeService = await readFile("apps/api/src/services/challenge.service.ts", "utf8");
 const loyaltyRoutes = await readFile("apps/api/src/routes/loyalty.ts", "utf8");
 const gamificationRoutes = await readFile("apps/api/src/routes/gamification.ts", "utf8");
+const apiReliabilitySmoke = await readFile("scripts/api-reliability-smoke.mjs", "utf8");
 const outboundMessageService = await readFile("apps/api/src/services/outbound-message.service.ts", "utf8");
 const summaryService = await readFile("apps/api/src/services/summary.service.ts", "utf8");
 const debugTokenHelpers = await readFile("scripts/lib/debug-token.mjs", "utf8");
@@ -1041,6 +1043,35 @@ for (const requiredDiagnosticsContent of [
   "operationalStatuses.every((sectionStatus) => sectionStatus === \"ok\")",
 ]) {
   assertIncludes(diagnosticsService, requiredDiagnosticsContent);
+}
+
+for (const requiredBirthdayWeekDebugContent of [
+  "options: { guestId?: string } = {}",
+  "targetGuestId",
+  "createdChallengeSamples",
+  "skippedExistingSamples",
+  "eq(guests.id, options.guestId)",
+  "result.createdChallengeSamples.push({ guestId: guest.id, challengeId: created.id })",
+  "result.skippedExistingSamples.push({ guestId: guest.id, challengeId: existing.id })",
+]) {
+  assertIncludes(challengeService, requiredBirthdayWeekDebugContent);
+}
+
+for (const requiredBirthdayWeekRouteContent of [
+  "guestId?: string",
+  "checkBirthdayWeekChallenges(restaurantId, { guestId })",
+  "BIRTHDAY_WEEK_CHECK_FAILED",
+]) {
+  assertIncludes(gamificationRoutes, requiredBirthdayWeekRouteContent);
+}
+
+for (const requiredBirthdayWeekSmokeContent of [
+  "&guestId=${birthdayChallengeGuestId}",
+  "targetGuestId: birthdayWeekCheck.result?.targetGuestId",
+  "createdChallengeSamples: birthdayWeekCheck.result?.createdChallengeSamples",
+  "skippedExistingSamples: birthdayWeekCheck.result?.skippedExistingSamples",
+]) {
+  assertIncludes(apiReliabilitySmoke, requiredBirthdayWeekSmokeContent);
 }
 
 assertIncludes(adminRoutes, "return reply.status(200).send({");

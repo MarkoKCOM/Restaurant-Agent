@@ -88,6 +88,7 @@
 - [x] 8.9 Implement birthday week challenge — auto-created 7 days before birthday, special reward + bonus points
 - [x] 8.10 Implement opt-in leaderboard — monthly rankings, top 3 rewards, WhatsApp summary to participants
 - [x] 8.11 Harden challenge active windows against timezone drift — active challenge listings, auto-progress, and API smoke date windows use the restaurant-local calendar day
+- [x] 8.12 Add targeted birthday-week challenge diagnostics — support/smoke checks can isolate one guest and return concrete created/existing challenge IDs
 
 ## 9. Engagement Automation (Growth)
 

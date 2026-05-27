@@ -146,6 +146,9 @@ export async function runAllTests(): Promise<TestRunReport> {
     if (source.checkout?.status !== "ok" || typeof source.checkout.shortCommit !== "string") {
       throw new Error("Diagnostics response missing deployment checkout revision");
     }
+    if (source.checkoutMatchesBuild !== true) {
+      throw new Error(`Diagnostics build/checkout mismatch: build=${source.shortCommit} checkout=${source.checkout.shortCommit}`);
+    }
     if (migrationDrift.status !== "ok") {
       throw new Error(`Migration drift status is ${migrationDrift.status}`);
     }
@@ -166,7 +169,7 @@ export async function runAllTests(): Promise<TestRunReport> {
     ) {
       throw new Error("Diagnostics response missing gamification summary");
     }
-    return `status=${(data as any).status} build=${source.shortCommit} checkout=${source.checkout.shortCommit} migrations=${migrationDrift.codeLatestId}/${migrationDrift.databaseLatestId} membershipOpen=${membershipProcessing.openCount} gamification=${gamification.status} activeChallenges=${gamification.challenges.active} stuckChallenges=${gamification.challenges.stuckCompletions} referralCreditMismatches=${gamification.referrals.referrerCreditMismatches}`;
+    return `status=${(data as any).status} build=${source.shortCommit} checkout=${source.checkout.shortCommit} matchesBuild=${source.checkoutMatchesBuild} migrations=${migrationDrift.codeLatestId}/${migrationDrift.databaseLatestId} membershipOpen=${membershipProcessing.openCount} gamification=${gamification.status} activeChallenges=${gamification.challenges.active} stuckChallenges=${gamification.challenges.stuckCompletions} referralCreditMismatches=${gamification.referrals.referrerCreditMismatches}`;
   }));
 
   results.push(await runTest("API Diagnostics: missing token envelope", async () => {

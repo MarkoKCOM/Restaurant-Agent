@@ -35,17 +35,63 @@ const cases = [
   },
 ];
 
+function errorField(error, field) {
+  return error && typeof error === "object" && field in error ? error[field] : undefined;
+}
+
+function sanitizeConnectionCause(cause) {
+  if (!cause || typeof cause !== "object") return undefined;
+
+  const causes = Array.isArray(cause.errors)
+    ? cause.errors.map((nested) => sanitizeConnectionCause(nested))
+    : undefined;
+
+  return {
+    name: errorField(cause, "name"),
+    message: errorField(cause, "message"),
+    code: errorField(cause, "code"),
+    syscall: errorField(cause, "syscall"),
+    address: errorField(cause, "address"),
+    port: errorField(cause, "port"),
+    errors: causes?.filter(Boolean),
+  };
+}
+
 async function probe(testCase, index) {
   const startedAt = Date.now();
   const requestId = `${runId}-${index + 1}`;
-  const response = await fetch(`${apiUrl}/api/v1/agent/debug/membership-intent`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-request-id": requestId,
-    },
-    body: JSON.stringify({ message: testCase.message }),
-  });
+  let response;
+  try {
+    response = await fetch(`${apiUrl}/api/v1/agent/debug/membership-intent`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-request-id": requestId,
+      },
+      body: JSON.stringify({ message: testCase.message }),
+    });
+  } catch (error) {
+    return {
+      name: testCase.name,
+      message: testCase.message,
+      requestId,
+      status: null,
+      ok: false,
+      elapsedMs: Date.now() - startedAt,
+      expected: {
+        intent: testCase.intent,
+        expectedTool: testCase.expectedTool,
+        language: testCase.language,
+      },
+      observed: null,
+      error: {
+        name: error instanceof Error ? error.name : "UnknownError",
+        message: error instanceof Error ? error.message : String(error),
+        cause: sanitizeConnectionCause(errorField(error, "cause")),
+      },
+      mismatches: ["fetch failed"],
+    };
+  }
   const text = await response.text();
   let body;
   try {
@@ -108,7 +154,9 @@ console.log(`Agent membership intent smoke: ${passed}/${results.length} passed`)
 for (const result of results) {
   const detail = result.ok
     ? `intent=${result.observed.intent} tool=${result.observed.expectedTool} lang=${result.observed.language}`
-    : result.mismatches.join("; ");
+    : result.error
+      ? `${result.error.message}${result.error.cause?.code ? ` code=${result.error.cause.code}` : ""}`
+      : result.mismatches.join("; ");
   console.log(`- ${result.ok ? "PASS" : "FAIL"} ${result.name}: ${detail} requestId=${result.requestId}`);
 }
 

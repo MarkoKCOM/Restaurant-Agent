@@ -117,7 +117,12 @@ function summarizeAgentMembershipIntent(report) {
   console.log(`Failures: ${failed.length}`);
   for (const result of failed) {
     const mismatches = asArray(result.mismatches);
-    const details = mismatches.length > 0 ? mismatches.join("; ") : "intent probe failed";
+    const error = result.error;
+    const details = error?.message
+      ? `${error.message}${error.cause?.code ? ` code=${error.cause.code}` : ""}`
+      : mismatches.length > 0
+        ? mismatches.join("; ")
+        : "intent probe failed";
     const requestId = result.requestId ? ` requestId=${result.requestId}` : "";
     console.log(`- ${result.name}: ${details}${requestId}`);
   }

@@ -156,6 +156,34 @@ assertIncludes(agentIntentOutput, "Status: 1/2 passed");
 assertIncludes(agentIntentOutput, "- English opt-out: intent expected messaging_opt_out got unknown requestId=agent-intent-test-2");
 assertIncludes(agentIntentOutput, 'pnpm debug:logs agent-intent-test-2 --since "2 hours ago"');
 
+const agentIntentFetchFailurePath = await writeJson("agent-intents-fetch-failed.json", {
+  type: "agent-membership-intent",
+  status: "failed",
+  runId: "agent-intent-fetch-failed-test",
+  apiUrl: "http://127.0.0.1:65535",
+  total: 1,
+  passed: 0,
+  failed: 1,
+  results: [
+    {
+      name: "Hebrew balance",
+      requestId: "agent-intent-fetch-failed-test-1",
+      ok: false,
+      status: null,
+      error: {
+        name: "TypeError",
+        message: "fetch failed",
+        cause: { code: "ECONNREFUSED", address: "127.0.0.1", port: 65535 },
+      },
+      mismatches: ["fetch failed"],
+    },
+  ],
+});
+
+const agentIntentFetchFailureOutput = await summarize(agentIntentFetchFailurePath);
+assertIncludes(agentIntentFetchFailureOutput, "Type: agent-membership-intent");
+assertIncludes(agentIntentFetchFailureOutput, "fetch failed code=ECONNREFUSED requestId=agent-intent-fetch-failed-test-1");
+
 const agentIntentScript = await readFile("scripts/agent-membership-intent-smoke.mjs", "utf8");
 for (const expectedProbe of [
   "כמה נקודות יש לי במועדון?",

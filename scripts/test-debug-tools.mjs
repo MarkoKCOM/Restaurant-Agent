@@ -206,7 +206,14 @@ assertIncludes(smokeOutput, "analytics.growth-summary: bookings=12 covers=34 slo
 assertIncludes(smokeOutput, "analytics.daily-morning-summary: date=2026-05-27 yesterdayCovers=18 todayBookings=7 todayCovers=22 notable=3 alerts=1 message=yes ownerRecipient=yes source=phone");
 assertIncludes(smokeOutput, "outbound.daily-morning-summary-log: id=outbound-test-1 status=logged type=daily_morning_summary listed=yes recipient=050****12");
 assertIncludes(smokeOutput, "Unhandled HTTP failures: 1");
+assertIncludes(smokeOutput, "Last smoke steps:");
+assertIncludes(smokeOutput, "- campaign.opt-out-keyword optedOut=true llmRounds=0 deterministicAction=campaign_opt_out tool=set_membership_messaging_opt_out deliverySent=0 deliverySkippedOptOut=2");
+assertIncludes(smokeOutput, "- analytics.growth-summary reservationBookings=12 reservationCovers=34 reservationSlots=5 cancellationRate=0.1 noShowRate=0.05 retentionUniqueGuests=4 retentionWindows=30,60,90 activeMembers=9");
+assertIncludes(smokeOutput, "- outbound.daily-morning-summary-log outboundMessageId=outbound-test-1 status=logged messageType=daily_morning_summary listed=true recipientMasked=050****12");
+assertIncludes(smokeOutput, "Recent requests:");
+assertIncludes(smokeOutput, "- GET /api/v1/health -> 200 requestId=smoke-test-1");
 assertIncludes(smokeOutput, "POST /api/v1/reservations -> 500 code=INTERNAL_ERROR requestId=smoke-test-2");
+assertIncludes(smokeOutput, 'pnpm debug:logs smoke-test-1 --since "2 hours ago"');
 assertIncludes(smokeOutput, 'pnpm debug:logs smoke-test-2 --since "2 hours ago"');
 
 const skippedSmokePath = await writeJson("smoke-skipped.json", {

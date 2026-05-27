@@ -36,6 +36,36 @@ function requestIdsFromText(value) {
     .map((match) => match[1]);
 }
 
+function formatSmokeContextValue(value) {
+  if (value === undefined || value === null || value === "") return null;
+  if (Array.isArray(value)) return value.join(",") || null;
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function formatSmokeStepContext(step) {
+  if (!step || typeof step !== "object") return String(step);
+
+  const details = Object.entries(step)
+    .filter(([key]) => key !== "step")
+    .map(([key, value]) => {
+      const formatted = formatSmokeContextValue(value);
+      return formatted ? `${key}=${formatted}` : null;
+    })
+    .filter(Boolean)
+    .slice(0, 8)
+    .join(" ");
+
+  return `${step.step ?? "unknown"}${details ? ` ${details}` : ""}`;
+}
+
+function formatSmokeRequestContext(request) {
+  const handled = request.handled ? ` handled=${request.handledReason ?? true}` : "";
+  const code = request.code ? ` code=${request.code}` : "";
+  const requestId = request.requestId ? ` requestId=${request.requestId}` : "";
+  return `${request.method ?? "?"} ${request.path ?? "?"} -> ${request.status ?? "?"}${code}${requestId}${handled}`;
+}
+
 function formatCheckout(value) {
   if (!value || typeof value !== "object") return value ?? "unknown";
   return value.shortCommit ?? value.commit ?? value.status ?? "unknown";
@@ -365,6 +395,28 @@ function summarizeSmoke(report) {
 
   if (report.error) {
     printLine("Error", report.error.message ?? String(report.error));
+  }
+
+  if (report.status === "failed" || report.error) {
+    const lastSteps = asArray(report.steps).slice(-5);
+    if (lastSteps.length > 0) {
+      console.log("Last smoke steps:");
+      for (const step of lastSteps) {
+        console.log(`- ${formatSmokeStepContext(step)}`);
+      }
+    }
+
+    const recentRequests = requests.slice(-5);
+    if (recentRequests.length > 0) {
+      console.log("Recent requests:");
+      for (const request of recentRequests) {
+        console.log(`- ${formatSmokeRequestContext(request)}`);
+      }
+      const unhandledRequestIds = new Set(unhandledFailedRequests.map((request) => request.requestId).filter(Boolean));
+      printLogTraceCommands(recentRequests
+        .map((request) => request.requestId)
+        .filter((requestId) => requestId && !unhandledRequestIds.has(requestId)));
+    }
   }
 
   const interesting = unhandledFailedRequests.length > 0 ? unhandledFailedRequests : handledFailedRequests.slice(0, 5);

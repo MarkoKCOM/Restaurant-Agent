@@ -12,6 +12,9 @@ export interface Restaurant {
   phone?: string;
   email?: string;
   website?: string;
+  whatsappNumber?: string;
+  ownerPhone?: string;
+  ownerWhatsapp?: string;
   timezone: string;
   locale: string;
   operatingHours?: OperatingHours;

@@ -297,6 +297,9 @@ export function SettingsPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [ownerPhone, setOwnerPhone] = useState("");
+  const [ownerWhatsapp, setOwnerWhatsapp] = useState("");
 
   // Hours editor state
   const [hours, setHours] = useState<HoursState>({});
@@ -314,6 +317,9 @@ export function SettingsPage() {
       setName(restaurant.name ?? "");
       setPhone(restaurant.phone ?? "");
       setAddress(restaurant.address ?? "");
+      setWhatsappNumber(restaurant.whatsappNumber ?? "");
+      setOwnerPhone(restaurant.ownerPhone ?? "");
+      setOwnerWhatsapp(restaurant.ownerWhatsapp ?? "");
       const oh = (restaurant.operatingHours ?? {}) as HoursState;
       const normalized: HoursState = {};
       for (const day of DAYS) {
@@ -326,7 +332,7 @@ export function SettingsPage() {
   function handleSave() {
     if (!restaurant) return;
     updateMutation.mutate(
-      { id: restaurant.id, data: { name, phone, address } },
+      { id: restaurant.id, data: { name, phone, address, whatsappNumber, ownerPhone, ownerWhatsapp } },
       {
         onSuccess: () => showToast(t.settings.toastDetailsSaved),
         onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.settings.toastDetailsError), "error"),
@@ -467,6 +473,34 @@ export function SettingsPage() {
                 onChange={(e) => setAddress(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.whatsappNumber}</label>
+              <input
+                type="tel"
+                value={whatsappNumber}
+                onChange={(e) => setWhatsappNumber(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.ownerPhone}</label>
+              <input
+                type="tel"
+                value={ownerPhone}
+                onChange={(e) => setOwnerPhone(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.ownerWhatsapp}</label>
+              <input
+                type="tel"
+                value={ownerWhatsapp}
+                onChange={(e) => setOwnerWhatsapp(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+              <p className="mt-1 text-xs text-gray-500">{t.settings.ownerWhatsappHelp}</p>
             </div>
           </div>
           <button

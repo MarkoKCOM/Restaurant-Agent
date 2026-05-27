@@ -1325,6 +1325,19 @@ for (const requiredRestaurantPatchContent of [
   assertIncludes(restaurantRoutes, requiredRestaurantPatchContent);
 }
 
+const dashboardSettingsPage = await readFile("apps/dashboard/src/pages/SettingsPage.tsx", "utf8");
+const domainTypes = await readFile("packages/domain/src/types.ts", "utf8");
+for (const requiredOwnerDeliverySettingsContent of [
+  "const [whatsappNumber, setWhatsappNumber] = useState(\"\")",
+  "const [ownerPhone, setOwnerPhone] = useState(\"\")",
+  "const [ownerWhatsapp, setOwnerWhatsapp] = useState(\"\")",
+  "data: { name, phone, address, whatsappNumber, ownerPhone, ownerWhatsapp }",
+  "t.settings.ownerWhatsappHelp",
+  "ownerWhatsapp?: string",
+]) {
+  assertIncludes(`${dashboardSettingsPage}\n${domainTypes}`, requiredOwnerDeliverySettingsContent);
+}
+
 for (const requiredPackageEnforcementContent of [
   "requireGrowthPackage",
   "PackageAccessResult",

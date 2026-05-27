@@ -96,6 +96,7 @@
 - API reliability smoke date windows now use the same restaurant-local calendar day so live gamification checks exercise the product behavior instead of UTC-only artifacts.
 - Birthday-week challenge checks now accept an optional `guestId` for targeted support/smoke runs and return sample created/existing challenge IDs, so a failing retention challenge check points at concrete guest/challenge records instead of only aggregate counts.
 - Outbound diagnostics now include machine-readable status reasons plus `ownerDeliveryBlocked` and `ownerWhatsappConfigOnlyMissing`, so support can distinguish current delivery blockers from historical skipped rows and owner WhatsApp configuration cleanup.
+- Dashboard Settings now exposes restaurant WhatsApp, owner phone, and canonical owner WhatsApp fields, giving operators a UI path to clear owner-summary configuration warnings without using the repair CLI.
 - Outbound error-code diagnostics now include first/last seen timestamps and debug bundle summaries print the window next to each error code, making historical delivery residue visibly different from fresh regressions.
 - Debug bundles now collect both the requested context log window and a bundle-run-only API log slice, so a fresh smoke regression is not confused with older warnings still inside the broader journal window.
 - Debug bundle summaries now classify the bundle-run API log slice and print fresh warning/error counts, error codes, and samples, separating expected negative-path smoke warnings from unexpected runtime noise.

@@ -306,6 +306,8 @@ OPENSEAT_TOKEN=... pnpm debug:owner-delivery
 
 On the VPS, `JWT_SECRET` is enough for this command to synthesize a short-lived super-admin token. The command reads `/api/v1/admin/restaurants`, prints masked restaurant phone/WhatsApp fields, and gives a ready-to-run `PATCH /api/v1/restaurants/:id` repair command for each restaurant missing `ownerWhatsapp`.
 
+Owners can also set `ownerWhatsapp` from Dashboard Settings under Restaurant Details. That field is the canonical owner-summary recipient; `ownerPhone`, restaurant WhatsApp, and restaurant phone are only fallback contacts for delivery readiness.
+
 To apply one known owner WhatsApp value and immediately re-check readiness:
 
 ```bash

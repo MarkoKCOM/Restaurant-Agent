@@ -111,6 +111,7 @@ function summarizeSmoke(report) {
       || step.step === "gamification.challenge-idempotency"
       || step.step === "loyalty.off-peak-multiplier"
       || step.step === "gamification.menu-exploration"
+      || step.step === "engagement.win-back-overdue"
     )
   );
   if (operationalSteps.length > 0) {
@@ -138,6 +139,8 @@ function summarizeSmoke(report) {
         console.log(`- loyalty.off-peak-multiplier: visitPoints=${step.actualVisitPoints ?? "?"}/${step.expectedVisitPoints ?? "?"} reason=${step.reason ?? "?"}`);
       } else if (step.step === "gamification.menu-exploration") {
         console.log(`- gamification.menu-exploration: categories=${step.categoryCount ?? "?"} badges=${asArray(step.badges).join(",") || "none"}`);
+      } else if (step.step === "engagement.win-back-overdue") {
+        console.log(`- engagement.win-back-overdue: scheduled30=${step.scheduled30 ?? "?"} existing=${step.skippedExisting ?? "?"} policy=${step.skippedPolicy ?? "?"} status=${step.jobStatus ?? "?"}`);
       }
     }
   }
@@ -219,6 +222,7 @@ function summarizeDebugBundleManifest(report) {
   const gamificationMenuExploration = gamification.menuExploration ?? {};
   const engagement = adminDiagnostics.engagement ?? {};
   const engagementTotals = engagement.totals ?? {};
+  const engagementWinBack = engagement.winBack ?? {};
   const agentMembershipIntents = highlights.agentMembershipIntents ?? {};
   const queues = asArray(adminDiagnostics.queues);
 
@@ -273,7 +277,7 @@ function summarizeDebugBundleManifest(report) {
   if (engagement.status) {
     printLine(
       "Engagement",
-      `${engagement.status} pending=${engagementTotals.pending ?? "?"} overdue=${engagementTotals.overduePending ?? "?"} failed=${engagementTotals.failed ?? "?"} skipped=${engagementTotals.skipped ?? "?"}`,
+      `${engagement.status} pending=${engagementTotals.pending ?? "?"} overdue=${engagementTotals.overduePending ?? "?"} failed=${engagementTotals.failed ?? "?"} skipped=${engagementTotals.skipped ?? "?"} winBackDue=${engagementWinBack.dueUnscheduledTotal ?? "?"}`,
     );
   }
   if (agentMembershipIntents.status) {

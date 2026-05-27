@@ -457,6 +457,52 @@ async function main() {
     types: [...new Set((engagementJobs.jobs ?? []).map((job) => job.type))],
   });
 
+  const winBackGuest = await request("/api/v1/guests", {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      name: `Smoke WinBack ${runId}`,
+      phone: `052${String(Date.now()).slice(-7)}`,
+      language: "he",
+      source: "web",
+    },
+  });
+  const winBackGuestId = winBackGuest.guest?.id;
+  if (!winBackGuestId) throw new Error("Win-back smoke guest create endpoint did not return guest.id");
+
+  const winBackVisitDate = plusDays(-31);
+  await request("/api/v1/visits", {
+    method: "POST",
+    token,
+    body: {
+      guestId: winBackGuestId,
+      restaurantId,
+      date: winBackVisitDate,
+      partySize: 2,
+      items: [{ name: "Smoke comeback meal", category: "main", price: 80, rating: 5 }],
+      totalSpend: 80,
+      channel: "web",
+    },
+  });
+  const winBackCheck = await request(`/api/v1/engagement/win-back/check?restaurantId=${restaurantId}`, {
+    method: "POST",
+    token,
+  });
+  const winBackJobs = await request(`/api/v1/engagement/jobs?restaurantId=${restaurantId}&guestId=${winBackGuestId}`, { token });
+  const winBackJob = (winBackJobs.jobs ?? []).find((job) => job.type === "win_back_30");
+  record("engagement.win-back-overdue", {
+    guestId: winBackGuestId,
+    lastVisitDate: winBackVisitDate,
+    scheduled30: winBackCheck.result?.scheduled30 ?? null,
+    skippedExisting: winBackCheck.result?.skippedExisting ?? null,
+    skippedPolicy: winBackCheck.result?.skippedPolicy ?? null,
+    jobStatus: winBackJob?.status ?? null,
+  });
+  if (!winBackJob || winBackJob.status !== "pending") {
+    throw new Error(`Overdue win-back check did not schedule win_back_30: ${JSON.stringify(winBackCheck.result ?? {})}`);
+  }
+
   const tableStatus = await request(`/api/v1/restaurants/${restaurantId}/table-status`, { token });
   record("restaurants.table-status", { tableCount: tableStatus.length });
 

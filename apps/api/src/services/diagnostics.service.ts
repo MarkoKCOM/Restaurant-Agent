@@ -213,6 +213,18 @@ export interface EngagementDiagnostic {
     transactionalPending: number;
     overduePending: number;
   };
+  winBack?: {
+    dueUnscheduled30: number;
+    dueUnscheduled60: number;
+    dueUnscheduled90: number;
+    dueUnscheduledTotal: number;
+    samples: Array<{
+      guestId: string;
+      restaurantId: string;
+      lastVisitDate: string;
+      dueType: string;
+    }>;
+  };
   skippedByReason?: Array<{
     reason: string;
     count: number;
@@ -664,7 +676,7 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
 
 async function inspectEngagement(): Promise<EngagementDiagnostic> {
   try {
-    const [summaryRows, skippedRows, sampleRows] = await Promise.all([
+    const [summaryRows, skippedRows, sampleRows, winBackRows, winBackSampleRows] = await Promise.all([
       db.execute(sql`
         select
           count(*)::int as total,
@@ -724,13 +736,87 @@ async function inspectEngagement(): Promise<EngagementDiagnostic> {
         trigger_at: Date | string;
         created_at: Date | string;
       }>>,
+      db.execute(sql`
+        with due as (
+          select
+            g.id,
+            g.restaurant_id,
+            g.last_visit_date,
+            case
+              when g.last_visit_date <= current_date - interval '90 days' then 'win_back_90'
+              when g.last_visit_date <= current_date - interval '60 days' then 'win_back_60'
+              when g.last_visit_date <= current_date - interval '30 days' then 'win_back_30'
+            end as due_type
+          from ${guests} g
+          where g.last_visit_date is not null
+            and g.last_visit_date <= current_date - interval '30 days'
+        ),
+        unscheduled as (
+          select d.*
+          from due d
+          where d.due_type is not null
+            and not exists (
+              select 1
+              from ${engagementJobs} ej
+              where ej.guest_id = d.id
+                and ej.restaurant_id = d.restaurant_id
+                and ej.type = d.due_type
+            )
+        )
+        select
+          count(*) filter (where due_type = 'win_back_30')::int as due_unscheduled_30,
+          count(*) filter (where due_type = 'win_back_60')::int as due_unscheduled_60,
+          count(*) filter (where due_type = 'win_back_90')::int as due_unscheduled_90,
+          count(*)::int as due_unscheduled_total
+        from unscheduled
+      `) as Promise<Array<{
+        due_unscheduled_30: number;
+        due_unscheduled_60: number;
+        due_unscheduled_90: number;
+        due_unscheduled_total: number;
+      }>>,
+      db.execute(sql`
+        with due as (
+          select
+            g.id,
+            g.restaurant_id,
+            g.last_visit_date,
+            case
+              when g.last_visit_date <= current_date - interval '90 days' then 'win_back_90'
+              when g.last_visit_date <= current_date - interval '60 days' then 'win_back_60'
+              when g.last_visit_date <= current_date - interval '30 days' then 'win_back_30'
+            end as due_type
+          from ${guests} g
+          where g.last_visit_date is not null
+            and g.last_visit_date <= current_date - interval '30 days'
+        )
+        select d.id, d.restaurant_id, d.last_visit_date, d.due_type
+        from due d
+        where d.due_type is not null
+          and not exists (
+            select 1
+            from ${engagementJobs} ej
+            where ej.guest_id = d.id
+              and ej.restaurant_id = d.restaurant_id
+              and ej.type = d.due_type
+          )
+        order by d.last_visit_date asc
+        limit 5
+      `) as Promise<Array<{
+        id: string;
+        restaurant_id: string;
+        last_visit_date: string;
+        due_type: string;
+      }>>,
     ]);
     const summary = summaryRows[0];
+    const winBackSummary = winBackRows[0];
     const failed = Number(summary?.failed ?? 0);
     const overduePending = Number(summary?.overdue_pending ?? 0);
+    const dueUnscheduledTotal = Number(winBackSummary?.due_unscheduled_total ?? 0);
 
     return {
-      status: failed > 0 || overduePending > 0 ? "attention" : "ok",
+      status: failed > 0 || overduePending > 0 || dueUnscheduledTotal > 0 ? "attention" : "ok",
       totals: {
         total: Number(summary?.total ?? 0),
         pending: Number(summary?.pending ?? 0),
@@ -740,6 +826,18 @@ async function inspectEngagement(): Promise<EngagementDiagnostic> {
         promotionalPending: Number(summary?.promotional_pending ?? 0),
         transactionalPending: Number(summary?.transactional_pending ?? 0),
         overduePending,
+      },
+      winBack: {
+        dueUnscheduled30: Number(winBackSummary?.due_unscheduled_30 ?? 0),
+        dueUnscheduled60: Number(winBackSummary?.due_unscheduled_60 ?? 0),
+        dueUnscheduled90: Number(winBackSummary?.due_unscheduled_90 ?? 0),
+        dueUnscheduledTotal,
+        samples: winBackSampleRows.map((row) => ({
+          guestId: row.id,
+          restaurantId: row.restaurant_id,
+          lastVisitDate: String(row.last_visit_date),
+          dueType: row.due_type,
+        })),
       },
       skippedByReason: skippedRows.map((row) => ({
         reason: row.reason,

@@ -271,6 +271,7 @@ async function captureDiagnosticsHighlights(commandRecord) {
       engagement: {
         status: engagement.status,
         totals: engagement.totals,
+        winBack: engagement.winBack,
         skippedByReason: engagement.skippedByReason,
         error: engagement.error,
       },
@@ -353,8 +354,9 @@ async function writeReadme() {
       );
       const engagement = adminDiagnostics.engagement ?? {};
       const engagementTotals = engagement.totals ?? {};
+      const winBack = engagement.winBack ?? {};
       lines.push(
-        `- Engagement: ${engagement.status ?? "unknown"} pending=${engagementTotals.pending ?? "?"} overdue=${engagementTotals.overduePending ?? "?"} failed=${engagementTotals.failed ?? "?"} skipped=${engagementTotals.skipped ?? "?"}`,
+        `- Engagement: ${engagement.status ?? "unknown"} pending=${engagementTotals.pending ?? "?"} overdue=${engagementTotals.overduePending ?? "?"} failed=${engagementTotals.failed ?? "?"} skipped=${engagementTotals.skipped ?? "?"} winBackDue=${winBack.dueUnscheduledTotal ?? "?"}`,
       );
       if (agentMembershipIntents) {
         lines.push(

@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, lt, sql, ne } from "drizzle-orm";
+import { and, eq, gte, inArray, lt, lte, gt, sql, ne } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { engagementJobs, guests, restaurants } from "../db/schema.js";
 import { engagementQueue } from "../queue/index.js";
@@ -45,6 +45,26 @@ async function findPendingEngagementJob(params: {
         eq(engagementJobs.restaurantId, params.restaurantId),
         eq(engagementJobs.type, params.type),
         eq(engagementJobs.status, "pending"),
+      ),
+    )
+    .limit(1);
+
+  return existingJob;
+}
+
+async function findAnyEngagementJob(params: {
+  guestId: string;
+  restaurantId: string;
+  type: string;
+}): Promise<EngagementJobRow | undefined> {
+  const [existingJob] = await db
+    .select()
+    .from(engagementJobs)
+    .where(
+      and(
+        eq(engagementJobs.guestId, params.guestId),
+        eq(engagementJobs.restaurantId, params.restaurantId),
+        eq(engagementJobs.type, params.type),
       ),
     )
     .limit(1);
@@ -281,13 +301,21 @@ interface WinBackResult {
   scheduled30: number;
   scheduled60: number;
   scheduled90: number;
+  skippedExisting: number;
+  skippedPolicy: number;
 }
 
 /**
  * Find guests who haven't visited in 30/60/90 days and schedule win-back messages.
  */
 export async function checkWinBack(restaurantId: string): Promise<WinBackResult> {
-  const result: WinBackResult = { scheduled30: 0, scheduled60: 0, scheduled90: 0 };
+  const result: WinBackResult = {
+    scheduled30: 0,
+    scheduled60: 0,
+    scheduled90: 0,
+    skippedExisting: 0,
+    skippedPolicy: 0,
+  };
 
   const today = new Date();
   const day30 = new Date(today);
@@ -302,28 +330,42 @@ export async function checkWinBack(restaurantId: string): Promise<WinBackResult>
   const tiers: Array<{
     days: number;
     dateStr: string;
+    olderThanDateStr?: string;
     type: "win_back_30" | "win_back_60" | "win_back_90";
     key: keyof WinBackResult;
   }> = [
-    { days: 30, dateStr: toDateStr(day30), type: "win_back_30", key: "scheduled30" },
-    { days: 60, dateStr: toDateStr(day60), type: "win_back_60", key: "scheduled60" },
     { days: 90, dateStr: toDateStr(day90), type: "win_back_90", key: "scheduled90" },
+    { days: 60, dateStr: toDateStr(day60), olderThanDateStr: toDateStr(day90), type: "win_back_60", key: "scheduled60" },
+    { days: 30, dateStr: toDateStr(day30), olderThanDateStr: toDateStr(day60), type: "win_back_30", key: "scheduled30" },
   ];
 
   for (const tier of tiers) {
-    // Find guests whose lastVisitDate matches exactly N days ago
+    const conditions = [
+      eq(guests.restaurantId, restaurantId),
+      lte(guests.lastVisitDate, tier.dateStr),
+    ];
+    if (tier.olderThanDateStr) {
+      conditions.push(gt(guests.lastVisitDate, tier.olderThanDateStr));
+    }
+
+    // Find guests who are due or overdue for this tier. Windows prevent a 90-day lapsed
+    // guest from also receiving the 30/60-day copy.
     const matchedGuests = await db
       .select()
       .from(guests)
-      .where(
-        and(
-          eq(guests.restaurantId, restaurantId),
-          eq(guests.lastVisitDate, tier.dateStr),
-        ),
-      );
+      .where(and(...conditions));
 
     for (const guest of matchedGuests) {
-      // Schedule for now (process immediately)
+      const existingJob = await findAnyEngagementJob({
+        restaurantId,
+        guestId: guest.id,
+        type: tier.type,
+      });
+      if (existingJob) {
+        result.skippedExisting++;
+        continue;
+      }
+
       const triggerAt = new Date();
       const job = await scheduleEngagementJob({
         restaurantId,
@@ -334,6 +376,8 @@ export async function checkWinBack(restaurantId: string): Promise<WinBackResult>
 
       if (job.status === "pending") {
         result[tier.key]++;
+      } else if (job.status === "skipped") {
+        result.skippedPolicy++;
       }
     }
   }

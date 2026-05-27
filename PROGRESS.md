@@ -11,6 +11,10 @@
   - visit logs now update `guest.preferences.menuExploration` from item categories and unlock exploration badges at category milestones
   - membership summary and the guest detail membership panel expose menu badge progress
   - diagnostics/debug-bundle summaries include menu badge adoption, and API smoke verifies the `menu_explorer` badge unlocks from visit items
+- Win-back automation hardening:
+  - 30/60/90-day win-back checks now catch due or overdue guests instead of relying on an exact last-visit date match
+  - win-back checks avoid repeatedly scheduling the same tier for a guest once any job for that tier exists
+  - diagnostics/debug-bundle summaries expose unscheduled win-back due counts, and API smoke verifies a 31-day lapsed guest gets a pending `win_back_30` job
 - WhatsApp-ready referral retrieval/share flow:
   - `GET /api/v1/loyalty/:guestId/referral-share` generates or returns a member referral code
   - response includes referral stats and Hebrew/English share copy

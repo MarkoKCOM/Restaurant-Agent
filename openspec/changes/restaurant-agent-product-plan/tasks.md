@@ -67,13 +67,13 @@
 
 ## 7. Loyalty Engine (Growth)
 
-- [ ] 7.1 Implement digital stamp card — configurable threshold, auto-stamp on visit completion, WhatsApp progress notification
-- [ ] 7.2 Implement points system — configurable earning rules (per visit, per guest, per spend), award on visit completion
-- [ ] 7.3 Implement reward catalog — CRUD for rewards (name, points cost, description), redemption code generation
-- [ ] 7.4 Implement reward redemption — deduct points, generate unique code, notify staff
-- [ ] 7.5 Implement VIP tiers — Bronze/Silver/Gold with configurable thresholds, auto-promotion, perks config
-- [ ] 7.6 Implement points balance and loyalty status WhatsApp tool — guest can ask "what's my balance?"
-- [ ] 7.7 Implement referral system — generate unique referral link/code, track referrals, award both parties on first visit
+- [x] 7.1 Implement digital stamp card — configurable threshold, auto-stamp on visit completion, WhatsApp progress notification
+- [x] 7.2 Implement points system — configurable earning rules (per visit, per guest, per spend), award on visit completion
+- [x] 7.3 Implement reward catalog — CRUD for rewards (name, points cost, description), redemption code generation
+- [x] 7.4 Implement reward redemption — deduct points, generate unique code, notify staff
+- [x] 7.5 Implement VIP tiers — Bronze/Silver/Gold with configurable thresholds, auto-promotion, perks config
+- [x] 7.6 Implement points balance and loyalty status WhatsApp tool — guest can ask "what's my balance?"
+- [x] 7.7 Implement referral system — generate unique referral link/code, track referrals, award both parties on first visit
 
 ## 8. Gamification (Growth)
 

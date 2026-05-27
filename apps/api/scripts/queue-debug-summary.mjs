@@ -92,8 +92,13 @@ function sanitizeJobData(value) {
 function formatJob(job) {
   const failedReason = job.failedReason ? ` failedReason=${JSON.stringify(job.failedReason).slice(0, 240)}` : "";
   const attempts = typeof job.attemptsMade === "number" ? ` attempts=${job.attemptsMade}` : "";
+  const processed = job.processedOn ? ` processed=${formatTimestamp(job.processedOn)}` : "";
+  const finished = job.finishedOn ? ` finished=${formatTimestamp(job.finishedOn)}` : "";
+  const stacktrace = Array.isArray(job.stacktrace) && job.stacktrace.length > 0
+    ? ` stack=${JSON.stringify(job.stacktrace.slice(0, 2).join(" | ")).slice(0, 360)}`
+    : "";
   const data = job.data && typeof job.data === "object" ? ` data=${JSON.stringify(sanitizeJobData(job.data)).slice(0, 240)}` : "";
-  return `- ${job.name} id=${job.id ?? "none"} timestamp=${formatTimestamp(job.timestamp)}${attempts}${data}${failedReason}`;
+  return `- ${job.name} id=${job.id ?? "none"} timestamp=${formatTimestamp(job.timestamp)}${processed}${finished}${attempts}${data}${failedReason}${stacktrace}`;
 }
 
 async function loadRestaurantScheduleContext() {

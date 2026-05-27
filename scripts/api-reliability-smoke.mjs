@@ -225,6 +225,48 @@ async function main() {
     throw new Error(`Future smoke challenge cleanup did not deactivate challenge: ${futureChallengeId}`);
   }
 
+  const expiredChallengeDate = plusDays(-1);
+  const expiredChallenge = await request("/api/v1/gamification/challenges", {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      name: `Smoke expired challenge ${runId}`,
+      description: "Created by the reliability smoke to verify expired challenges do not stay active",
+      type: "visit_count",
+      target: 1,
+      reward: 0,
+      startDate: expiredChallengeDate,
+      endDate: expiredChallengeDate,
+    },
+  });
+  const expiredChallengeId = expiredChallenge.challenge?.id;
+  if (!expiredChallengeId) throw new Error("Expired challenge create endpoint did not return challenge.id");
+
+  const activeChallengesAfterExpiredCreate = await request(`/api/v1/gamification/challenges?restaurantId=${restaurantId}`, { token });
+  const expiredChallengeIsActive = (activeChallengesAfterExpiredCreate.challenges ?? []).some((item) => item.id === expiredChallengeId);
+  record("gamification.expired-challenge.window", {
+    challengeId: expiredChallengeId,
+    endDate: expiredChallengeDate,
+    listedAsActive: expiredChallengeIsActive,
+  });
+  if (expiredChallengeIsActive) {
+    throw new Error(`Expired smoke challenge was listed active after end date: ${expiredChallengeId}`);
+  }
+
+  const deactivatedExpiredChallenge = await request(`/api/v1/gamification/challenges/${expiredChallengeId}`, {
+    method: "PATCH",
+    token,
+    body: { isActive: false },
+  });
+  record("gamification.expired-challenge.cleanup", {
+    challengeId: expiredChallengeId,
+    isActive: deactivatedExpiredChallenge.challenge?.isActive,
+  });
+  if (deactivatedExpiredChallenge.challenge?.isActive !== false) {
+    throw new Error(`Expired smoke challenge cleanup did not deactivate challenge: ${expiredChallengeId}`);
+  }
+
   const challenge = await request("/api/v1/gamification/challenges", {
     method: "POST",
     token,

@@ -79,6 +79,46 @@ function timePlusMinutes(value, minutesToAdd) {
   return `${Math.floor(total / 60).toString().padStart(2, "0")}:${(total % 60).toString().padStart(2, "0")}`;
 }
 
+function timeInJerusalemPlusMinutes(minutesToAdd) {
+  const date = new Date(Date.now() + minutesToAdd * 60 * 1000);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jerusalem",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const hour = parts.find((part) => part.type === "hour")?.value;
+  const minute = parts.find((part) => part.type === "minute")?.value;
+  return `${hour}:${minute}`;
+}
+
+function minutesFromHHMM(value) {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function isTimeInWindow(value, start, end) {
+  const time = minutesFromHHMM(value);
+  const startMinutes = minutesFromHHMM(start);
+  const endMinutes = minutesFromHHMM(end);
+  if (startMinutes === endMinutes) return false;
+  return startMinutes < endMinutes
+    ? time >= startMinutes && time < endMinutes
+    : time >= startMinutes || time < endMinutes;
+}
+
+function timeInJerusalem(value) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jerusalem",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(value));
+  const hour = parts.find((part) => part.type === "hour")?.value;
+  const minute = parts.find((part) => part.type === "minute")?.value;
+  return `${hour}:${minute}`;
+}
+
 function dayKeyForDate(value) {
   return ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][new Date(`${value}T12:00:00`).getDay()];
 }
@@ -235,11 +275,20 @@ async function main() {
     days: [dayKeyForDate(reservationDate)],
     enabled: true,
   };
+  const thankYouQuietHours = {
+    enabled: true,
+    start: timeInJerusalemPlusMinutes(90),
+    end: timeInJerusalemPlusMinutes(210),
+  };
   const smokeDashboardConfig = {
     ...originalDashboardConfig,
     loyalty: {
       ...(originalDashboardConfig.loyalty ?? {}),
       offPeakMultipliers: [offPeakWindow],
+    },
+    engagement: {
+      ...(originalDashboardConfig.engagement ?? {}),
+      quietHours: thankYouQuietHours,
     },
   };
 
@@ -260,6 +309,10 @@ async function main() {
     end: offPeakWindow.end,
     multiplier: offPeakWindow.multiplier,
     day: offPeakWindow.days[0],
+  });
+  record("engagement.quiet-hours-config", {
+    start: thankYouQuietHours.start,
+    end: thankYouQuietHours.end,
   });
 
   const futureChallengeDate = plusDays(60);
@@ -481,11 +534,27 @@ async function main() {
   }
 
   const engagementJobs = await request(`/api/v1/engagement/jobs?restaurantId=${restaurantId}&guestId=${reservation.guestId}`, { token });
+  const thankYouJob = (engagementJobs.jobs ?? []).find((job) => job.type === "thank_you");
+  const thankYouTriggerTime = thankYouJob?.triggerAt ? timeInJerusalem(thankYouJob.triggerAt) : null;
+  const thankYouOutsideQuietHours = thankYouTriggerTime
+    ? !isTimeInWindow(thankYouTriggerTime, thankYouQuietHours.start, thankYouQuietHours.end)
+    : false;
   record("engagement.jobs", {
     jobCount: engagementJobs.jobs?.length ?? 0,
     statuses: [...new Set((engagementJobs.jobs ?? []).map((job) => job.status))],
     types: [...new Set((engagementJobs.jobs ?? []).map((job) => job.type))],
+    thankYouTriggerAt: thankYouJob?.triggerAt ?? null,
+    thankYouTriggerTime,
+    thankYouQuietStart: thankYouQuietHours.start,
+    thankYouQuietEnd: thankYouQuietHours.end,
+    thankYouOutsideQuietHours,
   });
+  if (!thankYouJob) {
+    throw new Error("Reservation completion did not schedule a thank-you engagement job");
+  }
+  if (!thankYouOutsideQuietHours) {
+    throw new Error(`Thank-you job was scheduled inside quiet hours: trigger=${thankYouTriggerTime} quiet=${thankYouQuietHours.start}-${thankYouQuietHours.end}`);
+  }
 
   const birthdayGuest = await request("/api/v1/guests", {
     method: "POST",

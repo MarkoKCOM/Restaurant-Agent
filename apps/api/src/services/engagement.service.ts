@@ -26,11 +26,161 @@ export const PROMOTIONAL_ENGAGEMENT_TYPES = [
 
 const PROMOTIONAL_WEEKLY_LIMIT = 2;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const THANK_YOU_DELAY_MS = 2 * 60 * 60 * 1000;
+const DEFAULT_QUIET_HOURS = {
+  enabled: true,
+  start: "22:00",
+  end: "09:00",
+};
+
+export interface EngagementQuietHours {
+  enabled: boolean;
+  start: string;
+  end: string;
+}
 
 export function getEngagementMessageCategory(type: string): EngagementMessageCategory {
   return PROMOTIONAL_ENGAGEMENT_TYPES.includes(type as typeof PROMOTIONAL_ENGAGEMENT_TYPES[number])
     ? "promotional"
     : "transactional";
+}
+
+function parseHHMM(value: string): number | null {
+  const match = value.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function getZonedDateParts(date: Date, timeZone: string): {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+} {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const value = (type: string) => Number(parts.find((part) => part.type === type)?.value);
+  return {
+    year: value("year"),
+    month: value("month"),
+    day: value("day"),
+    hour: value("hour"),
+    minute: value("minute"),
+  };
+}
+
+function getTimeZoneOffsetMinutes(date: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    timeZoneName: "shortOffset",
+  }).formatToParts(date);
+  const zoneName = parts.find((part) => part.type === "timeZoneName")?.value ?? "GMT";
+  const match = zoneName.match(/^GMT(?:(?<sign>[+-])(?<hours>\d{1,2})(?::(?<minutes>\d{2}))?)?$/);
+  if (!match?.groups?.sign) return 0;
+
+  const sign = match.groups.sign === "-" ? -1 : 1;
+  return sign * (Number(match.groups.hours) * 60 + Number(match.groups.minutes ?? 0));
+}
+
+function dateForZonedTime(parts: { year: number; month: number; day: number }, time: string, timeZone: string): Date | null {
+  const minutes = parseHHMM(time);
+  if (minutes === null) return null;
+
+  const utcGuess = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, Math.floor(minutes / 60), minutes % 60));
+  const offset = getTimeZoneOffsetMinutes(utcGuess, timeZone);
+  const firstPass = new Date(utcGuess.getTime() - offset * 60 * 1000);
+  const correctedOffset = getTimeZoneOffsetMinutes(firstPass, timeZone);
+  return new Date(utcGuess.getTime() - correctedOffset * 60 * 1000);
+}
+
+function addLocalDays(parts: { year: number; month: number; day: number }, days: number): { year: number; month: number; day: number } {
+  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + days, 12, 0, 0));
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+  };
+}
+
+function getConfiguredQuietHours(dashboardConfig: unknown): EngagementQuietHours {
+  const engagementConfig = typeof dashboardConfig === "object" && dashboardConfig !== null
+    ? (dashboardConfig as { engagement?: { quietHours?: unknown } }).engagement
+    : undefined;
+  const quietHours = typeof engagementConfig?.quietHours === "object" && engagementConfig.quietHours !== null
+    ? engagementConfig.quietHours as { enabled?: unknown; start?: unknown; end?: unknown }
+    : undefined;
+
+  const start = typeof quietHours?.start === "string" && parseHHMM(quietHours.start) !== null
+    ? quietHours.start
+    : DEFAULT_QUIET_HOURS.start;
+  const end = typeof quietHours?.end === "string" && parseHHMM(quietHours.end) !== null
+    ? quietHours.end
+    : DEFAULT_QUIET_HOURS.end;
+
+  return {
+    enabled: typeof quietHours?.enabled === "boolean" ? quietHours.enabled : DEFAULT_QUIET_HOURS.enabled,
+    start,
+    end,
+  };
+}
+
+export function isDateInEngagementQuietHours(date: Date, timeZone: string, quietHours: EngagementQuietHours): boolean {
+  if (!quietHours.enabled) return false;
+
+  const start = parseHHMM(quietHours.start);
+  const end = parseHHMM(quietHours.end);
+  if (start === null || end === null || start === end) return false;
+
+  const local = getZonedDateParts(date, timeZone);
+  const localMinutes = local.hour * 60 + local.minute;
+  return start < end
+    ? localMinutes >= start && localMinutes < end
+    : localMinutes >= start || localMinutes < end;
+}
+
+export function applyEngagementQuietHours(triggerAt: Date, timeZone: string, quietHours: EngagementQuietHours): Date {
+  if (!isDateInEngagementQuietHours(triggerAt, timeZone, quietHours)) return triggerAt;
+
+  const start = parseHHMM(quietHours.start);
+  const end = parseHHMM(quietHours.end);
+  if (start === null || end === null || start === end) return triggerAt;
+
+  const local = getZonedDateParts(triggerAt, timeZone);
+  const localMinutes = local.hour * 60 + local.minute;
+  const quietEndsTomorrow = start > end && localMinutes >= start;
+  return dateForZonedTime(addLocalDays(local, quietEndsTomorrow ? 1 : 0), quietHours.end, timeZone) ?? triggerAt;
+}
+
+export async function getRestaurantEngagementQuietHours(restaurantId: string): Promise<{
+  timeZone: string;
+  quietHours: EngagementQuietHours;
+}> {
+  const [restaurant] = await db
+    .select({
+      timezone: restaurants.timezone,
+      dashboardConfig: restaurants.dashboardConfig,
+    })
+    .from(restaurants)
+    .where(eq(restaurants.id, restaurantId))
+    .limit(1);
+
+  return {
+    timeZone: restaurant?.timezone ?? "Asia/Jerusalem",
+    quietHours: getConfiguredQuietHours(restaurant?.dashboardConfig),
+  };
+}
+
+async function applyRestaurantQuietHours(restaurantId: string, triggerAt: Date): Promise<Date> {
+  const { timeZone, quietHours } = await getRestaurantEngagementQuietHours(restaurantId);
+  return applyEngagementQuietHours(triggerAt, timeZone, quietHours);
 }
 
 async function findPendingEngagementJob(params: {
@@ -258,7 +408,7 @@ export async function scheduleThankYou(
   restaurantId: string,
   _reservationId: string,
 ): Promise<EngagementJobRow> {
-  const triggerAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+  const triggerAt = await applyRestaurantQuietHours(restaurantId, new Date(Date.now() + THANK_YOU_DELAY_MS));
   return scheduleEngagementJob({ guestId, restaurantId, type: "thank_you", triggerAt });
 }
 

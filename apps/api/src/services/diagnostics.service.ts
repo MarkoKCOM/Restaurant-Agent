@@ -15,7 +15,12 @@ import {
   guests,
   loyaltyTransactions,
   membershipProcessingFailures,
+  restaurants,
 } from "../db/schema.js";
+import {
+  getRestaurantEngagementQuietHours,
+  isDateInEngagementQuietHours,
+} from "./engagement.service.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -242,6 +247,15 @@ export interface EngagementDiagnostic {
       guestId: string;
       restaurantId: string;
       firstVisitDate: string;
+    }>;
+  };
+  quietHours?: {
+    pendingThankYouInQuietHours: number;
+    samples: Array<{
+      id: string;
+      restaurantId: string;
+      guestId: string;
+      triggerAt: string;
     }>;
   };
   skippedByReason?: Array<{
@@ -779,7 +793,7 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
 
 async function inspectEngagement(): Promise<EngagementDiagnostic> {
   try {
-    const [summaryRows, skippedRows, sampleRows, winBackRows, winBackSampleRows, birthdayRows, birthdaySampleRows, anniversaryRows, anniversarySampleRows] = await Promise.all([
+    const [summaryRows, skippedRows, sampleRows, winBackRows, winBackSampleRows, birthdayRows, birthdaySampleRows, anniversaryRows, anniversarySampleRows, pendingThankYouRows] = await Promise.all([
       db.execute(sql`
         select
           count(*)::int as total,
@@ -1037,6 +1051,24 @@ async function inspectEngagement(): Promise<EngagementDiagnostic> {
         restaurant_id: string;
         first_visit_date: string;
       }>>,
+      db.execute(sql`
+        select
+          ej.id,
+          ej.restaurant_id,
+          ej.guest_id,
+          ej.trigger_at
+        from ${engagementJobs} ej
+        inner join ${restaurants} r on r.id = ej.restaurant_id
+        where ej.status = 'pending'
+          and ej.type = 'thank_you'
+          and ej.trigger_at >= now() - interval '1 day'
+        order by ej.trigger_at asc
+      `) as Promise<Array<{
+        id: string;
+        restaurant_id: string;
+        guest_id: string;
+        trigger_at: Date | string;
+      }>>,
     ]);
     const summary = summaryRows[0];
     const winBackSummary = winBackRows[0];
@@ -1047,9 +1079,30 @@ async function inspectEngagement(): Promise<EngagementDiagnostic> {
     const dueUnscheduledTotal = Number(winBackSummary?.due_unscheduled_total ?? 0);
     const birthdayDueUnscheduledToday = Number(birthdaySummary?.due_unscheduled_today ?? 0);
     const anniversaryDueUnscheduledToday = Number(anniversarySummary?.due_unscheduled_today ?? 0);
+    const quietHourSamples: NonNullable<EngagementDiagnostic["quietHours"]>["samples"] = [];
+    const quietHoursByRestaurant = new Map<string, Awaited<ReturnType<typeof getRestaurantEngagementQuietHours>>>();
+
+    for (const row of pendingThankYouRows) {
+      const triggerAt = row.trigger_at instanceof Date ? row.trigger_at : new Date(row.trigger_at);
+      let config = quietHoursByRestaurant.get(row.restaurant_id);
+      if (!config) {
+        config = await getRestaurantEngagementQuietHours(row.restaurant_id);
+        quietHoursByRestaurant.set(row.restaurant_id, config);
+      }
+
+      if (isDateInEngagementQuietHours(triggerAt, config.timeZone, config.quietHours)) {
+        quietHourSamples.push({
+          id: row.id,
+          restaurantId: row.restaurant_id,
+          guestId: row.guest_id,
+          triggerAt: triggerAt.toISOString(),
+        });
+      }
+    }
+    const pendingThankYouInQuietHours = quietHourSamples.length;
 
     return {
-      status: failed > 0 || overduePending > 0 || dueUnscheduledTotal > 0 || birthdayDueUnscheduledToday > 0 || anniversaryDueUnscheduledToday > 0 ? "attention" : "ok",
+      status: failed > 0 || overduePending > 0 || dueUnscheduledTotal > 0 || birthdayDueUnscheduledToday > 0 || anniversaryDueUnscheduledToday > 0 || pendingThankYouInQuietHours > 0 ? "attention" : "ok",
       totals: {
         total: Number(summary?.total ?? 0),
         pending: Number(summary?.pending ?? 0),
@@ -1088,6 +1141,10 @@ async function inspectEngagement(): Promise<EngagementDiagnostic> {
           restaurantId: row.restaurant_id,
           firstVisitDate: String(row.first_visit_date),
         })),
+      },
+      quietHours: {
+        pendingThankYouInQuietHours,
+        samples: quietHourSamples.slice(0, 5),
       },
       skippedByReason: skippedRows.map((row) => ({
         reason: row.reason,

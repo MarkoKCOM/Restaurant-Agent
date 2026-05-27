@@ -65,6 +65,16 @@ export interface DashboardLoyaltyConfig {
   offPeakMultipliers?: DashboardLoyaltyOffPeakMultiplier[];
 }
 
+export interface DashboardEngagementQuietHoursConfig {
+  enabled?: boolean;
+  start: string;
+  end: string;
+}
+
+export interface DashboardEngagementConfig {
+  quietHours?: DashboardEngagementQuietHoursConfig;
+}
+
 export interface DashboardConfig {
   // ── Legacy fields — kept for backward compatibility ──
   /** @deprecated Use palette.primary instead. */
@@ -76,6 +86,7 @@ export interface DashboardConfig {
   palette?: DashboardPalette;
   branding?: DashboardBranding;
   loyalty?: DashboardLoyaltyConfig;
+  engagement?: DashboardEngagementConfig;
 
   language?: "he" | "en";
   visiblePages?: string[];

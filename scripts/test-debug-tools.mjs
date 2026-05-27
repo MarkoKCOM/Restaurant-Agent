@@ -85,7 +85,7 @@ const smokePath = await writeJson("smoke.json", {
   steps: [
     { step: "login" },
     { step: "membership.processing-failures", openCount: 2, relatedOpenCount: 0 },
-    { step: "engagement.jobs", jobCount: 2, statuses: ["pending"], types: ["thank_you", "review_request"] },
+    { step: "engagement.jobs", jobCount: 2, statuses: ["pending"], types: ["thank_you", "review_request"], thankYouOutsideQuietHours: true },
     { step: "gamification.future-challenge.window", challengeId: "future-challenge-test-1", startDate: "2026-07-26", listedAsActive: false },
     { step: "gamification.future-challenge.cleanup", challengeId: "future-challenge-test-1", isActive: false },
     { step: "gamification.expired-challenge.window", challengeId: "expired-challenge-test-1", endDate: "2026-05-26", listedAsActive: false },
@@ -127,7 +127,7 @@ const smokeOutput = await summarize(smokePath);
 assertIncludes(smokeOutput, "Type: api-smoke");
 assertIncludes(smokeOutput, "Operational smoke:");
 assertIncludes(smokeOutput, "membership.processing-failures: open=2 related=0");
-assertIncludes(smokeOutput, "engagement.jobs: count=2 statuses=pending types=thank_you,review_request");
+assertIncludes(smokeOutput, "engagement.jobs: count=2 statuses=pending types=thank_you,review_request thankYouQuiet=ok");
 assertIncludes(smokeOutput, "gamification.future-challenge.window: listedActive=no startDate=2026-07-26");
 assertIncludes(smokeOutput, "gamification.future-challenge.cleanup: active=no challengeId=future-challenge-test-1");
 assertIncludes(smokeOutput, "gamification.expired-challenge.window: listedActive=no endDate=2026-05-26");

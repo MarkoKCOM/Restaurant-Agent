@@ -42,6 +42,8 @@ Your real-time command center for the day.
 
 Just click the action button next to any reservation. The system automatically updates guest visit counts, loyalty points, and tags when you complete or no-show a reservation.
 
+Completed visits also schedule a thank-you message about two hours later. If that timing lands inside restaurant quiet hours, the message is shifted to the quiet-hours end instead of waking the guest.
+
 ---
 
 ### Reservations (הזמנות)

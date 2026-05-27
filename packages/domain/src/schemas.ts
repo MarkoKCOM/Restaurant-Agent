@@ -143,6 +143,16 @@ export const dashboardLoyaltyConfigSchema = z.object({
   offPeakMultipliers: z.array(dashboardLoyaltyOffPeakMultiplierSchema).max(12).optional(),
 }).passthrough();
 
+export const dashboardEngagementQuietHoursSchema = z.object({
+  enabled: z.boolean().optional(),
+  start: hhmmStringSchema,
+  end: hhmmStringSchema,
+}).strict();
+
+export const dashboardEngagementConfigSchema = z.object({
+  quietHours: dashboardEngagementQuietHoursSchema.optional(),
+}).passthrough();
+
 export const dashboardConfigSchema = z.object({
   // Legacy fields (kept for compatibility)
   accentColor: hexColor,
@@ -151,6 +161,7 @@ export const dashboardConfigSchema = z.object({
   palette: dashboardPaletteSchema.optional(),
   branding: dashboardBrandingSchema.optional(),
   loyalty: dashboardLoyaltyConfigSchema.optional(),
+  engagement: dashboardEngagementConfigSchema.optional(),
   language: z.enum(["he", "en"]).optional(),
   visiblePages: z.array(z.string()).optional(),
   features: z.object({

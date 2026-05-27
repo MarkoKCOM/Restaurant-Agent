@@ -64,6 +64,8 @@ node scripts/api-reliability-smoke.mjs
 pnpm debug:api -- http://localhost:3001/api/v1/health
 ```
 
+Vercel production deploys are path-filtered. Changes limited to debugging scripts, E2E tooling, or docs should still run CI/API Smoke, but should not spend Vercel deployment quota. Frontend app, package, lockfile, workspace, Turbo, or deploy-workflow changes still trigger the deploy workflow.
+
 After pulling changes that touch `packages/domain`, rebuild it before checking apps that import `@openseat/domain`.
 
 The main E2E runner writes a JSON artifact for every CLI run. By default it lands under `apps/e2e/artifacts/<runId>.json` and includes the API URL, timings, pass/fail counts, and per-test details:

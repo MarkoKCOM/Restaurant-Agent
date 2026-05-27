@@ -3,8 +3,28 @@ name: Deploy to Vercel
 on:
   push:
     branches: [main]
+    paths:
+      - ".github/workflows/deploy.yml"
+      - "apps/booking-widget/**"
+      - "apps/dashboard/**"
+      - "apps/marketing-site/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
   pull_request:
     branches: [main]
+    paths:
+      - ".github/workflows/deploy.yml"
+      - "apps/booking-widget/**"
+      - "apps/dashboard/**"
+      - "apps/marketing-site/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
 
 env:
   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

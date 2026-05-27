@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -26,6 +26,30 @@ function assertIncludes(output, expected) {
   if (!output.includes(expected)) {
     throw new Error(`Expected output to include ${JSON.stringify(expected)}.\nOutput:\n${output}`);
   }
+}
+
+function assert(condition, message) {
+  if (!condition) {
+    throw new Error(message);
+  }
+}
+
+function deployWorkflowMatches(path) {
+  const exactMatches = new Set([
+    ".github/workflows/deploy.yml",
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "turbo.json",
+  ]);
+  const prefixMatches = [
+    "apps/booking-widget/",
+    "apps/dashboard/",
+    "apps/marketing-site/",
+    "packages/",
+  ];
+
+  return exactMatches.has(path) || prefixMatches.some((prefix) => path.startsWith(prefix));
 }
 
 const smokePath = await writeJson("smoke.json", {
@@ -88,5 +112,40 @@ const e2eOutput = await summarize(e2ePath);
 assertIncludes(e2eOutput, "Type: e2e");
 assertIncludes(e2eOutput, "Status: 1/2 passed");
 assertIncludes(e2eOutput, "- Create Reservation: boom");
+
+const deployWorkflow = await readFile(".github/workflows/deploy.yml", "utf8");
+for (const requiredPath of [
+  ".github/workflows/deploy.yml",
+  "apps/booking-widget/**",
+  "apps/dashboard/**",
+  "apps/marketing-site/**",
+  "packages/**",
+  "package.json",
+  "pnpm-lock.yaml",
+  "pnpm-workspace.yaml",
+  "turbo.json",
+]) {
+  assertIncludes(deployWorkflow, requiredPath);
+}
+
+for (const changedPath of [
+  "apps/dashboard/src/App.tsx",
+  "apps/booking-widget/src/main.tsx",
+  "apps/marketing-site/src/LandingPage.tsx",
+  "packages/domain/src/index.ts",
+  "pnpm-lock.yaml",
+]) {
+  assert(deployWorkflowMatches(changedPath), `Expected ${changedPath} to trigger Vercel deploy`);
+}
+
+for (const changedPath of [
+  "docs/DEBUGGING.md",
+  "scripts/api-log-trace.mjs",
+  "scripts/summarize-debug-artifact.mjs",
+  "apps/e2e/src/test-runner.ts",
+  ".github/workflows/ci.yml",
+]) {
+  assert(!deployWorkflowMatches(changedPath), `Expected ${changedPath} to skip Vercel deploy`);
+}
 
 console.log("Debug tool tests passed");

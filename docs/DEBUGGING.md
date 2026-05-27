@@ -149,6 +149,7 @@ The endpoint returns:
 - BullMQ queue counts for reservation reminders, daily summaries, and engagement jobs
 - up to two failed-job samples per queue, including job ID, name, attempts, and sanitized failure reason
 - open post-visit membership processing failures, grouped by stage with recent samples, so loyalty/retention repair work is visible without hitting a separate endpoint first
+- gamification health for active challenges, stuck challenge completions, referral-code adoption, and referral reward-credit mismatches
 - sanitized failure name/code/message
 - runtime flags such as `NODE_ENV`, `LOG_LEVEL`, selected AI models, and whether OpenRouter is configured
 

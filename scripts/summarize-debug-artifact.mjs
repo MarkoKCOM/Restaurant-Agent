@@ -154,6 +154,9 @@ function summarizeDebugBundleManifest(report) {
   const migrationDrift = adminDiagnostics.migrationDrift ?? {};
   const checks = adminDiagnostics.checks ?? {};
   const membershipProcessing = adminDiagnostics.membershipProcessing ?? {};
+  const gamification = adminDiagnostics.gamification ?? {};
+  const gamificationChallenges = gamification.challenges ?? {};
+  const gamificationReferrals = gamification.referrals ?? {};
   const agentMembershipIntents = highlights.agentMembershipIntents ?? {};
   const queues = asArray(adminDiagnostics.queues);
 
@@ -192,6 +195,12 @@ function summarizeDebugBundleManifest(report) {
     printLine(
       "Membership processing",
       `${membershipProcessing.status} open=${membershipProcessing.openCount ?? "?"} attempts=${membershipProcessing.totalOpenAttempts ?? "?"}`,
+    );
+  }
+  if (gamification.status) {
+    printLine(
+      "Gamification",
+      `${gamification.status} activeChallenges=${gamificationChallenges.active ?? "?"} stuckChallenges=${gamificationChallenges.stuckCompletions ?? "?"} referralCodes=${gamificationReferrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${gamificationReferrals.referrerCreditMismatches ?? "?"}`,
     );
   }
   if (agentMembershipIntents.status) {

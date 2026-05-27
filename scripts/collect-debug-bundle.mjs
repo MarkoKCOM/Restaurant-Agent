@@ -204,6 +204,9 @@ async function captureDiagnosticsHighlights(commandRecord) {
     const membershipProcessing = isObject(operational.membershipProcessing)
       ? operational.membershipProcessing
       : {};
+    const gamification = isObject(operational.gamification)
+      ? operational.gamification
+      : {};
     const queues = Array.isArray(diagnostics.queues) ? diagnostics.queues : [];
 
     manifest.highlights.adminDiagnostics = {
@@ -233,6 +236,12 @@ async function captureDiagnosticsHighlights(commandRecord) {
         totalOpenAttempts: membershipProcessing.totalOpenAttempts,
         latestOpenAttemptAt: membershipProcessing.latestOpenAttemptAt,
         byStage: membershipProcessing.byStage,
+      },
+      gamification: {
+        status: gamification.status,
+        challenges: gamification.challenges,
+        referrals: gamification.referrals,
+        error: gamification.error,
       },
       queues: queues.map((queue) => ({
         name: queue.name,
@@ -303,6 +312,12 @@ async function writeReadme() {
       lines.push(`- Dependencies: database=${checks.database ?? "unknown"} redis=${checks.redis ?? "unknown"}`);
       lines.push(
         `- Membership processing: ${membershipProcessing.status ?? "unknown"} open=${membershipProcessing.openCount ?? "?"} attempts=${membershipProcessing.totalOpenAttempts ?? "?"}`,
+      );
+      const gamification = adminDiagnostics.gamification ?? {};
+      const challenges = gamification.challenges ?? {};
+      const referrals = gamification.referrals ?? {};
+      lines.push(
+        `- Gamification: ${gamification.status ?? "unknown"} activeChallenges=${challenges.active ?? "?"} stuckChallenges=${challenges.stuckCompletions ?? "?"} referralCodes=${referrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${referrals.referrerCreditMismatches ?? "?"}`,
       );
       if (agentMembershipIntents) {
         lines.push(

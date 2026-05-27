@@ -223,6 +223,17 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
         openCount: 2,
         totalOpenAttempts: 3,
       },
+      gamification: {
+        status: "attention",
+        challenges: {
+          active: 2,
+          stuckCompletions: 1,
+        },
+        referrals: {
+          guestsWithReferralCode: 7,
+          referrerCreditMismatches: 1,
+        },
+      },
       queues: [
         { name: "membership-events", status: "ok", failed: 0 },
       ],
@@ -242,6 +253,10 @@ assertIncludes(debugBundleManifestOutput, "Commands: 1/3 passed");
 assertIncludes(debugBundleManifestOutput, "Running build: abc1234 checkout=abc1234 matches=true");
 assertIncludes(debugBundleManifestOutput, "Migration drift: ok code=202605270001 database=202605270001");
 assertIncludes(debugBundleManifestOutput, "Membership processing: ok open=2 attempts=3");
+assertIncludes(
+  debugBundleManifestOutput,
+  "Gamification: attention activeChallenges=2 stuckChallenges=1 referralCodes=7 referralCreditMismatches=1",
+);
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");
 assertIncludes(debugBundleManifestOutput, "Queues: membership-events:ok/failed=0");
 assertIncludes(debugBundleManifestOutput, "Failed commands: 1");
@@ -254,6 +269,7 @@ for (const expectedSummarizerContent of [
   "summarizeDebugBundleManifest",
   "Type: debug-bundle",
   "Membership processing",
+  "Gamification",
   "Agent membership intents",
 ]) {
   assertIncludes(artifactSummarizer, expectedSummarizerContent);
@@ -359,6 +375,7 @@ for (const requiredReadmeContent of [
   "Migration drift:",
   "Dependencies: database=",
   "Membership processing:",
+  "Gamification:",
   "Agent membership intents:",
   "agent-membership-intents",
   "agent-membership-intents.json",
@@ -374,6 +391,7 @@ for (const requiredReadmeContent of [
   "README.md",
   "highlights: {}",
   "manifest.highlights.adminDiagnostics",
+  "gamification",
   "manifest.highlights.agentMembershipIntents",
   "readme: readmePath",
 ]) {

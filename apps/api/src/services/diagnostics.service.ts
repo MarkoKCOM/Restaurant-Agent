@@ -8,7 +8,13 @@ import { sql } from "drizzle-orm";
 import { env } from "../env.js";
 import { db, pingDatabase } from "../db/index.js";
 import { engagementQueue, reminderQueue, summaryQueue } from "../queue/index.js";
-import { membershipProcessingFailures } from "../db/schema.js";
+import {
+  challengeProgress,
+  challenges,
+  guests,
+  loyaltyTransactions,
+  membershipProcessingFailures,
+} from "../db/schema.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -45,6 +51,7 @@ export interface DiagnosticsReport {
   queues: QueueDiagnostic[];
   operational: {
     membershipProcessing: MembershipProcessingDiagnostic;
+    gamification: GamificationDiagnostic;
   };
 }
 
@@ -139,6 +146,39 @@ export interface MembershipProcessingDiagnostic {
     lastAttemptAt: string;
     createdAt: string;
   }>;
+  error?: DiagnosticCheck["error"];
+}
+
+export interface GamificationDiagnostic {
+  status: "ok" | "attention" | "error";
+  challenges?: {
+    total: number;
+    active: number;
+    progressRows: number;
+    inProgress: number;
+    completed: number;
+    stuckCompletions: number;
+    stuckSamples: Array<{
+      id: string;
+      restaurantId: string;
+      guestId: string;
+      challengeId: string;
+      currentValue: number;
+      targetValue: number;
+      status: string;
+    }>;
+  };
+  referrals?: {
+    guestsWithReferralCode: number;
+    referredGuests: number;
+    referredGuestsWithoutWelcomeBonus: number;
+    referrerCreditMismatches: number;
+    referrerCreditMismatchSamples: Array<{
+      referrerId: string;
+      referralCount: number;
+      bonusCount: number;
+    }>;
+  };
   error?: DiagnosticCheck["error"];
 }
 
@@ -333,6 +373,163 @@ async function inspectMembershipProcessing(): Promise<MembershipProcessingDiagno
   }
 }
 
+async function inspectGamification(): Promise<GamificationDiagnostic> {
+  try {
+    const [
+      challengeRows,
+      progressRows,
+      stuckChallengeRows,
+      referralRows,
+      welcomeBonusRows,
+      referrerMismatchRows,
+    ] = await Promise.all([
+      db.execute(sql`
+        select
+          count(*)::int as total_challenges,
+          count(*) filter (where is_active = true)::int as active_challenges
+        from ${challenges}
+      `) as Promise<Array<{
+        total_challenges: number;
+        active_challenges: number;
+      }>>,
+      db.execute(sql`
+        select
+          count(*)::int as progress_rows,
+          count(*) filter (where status = 'in_progress')::int as in_progress,
+          count(*) filter (where status = 'completed' or completed_at is not null)::int as completed
+        from ${challengeProgress}
+      `) as Promise<Array<{
+        progress_rows: number;
+        in_progress: number;
+        completed: number;
+      }>>,
+      db.execute(sql`
+        select
+          cp.id,
+          c.restaurant_id,
+          cp.guest_id,
+          cp.challenge_id,
+          cp.current_value,
+          c.target_value,
+          cp.status,
+          count(*) over()::int as stuck_count
+        from ${challengeProgress} cp
+        join ${challenges} c on c.id = cp.challenge_id
+        where cp.completed_at is null
+          and cp.current_value >= c.target_value
+        order by cp.current_value - c.target_value desc
+        limit 5
+      `) as Promise<Array<{
+        id: string;
+        restaurant_id: string;
+        guest_id: string;
+        challenge_id: string;
+        current_value: number;
+        target_value: number;
+        status: string;
+        stuck_count: number;
+      }>>,
+      db.execute(sql`
+        select
+          count(*) filter (where referral_code is not null)::int as guests_with_referral_code,
+          count(*) filter (where referred_by is not null)::int as referred_guests
+        from ${guests}
+      `) as Promise<Array<{
+        guests_with_referral_code: number;
+        referred_guests: number;
+      }>>,
+      db.execute(sql`
+        select count(*)::int as referred_without_welcome_bonus
+        from ${guests} g
+        where g.referred_by is not null
+          and not exists (
+            select 1
+            from ${loyaltyTransactions} lt
+            where lt.guest_id = g.id
+              and lt.reason = 'welcome_bonus'
+          )
+      `) as Promise<Array<{
+        referred_without_welcome_bonus: number;
+      }>>,
+      db.execute(sql`
+        with referral_counts as (
+          select referred_by as referrer_id, count(*)::int as referral_count
+          from ${guests}
+          where referred_by is not null
+          group by referred_by
+        ),
+        bonus_counts as (
+          select guest_id as referrer_id, count(*)::int as bonus_count
+          from ${loyaltyTransactions}
+          where reason = 'referral_bonus'
+          group by guest_id
+        )
+        select
+          rc.referrer_id,
+          rc.referral_count,
+          coalesce(bc.bonus_count, 0)::int as bonus_count,
+          count(*) over()::int as mismatch_count
+        from referral_counts rc
+        left join bonus_counts bc on bc.referrer_id = rc.referrer_id
+        where coalesce(bc.bonus_count, 0) < rc.referral_count
+        order by rc.referral_count - coalesce(bc.bonus_count, 0) desc
+        limit 5
+      `) as Promise<Array<{
+        referrer_id: string;
+        referral_count: number;
+        bonus_count: number;
+        mismatch_count: number;
+      }>>,
+    ]);
+    const challengeSummary = challengeRows[0];
+    const progressSummary = progressRows[0];
+    const referralSummary = referralRows[0];
+    const welcomeBonusSummary = welcomeBonusRows[0];
+    const stuckCompletions = Number(stuckChallengeRows[0]?.stuck_count ?? 0);
+    const referredGuestsWithoutWelcomeBonus = Number(welcomeBonusSummary?.referred_without_welcome_bonus ?? 0);
+    const referrerCreditMismatches = Number(referrerMismatchRows[0]?.mismatch_count ?? 0);
+
+    return {
+      status: stuckCompletions > 0 || referredGuestsWithoutWelcomeBonus > 0 || referrerCreditMismatches > 0
+        ? "attention"
+        : "ok",
+      challenges: {
+        total: Number(challengeSummary?.total_challenges ?? 0),
+        active: Number(challengeSummary?.active_challenges ?? 0),
+        progressRows: Number(progressSummary?.progress_rows ?? 0),
+        inProgress: Number(progressSummary?.in_progress ?? 0),
+        completed: Number(progressSummary?.completed ?? 0),
+        stuckCompletions,
+        stuckSamples: stuckChallengeRows.map((row) => ({
+          id: row.id,
+          restaurantId: row.restaurant_id,
+          guestId: row.guest_id,
+          challengeId: row.challenge_id,
+          currentValue: Number(row.current_value),
+          targetValue: Number(row.target_value),
+          status: row.status,
+        })),
+      },
+      referrals: {
+        guestsWithReferralCode: Number(referralSummary?.guests_with_referral_code ?? 0),
+        referredGuests: Number(referralSummary?.referred_guests ?? 0),
+        referredGuestsWithoutWelcomeBonus,
+        referrerCreditMismatches,
+        referrerCreditMismatchSamples: referrerMismatchRows.map((row) => ({
+          referrerId: row.referrer_id,
+          referralCount: Number(row.referral_count),
+          bonusCount: Number(row.bonus_count),
+        })),
+      },
+    };
+  } catch (error: unknown) {
+    return {
+      status: "error",
+      error: sanitizeError(error),
+    };
+  }
+}
+
 function parseMigrationFileId(fileName: string): number | undefined {
   const match = fileName.match(/^(\d+)_.*\.sql$/);
   if (!match) return undefined;
@@ -505,11 +702,12 @@ async function inspectDeployment(): Promise<DeploymentDiagnostic> {
 }
 
 export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
-  const [database, redis, deployment, membershipProcessing, ...queues] = await Promise.all([
+  const [database, redis, deployment, membershipProcessing, gamification, ...queues] = await Promise.all([
     timedCheck(pingDatabase),
     timedCheck(pingRedis),
     inspectDeployment(),
     inspectMembershipProcessing(),
+    inspectGamification(),
     inspectQueue("reservation-reminders", reminderQueue),
     inspectQueue("daily-summary", summaryQueue),
     inspectQueue("engagement", engagementQueue),
@@ -521,6 +719,7 @@ export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
     && deployment.codeMigrations.status === "ok"
     && deployment.databaseMigrations.status === "ok"
     && membershipProcessing.status !== "error"
+    && gamification.status !== "error"
     && deployment.migrationDrift?.status !== "mismatch"
     ? "ok"
     : "degraded";
@@ -543,6 +742,7 @@ export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
     queues,
     operational: {
       membershipProcessing,
+      gamification,
     },
   };
 }

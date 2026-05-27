@@ -59,6 +59,9 @@
 - Debug CLI authentication:
   - membership and outbound debug CLIs can synthesize a short-lived super-admin token from `JWT_SECRET` when no explicit `OPENSEAT_TOKEN` is provided
   - CLI output reports whether the token came from the caller or the local JWT secret
+- Debugging runbook:
+  - `docs/DEBUGGING.md` now documents the token fallback, outbound message trail filters, skipped-message reasons, and queue-state checks
+  - debug-tool tests assert the operator runbook keeps covering membership, outbound, and queue triage commands
 - Protected super-admin dependency diagnostics at `GET /api/v1/admin/diagnostics`:
   - database ping status and latency
   - Redis ping status and latency

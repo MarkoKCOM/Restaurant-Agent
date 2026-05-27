@@ -74,6 +74,8 @@ pnpm debug:bundle --since "30 minutes ago"
 
 The bundle is written to `artifacts/debug-bundles/<timestamp>/`. Set `OPENSEAT_TOKEN`, `JWT_SECRET`, or super-admin credentials to include `/api/v1/admin/diagnostics`, set `OPENSEAT_RESTAURANT_ID`, `OPENSEAT_BUNDLE_RESTAURANT_ID`, `OPENSEAT_RESTAURANT_SLUG`, `OPENSEAT_BUNDLE_RESTAURANT_SLUG`, or a restaurant-scoped `OPENSEAT_TOKEN` to include `pnpm debug:membership`, and set the normal smoke credentials to include the API smoke run. Use `--out /tmp/openseat-debug` to choose a specific folder.
 
+When `JWT_SECRET` is available on the VPS, `pnpm debug:membership` and `pnpm debug:outbound` can synthesize a short-lived super-admin token. You still need a restaurant selector such as `OPENSEAT_RESTAURANT_ID` or `OPENSEAT_RESTAURANT_SLUG`. The scripts print `tokenSource=jwt_secret` or `tokenSource=provided` so support can see which auth path was used.
+
 The bundle also runs deterministic membership-intent probes against `/api/v1/agent/debug/membership-intent`, covering balance, reward, referral, and promotional opt-out phrases. These checks do not call the LLM; they prove the agent debugging layer still maps common membership questions to the expected tools.
 
 The API reliability smoke creates future-dated and expired challenges to verify launch windows are respected, creates a short-lived current visit-count challenge, completes a test reservation, verifies that the guest challenge progress is created and completed, confirms a challenge-completion congratulations job is scheduled, retries the completed challenge to prove points are not awarded twice, verifies a configured lucky-spin prize and reward-delivery job, verifies broken-streak reset plus recovery scheduling, creates branded social sharing templates for achievement/streak/leaderboard moments, creates a targeted birthday-week challenge to prove private challenge visibility and bonus-point rewards, verifies campaign audience preview segmentation and campaign opt-out exclusion, then deactivates all smoke challenges. This catches regressions where challenges leak outside their active window, duplicate completion rewards are issued, challenge completion follow-up disappears, visit-triggered spin rewards fail, broken streak recovery disappears, share-ready retention moments disappear from the agent/dashboard payload, targeted birthday challenges leak to unrelated guests, campaign segments include opted-out guests by default, or the retention/gamification stage stops running even though the reservation itself completed successfully.
@@ -184,6 +186,12 @@ OPENSEAT_RESTAURANT_ID=... \
 pnpm debug:membership
 ```
 
+On the VPS, this is usually enough because the script can use `JWT_SECRET` to create a short-lived super-admin token:
+
+```bash
+OPENSEAT_RESTAURANT_ID=... pnpm debug:membership
+```
+
 Use `OPENSEAT_RESTAURANT_SLUG=...` instead of `OPENSEAT_RESTAURANT_ID` when you know the dashboard slug but not the UUID. If `OPENSEAT_TOKEN` belongs to a restaurant admin/employee, the script can infer the restaurant ID from the token. This prints open processing failures by stage/status, recent engagement-job counts, skipped engagement reasons, request IDs for API reads, and ready-to-run retry commands for repairable membership processing failures.
 
 ```bash
@@ -207,6 +215,43 @@ Reservation completion failures also emit structured request logs with `stage`, 
 ```bash
 journalctl -u openseat-api --since "30 minutes ago" | rg 'Reservation completion post-visit stage failed|Failed to record membership processing failure'
 ```
+
+## Outbound Message Trail
+
+Use the outbound summary when a WhatsApp-bound workflow says it was ready, sent, skipped, or failed but the operator needs the exact message ID and reason:
+
+```bash
+OPENSEAT_RESTAURANT_ID=... pnpm debug:outbound
+```
+
+Common filters:
+
+```bash
+OPENSEAT_RESTAURANT_ID=... pnpm debug:outbound -- --status skipped
+OPENSEAT_RESTAURANT_ID=... pnpm debug:outbound -- --message-type daily_morning_summary
+OPENSEAT_RESTAURANT_ID=... pnpm debug:outbound -- --status skipped --message-type daily_morning_summary --limit 5
+```
+
+The script prints counts by status, message type, provider, and error code, then recent rows with IDs, masked recipients, subject IDs, previews, and any `errorCode`/`errorMessage`. For example, a missing owner WhatsApp number appears as `status=skipped` with `OUTBOUND_RECIPIENT_MISSING`.
+
+Use this before reading logs when debugging retention automations such as birthday, anniversary, win-back, challenge-completion, leaderboard, reservation-reminder, or daily owner-summary delivery.
+
+## Queue State
+
+Use the queue summary for delayed or scheduled background work:
+
+```bash
+pnpm debug:queues
+```
+
+It prints BullMQ counts, repeatable schedules, failed samples, and delayed samples for:
+
+- `reservation-reminders`
+- `daily-summary`
+- `engagement`
+- `campaign-delivery`
+
+Phone, WhatsApp, email, token, password, and secret-like fields in job payload samples are masked. This command is useful when the API request succeeded but the follow-up automation did not happen yet. For example, daily owner summaries should appear in `daily-summary` as repeatable `daily-morning-summary` jobs with `pattern=0 9 * * *` and the restaurant timezone.
 
 ## Referral Share Flow
 

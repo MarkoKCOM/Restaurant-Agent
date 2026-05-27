@@ -572,6 +572,22 @@ for (const expectedDashboardChatContent of [
 }
 
 const deployWorkflow = await readFile(".github/workflows/deploy.yml", "utf8");
+const debuggingGuide = await readFile("docs/DEBUGGING.md", "utf8");
+for (const requiredDebuggingGuideContent of [
+  "tokenSource=jwt_secret",
+  "tokenSource=provided",
+  "OPENSEAT_RESTAURANT_ID=... pnpm debug:membership",
+  "## Outbound Message Trail",
+  "pnpm debug:outbound -- --status skipped --message-type daily_morning_summary --limit 5",
+  "OUTBOUND_RECIPIENT_MISSING",
+  "## Queue State",
+  "pnpm debug:queues",
+  "daily-morning-summary",
+  "pattern=0 9 * * *",
+]) {
+  assertIncludes(debuggingGuide, requiredDebuggingGuideContent);
+}
+
 for (const requiredPath of [
   ".github/workflows/deploy.yml",
   "apps/booking-widget/**",

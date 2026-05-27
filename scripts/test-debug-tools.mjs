@@ -784,6 +784,7 @@ const debugBundleCollector = await readFile("scripts/collect-debug-bundle.mjs", 
 const apiLogTrace = await readFile("scripts/api-log-trace.mjs", "utf8");
 const membershipDebugSummary = await readFile("scripts/membership-debug-summary.mjs", "utf8");
 const outboundDebugSummary = await readFile("scripts/outbound-debug-summary.mjs", "utf8");
+const packageEnforcementSmoke = await readFile("scripts/package-enforcement-smoke.mjs", "utf8");
 const queueDebugSummary = await readFile("apps/api/scripts/queue-debug-summary.mjs", "utf8");
 const diagnosticsService = await readFile("apps/api/src/services/diagnostics.service.ts", "utf8");
 const adminRoutes = await readFile("apps/api/src/routes/admin.ts", "utf8");
@@ -802,6 +803,7 @@ const rootPackageJson = await readFile("package.json", "utf8");
 const apiPackageJson = await readFile("apps/api/package.json", "utf8");
 assertIncludes(rootPackageJson, '"debug:membership": "node scripts/membership-debug-summary.mjs"');
 assertIncludes(rootPackageJson, '"debug:outbound": "node scripts/outbound-debug-summary.mjs"');
+assertIncludes(rootPackageJson, '"debug:packages": "node scripts/package-enforcement-smoke.mjs"');
 assertIncludes(rootPackageJson, '"debug:queues": "pnpm --filter @openseat/api queue:debug"');
 assertIncludes(apiPackageJson, '"queue:debug": "node scripts/queue-debug-summary.mjs"');
 
@@ -849,6 +851,20 @@ for (const requiredOutboundDebugContent of [
   "/api/v1/engagement/outbound-messages",
 ]) {
   assertIncludes(outboundDebugSummary, requiredOutboundDebugContent);
+}
+
+for (const requiredPackageSmokeContent of [
+  "Package Enforcement Smoke",
+  "/api/v1/admin/restaurants",
+  "PACKAGE_GROWTH_REQUIRED",
+  "/api/v1/campaigns/audience-preview",
+  "/api/v1/analytics/retention",
+  "/api/v1/engagement/jobs",
+  "/api/v1/loyalty/rewards",
+  "/api/v1/gamification/challenges",
+  "Package enforcement smoke passed.",
+]) {
+  assertIncludes(packageEnforcementSmoke, requiredPackageSmokeContent);
 }
 
 for (const requiredOutboundServiceContent of [
@@ -1049,6 +1065,8 @@ for (const requiredReadmeContent of [
   "membership-debug-summary.txt",
   "outbound-debug-summary",
   "outbound-debug-summary.txt",
+  "package-enforcement-smoke",
+  "package-enforcement-smoke.txt",
   "queue-debug-summary",
   "queue-debug-summary.txt",
   "scheduleHealth",

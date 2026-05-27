@@ -181,6 +181,14 @@ pnpm debug:api -- http://localhost:3001/api/v1/campaigns/audience-preview
 
 Use the response `requestId` with `pnpm debug:logs` if a package rejection is missing or returns the wrong code.
 
+To check all major Growth-only surfaces in one pass, run:
+
+```bash
+OPENSEAT_TOKEN=... pnpm debug:packages
+```
+
+On the VPS, `JWT_SECRET` is enough for this command to synthesize a short-lived super-admin token. The command discovers one starter and one Growth restaurant from `/api/v1/admin/restaurants`, then probes campaigns, analytics, engagement, loyalty, and gamification. It fails if a starter restaurant is not rejected with `PACKAGE_GROWTH_REQUIRED` or if a Growth restaurant cannot reach the same surface.
+
 Queue diagnostics are especially useful for failures that happen after an API request returns, such as delayed reminders, daily owner summaries, thank-you messages, review requests, win-back jobs, or membership engagement automation.
 
 Queue workers log structured fields through the API logger, including `queue`, job IDs, `restaurantId`, and relevant entity IDs. Guest phone numbers are masked in worker logs. Search by queue name or entity ID when investigating background behavior:

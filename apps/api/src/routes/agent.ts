@@ -19,6 +19,22 @@ const membershipIntentDebugSchema = z.object({
   message: z.string().min(1),
 });
 
+function classifyAgentError(err: unknown): { code: string; statusCode: number; message: string } {
+  const message = err instanceof Error ? err.message : "Agent failed to process message";
+
+  if (message.includes("OPENROUTER_API_KEY")) {
+    return { code: "AGENT_LLM_CONFIG_MISSING", statusCode: 500, message: "Agent LLM configuration is missing" };
+  }
+  if (err instanceof Error && err.name === "AbortError") {
+    return { code: "AGENT_LLM_TIMEOUT", statusCode: 504, message: "Agent LLM request timed out" };
+  }
+  if (message.startsWith("LLM error")) {
+    return { code: "AGENT_LLM_REQUEST_FAILED", statusCode: 502, message: "Agent LLM request failed" };
+  }
+
+  return { code: "AGENT_ERROR", statusCode: 500, message: "Agent failed to process message" };
+}
+
 export async function agentRoutes(app: FastifyInstance) {
   // POST /message — send a message to the agent
   app.post("/message", async (request, reply) => {
@@ -47,33 +63,56 @@ export async function agentRoutes(app: FastifyInstance) {
         },
       };
     } catch (err) {
+      const classified = classifyAgentError(err);
       request.log.error(
         {
           err,
           requestId: request.id,
+          code: classified.code,
+          statusCode: classified.statusCode,
           restaurantId: body.restaurantId,
           senderId: body.senderId,
           messageLength: body.message.length,
         },
-        "Agent error",
+        "Agent request failed",
       );
-      reply.code(500);
+      reply.code(classified.statusCode);
       return {
-        error: "Agent failed to process message",
-        code: "AGENT_ERROR",
+        error: classified.message,
+        code: classified.code,
         requestId: request.id,
       };
     }
   });
 
   // POST /reset — clear conversation context
-  app.post("/reset", async (request) => {
+  app.post("/reset", async (request, reply) => {
     const { restaurantId, senderId } = z
       .object({ restaurantId: z.string().uuid(), senderId: z.string().min(1) })
       .parse(request.body);
 
-    await resetConversation(restaurantId, senderId);
-    return { ok: true };
+    try {
+      await resetConversation(restaurantId, senderId);
+      return { ok: true };
+    } catch (err) {
+      request.log.error(
+        {
+          err,
+          requestId: request.id,
+          code: "AGENT_RESET_FAILED",
+          statusCode: 500,
+          restaurantId,
+          senderId,
+        },
+        "Agent reset failed",
+      );
+      reply.code(500);
+      return {
+        error: "Agent conversation reset failed",
+        code: "AGENT_RESET_FAILED",
+        requestId: request.id,
+      };
+    }
   });
 
   // POST /debug/membership-intent — deterministic WhatsApp membership intent probe

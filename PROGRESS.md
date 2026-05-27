@@ -107,6 +107,7 @@
 - Debug artifact summaries now parse campaign queue diagnostics and surface skipped campaign reasons plus overdue campaign sample counts in the top-level bundle summary.
 - Engagement list endpoints now wrap outbound-message and engagement-job read failures with stable error codes plus request IDs, so retention dashboard/debug reads can be traced directly in logs.
 - Visit and feedback routes now log persistence/read failures at error level with stable codes for visit history, insights, and feedback summaries, preserving request IDs on paths that feed loyalty/gamification state.
+- Agent message failures now classify LLM config, timeout, provider, and reset failures with stable codes while logging request IDs and safe sender/message metadata for faster agent triage.
 - Loyalty dashboard retention actions now include a next-best-action recommendation for each queued member, covering recovery, win-back, opt-in, referral, and recognition follow-up.
 - Gamification route catches now classify service failures by status and log unexpected persistence/internal failures at error level instead of flattening every caught failure into a warning-level HTTP 400.
 - Campaign route catches now preserve campaign-specific context for unexpected delivery/create/event failures and return error-level HTTP 500 envelopes instead of falling through to less specific global handling.

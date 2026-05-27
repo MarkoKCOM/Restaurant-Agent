@@ -347,6 +347,8 @@ If the LLM/provider fails before a response is generated, the route returns:
 }
 ```
 
+Provider/config failures use narrower codes when the route can classify them: `AGENT_LLM_CONFIG_MISSING`, `AGENT_LLM_TIMEOUT`, or `AGENT_LLM_REQUEST_FAILED`. Conversation reset failures return `AGENT_RESET_FAILED`. All agent route failures include `requestId`, `restaurantId`, `senderId`, and safe message metadata in the API log, so start with `pnpm debug:logs <requestId> --since "2 hours ago"`.
+
 For deterministic membership intent checks that do not call the LLM:
 
 ```bash

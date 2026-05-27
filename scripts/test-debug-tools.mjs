@@ -997,6 +997,7 @@ const restaurantRoutes = await readFile("apps/api/src/routes/restaurants.ts", "u
 const authMiddleware = await readFile("apps/api/src/middleware/auth.ts", "utf8");
 const campaignRoutes = await readFile("apps/api/src/routes/campaigns.ts", "utf8");
 const analyticsRoutes = await readFile("apps/api/src/routes/analytics.ts", "utf8");
+const agentRoutes = await readFile("apps/api/src/routes/agent.ts", "utf8");
 const engagementRoutes = await readFile("apps/api/src/routes/engagement.ts", "utf8");
 const visitsRoutes = await readFile("apps/api/src/routes/visits.ts", "utf8");
 const engagementService = await readFile("apps/api/src/services/engagement.service.ts", "utf8");
@@ -1348,6 +1349,20 @@ for (const requiredVisitRouteContent of [
   "Auto-tag after feedback failed",
 ]) {
   assertIncludes(visitsRoutes, requiredVisitRouteContent);
+}
+
+for (const requiredAgentRouteContent of [
+  "classifyAgentError",
+  "AGENT_LLM_CONFIG_MISSING",
+  "AGENT_LLM_TIMEOUT",
+  "AGENT_LLM_REQUEST_FAILED",
+  "AGENT_RESET_FAILED",
+  "Agent request failed",
+  "Agent reset failed",
+  "statusCode: classified.statusCode",
+  "messageLength: body.message.length",
+]) {
+  assertIncludes(agentRoutes, requiredAgentRouteContent);
 }
 
 for (const requiredLoyaltyPackageContent of [

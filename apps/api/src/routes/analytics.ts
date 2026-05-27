@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
+import { enforceTenant, requireGrowthPackage, requireRestaurantAdmin } from "../middleware/auth.js";
 import {
   getCampaignRoiAnalytics,
   getClvAnalytics,
@@ -63,7 +63,7 @@ function sendAnalyticsError(
   });
 }
 
-function enforceAnalyticsAccess(
+async function enforceAnalyticsAccess(
   request: FastifyRequest,
   reply: FastifyReply,
   restaurantId: string,
@@ -72,13 +72,30 @@ function enforceAnalyticsAccess(
   if (err) {
     return sendAnalyticsError(request, reply, 403, err, "ANALYTICS_FORBIDDEN", { restaurantId });
   }
+
+  const packageAccess = await requireGrowthPackage(restaurantId);
+  if (!packageAccess.ok) {
+    return sendAnalyticsError(
+      request,
+      reply,
+      packageAccess.code === "RESTAURANT_NOT_FOUND" ? 404 : 403,
+      packageAccess.error ?? "Growth package required",
+      packageAccess.code ?? "PACKAGE_GROWTH_REQUIRED",
+      {
+        restaurantId,
+        restaurantPackage: packageAccess.restaurantPackage,
+        requiredPackage: "growth",
+      },
+    );
+  }
+
   return null;
 }
 
 export async function analyticsRoutes(app: FastifyInstance) {
   app.get("/reservations", async (request, reply) => {
     const query = analyticsQuerySchema.parse(request.query ?? {});
-    const accessError = enforceAnalyticsAccess(request, reply, query.restaurantId);
+    const accessError = await enforceAnalyticsAccess(request, reply, query.restaurantId);
     if (accessError) return accessError;
 
     const reservationAnalytics = await getReservationAnalytics(query);
@@ -98,7 +115,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
 
   app.get("/retention", async (request, reply) => {
     const query = analyticsQuerySchema.parse(request.query ?? {});
-    const accessError = enforceAnalyticsAccess(request, reply, query.restaurantId);
+    const accessError = await enforceAnalyticsAccess(request, reply, query.restaurantId);
     if (accessError) return accessError;
 
     const retention = await getRetentionAnalytics(query);
@@ -116,7 +133,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
 
   app.get("/loyalty", async (request, reply) => {
     const query = analyticsQuerySchema.parse(request.query ?? {});
-    const accessError = enforceAnalyticsAccess(request, reply, query.restaurantId);
+    const accessError = await enforceAnalyticsAccess(request, reply, query.restaurantId);
     if (accessError) return accessError;
 
     const loyalty = await getLoyaltyAnalytics(query);
@@ -135,7 +152,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
 
   app.get("/daily-morning-summary", async (request, reply) => {
     const query = morningSummaryQuerySchema.parse(request.query ?? {});
-    const accessError = enforceAnalyticsAccess(request, reply, query.restaurantId);
+    const accessError = await enforceAnalyticsAccess(request, reply, query.restaurantId);
     if (accessError) return accessError;
 
     const summary = await getMorningSummary(query);
@@ -159,7 +176,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
 
   app.post("/daily-morning-summary/log", async (request, reply) => {
     const parsed = morningSummaryLogSchema.parse(request.body ?? {});
-    const accessError = enforceAnalyticsAccess(request, reply, parsed.restaurantId);
+    const accessError = await enforceAnalyticsAccess(request, reply, parsed.restaurantId);
     if (accessError) return accessError;
 
     const summary = await getMorningSummary(parsed);
@@ -198,7 +215,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
 
   app.get("/clv", async (request, reply) => {
     const query = clvQuerySchema.parse(request.query ?? {});
-    const accessError = enforceAnalyticsAccess(request, reply, query.restaurantId);
+    const accessError = await enforceAnalyticsAccess(request, reply, query.restaurantId);
     if (accessError) return accessError;
 
     const clv = await getClvAnalytics(query);
@@ -218,7 +235,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
 
   app.get("/campaign-roi", async (request, reply) => {
     const query = campaignRoiQuerySchema.parse(request.query ?? {});
-    const accessError = enforceAnalyticsAccess(request, reply, query.restaurantId);
+    const accessError = await enforceAnalyticsAccess(request, reply, query.restaurantId);
     if (accessError) return accessError;
 
     const campaignRoi = await getCampaignRoiAnalytics(query);

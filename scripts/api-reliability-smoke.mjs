@@ -1337,7 +1337,7 @@ async function main() {
 
   const campaignTemplates = await request("/api/v1/campaigns/templates", { token });
   const winBackTemplate = (campaignTemplates.templates ?? []).find((template) => template.id === "we_miss_you");
-  const quietCampaignScheduleAt = isoForJerusalemLocalTime(1, "22:30");
+  const quietCampaignScheduleAt = isoForJerusalemLocalTime(1, thankYouQuietHours.start);
   const quietSchedulePreview = await request("/api/v1/campaigns/schedule-preview", {
     method: "POST",
     token,

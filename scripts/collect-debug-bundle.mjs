@@ -161,6 +161,31 @@ function isObject(value) {
   return value && typeof value === "object" && !Array.isArray(value);
 }
 
+function formatSummaryScheduleHealth(queues) {
+  const dailySummaryQueue = queues.find((queue) => queue.name === "daily-summary" && isObject(queue.scheduleHealth));
+  const health = dailySummaryQueue?.scheduleHealth;
+  if (!isObject(health)) return "";
+
+  const parts = [`restaurants=${health.restaurantCount ?? "?"}`];
+  const checks = Array.isArray(health.checks) ? health.checks : [];
+  for (const check of checks) {
+    const label = check.name === "daily-morning-summary"
+      ? "morning"
+      : check.name === "daily-summary"
+        ? "closing"
+        : check.name;
+    const wrong = check.wrongPattern ? ` wrongPattern=${check.wrongPattern}` : "";
+    parts.push(`${label} expected=${check.expected ?? "?"} found=${check.found ?? "?"} pattern=${check.pattern ?? "?"} status=${check.status ?? "?"}${wrong}`);
+  }
+
+  const timezones = isObject(health.restaurantTimezones)
+    ? Object.entries(health.restaurantTimezones).map(([timezone, count]) => `${timezone}:${count}`).join(",")
+    : "";
+  if (timezones) parts.push(`timezones=${timezones}`);
+
+  return parts.join(" ");
+}
+
 async function captureAgentIntentHighlights(artifactPath) {
   try {
     const report = await readJson(artifactPath);
@@ -282,6 +307,9 @@ async function captureDiagnosticsHighlights(commandRecord) {
               next: job.next,
             }))
           : undefined,
+        scheduleHealth: isObject(queue.scheduleHealth)
+          ? queue.scheduleHealth
+          : undefined,
       })),
     };
   } catch (error) {
@@ -379,6 +407,10 @@ async function writeReadme() {
       }
       if (queues.length > 0) {
         lines.push(`- Queues: ${queues.map((queue) => `${queue.name}:${queue.status}/failed=${queue.failed ?? "?"}/repeat=${queue.repeatableJobs?.length ?? "?"}`).join(", ")}`);
+      }
+      const summaryScheduleHealth = formatSummaryScheduleHealth(queues);
+      if (summaryScheduleHealth) {
+        lines.push(`- Summary schedules: ${summaryScheduleHealth}`);
       }
       if (adminDiagnostics.requestId) {
         lines.push(`- Diagnostics request: ${adminDiagnostics.requestId}`);

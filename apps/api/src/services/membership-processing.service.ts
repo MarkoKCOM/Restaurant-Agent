@@ -102,7 +102,9 @@ async function runStage(failure: MembershipProcessingFailureRow): Promise<void> 
   }
 
   if (stage === "streak_update") {
-    await updateStreak(failure.guestId, failure.restaurantId);
+    await updateStreak(failure.guestId, failure.restaurantId, {
+      reservationId: failure.reservationId ?? undefined,
+    });
     return;
   }
 

@@ -716,8 +716,10 @@ export async function updateReservation(
       });
     }
 
+    let visitPointsAwarded: number | undefined;
     try {
-      await onVisitCompleted(updated.guestId, updated.restaurantId, updated.id);
+      const loyaltyResult = await onVisitCompleted(updated.guestId, updated.restaurantId, updated.id);
+      visitPointsAwarded = loyaltyResult.visitPointsAwarded;
     } catch (error) {
       await recordCompletionFailure({
         stage: "loyalty_updates",
@@ -730,7 +732,10 @@ export async function updateReservation(
     }
 
     try {
-      await updateStreak(updated.guestId, updated.restaurantId);
+      await updateStreak(updated.guestId, updated.restaurantId, {
+        reservationId: updated.id,
+        visitPointsAwarded,
+      });
     } catch (error) {
       await recordCompletionFailure({
         stage: "streak_update",

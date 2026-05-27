@@ -114,6 +114,7 @@ function summarizeSmoke(report) {
       || step.step === "gamification.expired-challenge.cleanup"
       || step.step === "gamification.challenge-idempotency"
       || step.step === "gamification.streak-after-completion"
+      || step.step === "gamification.streak-milestone-bonus"
       || step.step === "loyalty.off-peak-multiplier"
       || step.step === "gamification.menu-exploration"
       || step.step === "gamification.birthday-week-challenge"
@@ -154,7 +155,9 @@ function summarizeSmoke(report) {
       } else if (step.step === "gamification.challenge-idempotency") {
         console.log(`- gamification.challenge-idempotency: progress=${step.progress ?? "?"}/${step.target ?? "?"} points=${step.pointsBefore ?? "?"}->${step.pointsAfter ?? "?"} duplicateAward=${step.pointsBefore === step.pointsAfter ? "no" : "yes"}`);
       } else if (step.step === "gamification.streak-after-completion") {
-        console.log(`- gamification.streak-after-completion: current=${step.current ?? "?"} best=${step.best ?? "?"} week=${step.lastVisitWeek ?? "?"}`);
+        console.log(`- gamification.streak-after-completion: current=${step.current ?? "?"} best=${step.best ?? "?"} week=${step.lastVisitWeek ?? "?"} seeded=${step.seeded ?? "?"}`);
+      } else if (step.step === "gamification.streak-milestone-bonus") {
+        console.log(`- gamification.streak-milestone-bonus: points=${step.actualBonusPoints ?? "?"}/${step.expectedBonusPoints ?? "?"} reason=${step.reason ?? "?"}`);
       } else if (step.step === "loyalty.off-peak-multiplier") {
         console.log(`- loyalty.off-peak-multiplier: visitPoints=${step.actualVisitPoints ?? "?"}/${step.expectedVisitPoints ?? "?"} reason=${step.reason ?? "?"}`);
       } else if (step.step === "gamification.menu-exploration") {

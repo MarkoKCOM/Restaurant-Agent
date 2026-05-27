@@ -421,6 +421,7 @@ export async function onVisitCompleted(
   reservationId: string,
 ): Promise<{
   pointsAwarded: number;
+  visitPointsAwarded: number;
   stampBonus: boolean;
   tierChange: TierEvaluation | null;
 }> {
@@ -542,6 +543,7 @@ export async function onVisitCompleted(
       pointsForVisit
       + (stampBonus ? STAMP_BONUS_POINTS : 0)
       + (hostGroupBonus ? HOST_GROUP_BONUS_POINTS : 0),
+    visitPointsAwarded: pointsForVisit,
     stampBonus,
     tierChange,
   };

@@ -1,11 +1,11 @@
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
   challenges,
   challengeProgress,
   guests,
-  reservations,
+  loyaltyTransactions,
 } from "../db/schema.js";
 import { awardPoints } from "./loyalty.service.js";
 
@@ -18,6 +18,17 @@ interface StreakData {
   current: number;
   best: number;
   lastVisitWeek: string;
+}
+
+interface StreakUpdateOptions {
+  reservationId?: string;
+  visitPointsAwarded?: number;
+}
+
+interface StreakUpdateResult extends StreakData {
+  broken: boolean;
+  milestoneReached: number | null;
+  bonusPointsAwarded: number;
 }
 
 function getISOWeek(date: Date): string {
@@ -479,7 +490,8 @@ export async function checkBirthdayWeekChallenges(
 export async function updateStreak(
   guestId: string,
   restaurantId: string,
-): Promise<StreakData> {
+  options: StreakUpdateOptions = {},
+): Promise<StreakUpdateResult> {
   const [guest] = await db
     .select()
     .from(guests)
@@ -494,52 +506,34 @@ export async function updateStreak(
   const currentWeek = getISOWeek(now);
   const streakData = getStreakFromPrefs(guest.preferences);
 
-  // If already visited this week, no change
   if (streakData.lastVisitWeek === currentWeek) {
-    return streakData;
+    const bonusPointsAwarded = await maybeAwardStreakMilestoneBonus({
+      guestId,
+      restaurantId,
+      milestone: streakData.current,
+      reservationId: options.reservationId,
+      visitPointsAwarded: options.visitPointsAwarded,
+    });
+    return {
+      ...streakData,
+      broken: false,
+      milestoneReached: STREAK_MILESTONES.includes(streakData.current) ? streakData.current : null,
+      bonusPointsAwarded,
+    };
   }
 
-  // Check if visited in the previous 7 days (query completed reservations)
-  const sevenDaysAgo = new Date(now);
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const sevenDaysAgoStr = sevenDaysAgo.toISOString().slice(0, 10);
-
-  const recentVisits = await db
-    .select({ id: reservations.id })
-    .from(reservations)
-    .where(
-      and(
-        eq(reservations.guestId, guestId),
-        eq(reservations.restaurantId, restaurantId),
-        eq(reservations.status, "completed"),
-        gte(reservations.date, sevenDaysAgoStr),
-      ),
-    )
-    .limit(2); // We only need to know if there was at least one previous visit
-
-  // If there was a previous completed visit in the last 7 days (besides the current one),
-  // continue the streak. Otherwise, start fresh at 1.
-  // recentVisits includes the current visit being completed, so we need > 1
-  const hasPreviousRecentVisit = recentVisits.length > 1 || streakData.lastVisitWeek !== "";
-
   let newCurrent: number;
+  let broken = false;
 
   if (streakData.lastVisitWeek === "") {
-    // First visit ever
     newCurrent = 1;
   } else {
-    // Check if the previous visit week is within the last ~1 week
-    // Parse lastVisitWeek to check gap
-    const lastWeekDate = weekToDate(streakData.lastVisitWeek);
-    const daysSinceLastVisit = Math.floor(
-      (now.getTime() - lastWeekDate.getTime()) / (1000 * 60 * 60 * 24),
-    );
-
-    if (daysSinceLastVisit <= 7) {
+    const weekGap = weekDifference(streakData.lastVisitWeek, currentWeek);
+    if (weekGap === 1) {
       newCurrent = streakData.current + 1;
     } else {
-      // Streak broken
       newCurrent = 1;
+      broken = streakData.current >= 3;
     }
   }
 
@@ -563,18 +557,89 @@ export async function updateStreak(
     })
     .where(eq(guests.id, guestId));
 
-  // Check for streak milestones and award bonus points
-  if (STREAK_MILESTONES.includes(newCurrent)) {
-    const bonusPoints = newCurrent * 10;
-    await awardPoints(
-      guestId,
-      restaurantId,
-      bonusPoints,
-      `streak_milestone:${newCurrent}`,
-    );
-  }
+  const milestoneReached = STREAK_MILESTONES.includes(newCurrent) ? newCurrent : null;
+  const bonusPointsAwarded = await maybeAwardStreakMilestoneBonus({
+    guestId,
+    restaurantId,
+    milestone: newCurrent,
+    reservationId: options.reservationId,
+    visitPointsAwarded: options.visitPointsAwarded,
+  });
 
-  return newStreak;
+  return {
+    ...newStreak,
+    broken,
+    milestoneReached,
+    bonusPointsAwarded,
+  };
+}
+
+async function getVisitCompletionPoints(params: {
+  guestId: string;
+  restaurantId: string;
+  reservationId: string;
+}): Promise<number | null> {
+  const [transaction] = await db
+    .select({ points: loyaltyTransactions.points })
+    .from(loyaltyTransactions)
+    .where(
+      and(
+        eq(loyaltyTransactions.guestId, params.guestId),
+        eq(loyaltyTransactions.restaurantId, params.restaurantId),
+        eq(loyaltyTransactions.reservationId, params.reservationId),
+        eq(loyaltyTransactions.type, "earn"),
+        eq(loyaltyTransactions.reason, "visit_completion"),
+      ),
+    )
+    .limit(1);
+
+  return transaction?.points ?? null;
+}
+
+async function maybeAwardStreakMilestoneBonus(params: {
+  guestId: string;
+  restaurantId: string;
+  milestone: number;
+  reservationId?: string;
+  visitPointsAwarded?: number;
+}): Promise<number> {
+  if (!STREAK_MILESTONES.includes(params.milestone)) return 0;
+
+  const reason = `streak_milestone:${params.milestone}`;
+  const duplicateConditions = [
+    eq(loyaltyTransactions.guestId, params.guestId),
+    eq(loyaltyTransactions.restaurantId, params.restaurantId),
+    eq(loyaltyTransactions.type, "earn"),
+    eq(loyaltyTransactions.reason, reason),
+  ];
+
+  const [existingBonus] = await db
+    .select({ points: loyaltyTransactions.points })
+    .from(loyaltyTransactions)
+    .where(and(...duplicateConditions))
+    .limit(1);
+
+  if (existingBonus) return 0;
+
+  const visitPoints = params.visitPointsAwarded
+    ?? (params.reservationId
+      ? await getVisitCompletionPoints({
+        guestId: params.guestId,
+        restaurantId: params.restaurantId,
+        reservationId: params.reservationId,
+      })
+      : null);
+  const bonusPoints = visitPoints && visitPoints > 0 ? visitPoints : params.milestone * 10;
+
+  await awardPoints(
+    params.guestId,
+    params.restaurantId,
+    bonusPoints,
+    reason,
+    params.reservationId,
+  );
+
+  return bonusPoints;
 }
 
 /**
@@ -616,4 +681,12 @@ function weekToDate(isoWeek: string): Date {
   targetMonday.setUTCDate(mondayOfWeek1.getUTCDate() + (week - 1) * 7);
 
   return targetMonday;
+}
+
+function weekDifference(previousWeek: string, currentWeek: string): number {
+  const previousDate = weekToDate(previousWeek);
+  const currentDate = weekToDate(currentWeek);
+  if (previousDate.getTime() === 0 || currentDate.getTime() === 0) return Number.POSITIVE_INFINITY;
+
+  return Math.round((currentDate.getTime() - previousDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
 }

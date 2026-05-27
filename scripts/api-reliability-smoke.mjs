@@ -77,6 +77,21 @@ function plusDays(days) {
   return d.toISOString().slice(0, 10);
 }
 
+function isoWeek(date = new Date()) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+}
+
+function previousIsoWeek() {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - 7);
+  return isoWeek(d);
+}
+
 function timePlusMinutes(value, minutesToAdd) {
   const [hours, minutes] = value.slice(0, 5).split(":").map(Number);
   const total = (hours * 60 + minutes + minutesToAdd) % (24 * 60);
@@ -192,6 +207,23 @@ async function markSmokeEngagementJobSent(jobId, type = "thank_you") {
     "ON_ERROR_STOP=1",
     "-c",
     `update engagement_jobs set status = 'sent', sent_at = now(), skip_reason = 'smoke_cleanup' where id = '${jobId}' and status = 'pending' and type = '${type}'`,
+  ], { timeout: 10_000 });
+
+  return true;
+}
+
+async function seedSmokeGuestStreak(guestId, streak) {
+  if (!process.env.DATABASE_URL) return false;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(guestId)) {
+    throw new Error(`Refusing to seed streak for invalid guest id: ${guestId}`);
+  }
+
+  await execFileAsync("psql", [
+    process.env.DATABASE_URL,
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    `update guests set preferences = jsonb_set(coalesce(preferences, '{}'::jsonb), '{streak}', jsonb_build_object('current', ${streak.current}, 'best', ${streak.best}, 'lastVisitWeek', '${streak.lastVisitWeek}'), true), updated_at = now() where id = '${guestId}'`,
   ], { timeout: 10_000 });
 
   return true;
@@ -458,6 +490,19 @@ async function main() {
     throw new Error(`Created smoke challenge was not returned by guest challenges endpoint: ${smokeChallengeId}`);
   }
 
+  const seededStreak = {
+    current: 2,
+    best: 2,
+    lastVisitWeek: previousIsoWeek(),
+  };
+  const seededStreakInDb = await seedSmokeGuestStreak(reservation.guestId, seededStreak);
+  record("gamification.streak-seed", {
+    seeded: seededStreakInDb,
+    current: seededStreak.current,
+    best: seededStreak.best,
+    lastVisitWeek: seededStreak.lastVisitWeek,
+  });
+
   const listed = await request(`/api/v1/reservations?restaurantId=${restaurantId}&date=${reservationDate}`, { token });
   const listedReservation = listed.reservations.find((r) => r.id === reservation.id);
   if (!listedReservation) throw new Error("Created reservation not returned by list endpoint");
@@ -485,14 +530,21 @@ async function main() {
     current: streakAfterCompletion?.current ?? null,
     best: streakAfterCompletion?.best ?? null,
     lastVisitWeek: streakAfterCompletion?.lastVisitWeek ?? null,
+    seeded: seededStreakInDb,
   });
   if (!streakAfterCompletion || streakAfterCompletion.current < 1 || streakAfterCompletion.best < streakAfterCompletion.current) {
     throw new Error(`Reservation completion did not update streak summary: ${JSON.stringify(streakAfterCompletion ?? null)}`);
+  }
+  if (seededStreakInDb && streakAfterCompletion.current !== 3) {
+    throw new Error(`Seeded consecutive streak did not reach milestone 3: ${JSON.stringify(streakAfterCompletion)}`);
   }
 
   const loyaltyHistory = await request(`/api/v1/loyalty/${reservation.guestId}/history?limit=20`, { token });
   const visitCompletionTransaction = (loyaltyHistory.transactions ?? []).find((tx) =>
     tx.reservationId === reservation.id && tx.reason === "visit_completion"
+  );
+  const streakMilestoneTransaction = (loyaltyHistory.transactions ?? []).find((tx) =>
+    tx.reservationId === reservation.id && tx.reason === "streak_milestone:3"
   );
   record("loyalty.off-peak-multiplier", {
     expectedVisitPoints: 20,
@@ -501,6 +553,15 @@ async function main() {
   });
   if (visitCompletionTransaction?.points !== 20) {
     throw new Error(`Off-peak visit multiplier was not applied: expected 20 visit points, got ${visitCompletionTransaction?.points ?? "missing"}`);
+  }
+  record("gamification.streak-milestone-bonus", {
+    expectedBonusPoints: seededStreakInDb ? 20 : null,
+    actualBonusPoints: streakMilestoneTransaction?.points ?? null,
+    reason: streakMilestoneTransaction?.reason ?? null,
+    reservationId: streakMilestoneTransaction?.reservationId ?? null,
+  });
+  if (seededStreakInDb && streakMilestoneTransaction?.points !== 20) {
+    throw new Error(`Streak milestone bonus was not applied as 2x visit points: expected 20, got ${streakMilestoneTransaction?.points ?? "missing"}`);
   }
 
   const challengesAfterCompletion = await request(`/api/v1/gamification/${reservation.guestId}/challenges?restaurantId=${restaurantId}`, { token });

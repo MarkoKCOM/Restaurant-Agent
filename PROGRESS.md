@@ -81,7 +81,7 @@
   - logs method, URL, user, role, restaurant, request ID, and error code
 - Dashboard `ApiError` helper:
   - preserves HTTP status, method, URL, code, request ID, and validation details
-  - logs detailed API failures to the browser console in development
+  - logs API failures to the browser console with request IDs and ready `pnpm debug:logs ...` commands, while keeping validation details local-development only
   - replaces generic `API error: <status>` failures across dashboard hooks/auth flows
 - `pnpm debug:api` probe script for quickly checking endpoint status, elapsed time, request ID, content type, and body.
 - `docs/DEBUGGING.md` with request-ID triage steps, log lookup commands, and debugging commands.

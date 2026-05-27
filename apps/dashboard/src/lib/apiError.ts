@@ -76,21 +76,48 @@ export function apiErrorFromFetchFailure(params: {
   });
 }
 
+function safeUrlForLog(url: string): string {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return url;
+  }
+}
+
 export function logApiError(error: unknown): void {
   const meta = import.meta as unknown as { env?: { PROD?: boolean } };
-  if (meta.env?.PROD || !(error instanceof ApiError)) {
+  if (!(error instanceof ApiError)) {
     return;
   }
 
-  console.error("OpenSeat API request failed", {
+  const debugCommand = error.requestId
+    ? `pnpm debug:logs ${error.requestId} --since "2 hours ago"`
+    : undefined;
+  const payload: {
+    status: number;
+    method: string;
+    url: string;
+    code?: string;
+    requestId?: string;
+    debugCommand?: string;
+    message: string;
+    details?: unknown;
+  } = {
     status: error.status,
     method: error.method,
-    url: error.url,
+    url: safeUrlForLog(error.url),
     code: error.code,
     requestId: error.requestId,
-    details: error.details,
+    debugCommand,
     message: error.message,
-  });
+  };
+
+  if (!meta.env?.PROD && error.details !== undefined) {
+    payload.details = error.details;
+  }
+
+  console.error("OpenSeat API request failed", payload);
 }
 
 export function formatApiErrorMessage(error: unknown, fallback: string): string {

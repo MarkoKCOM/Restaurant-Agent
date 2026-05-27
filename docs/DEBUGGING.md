@@ -34,14 +34,15 @@ pnpm debug:logs 018f --since "30 minutes ago"
 
 Optional flags are `--service openseat-api` and `--context 2`. The script prints a small JSON header with match counts, a compact event summary when it can parse structured API logs, then the matching journal lines with nearby context.
 
-For local development, failed dashboard API requests are logged to the browser console with:
+Failed dashboard API requests are logged to the browser console with:
 
 - `status`
 - `method`
 - `url`
 - `code`
 - `requestId`
-- validation `details`, when the API returned them
+- `debugCommand`, a ready `pnpm debug:logs ...` command when a request ID exists
+- validation `details`, when the API returned them, in local development only
 
 ## API Log Level
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
 import {
   getCampaignRoiAnalytics,
+  getClvAnalytics,
   getLoyaltyAnalytics,
   getReservationAnalytics,
   getRetentionAnalytics,
@@ -18,6 +19,10 @@ const campaignRoiQuerySchema = analyticsQuerySchema.extend({
   campaignId: z.string().uuid().optional(),
   attributionDays: z.coerce.number().int().min(1).max(90).optional(),
   costPerMessage: z.coerce.number().min(0).max(100).optional(),
+});
+
+const clvQuerySchema = analyticsQuerySchema.extend({
+  topLimit: z.coerce.number().int().min(1).max(50).optional(),
 });
 
 function sendAnalyticsError(
@@ -117,6 +122,26 @@ export async function analyticsRoutes(app: FastifyInstance) {
       "Loyalty analytics generated",
     );
     return { loyalty };
+  });
+
+  app.get("/clv", async (request, reply) => {
+    const query = clvQuerySchema.parse(request.query ?? {});
+    const accessError = enforceAnalyticsAccess(request, reply, query.restaurantId);
+    if (accessError) return accessError;
+
+    const clv = await getClvAnalytics(query);
+    request.log.info(
+      {
+        restaurantId: query.restaurantId,
+        requestId: request.id,
+        guests: clv.totals.guests,
+        lifetimeRevenue: clv.totals.lifetimeRevenue,
+        averageLifetimeValue: clv.totals.averageLifetimeValue,
+        topGuestCount: clv.topGuests.length,
+      },
+      "CLV analytics generated",
+    );
+    return { clv };
   });
 
   app.get("/campaign-roi", async (request, reply) => {

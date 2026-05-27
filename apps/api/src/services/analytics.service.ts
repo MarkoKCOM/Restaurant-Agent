@@ -114,6 +114,10 @@ function sum(values: number[]): number {
   return values.reduce((total, value) => total + value, 0);
 }
 
+function average(total: number, count: number): number {
+  return count > 0 ? Number((total / count).toFixed(2)) : 0;
+}
+
 export async function getReservationAnalytics(params: {
   restaurantId: string;
   from?: string;
@@ -334,6 +338,101 @@ export async function getLoyaltyAnalytics(params: {
     rewardRedemptions: claimRows.filter((claim) => claim.status === "redeemed").length,
     programCostPoints: pointsRedeemed,
     tierDistribution,
+  };
+}
+
+export async function getClvAnalytics(params: {
+  restaurantId: string;
+  from?: string;
+  to?: string;
+  topLimit?: number;
+}) {
+  const period = resolveAnalyticsPeriod(params);
+  const topLimit = Math.max(1, Math.min(params.topLimit ?? 10, 50));
+  const [guestRows, visitRows] = await Promise.all([
+    db.select().from(guests).where(eq(guests.restaurantId, params.restaurantId)),
+    db.select().from(visitLogs).where(eq(visitLogs.restaurantId, params.restaurantId)),
+  ]);
+
+  const visitsByGuest = new Map<string, typeof visitRows>();
+  const periodVisitsByGuest = new Map<string, typeof visitRows>();
+  for (const visit of visitRows) {
+    visitsByGuest.set(visit.guestId, [...(visitsByGuest.get(visit.guestId) ?? []), visit]);
+    if (isDateInPeriod(visit.date, period)) {
+      periodVisitsByGuest.set(visit.guestId, [...(periodVisitsByGuest.get(visit.guestId) ?? []), visit]);
+    }
+  }
+
+  const guestsWithValue = guestRows.map((guest) => {
+    const lifetimeVisits = visitsByGuest.get(guest.id) ?? [];
+    const periodVisits = periodVisitsByGuest.get(guest.id) ?? [];
+    const lifetimeRevenue = sum(lifetimeVisits.map((visit) => visit.totalSpend ?? 0));
+    const periodRevenue = sum(periodVisits.map((visit) => visit.totalSpend ?? 0));
+    const firstVisitDate = guest.firstVisitDate ?? lifetimeVisits.map((visit) => visit.date).sort()[0] ?? null;
+    const lastVisitDate = guest.lastVisitDate ?? lifetimeVisits.map((visit) => visit.date).sort().at(-1) ?? null;
+
+    return {
+      guestId: guest.id,
+      name: guest.name,
+      tier: guest.tier ?? "bronze",
+      visitCount: guest.visitCount,
+      firstVisitDate,
+      lastVisitDate,
+      lifetimeVisits: lifetimeVisits.length,
+      periodVisits: periodVisits.length,
+      lifetimeRevenue,
+      periodRevenue,
+      averageSpendPerVisit: average(lifetimeRevenue, lifetimeVisits.length),
+      periodAverageSpendPerVisit: average(periodRevenue, periodVisits.length),
+      pointsBalance: guest.pointsBalance,
+    };
+  });
+
+  const byTier = (["bronze", "silver", "gold"] as const).map((tier) => {
+    const tierGuests = guestsWithValue.filter((guest) => guest.tier === tier);
+    const lifetimeRevenue = sum(tierGuests.map((guest) => guest.lifetimeRevenue));
+    const periodRevenue = sum(tierGuests.map((guest) => guest.periodRevenue));
+    const lifetimeVisits = sum(tierGuests.map((guest) => guest.lifetimeVisits));
+    const periodVisits = sum(tierGuests.map((guest) => guest.periodVisits));
+    return {
+      tier,
+      guests: tierGuests.length,
+      lifetimeRevenue,
+      periodRevenue,
+      lifetimeVisits,
+      periodVisits,
+      averageLifetimeValue: average(lifetimeRevenue, tierGuests.length),
+      averagePeriodValue: average(periodRevenue, tierGuests.length),
+      averageSpendPerVisit: average(lifetimeRevenue, lifetimeVisits),
+    };
+  });
+
+  const revenueGuests = guestsWithValue.filter((guest) => guest.lifetimeRevenue > 0);
+  const lifetimeRevenue = sum(guestsWithValue.map((guest) => guest.lifetimeRevenue));
+  const periodRevenue = sum(guestsWithValue.map((guest) => guest.periodRevenue));
+  const lifetimeVisits = sum(guestsWithValue.map((guest) => guest.lifetimeVisits));
+  const periodVisits = sum(guestsWithValue.map((guest) => guest.periodVisits));
+
+  return {
+    restaurantId: params.restaurantId,
+    generatedAt: new Date().toISOString(),
+    period,
+    totals: {
+      guests: guestsWithValue.length,
+      guestsWithRevenue: revenueGuests.length,
+      lifetimeRevenue,
+      periodRevenue,
+      lifetimeVisits,
+      periodVisits,
+      averageLifetimeValue: average(lifetimeRevenue, guestsWithValue.length),
+      averageRevenueCustomerValue: average(lifetimeRevenue, revenueGuests.length),
+      averagePeriodValue: average(periodRevenue, guestsWithValue.length),
+      averageSpendPerVisit: average(lifetimeRevenue, lifetimeVisits),
+    },
+    byTier,
+    topGuests: [...guestsWithValue]
+      .sort((left, right) => right.lifetimeRevenue - left.lifetimeRevenue)
+      .slice(0, topLimit),
   };
 }
 

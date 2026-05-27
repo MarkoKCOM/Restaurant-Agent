@@ -1538,6 +1538,7 @@ async function main() {
   const reservationAnalytics = await request(`/api/v1/analytics/reservations?${analyticsQuery}`, { token });
   const retentionAnalytics = await request(`/api/v1/analytics/retention?${analyticsQuery}`, { token });
   const loyaltyAnalytics = await request(`/api/v1/analytics/loyalty?${analyticsQuery}`, { token });
+  const clvAnalytics = await request(`/api/v1/analytics/clv?${analyticsQuery}&topLimit=5`, { token });
   const campaignRoiAnalytics = await request(`/api/v1/analytics/campaign-roi?${analyticsQuery}&costPerMessage=0.35`, { token });
   record("analytics.growth-summary", {
     reservationBookings: reservationAnalytics.reservations?.current?.bookings ?? null,
@@ -1550,6 +1551,11 @@ async function main() {
     activeMembers: loyaltyAnalytics.loyalty?.activeMembers ?? null,
     pointsIssued: loyaltyAnalytics.loyalty?.pointsIssued ?? null,
     tierBronze: loyaltyAnalytics.loyalty?.tierDistribution?.bronze ?? null,
+    clvGuests: clvAnalytics.clv?.totals?.guests ?? null,
+    clvRevenue: clvAnalytics.clv?.totals?.lifetimeRevenue ?? null,
+    clvAverage: clvAnalytics.clv?.totals?.averageLifetimeValue ?? null,
+    clvTierCount: clvAnalytics.clv?.byTier?.length ?? null,
+    clvTopGuests: clvAnalytics.clv?.topGuests?.length ?? null,
     campaigns: campaignRoiAnalytics.campaignRoi?.totals?.campaigns ?? null,
     campaignSent: campaignRoiAnalytics.campaignRoi?.totals?.sent ?? null,
     hasCampaignRoi: campaignRoiAnalytics.campaignRoi?.totals?.roi !== undefined,
@@ -1566,10 +1572,16 @@ async function main() {
     || typeof loyaltyAnalytics.loyalty?.activeMembers !== "number"
     || typeof loyaltyAnalytics.loyalty?.pointsIssued !== "number"
     || !loyaltyAnalytics.loyalty?.tierDistribution
+    || typeof clvAnalytics.clv?.totals?.guests !== "number"
+    || typeof clvAnalytics.clv?.totals?.lifetimeRevenue !== "number"
+    || typeof clvAnalytics.clv?.totals?.averageLifetimeValue !== "number"
+    || !Array.isArray(clvAnalytics.clv?.byTier)
+    || clvAnalytics.clv.byTier.length !== 3
+    || !Array.isArray(clvAnalytics.clv?.topGuests)
     || typeof campaignRoiAnalytics.campaignRoi?.totals?.campaigns !== "number"
     || typeof campaignRoiAnalytics.campaignRoi?.totals?.sent !== "number"
   ) {
-    throw new Error(`Growth analytics endpoints returned incomplete metrics: ${JSON.stringify({ reservationAnalytics, retentionAnalytics, loyaltyAnalytics, campaignRoiAnalytics })}`);
+    throw new Error(`Growth analytics endpoints returned incomplete metrics: ${JSON.stringify({ reservationAnalytics, retentionAnalytics, loyaltyAnalytics, clvAnalytics, campaignRoiAnalytics })}`);
   }
 
   await request(`/api/v1/engagement/win-back/check?restaurantId=${restaurantId}`, {

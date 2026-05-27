@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import {
   availabilityQuerySchema,
@@ -35,6 +35,48 @@ function isReservationHttpError(err: unknown): err is Error & { statusCode: numb
   return err instanceof Error && typeof (err as any).statusCode === "number";
 }
 
+function reservationErrorCode(message: string, fallback = "RESERVATION_OPERATION_FAILED"): string {
+  if (message.includes("Restaurant not found")) return "RESERVATION_RESTAURANT_NOT_FOUND";
+  if (message.includes("closed")) return "RESERVATION_RESTAURANT_CLOSED";
+  if (message.includes("date in the past")) return "RESERVATION_DATE_IN_PAST";
+  if (message.includes("outside operating hours")) return "RESERVATION_OUTSIDE_OPERATING_HOURS";
+  if (message.includes("No tables available")) return "RESERVATION_NO_TABLES_AVAILABLE";
+  if (message.includes("No suitable table combination")) return "RESERVATION_NO_TABLE_COMBINATION";
+  if (message.includes("Cannot transition reservation")) return "RESERVATION_INVALID_STATUS_TRANSITION";
+  return fallback;
+}
+
+function sendReservationError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  statusCode: number,
+  message: string,
+  code: string,
+  context: Record<string, unknown> = {},
+) {
+  const logPayload = {
+    ...context,
+    code,
+    requestId: request.id,
+    statusCode,
+    userId: request.user?.id,
+    restaurantId: request.user?.restaurantId,
+    role: request.user?.role,
+  };
+
+  if (statusCode >= 500) {
+    request.log.error(logPayload, "Reservation request failed");
+  } else {
+    request.log.warn(logPayload, "Reservation request rejected");
+  }
+
+  return reply.status(statusCode).send({
+    error: message,
+    code,
+    requestId: request.id,
+  });
+}
+
 export async function reservationRoutes(app: FastifyInstance) {
   // GET /availability
   app.get("/availability", async (request) => {
@@ -61,7 +103,20 @@ export async function reservationRoutes(app: FastifyInstance) {
       return { reservation };
     } catch (err) {
       if (isReservationHttpError(err)) {
-        return reply.status(err.statusCode).send({ error: err.message });
+        return sendReservationError(
+          request,
+          reply,
+          err.statusCode,
+          err.message,
+          reservationErrorCode(err.message, "RESERVATION_CREATE_FAILED"),
+          {
+            restaurantLookupId: parsed.restaurantId,
+            date: parsed.date,
+            timeStart: parsed.timeStart,
+            partySize: parsed.partySize,
+            source: parsed.source,
+          },
+        );
       }
       throw err;
     }
@@ -74,7 +129,14 @@ export async function reservationRoutes(app: FastifyInstance) {
 
     const err = requireOperationalRole(user) ?? enforceTenant(user, body.restaurantId);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendReservationError(
+        request,
+        reply,
+        403,
+        err,
+        "RESERVATION_FORBIDDEN",
+        { restaurantLookupId: body.restaurantId },
+      );
     }
 
     try {
@@ -83,7 +145,18 @@ export async function reservationRoutes(app: FastifyInstance) {
       return { reservation };
     } catch (error) {
       if (isReservationHttpError(error)) {
-        return reply.status(error.statusCode).send({ error: error.message });
+        return sendReservationError(
+          request,
+          reply,
+          error.statusCode,
+          error.message,
+          reservationErrorCode(error.message, "RESERVATION_WALK_IN_CREATE_FAILED"),
+          {
+            restaurantLookupId: body.restaurantId,
+            partySize: body.partySize,
+            seatImmediately: body.seatImmediately,
+          },
+        );
       }
       throw error;
     }
@@ -98,13 +171,20 @@ export async function reservationRoutes(app: FastifyInstance) {
     const user = request.user!;
     const roleErr = requireOperationalRole(user);
     if (roleErr) {
-      return reply.status(403).send({ error: roleErr });
+      return sendReservationError(request, reply, 403, roleErr, "RESERVATION_FORBIDDEN");
     }
 
     if (restaurantId) {
       const err = enforceTenant(user, restaurantId);
       if (err) {
-        return reply.status(403).send({ error: err });
+        return sendReservationError(
+          request,
+          reply,
+          403,
+          err,
+          "RESERVATION_FORBIDDEN",
+          { restaurantLookupId: restaurantId },
+        );
       }
     }
 
@@ -124,25 +204,51 @@ export async function reservationRoutes(app: FastifyInstance) {
       .limit(1);
 
     if (!reservationRow) {
-      reply.code(404);
-      return { error: "Reservation not found" };
+      return sendReservationError(
+        request,
+        reply,
+        404,
+        "Reservation not found",
+        "RESERVATION_NOT_FOUND",
+        { reservationId: id },
+      );
     }
 
     const err = requireOperationalRole(request.user!) ?? enforceTenant(request.user!, reservationRow.restaurantId);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendReservationError(
+        request,
+        reply,
+        403,
+        err,
+        "RESERVATION_FORBIDDEN",
+        { reservationId: id, restaurantLookupId: reservationRow.restaurantId },
+      );
     }
 
     try {
       const updated = await updateReservation(id, body, { logger: request.log });
       if (!updated) {
-        reply.code(404);
-        return { error: "Reservation not found" };
+        return sendReservationError(
+          request,
+          reply,
+          404,
+          "Reservation not found",
+          "RESERVATION_NOT_FOUND",
+          { reservationId: id, restaurantLookupId: reservationRow.restaurantId },
+        );
       }
       return { reservation: updated };
     } catch (e) {
       if (isReservationHttpError(e)) {
-        return reply.status(e.statusCode).send({ error: e.message });
+        return sendReservationError(
+          request,
+          reply,
+          e.statusCode,
+          e.message,
+          reservationErrorCode(e.message, "RESERVATION_UPDATE_FAILED"),
+          { reservationId: id, restaurantLookupId: reservationRow.restaurantId, status: body.status },
+        );
       }
       throw e;
     }
@@ -158,25 +264,51 @@ export async function reservationRoutes(app: FastifyInstance) {
       .limit(1);
 
     if (!reservationRow) {
-      reply.code(404);
-      return { error: "Reservation not found" };
+      return sendReservationError(
+        request,
+        reply,
+        404,
+        "Reservation not found",
+        "RESERVATION_NOT_FOUND",
+        { reservationId: id },
+      );
     }
 
     const err = requireOperationalRole(request.user!) ?? enforceTenant(request.user!, reservationRow.restaurantId);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendReservationError(
+        request,
+        reply,
+        403,
+        err,
+        "RESERVATION_FORBIDDEN",
+        { reservationId: id, restaurantLookupId: reservationRow.restaurantId },
+      );
     }
 
     try {
       const reservation = await markNoShow(id);
       if (!reservation) {
-        reply.code(404);
-        return { error: "Reservation not found" };
+        return sendReservationError(
+          request,
+          reply,
+          404,
+          "Reservation not found",
+          "RESERVATION_NOT_FOUND",
+          { reservationId: id, restaurantLookupId: reservationRow.restaurantId },
+        );
       }
       return { reservation };
     } catch (e) {
       if (isReservationHttpError(e)) {
-        return reply.status(e.statusCode).send({ error: e.message });
+        return sendReservationError(
+          request,
+          reply,
+          e.statusCode,
+          e.message,
+          reservationErrorCode(e.message, "RESERVATION_NO_SHOW_FAILED"),
+          { reservationId: id, restaurantLookupId: reservationRow.restaurantId },
+        );
       }
       throw e;
     }
@@ -193,20 +325,39 @@ export async function reservationRoutes(app: FastifyInstance) {
       .limit(1);
 
     if (!reservationRow) {
-      reply.code(404);
-      return { error: "Reservation not found" };
+      return sendReservationError(
+        request,
+        reply,
+        404,
+        "Reservation not found",
+        "RESERVATION_NOT_FOUND",
+        { reservationId: id },
+      );
     }
 
     const err = requireOperationalRole(request.user!) ?? enforceTenant(request.user!, reservationRow.restaurantId);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendReservationError(
+        request,
+        reply,
+        403,
+        err,
+        "RESERVATION_FORBIDDEN",
+        { reservationId: id, restaurantLookupId: reservationRow.restaurantId },
+      );
     }
 
     try {
       const result = await cancelReservation(id, reason);
       if (!result) {
-        reply.code(404);
-        return { error: "Reservation not found" };
+        return sendReservationError(
+          request,
+          reply,
+          404,
+          "Reservation not found",
+          "RESERVATION_NOT_FOUND",
+          { reservationId: id, restaurantLookupId: reservationRow.restaurantId },
+        );
       }
       return {
         reservation: result.reservation,
@@ -214,7 +365,14 @@ export async function reservationRoutes(app: FastifyInstance) {
       };
     } catch (e) {
       if (isReservationHttpError(e)) {
-        return reply.status(e.statusCode).send({ error: e.message });
+        return sendReservationError(
+          request,
+          reply,
+          e.statusCode,
+          e.message,
+          reservationErrorCode(e.message, "RESERVATION_CANCEL_FAILED"),
+          { reservationId: id, restaurantLookupId: reservationRow.restaurantId },
+        );
       }
       throw e;
     }

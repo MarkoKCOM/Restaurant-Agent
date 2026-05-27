@@ -80,6 +80,16 @@ const membershipDebugRestaurantSlug =
   process.env.OPENSEAT_RESTAURANT_SLUG ||
   process.env.OPENSEAT_BUNDLE_RESTAURANT_SLUG ||
   "";
+const outboundDebugRestaurantId =
+  process.env.OPENSEAT_OUTBOUND_RESTAURANT_ID ||
+  process.env.OPENSEAT_RESTAURANT_ID ||
+  process.env.OPENSEAT_BUNDLE_RESTAURANT_ID ||
+  "";
+const outboundDebugRestaurantSlug =
+  process.env.OPENSEAT_OUTBOUND_RESTAURANT_SLUG ||
+  process.env.OPENSEAT_RESTAURANT_SLUG ||
+  process.env.OPENSEAT_BUNDLE_RESTAURANT_SLUG ||
+  "";
 const manifest = {
   createdAt: new Date().toISOString(),
   apiUrl,
@@ -418,6 +428,7 @@ async function writeReadme() {
   } else {
     lines.push("- `admin-diagnostics.txt` for database, Redis, migration drift, queue, and runtime health.");
     lines.push("- `membership-debug-summary.txt` for open membership repair rows, engagement job counts, and retry commands.");
+    lines.push("- `outbound-debug-summary.txt` for the recent WhatsApp-bound message log and message IDs.");
     lines.push("- `api-smoke-summary.txt` for end-to-end API flow status and any failing request IDs.");
     lines.push("- `recent-api-logs.txt` for service-side context around this bundle run.");
   }
@@ -505,6 +516,7 @@ if (diagnosticsToken.token) {
 
   const tokenRestaurantId = decodeTokenRestaurantId(diagnosticsToken.token);
   const resolvedMembershipDebugRestaurantId = membershipDebugRestaurantId || tokenRestaurantId;
+  const resolvedOutboundDebugRestaurantId = outboundDebugRestaurantId || tokenRestaurantId;
 
   if (resolvedMembershipDebugRestaurantId || membershipDebugRestaurantSlug) {
     const membershipCommand = await runStep("membership-debug-summary", "node", ["scripts/membership-debug-summary.mjs"], {
@@ -523,6 +535,25 @@ if (diagnosticsToken.token) {
       reason: "OPENSEAT_RESTAURANT_ID, OPENSEAT_BUNDLE_RESTAURANT_ID, OPENSEAT_RESTAURANT_SLUG, OPENSEAT_BUNDLE_RESTAURANT_SLUG, or a restaurant-scoped OPENSEAT_TOKEN is not set",
     });
   }
+
+  if (resolvedOutboundDebugRestaurantId || outboundDebugRestaurantSlug) {
+    const outboundCommand = await runStep("outbound-debug-summary", "node", ["scripts/outbound-debug-summary.mjs"], {
+      env: {
+        OPENSEAT_API_URL: apiUrl,
+        OPENSEAT_TOKEN: diagnosticsToken.token,
+        OPENSEAT_RESTAURANT_ID: resolvedOutboundDebugRestaurantId,
+        OPENSEAT_RESTAURANT_SLUG: outboundDebugRestaurantSlug,
+        OPENSEAT_OUTBOUND_DEBUG_LIMIT: process.env.OPENSEAT_OUTBOUND_DEBUG_LIMIT ?? "25",
+      },
+    });
+    outboundCommand.tokenSource = diagnosticsToken.source;
+  } else {
+    manifest.commands.push({
+      name: "outbound-debug-summary",
+      status: "skipped",
+      reason: "OPENSEAT_OUTBOUND_RESTAURANT_ID, OPENSEAT_OUTBOUND_RESTAURANT_SLUG, OPENSEAT_RESTAURANT_ID, OPENSEAT_BUNDLE_RESTAURANT_ID, OPENSEAT_RESTAURANT_SLUG, OPENSEAT_BUNDLE_RESTAURANT_SLUG, or a restaurant-scoped OPENSEAT_TOKEN is not set",
+    });
+  }
 } else {
   manifest.commands.push({
     name: "admin-diagnostics",
@@ -531,6 +562,11 @@ if (diagnosticsToken.token) {
   });
   manifest.commands.push({
     name: "membership-debug-summary",
+    status: "skipped",
+    reason: diagnosticsToken.reason,
+  });
+  manifest.commands.push({
+    name: "outbound-debug-summary",
     status: "skipped",
     reason: diagnosticsToken.reason,
   });

@@ -633,9 +633,11 @@ for (const [changedPath, expected] of [
 const debugBundleCollector = await readFile("scripts/collect-debug-bundle.mjs", "utf8");
 const apiLogTrace = await readFile("scripts/api-log-trace.mjs", "utf8");
 const membershipDebugSummary = await readFile("scripts/membership-debug-summary.mjs", "utf8");
+const outboundDebugSummary = await readFile("scripts/outbound-debug-summary.mjs", "utf8");
 const debugErrorHelpers = await readFile("scripts/lib/debug-errors.mjs", "utf8");
 const rootPackageJson = await readFile("package.json", "utf8");
 assertIncludes(rootPackageJson, '"debug:membership": "node scripts/membership-debug-summary.mjs"');
+assertIncludes(rootPackageJson, '"debug:outbound": "node scripts/outbound-debug-summary.mjs"');
 
 for (const requiredMembershipDebugContent of [
   "Membership Debug Summary",
@@ -653,6 +655,23 @@ for (const requiredMembershipDebugContent of [
   "/api/v1/engagement/jobs",
 ]) {
   assertIncludes(membershipDebugSummary, requiredMembershipDebugContent);
+}
+
+for (const requiredOutboundDebugContent of [
+  "Outbound Message Debug Summary",
+  "Outbound messages by status:",
+  "Outbound messages by type:",
+  "Outbound messages by provider:",
+  "outboundRequestId=",
+  "restaurantLookupRequestId=",
+  "restaurantIdSource=",
+  "decodeTokenRestaurantId",
+  "OPENSEAT_RESTAURANT_SLUG",
+  "pnpm debug:logs",
+  "/api/v1/admin/restaurants",
+  "/api/v1/engagement/outbound-messages",
+]) {
+  assertIncludes(outboundDebugSummary, requiredOutboundDebugContent);
 }
 
 for (const requiredLogTraceContent of [
@@ -696,8 +715,12 @@ for (const requiredReadmeContent of [
   "agent-membership-intents.json",
   "membership-debug-summary",
   "membership-debug-summary.txt",
+  "outbound-debug-summary",
+  "outbound-debug-summary.txt",
   "OPENSEAT_BUNDLE_RESTAURANT_ID",
   "OPENSEAT_BUNDLE_RESTAURANT_SLUG",
+  "OPENSEAT_OUTBOUND_RESTAURANT_ID",
+  "OPENSEAT_OUTBOUND_RESTAURANT_SLUG",
   "restaurant-scoped OPENSEAT_TOKEN",
   "decodeTokenRestaurantId",
   "waitForApiReady",

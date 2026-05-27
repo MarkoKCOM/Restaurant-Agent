@@ -222,8 +222,14 @@ function lastYearJerusalemDate() {
 }
 
 const runId = `smoke-${Date.now()}`;
+let smokePhoneSeq = 0;
 let reservationDate = plusDays(10);
 const visitDate = plusDays(0);
+
+function smokePhone(prefix) {
+  smokePhoneSeq += 1;
+  return `${prefix}${String(Date.now()).slice(-10)}${String(smokePhoneSeq).padStart(3, "0")}`;
+}
 
 const report = {
   baseUrl,
@@ -357,7 +363,7 @@ async function main() {
     throw lastError ?? new Error("Unable to create reservation using available slots");
   }
 
-  const guestPhone = `050${String(Date.now()).slice(-7)}`;
+  const guestPhone = smokePhone("050");
   const guestName = `Smoke Test ${runId}`;
   const created = await createReservationUsingAvailableSlot({
     restaurantId,
@@ -807,7 +813,7 @@ async function main() {
   const brokenStreakReservationResult = await createReservationUsingAvailableSlot({
     restaurantId,
     guestName: `Smoke Broken Streak ${runId}`,
-    guestPhone: `051${String(Date.now()).slice(-7)}`,
+    guestPhone: smokePhone("051"),
     notes: `${runId} broken-streak`,
     source: "web",
   });
@@ -985,7 +991,7 @@ async function main() {
     body: {
       restaurantId,
       name: `Smoke Negative Feedback ${runId}`,
-      phone: `052${String(Date.now()).slice(-7)}`,
+      phone: smokePhone("052"),
       language: "he",
       source: "web",
     },
@@ -1029,7 +1035,7 @@ async function main() {
     body: {
       restaurantId,
       name: `Smoke Birthday ${runId}`,
-      phone: `053${String(Date.now()).slice(-7)}`,
+      phone: smokePhone("053"),
       language: "he",
       source: "web",
     },
@@ -1066,7 +1072,7 @@ async function main() {
     body: {
       restaurantId,
       name: `Smoke Birthday Challenge ${runId}`,
-      phone: `055${String(Date.now()).slice(-7)}`,
+      phone: smokePhone("055"),
       language: "he",
       source: "web",
     },
@@ -1149,7 +1155,7 @@ async function main() {
     body: {
       restaurantId,
       name: `Smoke Anniversary ${runId}`,
-      phone: `054${String(Date.now()).slice(-7)}`,
+      phone: smokePhone("054"),
       language: "he",
       source: "web",
     },
@@ -1196,7 +1202,7 @@ async function main() {
     body: {
       restaurantId,
       name: `Smoke WinBack ${runId}`,
-      phone: `052${String(Date.now()).slice(-7)}`,
+      phone: smokePhone("052"),
       language: "he",
       source: "web",
     },
@@ -1244,7 +1250,7 @@ async function main() {
     body: {
       restaurantId,
       name: `Smoke Campaign Segment ${runId}`,
-      phone: `059${String(Date.now()).slice(-7)}`,
+      phone: smokePhone("059"),
       language: "he",
       source: "web",
     },
@@ -1255,7 +1261,7 @@ async function main() {
     body: {
       restaurantId,
       name: `Smoke Campaign Optout ${runId}`,
-      phone: `058${String(Date.now()).slice(-7)}`,
+      phone: smokePhone("058"),
       language: "he",
       source: "web",
     },

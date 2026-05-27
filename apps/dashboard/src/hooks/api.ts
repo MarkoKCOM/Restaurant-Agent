@@ -663,7 +663,7 @@ export function useRedeemClaim() {
 // --- Loyalty ---
 
 export interface LoyaltyBalance {
-  points: number;
+  pointsBalance: number;
   tier: string;
   stampCard: {
     visits: number;

@@ -603,7 +603,7 @@ export function GuestDetailPage() {
           <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
             <div className="rounded-lg bg-red-50 p-3 sm:p-4 text-center">
               <p className="text-xs sm:text-sm text-red-600 font-medium">{t.guestDetail.points}</p>
-              <p className="text-xl sm:text-2xl font-bold text-red-700 mt-1">{loyaltyBalance.points}</p>
+              <p className="text-xl sm:text-2xl font-bold text-red-700 mt-1">{loyaltyBalance.pointsBalance}</p>
             </div>
             <div className="rounded-lg bg-purple-50 p-3 sm:p-4 text-center">
               <p className="text-xs sm:text-sm text-purple-600 font-medium">{t.guestDetail.tier}</p>

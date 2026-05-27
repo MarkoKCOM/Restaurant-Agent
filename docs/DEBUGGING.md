@@ -74,6 +74,8 @@ pnpm debug:bundle --since "30 minutes ago"
 
 The bundle is written to `artifacts/debug-bundles/<timestamp>/`. Set `OPENSEAT_TOKEN`, `JWT_SECRET`, or super-admin credentials to include `/api/v1/admin/diagnostics`, and set the normal smoke credentials to include the API smoke run. Use `--out /tmp/openseat-debug` to choose a specific folder.
 
+The bundle also runs deterministic membership-intent probes against `/api/v1/agent/debug/membership-intent`, covering balance, reward, referral, and promotional opt-out phrases. These checks do not call the LLM; they prove the agent debugging layer still maps common membership questions to the expected tools.
+
 After pulling changes that touch `packages/domain`, rebuild it before checking apps that import `@openseat/domain`.
 
 The main E2E runner writes a JSON artifact for every CLI run. By default it lands under `apps/e2e/artifacts/<runId>.json` and includes the API URL, timings, pass/fail counts, and per-test details:
@@ -231,6 +233,12 @@ For deterministic membership intent checks that do not call the LLM:
 METHOD=POST \
 BODY='{"message":"אפשר קוד חבר מביא חבר?"}' \
 pnpm debug:api -- http://localhost:3001/api/v1/agent/debug/membership-intent
+```
+
+Run the full deterministic membership-intent smoke set:
+
+```bash
+pnpm debug:agent-intents
 ```
 
 ## Dashboard Chat Diagnostics

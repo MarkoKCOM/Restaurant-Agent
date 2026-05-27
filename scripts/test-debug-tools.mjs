@@ -95,6 +95,17 @@ const skippedOutput = await summarize(skippedSmokePath);
 assertIncludes(skippedOutput, "Status: skipped");
 assertIncludes(skippedOutput, "Reason: missing credentials");
 
+const agentIntentScript = await readFile("scripts/agent-membership-intent-smoke.mjs", "utf8");
+for (const expectedProbe of [
+  "כמה נקודות יש לי במועדון?",
+  "Do I have any reward I can claim?",
+  "אפשר קוד חבר מביא חבר?",
+  "Please stop sending me club promo messages",
+  "Agent membership intent smoke:",
+]) {
+  assertIncludes(agentIntentScript, expectedProbe);
+}
+
 const e2ePath = await writeJson("e2e.json", {
   runId: "e2e-test",
   apiUrl: "http://localhost:3001",
@@ -161,6 +172,9 @@ for (const requiredReadmeContent of [
   "Migration drift:",
   "Dependencies: database=",
   "Membership processing:",
+  "Agent membership intents:",
+  "agent-membership-intents",
+  "agent-membership-intents.json",
   "Queues:",
   "Diagnostics request:",
   "## Open First",
@@ -171,6 +185,7 @@ for (const requiredReadmeContent of [
   "README.md",
   "highlights: {}",
   "manifest.highlights.adminDiagnostics",
+  "manifest.highlights.agentMembershipIntents",
   "readme: readmePath",
 ]) {
   assertIncludes(debugBundleCollector, requiredReadmeContent);

@@ -116,8 +116,38 @@ async function writeJson(name, value) {
   return outputPath;
 }
 
+async function readJson(path) {
+  return JSON.parse(await readFile(path, "utf8"));
+}
+
 function isObject(value) {
   return value && typeof value === "object" && !Array.isArray(value);
+}
+
+async function captureAgentIntentHighlights(artifactPath) {
+  try {
+    const report = await readJson(artifactPath);
+    manifest.highlights.agentMembershipIntents = {
+      status: report.status,
+      passed: report.passed,
+      total: report.total,
+      failed: report.failed,
+      failures: Array.isArray(report.results)
+        ? report.results
+            .filter((result) => result && result.ok === false)
+            .map((result) => ({
+              name: result.name,
+              requestId: result.requestId,
+              mismatches: result.mismatches,
+            }))
+        : [],
+    };
+  } catch (error) {
+    manifest.highlights.agentMembershipIntents = {
+      status: "unparsed",
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 async function captureDiagnosticsHighlights(commandRecord) {
@@ -214,6 +244,7 @@ async function writeReadme() {
       const migrationDrift = adminDiagnostics.migrationDrift ?? {};
       const checks = adminDiagnostics.checks ?? {};
       const membershipProcessing = adminDiagnostics.membershipProcessing ?? {};
+      const agentMembershipIntents = manifest.highlights.agentMembershipIntents;
       const queues = Array.isArray(adminDiagnostics.queues) ? adminDiagnostics.queues : [];
       lines.push(`- Admin diagnostics: ${adminDiagnostics.status ?? "unknown"}`);
       lines.push(
@@ -234,6 +265,11 @@ async function writeReadme() {
       lines.push(
         `- Membership processing: ${membershipProcessing.status ?? "unknown"} open=${membershipProcessing.openCount ?? "?"} attempts=${membershipProcessing.totalOpenAttempts ?? "?"}`,
       );
+      if (agentMembershipIntents) {
+        lines.push(
+          `- Agent membership intents: ${agentMembershipIntents.status ?? "unknown"} ${agentMembershipIntents.passed ?? "?"}/${agentMembershipIntents.total ?? "?"}`,
+        );
+      }
       if (queues.length > 0) {
         lines.push(`- Queues: ${queues.map((queue) => `${queue.name}:${queue.status}/failed=${queue.failed ?? "?"}`).join(", ")}`);
       }
@@ -360,6 +396,15 @@ if (process.env.OPENSEAT_ADMIN_PASSWORD || process.env.SABLE_ADMIN_PASSWORD || p
     reason: "OPENSEAT_ADMIN_PASSWORD, SABLE_ADMIN_PASSWORD, or ADMIN_SEED_PASSWORD is not set",
   });
 }
+
+const agentIntentArtifactPath = resolve(outDir, "agent-membership-intents.json");
+await runStep("agent-membership-intents", "node", ["scripts/agent-membership-intent-smoke.mjs"], {
+  env: {
+    OPENSEAT_API_URL: apiUrl,
+    OPENSEAT_AGENT_INTENT_ARTIFACT_PATH: agentIntentArtifactPath,
+  },
+});
+await captureAgentIntentHighlights(agentIntentArtifactPath);
 
 await runStep("recent-api-logs", "journalctl", [
   "-u",

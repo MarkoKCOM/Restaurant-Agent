@@ -588,6 +588,45 @@ async function main() {
     throw new Error(`Streak milestone bonus was not applied as 2x visit points: expected 20, got ${streakMilestoneTransaction?.points ?? "missing"}`);
   }
 
+  const challengesAfterCompletion = await request(`/api/v1/gamification/${reservation.guestId}/challenges?restaurantId=${restaurantId}`, { token });
+  const smokeChallengeAfter = (challengesAfterCompletion.challenges ?? []).find((item) => item.challenge?.id === smokeChallengeId);
+  record("gamification.challenge-progress", {
+    challengeId: smokeChallengeId,
+    activeChallengeCount: challengesAfterCompletion.challenges?.length ?? 0,
+    progress: smokeChallengeAfter?.progress?.currentValue ?? null,
+    status: smokeChallengeAfter?.progress?.status ?? null,
+    completed: Boolean(smokeChallengeAfter?.progress?.completedAt),
+    target: smokeChallengeAfter?.challenge?.targetValue ?? null,
+  });
+  if (!smokeChallengeAfter?.progress) {
+    throw new Error(`Reservation completion did not create progress for smoke challenge: ${smokeChallengeId}`);
+  }
+  if ((smokeChallengeAfter.progress.currentValue ?? 0) < 1 || !smokeChallengeAfter.progress.completedAt) {
+    throw new Error(
+      `Reservation completion did not complete smoke challenge: ${smokeChallengeId} progress=${smokeChallengeAfter.progress.currentValue ?? "missing"} completedAt=${smokeChallengeAfter.progress.completedAt ?? "missing"}`,
+    );
+  }
+
+  const repeatedChallengeIncrement = await request(`/api/v1/gamification/${reservation.guestId}/challenges/${smokeChallengeId}/increment`, {
+    method: "POST",
+    token,
+  });
+  const loyaltyAfterRepeatedIncrement = await request(`/api/v1/loyalty/${reservation.guestId}/balance`, { token });
+  record("gamification.challenge-idempotency", {
+    challengeId: smokeChallengeId,
+    progress: repeatedChallengeIncrement.progress,
+    target: repeatedChallengeIncrement.target,
+    completed: repeatedChallengeIncrement.completed,
+    pointsBefore: loyalty.pointsBalance,
+    pointsAfter: loyaltyAfterRepeatedIncrement.pointsBalance,
+  });
+  if (repeatedChallengeIncrement.progress !== smokeChallengeAfter.progress.currentValue) {
+    throw new Error(`Completed challenge increment changed progress: before=${smokeChallengeAfter.progress.currentValue} after=${repeatedChallengeIncrement.progress}`);
+  }
+  if (loyaltyAfterRepeatedIncrement.pointsBalance !== loyalty.pointsBalance) {
+    throw new Error(`Completed challenge increment awarded duplicate points: before=${loyalty.pointsBalance} after=${loyaltyAfterRepeatedIncrement.pointsBalance}`);
+  }
+
   const leaderboardOptIn = await request(`/api/v1/gamification/${reservation.guestId}/leaderboard/opt-in`, {
     method: "POST",
     token,
@@ -644,45 +683,6 @@ async function main() {
       optedIn: optedOut.leaderboard?.optedIn ?? null,
     });
   });
-
-  const challengesAfterCompletion = await request(`/api/v1/gamification/${reservation.guestId}/challenges?restaurantId=${restaurantId}`, { token });
-  const smokeChallengeAfter = (challengesAfterCompletion.challenges ?? []).find((item) => item.challenge?.id === smokeChallengeId);
-  record("gamification.challenge-progress", {
-    challengeId: smokeChallengeId,
-    activeChallengeCount: challengesAfterCompletion.challenges?.length ?? 0,
-    progress: smokeChallengeAfter?.progress?.currentValue ?? null,
-    status: smokeChallengeAfter?.progress?.status ?? null,
-    completed: Boolean(smokeChallengeAfter?.progress?.completedAt),
-    target: smokeChallengeAfter?.challenge?.targetValue ?? null,
-  });
-  if (!smokeChallengeAfter?.progress) {
-    throw new Error(`Reservation completion did not create progress for smoke challenge: ${smokeChallengeId}`);
-  }
-  if ((smokeChallengeAfter.progress.currentValue ?? 0) < 1 || !smokeChallengeAfter.progress.completedAt) {
-    throw new Error(
-      `Reservation completion did not complete smoke challenge: ${smokeChallengeId} progress=${smokeChallengeAfter.progress.currentValue ?? "missing"} completedAt=${smokeChallengeAfter.progress.completedAt ?? "missing"}`,
-    );
-  }
-
-  const repeatedChallengeIncrement = await request(`/api/v1/gamification/${reservation.guestId}/challenges/${smokeChallengeId}/increment`, {
-    method: "POST",
-    token,
-  });
-  const loyaltyAfterRepeatedIncrement = await request(`/api/v1/loyalty/${reservation.guestId}/balance`, { token });
-  record("gamification.challenge-idempotency", {
-    challengeId: smokeChallengeId,
-    progress: repeatedChallengeIncrement.progress,
-    target: repeatedChallengeIncrement.target,
-    completed: repeatedChallengeIncrement.completed,
-    pointsBefore: loyalty.pointsBalance,
-    pointsAfter: loyaltyAfterRepeatedIncrement.pointsBalance,
-  });
-  if (repeatedChallengeIncrement.progress !== smokeChallengeAfter.progress.currentValue) {
-    throw new Error(`Completed challenge increment changed progress: before=${smokeChallengeAfter.progress.currentValue} after=${repeatedChallengeIncrement.progress}`);
-  }
-  if (loyaltyAfterRepeatedIncrement.pointsBalance !== loyalty.pointsBalance) {
-    throw new Error(`Completed challenge increment awarded duplicate points: before=${loyalty.pointsBalance} after=${loyaltyAfterRepeatedIncrement.pointsBalance}`);
-  }
 
   const deactivatedChallenge = await request(`/api/v1/gamification/challenges/${smokeChallengeId}`, {
     method: "PATCH",

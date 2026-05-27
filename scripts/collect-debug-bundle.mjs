@@ -63,6 +63,10 @@ const membershipDebugRestaurantId =
   process.env.OPENSEAT_RESTAURANT_ID ||
   process.env.OPENSEAT_BUNDLE_RESTAURANT_ID ||
   "";
+const membershipDebugRestaurantSlug =
+  process.env.OPENSEAT_RESTAURANT_SLUG ||
+  process.env.OPENSEAT_BUNDLE_RESTAURANT_SLUG ||
+  "";
 const manifest = {
   createdAt: new Date().toISOString(),
   apiUrl,
@@ -446,12 +450,13 @@ if (diagnosticsToken.token) {
   diagnosticsCommand.tokenSource = diagnosticsToken.source;
   await captureDiagnosticsHighlights(diagnosticsCommand);
 
-  if (membershipDebugRestaurantId) {
+  if (membershipDebugRestaurantId || membershipDebugRestaurantSlug) {
     const membershipCommand = await runStep("membership-debug-summary", "node", ["scripts/membership-debug-summary.mjs"], {
       env: {
         OPENSEAT_API_URL: apiUrl,
         OPENSEAT_TOKEN: diagnosticsToken.token,
         OPENSEAT_RESTAURANT_ID: membershipDebugRestaurantId,
+        OPENSEAT_RESTAURANT_SLUG: membershipDebugRestaurantSlug,
       },
     });
     membershipCommand.tokenSource = diagnosticsToken.source;
@@ -459,7 +464,7 @@ if (diagnosticsToken.token) {
     manifest.commands.push({
       name: "membership-debug-summary",
       status: "skipped",
-      reason: "OPENSEAT_RESTAURANT_ID or OPENSEAT_BUNDLE_RESTAURANT_ID is not set",
+      reason: "OPENSEAT_RESTAURANT_ID, OPENSEAT_BUNDLE_RESTAURANT_ID, OPENSEAT_RESTAURANT_SLUG, or OPENSEAT_BUNDLE_RESTAURANT_SLUG is not set",
     });
   }
 } else {

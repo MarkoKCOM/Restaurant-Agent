@@ -82,19 +82,71 @@ function failStep(name, result) {
   console.error(`logs: pnpm debug:logs ${result.requestId} --since "2 hours ago"`);
 }
 
+async function resolveRestaurantId(params) {
+  if (params.restaurantId) {
+    return {
+      restaurantId: params.restaurantId,
+      restaurantSlug: "",
+      restaurantName: "",
+      requestId: "",
+    };
+  }
+
+  if (!params.restaurantSlug) {
+    return {
+      restaurantId: "",
+      restaurantSlug: "",
+      restaurantName: "",
+      requestId: "",
+    };
+  }
+
+  const result = await getJson(new URL(`${params.apiUrl}/api/v1/admin/restaurants`), params.token, requestIdFor("restaurants"));
+  if (!result.ok) {
+    failStep("restaurant lookup", result);
+    process.exit(1);
+  }
+
+  const restaurants = Array.isArray(result.body) ? result.body : [];
+  const match = restaurants.find((restaurant) => restaurant?.slug === params.restaurantSlug);
+  if (!match?.id) {
+    console.error(`Restaurant slug not found: ${params.restaurantSlug} requestId=${result.requestId}`);
+    console.error(`Available slugs: ${restaurants.map((restaurant) => restaurant?.slug).filter(Boolean).join(", ") || "none"}`);
+    console.error(`logs: pnpm debug:logs ${result.requestId} --since "2 hours ago"`);
+    process.exit(1);
+  }
+
+  return {
+    restaurantId: match.id,
+    restaurantSlug: match.slug ?? params.restaurantSlug,
+    restaurantName: match.name ?? "",
+    requestId: result.requestId,
+  };
+}
+
 const apiUrl = (readOption("api-url", process.env.OPENSEAT_API_URL ?? "http://127.0.0.1:3001") ?? "").replace(/\/$/, "");
 const token = readOption("token", process.env.OPENSEAT_TOKEN ?? "");
-const restaurantId = readOption("restaurant-id", process.env.OPENSEAT_RESTAURANT_ID ?? "");
+const explicitRestaurantId = readOption("restaurant-id", process.env.OPENSEAT_RESTAURANT_ID ?? "");
+const restaurantSlug = readOption("restaurant-slug", process.env.OPENSEAT_RESTAURANT_SLUG ?? "");
 const failureStatus = readOption("failure-status", "open");
 const failureLimit = readOption("failure-limit", "20");
 const engagementStatus = readOption("engagement-status", "");
 const messageCategory = readOption("message-category", "");
 
-if (!token || !restaurantId) {
-  console.error("Missing OPENSEAT_TOKEN or OPENSEAT_RESTAURANT_ID.");
+if (!token || (!explicitRestaurantId && !restaurantSlug)) {
+  console.error("Missing OPENSEAT_TOKEN and a restaurant selector.");
   console.error("Usage: OPENSEAT_TOKEN=... OPENSEAT_RESTAURANT_ID=... pnpm debug:membership");
+  console.error("   or: OPENSEAT_TOKEN=... OPENSEAT_RESTAURANT_SLUG=... pnpm debug:membership");
   process.exit(1);
 }
+
+const restaurant = await resolveRestaurantId({
+  apiUrl,
+  token,
+  restaurantId: explicitRestaurantId,
+  restaurantSlug,
+});
+const restaurantId = restaurant.restaurantId;
 
 const failuresUrl = new URL(`${apiUrl}/api/v1/loyalty/processing-failures`);
 failuresUrl.searchParams.set("restaurantId", restaurantId);
@@ -129,6 +181,9 @@ const jobs = Array.isArray(engagementResult.body?.jobs) ? engagementResult.body.
 
 console.log("Membership Debug Summary");
 console.log(`restaurantId=${restaurantId}`);
+if (restaurant.restaurantSlug) console.log(`restaurantSlug=${restaurant.restaurantSlug}`);
+if (restaurant.restaurantName) console.log(`restaurantName=${restaurant.restaurantName}`);
+if (restaurant.requestId) console.log(`restaurantLookupRequestId=${restaurant.requestId}`);
 console.log(`failuresRequestId=${failuresResult.requestId}`);
 console.log(`engagementRequestId=${engagementResult.requestId}`);
 console.log("");

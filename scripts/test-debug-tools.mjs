@@ -143,9 +143,10 @@ const missingMembershipDebugEnv = await expectCommandFailure("node", [
     ...process.env,
     OPENSEAT_TOKEN: "",
     OPENSEAT_RESTAURANT_ID: "",
+    OPENSEAT_RESTAURANT_SLUG: "",
   },
 });
-assertIncludes(missingMembershipDebugEnv.stderr, "Missing OPENSEAT_TOKEN or OPENSEAT_RESTAURANT_ID");
+assertIncludes(missingMembershipDebugEnv.stderr, "Missing OPENSEAT_TOKEN and a restaurant selector");
 assertIncludes(missingMembershipDebugEnv.stderr, "pnpm debug:membership");
 
 const agentIntentPath = await writeJson("agent-intents.json", {
@@ -498,7 +499,10 @@ for (const requiredMembershipDebugContent of [
   "Engagement jobs by status:",
   "failuresRequestId=",
   "engagementRequestId=",
+  "restaurantLookupRequestId=",
+  "OPENSEAT_RESTAURANT_SLUG",
   "pnpm debug:logs",
+  "/api/v1/admin/restaurants",
   "/api/v1/loyalty/processing-failures/",
   "/api/v1/engagement/jobs",
 ]) {
@@ -546,6 +550,7 @@ for (const requiredReadmeContent of [
   "membership-debug-summary",
   "membership-debug-summary.txt",
   "OPENSEAT_BUNDLE_RESTAURANT_ID",
+  "OPENSEAT_BUNDLE_RESTAURANT_SLUG",
   "waitForApiReady",
   "OPENSEAT_BUNDLE_READY_TIMEOUT_MS",
   "Queues:",
@@ -562,6 +567,7 @@ for (const requiredReadmeContent of [
   "engagement",
   "manifest.highlights.agentMembershipIntents",
   "membershipDebugRestaurantId",
+  "membershipDebugRestaurantSlug",
   "readme: readmePath",
 ]) {
   assertIncludes(debugBundleCollector, requiredReadmeContent);

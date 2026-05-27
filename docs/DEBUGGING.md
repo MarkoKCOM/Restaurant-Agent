@@ -72,7 +72,7 @@ Collect a timestamped debug bundle with health probe output, optional admin diag
 pnpm debug:bundle --since "30 minutes ago"
 ```
 
-The bundle is written to `artifacts/debug-bundles/<timestamp>/`. Set `OPENSEAT_TOKEN`, `JWT_SECRET`, or super-admin credentials to include `/api/v1/admin/diagnostics`, set `OPENSEAT_RESTAURANT_ID` or `OPENSEAT_BUNDLE_RESTAURANT_ID` to include `pnpm debug:membership`, and set the normal smoke credentials to include the API smoke run. Use `--out /tmp/openseat-debug` to choose a specific folder.
+The bundle is written to `artifacts/debug-bundles/<timestamp>/`. Set `OPENSEAT_TOKEN`, `JWT_SECRET`, or super-admin credentials to include `/api/v1/admin/diagnostics`, set `OPENSEAT_RESTAURANT_ID`, `OPENSEAT_BUNDLE_RESTAURANT_ID`, `OPENSEAT_RESTAURANT_SLUG`, or `OPENSEAT_BUNDLE_RESTAURANT_SLUG` to include `pnpm debug:membership`, and set the normal smoke credentials to include the API smoke run. Use `--out /tmp/openseat-debug` to choose a specific folder.
 
 The bundle also runs deterministic membership-intent probes against `/api/v1/agent/debug/membership-intent`, covering balance, reward, referral, and promotional opt-out phrases. These checks do not call the LLM; they prove the agent debugging layer still maps common membership questions to the expected tools.
 
@@ -182,7 +182,7 @@ OPENSEAT_RESTAURANT_ID=... \
 pnpm debug:membership
 ```
 
-This prints open processing failures by stage/status, recent engagement-job counts, skipped engagement reasons, request IDs for both API reads, and ready-to-run retry commands for repairable membership processing failures.
+Use `OPENSEAT_RESTAURANT_SLUG=...` instead of `OPENSEAT_RESTAURANT_ID` when you know the dashboard slug but not the UUID. This prints open processing failures by stage/status, recent engagement-job counts, skipped engagement reasons, request IDs for API reads, and ready-to-run retry commands for repairable membership processing failures.
 
 ```bash
 OPENSEAT_TOKEN=... pnpm debug:api -- \

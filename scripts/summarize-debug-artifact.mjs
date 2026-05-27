@@ -245,7 +245,7 @@ function summarizeDebugBundleManifest(report) {
   if (gamification.status) {
     printLine(
       "Gamification",
-      `${gamification.status} activeChallenges=${gamificationChallenges.active ?? "?"} stuckChallenges=${gamificationChallenges.stuckCompletions ?? "?"} referralCodes=${gamificationReferrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${gamificationReferrals.referrerCreditMismatches ?? "?"}`,
+      `${gamification.status} activeChallenges=${gamificationChallenges.active ?? "?"} smokeChallenges=${gamificationChallenges.activeSmokeChallenges ?? "?"} stuckChallenges=${gamificationChallenges.stuckCompletions ?? "?"} referralCodes=${gamificationReferrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${gamificationReferrals.referrerCreditMismatches ?? "?"}`,
     );
   }
   if (engagement.status) {

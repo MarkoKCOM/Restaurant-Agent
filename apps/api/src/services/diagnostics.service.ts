@@ -156,6 +156,7 @@ export interface GamificationDiagnostic {
   challenges?: {
     total: number;
     active: number;
+    activeSmokeChallenges: number;
     progressRows: number;
     inProgress: number;
     completed: number;
@@ -418,11 +419,16 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
       db.execute(sql`
         select
           count(*)::int as total_challenges,
-          count(*) filter (where is_active = true)::int as active_challenges
+          count(*) filter (where is_active = true)::int as active_challenges,
+          count(*) filter (
+            where is_active = true
+              and name like 'Smoke visit challenge %'
+          )::int as active_smoke_challenges
         from ${challenges}
       `) as Promise<Array<{
         total_challenges: number;
         active_challenges: number;
+        active_smoke_challenges: number;
       }>>,
       db.execute(sql`
         select
@@ -518,16 +524,18 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
     const referralSummary = referralRows[0];
     const welcomeBonusSummary = welcomeBonusRows[0];
     const stuckCompletions = Number(stuckChallengeRows[0]?.stuck_count ?? 0);
+    const activeSmokeChallenges = Number(challengeSummary?.active_smoke_challenges ?? 0);
     const referredGuestsWithoutWelcomeBonus = Number(welcomeBonusSummary?.referred_without_welcome_bonus ?? 0);
     const referrerCreditMismatches = Number(referrerMismatchRows[0]?.mismatch_count ?? 0);
 
     return {
-      status: stuckCompletions > 0 || referredGuestsWithoutWelcomeBonus > 0 || referrerCreditMismatches > 0
+      status: activeSmokeChallenges > 0 || stuckCompletions > 0 || referredGuestsWithoutWelcomeBonus > 0 || referrerCreditMismatches > 0
         ? "attention"
         : "ok",
       challenges: {
         total: Number(challengeSummary?.total_challenges ?? 0),
         active: Number(challengeSummary?.active_challenges ?? 0),
+        activeSmokeChallenges,
         progressRows: Number(progressSummary?.progress_rows ?? 0),
         inProgress: Number(progressSummary?.in_progress ?? 0),
         completed: Number(progressSummary?.completed ?? 0),

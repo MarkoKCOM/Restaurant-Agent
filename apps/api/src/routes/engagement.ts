@@ -6,7 +6,7 @@ import {
   checkWinBack,
 } from "../services/engagement.service.js";
 import { listOutboundMessages } from "../services/outbound-message.service.js";
-import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
+import { enforceTenant, requireGrowthPackage, requireRestaurantAdmin } from "../middleware/auth.js";
 
 function sendEngagementError(
   request: FastifyRequest,
@@ -15,6 +15,7 @@ function sendEngagementError(
   message: string,
   code: string,
   context: Record<string, unknown> = {},
+  extra: Record<string, unknown> = {},
 ) {
   const logPayload = {
     ...context,
@@ -36,7 +37,34 @@ function sendEngagementError(
     error: message,
     code,
     requestId: request.id,
+    ...extra,
   });
+}
+
+async function enforceEngagementAccess(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  restaurantId: string,
+) {
+  const accessError = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
+  if (accessError) {
+    return sendEngagementError(request, reply, 403, accessError, "ENGAGEMENT_FORBIDDEN", { restaurantId });
+  }
+
+  const packageAccess = await requireGrowthPackage(restaurantId);
+  if (!packageAccess.ok) {
+    return sendEngagementError(
+      request,
+      reply,
+      packageAccess.code === "RESTAURANT_NOT_FOUND" ? 404 : 403,
+      packageAccess.error ?? "Growth package required",
+      packageAccess.code ?? "PACKAGE_GROWTH_REQUIRED",
+      { restaurantId, restaurantPackage: packageAccess.restaurantPackage, requiredPackage: "growth" },
+      { restaurantId, restaurantPackage: packageAccess.restaurantPackage, requiredPackage: "growth" },
+    );
+  }
+
+  return null;
 }
 
 export async function engagementRoutes(app: FastifyInstance) {
@@ -59,10 +87,8 @@ export async function engagementRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendEngagementError(request, reply, 403, err, "ENGAGEMENT_FORBIDDEN", { restaurantId });
-    }
+    const accessError = await enforceEngagementAccess(request, reply, restaurantId);
+    if (accessError) return accessError;
 
     const parsedLimit = limit ? Number(limit) : undefined;
     const messages = await listOutboundMessages({
@@ -93,10 +119,8 @@ export async function engagementRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendEngagementError(request, reply, 403, err, "ENGAGEMENT_FORBIDDEN", { restaurantId });
-    }
+    const accessError = await enforceEngagementAccess(request, reply, restaurantId);
+    if (accessError) return accessError;
 
     const jobs = await listEngagementJobs({ restaurantId, guestId, status, messageCategory });
     return { jobs };
@@ -116,10 +140,8 @@ export async function engagementRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendEngagementError(request, reply, 403, err, "ENGAGEMENT_FORBIDDEN", { restaurantId });
-    }
+    const accessError = await enforceEngagementAccess(request, reply, restaurantId);
+    if (accessError) return accessError;
 
     try {
       const result = await checkBirthdays(restaurantId);
@@ -150,10 +172,8 @@ export async function engagementRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendEngagementError(request, reply, 403, err, "ENGAGEMENT_FORBIDDEN", { restaurantId });
-    }
+    const accessError = await enforceEngagementAccess(request, reply, restaurantId);
+    if (accessError) return accessError;
 
     try {
       const result = await checkAnniversaries(restaurantId);
@@ -184,10 +204,8 @@ export async function engagementRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
-    if (err) {
-      return sendEngagementError(request, reply, 403, err, "ENGAGEMENT_FORBIDDEN", { restaurantId });
-    }
+    const accessError = await enforceEngagementAccess(request, reply, restaurantId);
+    if (accessError) return accessError;
 
     try {
       const result = await checkWinBack(restaurantId);

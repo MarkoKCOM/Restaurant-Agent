@@ -790,6 +790,7 @@ const adminRoutes = await readFile("apps/api/src/routes/admin.ts", "utf8");
 const authMiddleware = await readFile("apps/api/src/middleware/auth.ts", "utf8");
 const campaignRoutes = await readFile("apps/api/src/routes/campaigns.ts", "utf8");
 const analyticsRoutes = await readFile("apps/api/src/routes/analytics.ts", "utf8");
+const engagementRoutes = await readFile("apps/api/src/routes/engagement.ts", "utf8");
 const outboundMessageService = await readFile("apps/api/src/services/outbound-message.service.ts", "utf8");
 const summaryService = await readFile("apps/api/src/services/summary.service.ts", "utf8");
 const debugTokenHelpers = await readFile("scripts/lib/debug-token.mjs", "utf8");
@@ -943,6 +944,17 @@ for (const requiredAnalyticsPackageContent of [
   "await enforceAnalyticsAccess",
 ]) {
   assertIncludes(analyticsRoutes, requiredAnalyticsPackageContent);
+}
+
+for (const requiredEngagementPackageContent of [
+  "enforceEngagementAccess",
+  "requireGrowthPackage",
+  "requiredPackage: \"growth\"",
+  "packageAccess.code === \"RESTAURANT_NOT_FOUND\" ? 404 : 403",
+  "PACKAGE_GROWTH_REQUIRED",
+  "await enforceEngagementAccess",
+]) {
+  assertIncludes(engagementRoutes, requiredEngagementPackageContent);
 }
 
 for (const requiredLogTraceContent of [

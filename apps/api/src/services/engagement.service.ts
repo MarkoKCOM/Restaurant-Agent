@@ -16,6 +16,7 @@ export type EngagementJobType =
   | "win_back_90"
   | "leaderboard_summary"
   | "lucky_spin_reward"
+  | "challenge_completion"
   | "streak_broken";
 
 export const PROMOTIONAL_ENGAGEMENT_TYPES = [
@@ -832,6 +833,19 @@ export async function scheduleLuckySpinReward(
     guestId,
     restaurantId,
     type: "lucky_spin_reward",
+    triggerAt,
+  });
+}
+
+export async function scheduleChallengeCompletion(
+  guestId: string,
+  restaurantId: string,
+): Promise<EngagementJobRow> {
+  const triggerAt = await applyRestaurantQuietHours(restaurantId, new Date(Date.now() + 5 * 60 * 1000));
+  return scheduleEngagementJob({
+    guestId,
+    restaurantId,
+    type: "challenge_completion",
     triggerAt,
   });
 }

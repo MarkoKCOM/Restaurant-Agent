@@ -107,6 +107,7 @@ function summarizeSmoke(report) {
       || step.step === "engagement.review-routing-negative"
       || step.step === "engagement.review-request.cleanup"
       || step.step === "gamification.challenge-progress"
+      || step.step === "gamification.challenge-completion.cleanup"
       || step.step === "gamification.challenge.cleanup"
       || step.step === "gamification.future-challenge.window"
       || step.step === "gamification.future-challenge.cleanup"
@@ -156,6 +157,8 @@ function summarizeSmoke(report) {
         console.log(`- engagement.review-request.cleanup: markedSent=${step.markedSent === true ? "yes" : "no"} jobId=${step.jobId ?? "?"}`);
       } else if (step.step === "gamification.challenge-progress") {
         console.log(`- gamification.challenge-progress: progress=${step.progress ?? "?"}/${step.target ?? "?"} status=${step.status ?? "?"} completed=${step.completed === true ? "yes" : "no"}`);
+      } else if (step.step === "gamification.challenge-completion.cleanup") {
+        console.log(`- gamification.challenge-completion.cleanup: markedSent=${step.markedSent === true ? "yes" : "no"} jobId=${step.jobId ?? "?"}`);
       } else if (step.step === "gamification.challenge.cleanup") {
         console.log(`- gamification.challenge.cleanup: active=${step.isActive === false ? "no" : "yes"} challengeId=${step.challengeId ?? "?"}`);
       } else if (step.step === "gamification.future-challenge.window") {

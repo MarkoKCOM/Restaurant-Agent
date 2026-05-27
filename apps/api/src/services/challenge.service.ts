@@ -8,7 +8,7 @@ import {
   loyaltyTransactions,
 } from "../db/schema.js";
 import { awardPoints } from "./loyalty.service.js";
-import { scheduleStreakBrokenRecovery } from "./engagement.service.js";
+import { scheduleChallengeCompletion, scheduleStreakBrokenRecovery } from "./engagement.service.js";
 
 export type ChallengeRow = InferSelectModel<typeof challenges>;
 export type ChallengeProgressRow = InferSelectModel<typeof challengeProgress>;
@@ -194,7 +194,13 @@ export async function getGuestChallengeProgress(
 export async function incrementChallengeProgress(
   guestId: string,
   challengeId: string,
-): Promise<{ completed: boolean; reward: number; progress: number; target: number }> {
+): Promise<{
+  completed: boolean;
+  reward: number;
+  progress: number;
+  target: number;
+  completionJobId: string | null;
+}> {
   // Get the challenge
   const [challenge] = await db
     .select()
@@ -230,6 +236,7 @@ export async function incrementChallengeProgress(
       reward: challenge.rewardPoints,
       progress: progress.currentValue,
       target: challenge.targetValue,
+      completionJobId: null,
     };
   }
 
@@ -248,6 +255,7 @@ export async function incrementChallengeProgress(
     .returning();
 
   // Award points on completion
+  let completionJobId: string | null = null;
   if (completed) {
     // Get guest to find restaurantId
     const [guest] = await db
@@ -263,6 +271,8 @@ export async function incrementChallengeProgress(
         challenge.rewardPoints,
         `challenge_completed:${challenge.name}`,
       );
+      const completionJob = await scheduleChallengeCompletion(guestId, guest.restaurantId);
+      completionJobId = completionJob.id;
     }
   }
 
@@ -271,6 +281,7 @@ export async function incrementChallengeProgress(
     reward: challenge.rewardPoints,
     progress: newValue,
     target: challenge.targetValue,
+    completionJobId,
   };
 }
 

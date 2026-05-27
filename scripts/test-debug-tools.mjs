@@ -96,6 +96,7 @@ const smokePath = await writeJson("smoke.json", {
     { step: "gamification.expired-challenge.cleanup", challengeId: "expired-challenge-test-1", isActive: false },
     { step: "gamification.challenge-progress", progress: 1, target: 1, status: "completed", completed: true },
     { step: "gamification.challenge-idempotency", challengeId: "challenge-test-1", progress: 1, target: 1, completed: true, pointsBefore: 15, pointsAfter: 15 },
+    { step: "gamification.challenge-completion.cleanup", challengeId: "challenge-test-1", jobId: "challenge-completion-job-1", markedSent: true },
     { step: "gamification.challenge.cleanup", challengeId: "challenge-test-1", isActive: false },
     { step: "gamification.streak-after-completion", current: 3, best: 3, lastVisitWeek: "2026-W22", seeded: true },
     { step: "gamification.streak-milestone-bonus", expectedBonusPoints: 20, actualBonusPoints: 20, reason: "streak_milestone:3" },
@@ -158,6 +159,7 @@ assertIncludes(smokeOutput, "gamification.expired-challenge.window: listedActive
 assertIncludes(smokeOutput, "gamification.expired-challenge.cleanup: active=no challengeId=expired-challenge-test-1");
 assertIncludes(smokeOutput, "gamification.challenge-progress: progress=1/1 status=completed completed=yes");
 assertIncludes(smokeOutput, "gamification.challenge-idempotency: progress=1/1 points=15->15 duplicateAward=no");
+assertIncludes(smokeOutput, "gamification.challenge-completion.cleanup: markedSent=yes jobId=challenge-completion-job-1");
 assertIncludes(smokeOutput, "gamification.challenge.cleanup: active=no challengeId=challenge-test-1");
 assertIncludes(smokeOutput, "gamification.streak-after-completion: current=3 best=3 week=2026-W22 seeded=true");
 assertIncludes(smokeOutput, "gamification.streak-milestone-bonus: points=20/20 reason=streak_milestone:3");

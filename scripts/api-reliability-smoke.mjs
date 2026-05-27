@@ -207,7 +207,7 @@ async function markSmokeEngagementJobSent(jobId, type = "thank_you") {
   if (!isUuid(jobId)) {
     throw new Error(`Refusing to cleanup invalid engagement job id: ${jobId}`);
   }
-  if (!["thank_you", "review_request", "leaderboard_summary", "lucky_spin_reward", "streak_broken"].includes(type)) {
+  if (!["thank_you", "review_request", "leaderboard_summary", "lucky_spin_reward", "challenge_completion", "streak_broken"].includes(type)) {
     throw new Error(`Refusing to cleanup unsupported engagement job type: ${type}`);
   }
 
@@ -852,6 +852,7 @@ async function main() {
   const engagementJobs = await request(`/api/v1/engagement/jobs?restaurantId=${restaurantId}&guestId=${reservation.guestId}`, { token });
   const thankYouJob = (engagementJobs.jobs ?? []).find((job) => job.type === "thank_you");
   const luckySpinJob = (engagementJobs.jobs ?? []).find((job) => job.type === "lucky_spin_reward");
+  const challengeCompletionJob = (engagementJobs.jobs ?? []).find((job) => job.type === "challenge_completion");
   const thankYouTriggerTime = thankYouJob?.triggerAt ? timeInJerusalem(thankYouJob.triggerAt) : null;
   const thankYouOutsideQuietHours = thankYouTriggerTime
     ? !isTimeInWindow(thankYouTriggerTime, thankYouQuietHours.start, thankYouQuietHours.end)
@@ -860,6 +861,8 @@ async function main() {
     jobCount: engagementJobs.jobs?.length ?? 0,
     statuses: [...new Set((engagementJobs.jobs ?? []).map((job) => job.status))],
     types: [...new Set((engagementJobs.jobs ?? []).map((job) => job.type))],
+    challengeCompletionJobId: challengeCompletionJob?.id ?? null,
+    challengeCompletionStatus: challengeCompletionJob?.status ?? null,
     thankYouTriggerAt: thankYouJob?.triggerAt ?? null,
     thankYouTriggerTime,
     thankYouQuietStart: thankYouQuietHours.start,
@@ -868,6 +871,9 @@ async function main() {
   });
   if (!luckySpinJob || luckySpinJob.status !== "pending") {
     throw new Error(`Lucky spin reward delivery job was not scheduled: ${JSON.stringify(engagementJobs.jobs ?? [])}`);
+  }
+  if (!challengeCompletionJob || challengeCompletionJob.status !== "pending") {
+    throw new Error(`Challenge completion congratulations job was not scheduled: ${JSON.stringify(engagementJobs.jobs ?? [])}`);
   }
   if (!thankYouJob) {
     throw new Error("Reservation completion did not schedule a thank-you engagement job");
@@ -886,6 +892,13 @@ async function main() {
     const cleaned = await markSmokeEngagementJobSent(luckySpinJob.id, "lucky_spin_reward");
     record("gamification.lucky-spin.cleanup", {
       jobId: luckySpinJob.id,
+      markedSent: cleaned,
+    });
+  });
+  cleanupTasks.push(async () => {
+    const cleaned = await markSmokeEngagementJobSent(challengeCompletionJob.id, "challenge_completion");
+    record("gamification.challenge-completion.cleanup", {
+      jobId: challengeCompletionJob.id,
       markedSent: cleaned,
     });
   });

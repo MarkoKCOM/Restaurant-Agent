@@ -44,6 +44,12 @@ function assertIncludes(output, expected) {
   }
 }
 
+function assertNotIncludes(output, expected) {
+  if (output.includes(expected)) {
+    throw new Error(`Expected output not to include ${JSON.stringify(expected)}.\nOutput:\n${output}`);
+  }
+}
+
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
@@ -712,6 +718,7 @@ const membershipDebugSummary = await readFile("scripts/membership-debug-summary.
 const outboundDebugSummary = await readFile("scripts/outbound-debug-summary.mjs", "utf8");
 const queueDebugSummary = await readFile("apps/api/scripts/queue-debug-summary.mjs", "utf8");
 const diagnosticsService = await readFile("apps/api/src/services/diagnostics.service.ts", "utf8");
+const adminRoutes = await readFile("apps/api/src/routes/admin.ts", "utf8");
 const outboundMessageService = await readFile("apps/api/src/services/outbound-message.service.ts", "utf8");
 const summaryService = await readFile("apps/api/src/services/summary.service.ts", "utf8");
 const debugTokenHelpers = await readFile("scripts/lib/debug-token.mjs", "utf8");
@@ -828,6 +835,9 @@ for (const requiredDiagnosticsContent of [
 ]) {
   assertIncludes(diagnosticsService, requiredDiagnosticsContent);
 }
+
+assertIncludes(adminRoutes, "return reply.status(200).send({");
+assertNotIncludes(adminRoutes, "report.status === \"ok\" ? 200 : 503");
 
 for (const requiredLogTraceContent of [
   "parseJsonFromLine",

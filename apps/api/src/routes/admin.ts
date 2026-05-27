@@ -42,8 +42,7 @@ export async function adminRoutes(app: FastifyInstance) {
     if (err) return sendAdminError(request, reply, 403, err, "ADMIN_FORBIDDEN");
 
     const report = await getDiagnosticsReport();
-    const statusCode = report.status === "ok" ? 200 : 503;
-    return reply.status(statusCode).send({
+    return reply.status(200).send({
       ...report,
       requestId: request.id,
     });

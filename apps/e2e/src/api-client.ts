@@ -26,14 +26,22 @@ let cachedEmployeeToken: string | null = null;
 
 async function request(path: string, opts: { method?: string; token?: string; body?: unknown; retry?: boolean } = {}) {
   const { method = "GET", token, body, retry = true } = opts;
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers: {
-      ...(body ? { "Content-Type": "application/json" } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const requestId = `e2e-${randomUUID()}`;
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      method,
+      headers: {
+        "x-request-id": requestId,
+        ...(body ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`${method} ${path} -> fetch failed requestId=${requestId}: ${message}`);
+  }
 
   // Auto-refresh token on 401 and retry once
   if (res.status === 401 && token && retry) {
@@ -51,7 +59,12 @@ async function request(path: string, opts: { method?: string; token?: string; bo
   }
 
   if (!res.ok) {
-    throw new Error(`${method} ${path} -> ${res.status}: ${typeof data === "string" ? data : JSON.stringify(data)}`);
+    const responseRequestId = res.headers.get("x-request-id");
+    const bodyRequestId = data && typeof data === "object" && !Array.isArray(data) && "requestId" in data
+      ? String(data.requestId)
+      : undefined;
+    const traceId = bodyRequestId ?? responseRequestId ?? requestId;
+    throw new Error(`${method} ${path} -> ${res.status} requestId=${traceId}: ${typeof data === "string" ? data : JSON.stringify(data)}`);
   }
 
   return data as Record<string, unknown>;
@@ -62,7 +75,7 @@ async function expectStatus(fn: () => Promise<unknown>, expectedStatus: number):
     await fn();
   } catch (error) {
     const message = String(error);
-    if (message.includes(`-> ${expectedStatus}:`)) return message;
+    if (message.includes(`-> ${expectedStatus}`)) return message;
     throw error;
   }
 

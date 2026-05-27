@@ -215,6 +215,15 @@ assertIncludes(e2eOutput, "Status: 1/2 passed");
 assertIncludes(e2eOutput, "- Create Reservation: boom requestId=e2e-request-1");
 assertIncludes(e2eOutput, 'pnpm debug:logs e2e-request-1 --since "2 hours ago"');
 
+const e2eApiClient = await readFile("apps/e2e/src/api-client.ts", "utf8");
+for (const expectedE2eClientContent of [
+  '"x-request-id": requestId',
+  "fetch failed requestId=",
+  "requestId=${traceId}",
+]) {
+  assertIncludes(e2eApiClient, expectedE2eClientContent);
+}
+
 const deployWorkflow = await readFile(".github/workflows/deploy.yml", "utf8");
 for (const requiredPath of [
   ".github/workflows/deploy.yml",

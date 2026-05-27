@@ -11,6 +11,28 @@ const expectedStatus = process.env.EXPECT_STATUS ? Number(process.env.EXPECT_STA
 const expectedCode = process.env.EXPECT_CODE;
 const expectedRequestId = process.env.EXPECT_REQUEST_ID ?? process.env.REQUEST_ID;
 
+function errorField(error, field) {
+  return error && typeof error === "object" && field in error ? error[field] : undefined;
+}
+
+function sanitizeConnectionCause(cause) {
+  if (!cause || typeof cause !== "object") return undefined;
+
+  const causes = Array.isArray(cause.errors)
+    ? cause.errors.map((nested) => sanitizeConnectionCause(nested))
+    : undefined;
+
+  return {
+    name: errorField(cause, "name"),
+    message: errorField(cause, "message"),
+    code: errorField(cause, "code"),
+    syscall: errorField(cause, "syscall"),
+    address: errorField(cause, "address"),
+    port: errorField(cause, "port"),
+    errors: causes?.filter(Boolean),
+  };
+}
+
 const headers = {
   "x-request-id": requestId,
 };
@@ -28,11 +50,33 @@ if (body) {
 }
 
 const startedAt = Date.now();
-const response = await fetch(targetUrl, {
-  method,
-  headers,
-  body,
-});
+let response;
+try {
+  response = await fetch(targetUrl, {
+    method,
+    headers,
+    body,
+  });
+} catch (error) {
+  const elapsedMs = Date.now() - startedAt;
+  const cause = sanitizeConnectionCause(errorField(error, "cause"));
+  console.log(JSON.stringify({
+    url: targetUrl,
+    method,
+    status: null,
+    ok: false,
+    elapsedMs,
+    requestId,
+    contentType: "",
+    error: {
+      name: error instanceof Error ? error.name : "UnknownError",
+      message: error instanceof Error ? error.message : String(error),
+      cause,
+    },
+  }, null, 2));
+  process.exitCode = 1;
+  process.exit();
+}
 const elapsedMs = Date.now() - startedAt;
 const text = await response.text();
 const contentType = response.headers.get("content-type") ?? "";

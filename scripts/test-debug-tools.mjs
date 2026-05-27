@@ -22,6 +22,22 @@ async function summarize(path) {
   return stdout;
 }
 
+async function expectCommandFailure(command, args, options = {}) {
+  try {
+    await execFileAsync(command, args, {
+      cwd: process.cwd(),
+      ...options,
+    });
+  } catch (error) {
+    return {
+      stdout: error.stdout ?? "",
+      stderr: error.stderr ?? "",
+    };
+  }
+
+  throw new Error(`Expected ${command} ${args.join(" ")} to fail`);
+}
+
 function assertIncludes(output, expected) {
   if (!output.includes(expected)) {
     throw new Error(`Expected output to include ${JSON.stringify(expected)}.\nOutput:\n${output}`);
@@ -92,6 +108,21 @@ const skippedSmokePath = await writeJson("smoke-skipped.json", {
 const skippedOutput = await summarize(skippedSmokePath);
 assertIncludes(skippedOutput, "Status: skipped");
 assertIncludes(skippedOutput, "Reason: missing credentials");
+
+const failedProbe = await expectCommandFailure("node", [
+  "scripts/api-debug-probe.mjs",
+  "http://127.0.0.1:65535/api/v1/health",
+], {
+  env: {
+    ...process.env,
+    REQUEST_ID: "debug-fetch-failed-test",
+  },
+});
+assertIncludes(failedProbe.stdout, '"status": null');
+assertIncludes(failedProbe.stdout, '"ok": false');
+assertIncludes(failedProbe.stdout, '"requestId": "debug-fetch-failed-test"');
+assertIncludes(failedProbe.stdout, '"error"');
+assertIncludes(failedProbe.stdout, '"cause"');
 
 const agentIntentPath = await writeJson("agent-intents.json", {
   type: "agent-membership-intent",

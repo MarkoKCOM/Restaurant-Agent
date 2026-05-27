@@ -120,6 +120,8 @@ Use `pnpm debug:api` to inspect one endpoint quickly. It sends an `x-request-id`
 
 When `EXPECT_STATUS` is set, non-2xx responses do not fail the probe just because they are errors. The probe fails only when the observed status, error `code`, or request ID does not match the expectation. This is useful for proving a debugging envelope without manually reading logs:
 
+If the API cannot be reached at all, the probe still prints a compact JSON result with `status: null`, `ok: false`, the generated request ID, elapsed time, and sanitized connection error fields.
+
 ```bash
 REQUEST_ID=debug-route-not-found \
 EXPECT_STATUS=404 \

@@ -85,6 +85,8 @@ Self-serve onboarding now exists, so the next slice is about making it deeper.
 Next improvements should add:
 - branding and widget setup inside onboarding
 - WhatsApp connection/setup
-- loyalty starter templates turned on during onboarding
 - optional sample data / launch test mode so a new client can simulate the first week fast
 - marketing-site CTA wiring directly into dashboard signup
+
+Completed from this list:
+- loyalty starter templates are now turned on during onboarding. New self-serve tenants start with active comeback, referral, and table-starter rewards so the Loyalty screen is not empty on first login.

@@ -5,6 +5,7 @@ import {
   resetConversation,
   type AgentRequest,
 } from "../services/agent.service.js";
+import { debugMembershipIntent } from "../services/membership-intent-debug.service.js";
 
 const messageSchema = z.object({
   restaurantId: z.string().uuid(),
@@ -12,6 +13,10 @@ const messageSchema = z.object({
   message: z.string().min(1),
   guestPhone: z.string().optional(),
   guestName: z.string().optional(),
+});
+
+const membershipIntentDebugSchema = z.object({
+  message: z.string().min(1),
 });
 
 export async function agentRoutes(app: FastifyInstance) {
@@ -41,5 +46,11 @@ export async function agentRoutes(app: FastifyInstance) {
 
     await resetConversation(restaurantId, senderId);
     return { ok: true };
+  });
+
+  // POST /debug/membership-intent — deterministic WhatsApp membership intent probe
+  app.post("/debug/membership-intent", async (request) => {
+    const { message } = membershipIntentDebugSchema.parse(request.body);
+    return debugMembershipIntent(message);
   });
 }

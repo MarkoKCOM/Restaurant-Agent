@@ -32,5 +32,5 @@
 ## 6. Verification
 - [x] 6.1 Add API tests for membership summary, reward claims, referrals, and redemption workflow
 - [x] 6.2 Add integration tests for visit completion → membership updates
-- [ ] 6.3 Add conversational tests for WhatsApp membership intents
+- [x] 6.3 Add conversational tests for WhatsApp membership intents
 - [x] 6.4 Validate owner/admin vs employee access boundaries for membership operations

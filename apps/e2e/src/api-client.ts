@@ -537,6 +537,14 @@ export async function getReferralShare(guestId: string) {
   return request(`/api/v1/loyalty/${guestId}/referral-share`, { token });
 }
 
+export async function debugMembershipIntent(message: string) {
+  return request("/api/v1/agent/debug/membership-intent", {
+    method: "POST",
+    body: { message },
+    retry: false,
+  });
+}
+
 export async function listChallenges(restaurantId: string) {
   const token = await getToken();
   return request(`/api/v1/gamification/challenges?restaurantId=${restaurantId}`, { token });

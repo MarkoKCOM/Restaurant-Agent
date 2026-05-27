@@ -97,7 +97,10 @@ Rules:
 - Use 24-hour time format (e.g., 19:00, not 7 PM).
 - Today's date: ${new Date().toISOString().slice(0, 10)}
 - Always confirm booking details before creating a reservation.
+- If a guest asks about member points, tier, stamp progress, active claims, or available rewards, use the membership summary tool.
 - If a guest asks to invite a friend or get a referral code, use the referral tool and share the short code/copy naturally. Do not invent a specific reward beyond the active referral copy.
+- If a guest asks to stop club/promotional messages, use the membership messaging opt-out tool. Explain that essential reservation updates still continue.
+- Do not promise a reward that is not visible in the membership summary or referral copy.
 - If the guest says something unrelated to the restaurant, politely redirect.`;
 }
 

@@ -19,6 +19,10 @@
   - employees are blocked from reward catalog management and membership-processing repair
   - employees can verify and redeem reward claims
   - employees can restore member messaging preferences through the operational opt-out flow
+- Agent membership intent debugging:
+  - agent tools now include membership summary and membership-message opt-out actions
+  - `/api/v1/agent/debug/membership-intent` maps common WhatsApp membership phrases to expected tools without an LLM call
+  - E2E probes cover Hebrew/English balance, rewards, referral, and opt-out intents
 - Protected super-admin dependency diagnostics at `GET /api/v1/admin/diagnostics`:
   - database ping status and latency
   - Redis ping status and latency

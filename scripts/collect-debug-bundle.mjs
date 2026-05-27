@@ -173,6 +173,15 @@ function summarizeApiLogEvent(event) {
   ].filter(Boolean).join(" ");
 }
 
+function expectedBundleLogIssue(event) {
+  const requestId = String(event.reqId ?? "");
+  const code = String(event.code ?? event.err?.code ?? "");
+  if (requestId.startsWith("debug-package-") && code === "PACKAGE_GROWTH_REQUIRED") return true;
+  if (requestId.startsWith("smoke-") && code === "RESERVATION_NO_TABLE_COMBINATION") return true;
+  if (requestId.startsWith("smoke-") && code === "CAMPAIGN_SCHEDULE_REQUIRES_ADJUSTMENT") return true;
+  return false;
+}
+
 async function captureApiLogIssueHighlights(logPath, sourceName) {
   let text;
   try {
@@ -192,9 +201,14 @@ async function captureApiLogIssueHighlights(logPath, sourceName) {
     .map(parseJsonFromLogLine)
     .filter(Boolean);
   const issueEvents = events.filter((event) => Number(event.level ?? 0) >= 40 || event.err);
+  const expectedIssueEvents = issueEvents.filter(expectedBundleLogIssue);
+  const unexpectedIssueEvents = issueEvents.filter((event) => !expectedBundleLogIssue(event));
   const byLevel = {};
   const byCode = {};
+  const unexpectedByLevel = {};
+  const unexpectedByCode = {};
   const samples = [];
+  const unexpectedSamples = [];
 
   for (const event of issueEvents) {
     const level = levelName(Number(event.level ?? 0));
@@ -204,15 +218,28 @@ async function captureApiLogIssueHighlights(logPath, sourceName) {
     if (samples.length < 8) samples.push(summarizeApiLogEvent(event));
   }
 
+  for (const event of unexpectedIssueEvents) {
+    const level = levelName(Number(event.level ?? 0));
+    unexpectedByLevel[level] = (unexpectedByLevel[level] ?? 0) + 1;
+    const code = cleanToken(event.code ?? event.err?.code ?? event.err?.name ?? "");
+    if (code) unexpectedByCode[code] = (unexpectedByCode[code] ?? 0) + 1;
+    if (unexpectedSamples.length < 8) unexpectedSamples.push(summarizeApiLogEvent(event));
+  }
+
   manifest.highlights.apiLogIssues = {
-    status: issueEvents.length > 0 ? "attention" : "ok",
+    status: unexpectedIssueEvents.length > 0 ? "attention" : "ok",
     source: sourceName,
     outputPath: logPath,
     totalEvents: events.length,
     issueEvents: issueEvents.length,
+    expectedIssueEvents: expectedIssueEvents.length,
+    unexpectedIssueEvents: unexpectedIssueEvents.length,
     byLevel,
     byCode,
+    unexpectedByLevel,
+    unexpectedByCode,
     samples,
+    unexpectedSamples,
   };
 }
 
@@ -864,11 +891,18 @@ async function writeReadme() {
       }
       if (apiLogIssues) {
         lines.push(
-          `- Bundle-run API logs: ${apiLogIssues.status ?? "unknown"} issues=${apiLogIssues.issueEvents ?? "?"}/${apiLogIssues.totalEvents ?? "?"} levels=${Object.entries(apiLogIssues.byLevel ?? {}).map(([level, count]) => `${level}:${count}`).join(",") || "none"} codes=${Object.entries(apiLogIssues.byCode ?? {}).map(([code, count]) => `${code}:${count}`).join(",") || "none"}`,
+          `- Bundle-run API logs: ${apiLogIssues.status ?? "unknown"} unexpected=${apiLogIssues.unexpectedIssueEvents ?? "?"} expected=${apiLogIssues.expectedIssueEvents ?? "?"} issues=${apiLogIssues.issueEvents ?? "?"}/${apiLogIssues.totalEvents ?? "?"} levels=${Object.entries(apiLogIssues.byLevel ?? {}).map(([level, count]) => `${level}:${count}`).join(",") || "none"} codes=${Object.entries(apiLogIssues.byCode ?? {}).map(([code, count]) => `${code}:${count}`).join(",") || "none"}`,
         );
+        const unexpectedSamples = asArray(apiLogIssues.unexpectedSamples);
+        if (unexpectedSamples.length > 0) {
+          lines.push("- Bundle-run unexpected API log samples:");
+          for (const sample of unexpectedSamples.slice(0, 5)) {
+            lines.push(`  - ${sample}`);
+          }
+        }
         const samples = asArray(apiLogIssues.samples);
-        if (samples.length > 0) {
-          lines.push("- Bundle-run API log samples:");
+        if (unexpectedSamples.length === 0 && samples.length > 0) {
+          lines.push("- Bundle-run expected API log samples:");
           for (const sample of samples.slice(0, 5)) {
             lines.push(`  - ${sample}`);
           }

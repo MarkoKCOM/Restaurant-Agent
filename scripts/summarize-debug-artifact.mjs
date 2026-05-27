@@ -574,13 +574,21 @@ async function summarizeDebugBundleManifest(report) {
   if (apiLogIssues.status) {
     printLine(
       "Bundle-run API logs",
-      `${apiLogIssues.status} issues=${apiLogIssues.issueEvents ?? "?"}/${apiLogIssues.totalEvents ?? "?"} levels=${Object.entries(apiLogIssues.byLevel ?? {}).map(([level, count]) => `${level}:${count}`).join(",") || "none"} codes=${Object.entries(apiLogIssues.byCode ?? {}).map(([code, count]) => `${code}:${count}`).join(",") || "none"} output=${apiLogIssues.outputPath ?? "?"}`,
+      `${apiLogIssues.status} unexpected=${apiLogIssues.unexpectedIssueEvents ?? "?"} expected=${apiLogIssues.expectedIssueEvents ?? "?"} issues=${apiLogIssues.issueEvents ?? "?"}/${apiLogIssues.totalEvents ?? "?"} levels=${Object.entries(apiLogIssues.byLevel ?? {}).map(([level, count]) => `${level}:${count}`).join(",") || "none"} codes=${Object.entries(apiLogIssues.byCode ?? {}).map(([code, count]) => `${code}:${count}`).join(",") || "none"} output=${apiLogIssues.outputPath ?? "?"}`,
     );
-    const apiLogSamples = asArray(apiLogIssues.samples);
-    if (apiLogSamples.length > 0) {
-      console.log("Bundle-run API log samples:");
-      for (const sample of apiLogSamples.slice(0, 5)) {
+    const unexpectedApiLogSamples = asArray(apiLogIssues.unexpectedSamples);
+    if (unexpectedApiLogSamples.length > 0) {
+      console.log("Bundle-run unexpected API log samples:");
+      for (const sample of unexpectedApiLogSamples.slice(0, 5)) {
         console.log(`- ${sample}`);
+      }
+    } else {
+      const apiLogSamples = asArray(apiLogIssues.samples);
+      if (apiLogSamples.length > 0) {
+        console.log("Bundle-run expected API log samples:");
+        for (const sample of apiLogSamples.slice(0, 5)) {
+          console.log(`- ${sample}`);
+        }
       }
     }
   }

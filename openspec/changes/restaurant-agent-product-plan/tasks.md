@@ -142,7 +142,7 @@
 - [x] 13.9 Add operational diagnostics for Growth retention schedules — daily summaries, win-back, birthdays, anniversaries, birthday-week challenges
 - [x] 13.10 Add precise outbound delivery diagnostics — distinguish current owner-delivery blockers from historical errors and owner WhatsApp config cleanup
 - [x] 13.11 Add bundle-run log isolation — debug bundles include a run-scoped service log slice so fresh smoke regressions are not mixed with older warnings
-- [x] 13.12 Add bundle-run API log issue summaries — debug artifacts surface fresh warning/error counts, codes, and samples without manual log greps
+- [x] 13.12 Add bundle-run API log issue summaries — debug artifacts surface fresh warning/error counts, codes, and samples without manual log greps, separating expected smoke warnings from unexpected runtime noise
 
 ## 14. Branding & Landing Page
 

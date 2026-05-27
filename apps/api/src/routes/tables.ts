@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { selfServeSignupTableBaseSchema, selfServeSignupTableSchema } from "@openseat/domain";
 import {
   createTable,
@@ -75,6 +75,37 @@ function sendTableError(
   });
 }
 
+function sendCaughtTableError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  error: unknown,
+  code: string,
+  context: Record<string, unknown> = {},
+) {
+  const message = error instanceof Error ? error.message : "Table operation failed";
+  return sendTableError(request, reply, 500, message, code, {
+    ...context,
+    err: error,
+  });
+}
+
+async function lookupTableRestaurantId(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  tableId: string,
+): Promise<string | null | FastifyReply> {
+  try {
+    const [tableRow] = await db
+      .select({ restaurantId: tables.restaurantId })
+      .from(tables)
+      .where(eq(tables.id, tableId))
+      .limit(1);
+    return tableRow?.restaurantId ?? null;
+  } catch (error: unknown) {
+    return sendCaughtTableError(request, reply, error, "TABLE_LOOKUP_FAILED", { tableId });
+  }
+}
+
 export async function tableRoutes(app: FastifyInstance) {
   // GET / — list tables for restaurant
   app.get("/", async (request, reply) => {
@@ -104,12 +135,20 @@ export async function tableRoutes(app: FastifyInstance) {
 
     const includeInactiveBool = includeInactive === "true";
     const scopedRestaurantId = resolveRestaurantId(request.user!, restaurantId);
-    const tables = await listTables({
-      restaurantId: scopedRestaurantId ?? undefined,
-      includeInactive: includeInactiveBool,
-    });
+    try {
+      const tables = await listTables({
+        restaurantId: scopedRestaurantId ?? undefined,
+        includeInactive: includeInactiveBool,
+      });
 
-    return { tables };
+      return { tables };
+    } catch (error: unknown) {
+      return sendCaughtTableError(request, reply, error, "TABLE_LIST_FAILED", {
+        restaurantLookupId: restaurantId,
+        scopedRestaurantId,
+        includeInactive,
+      });
+    }
   });
 
   // POST / — create table
@@ -127,33 +166,39 @@ export async function tableRoutes(app: FastifyInstance) {
       );
     }
 
-    const table = await createTable({
-      restaurantId: body.restaurantId,
-      name: body.name,
-      minSeats: body.minSeats,
-      maxSeats: body.maxSeats,
-      zone: body.zone,
-      combinableWith: body.combinableWith,
-    });
-    reply.code(201);
-    return { table };
+    try {
+      const table = await createTable({
+        restaurantId: body.restaurantId,
+        name: body.name,
+        minSeats: body.minSeats,
+        maxSeats: body.maxSeats,
+        zone: body.zone,
+        combinableWith: body.combinableWith,
+      });
+      reply.code(201);
+      return { table };
+    } catch (error: unknown) {
+      return sendCaughtTableError(request, reply, error, "TABLE_CREATE_FAILED", {
+        restaurantLookupId: body.restaurantId,
+        minSeats: body.minSeats,
+        maxSeats: body.maxSeats,
+        zone: body.zone,
+      });
+    }
   });
 
   // PATCH /:id — update table
   app.patch("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = updateTableSchema.parse(request.body ?? {}) as Parameters<typeof updateTable>[1];
-    const [tableRow] = await db
-      .select({ restaurantId: tables.restaurantId })
-      .from(tables)
-      .where(eq(tables.id, id))
-      .limit(1);
+    const restaurantId = await lookupTableRestaurantId(request, reply, id);
+    if (typeof restaurantId !== "string" && restaurantId !== null) return restaurantId;
 
-    if (!tableRow) {
+    if (!restaurantId) {
       return sendTableError(request, reply, 404, "Table not found", "TABLE_NOT_FOUND", { tableId: id });
     }
 
-    const err = enforceTenant(request.user!, tableRow.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
       return sendTableError(
         request,
@@ -161,32 +206,36 @@ export async function tableRoutes(app: FastifyInstance) {
         403,
         err,
         "TABLE_FORBIDDEN",
-        { tableId: id, restaurantLookupId: tableRow.restaurantId },
+        { tableId: id, restaurantLookupId: restaurantId },
       );
     }
 
-    const updated = await updateTable(id, body);
-    if (!updated) {
-      return sendTableError(request, reply, 404, "Table not found", "TABLE_NOT_FOUND", { tableId: id });
-    }
+    try {
+      const updated = await updateTable(id, body);
+      if (!updated) {
+        return sendTableError(request, reply, 404, "Table not found", "TABLE_NOT_FOUND", { tableId: id });
+      }
 
-    return { table: updated };
+      return { table: updated };
+    } catch (error: unknown) {
+      return sendCaughtTableError(request, reply, error, "TABLE_UPDATE_FAILED", {
+        tableId: id,
+        restaurantLookupId: restaurantId,
+      });
+    }
   });
 
   // DELETE /:id — deactivate table
   app.delete("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const [tableRow] = await db
-      .select({ restaurantId: tables.restaurantId })
-      .from(tables)
-      .where(eq(tables.id, id))
-      .limit(1);
+    const restaurantId = await lookupTableRestaurantId(request, reply, id);
+    if (typeof restaurantId !== "string" && restaurantId !== null) return restaurantId;
 
-    if (!tableRow) {
+    if (!restaurantId) {
       return sendTableError(request, reply, 404, "Table not found", "TABLE_NOT_FOUND", { tableId: id });
     }
 
-    const err = enforceTenant(request.user!, tableRow.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
       return sendTableError(
         request,
@@ -194,12 +243,19 @@ export async function tableRoutes(app: FastifyInstance) {
         403,
         err,
         "TABLE_FORBIDDEN",
-        { tableId: id, restaurantLookupId: tableRow.restaurantId },
+        { tableId: id, restaurantLookupId: restaurantId },
       );
     }
 
-    await deactivateTable(id);
-    reply.code(204);
-    return null;
+    try {
+      await deactivateTable(id);
+      reply.code(204);
+      return null;
+    } catch (error: unknown) {
+      return sendCaughtTableError(request, reply, error, "TABLE_DEACTIVATE_FAILED", {
+        tableId: id,
+        restaurantLookupId: restaurantId,
+      });
+    }
   });
 }

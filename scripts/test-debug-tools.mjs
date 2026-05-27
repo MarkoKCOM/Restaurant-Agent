@@ -1003,6 +1003,7 @@ const visitsRoutes = await readFile("apps/api/src/routes/visits.ts", "utf8");
 const reservationRoutes = await readFile("apps/api/src/routes/reservations.ts", "utf8");
 const guestRoutes = await readFile("apps/api/src/routes/guests.ts", "utf8");
 const waitlistRoutes = await readFile("apps/api/src/routes/waitlist.ts", "utf8");
+const tableRoutes = await readFile("apps/api/src/routes/tables.ts", "utf8");
 const engagementService = await readFile("apps/api/src/services/engagement.service.ts", "utf8");
 const challengeService = await readFile("apps/api/src/services/challenge.service.ts", "utf8");
 const loyaltyRoutes = await readFile("apps/api/src/routes/loyalty.ts", "utf8");
@@ -1439,6 +1440,19 @@ for (const requiredWaitlistRouteContent of [
   "request.log.error(logPayload, \"Waitlist request failed\")",
 ]) {
   assertIncludes(waitlistRoutes, requiredWaitlistRouteContent);
+}
+
+for (const requiredTableRouteContent of [
+  "sendCaughtTableError",
+  "lookupTableRestaurantId",
+  "TABLE_LIST_FAILED",
+  "TABLE_CREATE_FAILED",
+  "TABLE_LOOKUP_FAILED",
+  "TABLE_UPDATE_FAILED",
+  "TABLE_DEACTIVATE_FAILED",
+  "request.log.error(logPayload, \"Table request failed\")",
+]) {
+  assertIncludes(tableRoutes, requiredTableRouteContent);
 }
 
 for (const requiredGamificationPackageContent of [

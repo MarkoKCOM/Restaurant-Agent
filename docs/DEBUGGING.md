@@ -121,6 +121,12 @@ pnpm debug:api -- http://localhost:3001/api/v1/loyalty/processing-failures/.../r
 
 The retry marks the failure `resolved` on success. If it fails again, the API keeps it `open`, increments `attempts`, updates the sanitized error fields, and returns the updated failure in the response. Challenge-progress failures are visible but intentionally not auto-retried yet because the current challenge progress model does not have per-reservation idempotency.
 
+Reservation completion failures also emit structured request logs with `stage`, `reservationId`, `guestId`, and `restaurantId` fields. Search for the stable messages when tracing why a repair row was created or why persistence failed:
+
+```bash
+journalctl -u openseat-api --since "30 minutes ago" | rg 'Reservation completion post-visit stage failed|Failed to record membership processing failure'
+```
+
 ## Referral Share Flow
 
 For WhatsApp membership referral issues, inspect the normalized share payload:

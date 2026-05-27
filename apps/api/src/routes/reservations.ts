@@ -134,7 +134,7 @@ export async function reservationRoutes(app: FastifyInstance) {
     }
 
     try {
-      const updated = await updateReservation(id, body);
+      const updated = await updateReservation(id, body, { logger: request.log });
       if (!updated) {
         reply.code(404);
         return { error: "Reservation not found" };

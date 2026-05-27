@@ -1,5 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
+import type { FastifyBaseLogger } from "fastify";
 import { db } from "../db/index.js";
 import { reservations, restaurants, guests as guestsTable } from "../db/schema.js";
 import { reminderQueue } from "../queue/index.js";
@@ -48,24 +49,27 @@ async function recordCompletionFailure(input: {
   guestId: string;
   restaurantId: string;
   error: unknown;
+  logger?: FastifyBaseLogger;
 }): Promise<void> {
-  console.error(`reservation completion: failed ${input.stage}`, {
+  input.logger?.error({
+    err: input.error,
+    stage: input.stage,
     reservationId: input.reservationId,
     guestId: input.guestId,
     restaurantId: input.restaurantId,
-    error: input.error,
-  });
+  }, "Reservation completion post-visit stage failed");
 
   try {
     await recordMembershipProcessingFailure(input);
   } catch (recordError: unknown) {
-    console.error("reservation completion: failed to record membership processing failure", {
+    input.logger?.error({
+      err: recordError,
       stage: input.stage,
       reservationId: input.reservationId,
       guestId: input.guestId,
       restaurantId: input.restaurantId,
-      error: recordError,
-    });
+      originalErrorMessage: input.error instanceof Error ? input.error.message : String(input.error),
+    }, "Failed to record membership processing failure");
   }
 }
 
@@ -612,6 +616,7 @@ export interface UpdateReservationInput {
 export async function updateReservation(
   id: string,
   input: UpdateReservationInput,
+  options: { logger?: FastifyBaseLogger } = {},
 ): Promise<DomainReservation | null> {
   const existing = await getReservationRowById(id);
   if (!existing) return null;
@@ -707,6 +712,7 @@ export async function updateReservation(
         guestId: updated.guestId,
         restaurantId: updated.restaurantId,
         error,
+        logger: options.logger,
       });
     }
 
@@ -719,6 +725,7 @@ export async function updateReservation(
         guestId: updated.guestId,
         restaurantId: updated.restaurantId,
         error,
+        logger: options.logger,
       });
     }
 
@@ -731,6 +738,7 @@ export async function updateReservation(
         guestId: updated.guestId,
         restaurantId: updated.restaurantId,
         error,
+        logger: options.logger,
       });
     }
 
@@ -743,6 +751,7 @@ export async function updateReservation(
         guestId: updated.guestId,
         restaurantId: updated.restaurantId,
         error,
+        logger: options.logger,
       });
     }
 
@@ -756,6 +765,7 @@ export async function updateReservation(
         guestId: updated.guestId,
         restaurantId: updated.restaurantId,
         error,
+        logger: options.logger,
       });
     }
   }

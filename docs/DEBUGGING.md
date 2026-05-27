@@ -26,6 +26,14 @@ Use that value to search API logs:
 journalctl -u openseat-api --since "30 minutes ago" | rg "018f"
 ```
 
+Or use the request-id tracer on the VPS:
+
+```bash
+pnpm debug:logs 018f --since "30 minutes ago"
+```
+
+Optional flags are `--service openseat-api` and `--context 2`. The script prints a small JSON header with match counts, then the matching journal lines with nearby context.
+
 For local development, failed dashboard API requests are logged to the browser console with:
 
 - `status`

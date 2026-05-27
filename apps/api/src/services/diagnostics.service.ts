@@ -1062,6 +1062,7 @@ async function inspectEngagement(): Promise<EngagementDiagnostic> {
         where ej.status = 'pending'
           and ej.type = 'thank_you'
           and ej.trigger_at >= now() - interval '1 day'
+          and ej.created_at >= r.updated_at - interval '5 seconds'
         order by ej.trigger_at asc
       `) as Promise<Array<{
         id: string;

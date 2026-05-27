@@ -183,6 +183,48 @@ async function main() {
     status: reservation.status,
   });
 
+  const futureChallengeDate = plusDays(60);
+  const futureChallenge = await request("/api/v1/gamification/challenges", {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      name: `Smoke future challenge ${runId}`,
+      description: "Created by the reliability smoke to verify future challenges do not activate early",
+      type: "visit_count",
+      target: 1,
+      reward: 0,
+      startDate: futureChallengeDate,
+      endDate: futureChallengeDate,
+    },
+  });
+  const futureChallengeId = futureChallenge.challenge?.id;
+  if (!futureChallengeId) throw new Error("Future challenge create endpoint did not return challenge.id");
+
+  const activeChallengesAfterFutureCreate = await request(`/api/v1/gamification/challenges?restaurantId=${restaurantId}`, { token });
+  const futureChallengeIsActive = (activeChallengesAfterFutureCreate.challenges ?? []).some((item) => item.id === futureChallengeId);
+  record("gamification.future-challenge.window", {
+    challengeId: futureChallengeId,
+    startDate: futureChallengeDate,
+    listedAsActive: futureChallengeIsActive,
+  });
+  if (futureChallengeIsActive) {
+    throw new Error(`Future smoke challenge was listed active before start date: ${futureChallengeId}`);
+  }
+
+  const deactivatedFutureChallenge = await request(`/api/v1/gamification/challenges/${futureChallengeId}`, {
+    method: "PATCH",
+    token,
+    body: { isActive: false },
+  });
+  record("gamification.future-challenge.cleanup", {
+    challengeId: futureChallengeId,
+    isActive: deactivatedFutureChallenge.challenge?.isActive,
+  });
+  if (deactivatedFutureChallenge.challenge?.isActive !== false) {
+    throw new Error(`Future smoke challenge cleanup did not deactivate challenge: ${futureChallengeId}`);
+  }
+
   const challenge = await request("/api/v1/gamification/challenges", {
     method: "POST",
     token,

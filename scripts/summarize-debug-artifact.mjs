@@ -104,6 +104,8 @@ function summarizeSmoke(report) {
       || step.step === "engagement.jobs"
       || step.step === "gamification.challenge-progress"
       || step.step === "gamification.challenge.cleanup"
+      || step.step === "gamification.future-challenge.window"
+      || step.step === "gamification.future-challenge.cleanup"
     )
   );
   if (operationalSteps.length > 0) {
@@ -117,6 +119,10 @@ function summarizeSmoke(report) {
         console.log(`- gamification.challenge-progress: progress=${step.progress ?? "?"}/${step.target ?? "?"} status=${step.status ?? "?"} completed=${step.completed === true ? "yes" : "no"}`);
       } else if (step.step === "gamification.challenge.cleanup") {
         console.log(`- gamification.challenge.cleanup: active=${step.isActive === false ? "no" : "yes"} challengeId=${step.challengeId ?? "?"}`);
+      } else if (step.step === "gamification.future-challenge.window") {
+        console.log(`- gamification.future-challenge.window: listedActive=${step.listedAsActive === true ? "yes" : "no"} startDate=${step.startDate ?? "?"}`);
+      } else if (step.step === "gamification.future-challenge.cleanup") {
+        console.log(`- gamification.future-challenge.cleanup: active=${step.isActive === false ? "no" : "yes"} challengeId=${step.challengeId ?? "?"}`);
       }
     }
   }

@@ -98,7 +98,8 @@ export async function listActiveChallenges(
       and(
         eq(challenges.restaurantId, restaurantId),
         eq(challenges.isActive, true),
-        // endDate is null (no expiry) or endDate >= today
+        // Date bounds are optional. When present, the challenge is active only inside the launch window.
+        sql`(${challenges.startDate} IS NULL OR ${challenges.startDate} <= ${today})`,
         sql`(${challenges.endDate} IS NULL OR ${challenges.endDate} >= ${today})`,
       ),
     );
@@ -281,6 +282,7 @@ export async function autoProgressVisitCountChallenges(
   guestId: string,
   restaurantId: string,
 ): Promise<Array<{ challengeId: string; completed: boolean; progress: number; target: number }>> {
+  const today = new Date().toISOString().slice(0, 10);
   const activeChallenges = await db
     .select({ id: challenges.id })
     .from(challenges)
@@ -289,7 +291,8 @@ export async function autoProgressVisitCountChallenges(
         eq(challenges.restaurantId, restaurantId),
         eq(challenges.isActive, true),
         eq(challenges.type, "visit_count"),
-        sql`(${challenges.endDate} IS NULL OR ${challenges.endDate} >= ${new Date().toISOString().slice(0, 10)})`,
+        sql`(${challenges.startDate} IS NULL OR ${challenges.startDate} <= ${today})`,
+        sql`(${challenges.endDate} IS NULL OR ${challenges.endDate} >= ${today})`,
       ),
     );
 

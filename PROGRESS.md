@@ -110,6 +110,7 @@
 - Guest CRM routes now wrap list, lookup, reservation history, profile, sentiment, auto-tag, preference, and update failures with guest-specific 500 codes and request IDs so hospitality and retention profile bugs point straight at the failing read/write.
 - Waitlist routes now wrap add, list, lookup, offer, accept, and cancel failures with stable waitlist-specific 500 codes and restaurant/waitlist context for faster reservation overflow triage.
 - Table routes now wrap list, create, lookup, update, and deactivate failures with stable table-specific 500 codes and table/restaurant context, tightening floor-plan and availability debugging.
+- Restaurant/settings routes now wrap list, lookup, update, dashboard, summary, table-status, reset, and nested-table failures with stable restaurant-specific 500 codes for faster tenant and owner-dashboard triage.
 - Agent message failures now classify LLM config, timeout, provider, and reset failures with stable codes while logging request IDs and safe sender/message metadata for faster agent triage.
 - Loyalty and membership read/update paths now return route-specific error-level codes with guest/restaurant context for processing failures, summaries, balances, history, referrals, reward lists, claim verification, preferences, and stamp cards.
 - Unexpected loyalty claim/reward failures now return error-level `LOYALTY_OPERATION_FAILED` responses instead of being flattened into client-style 400 errors.

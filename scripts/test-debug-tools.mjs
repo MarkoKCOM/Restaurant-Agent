@@ -1455,6 +1455,21 @@ for (const requiredTableRouteContent of [
   assertIncludes(tableRoutes, requiredTableRouteContent);
 }
 
+for (const requiredRestaurantRouteContent of [
+  "sendCaughtRestaurantError",
+  "RESTAURANT_LIST_FAILED",
+  "RESTAURANT_LOOKUP_FAILED",
+  "RESTAURANT_UPDATE_FAILED",
+  "RESTAURANT_DASHBOARD_FAILED",
+  "RESTAURANT_SUMMARY_FAILED",
+  "RESTAURANT_TABLE_STATUS_FAILED",
+  "RESTAURANT_RESET_RESERVATIONS_FAILED",
+  "RESTAURANT_TABLES_FAILED",
+  "request.log.error(logPayload, \"Restaurant request failed\")",
+]) {
+  assertIncludes(restaurantRoutes, requiredRestaurantRouteContent);
+}
+
 for (const requiredGamificationPackageContent of [
   "enforceGamificationAccess",
   "requireGrowthPackage",

@@ -67,35 +67,60 @@ function sendRestaurantError(
   });
 }
 
+function sendCaughtRestaurantError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  error: unknown,
+  code: string,
+  context: Record<string, unknown> = {},
+) {
+  const message = error instanceof Error ? error.message : "Restaurant operation failed";
+  return sendRestaurantError(request, reply, 500, message, code, {
+    ...context,
+    err: error,
+  });
+}
+
 export async function restaurantRoutes(app: FastifyInstance) {
   // GET / — list all restaurants
-  app.get("/", async () => {
-    const rows = await db.select().from(restaurants);
-    return rows.map((r) => ({
-      id: r.id,
-      name: r.name,
-      slug: r.slug,
-      description: r.description,
-      cuisineType: r.cuisineType,
-      address: r.address,
-      phone: r.phone,
-      email: r.email,
-      timezone: r.timezone,
-      locale: r.locale,
-      operatingHours: r.operatingHours,
-      package: r.package,
-      widgetConfig: r.widgetConfig,
-    }));
+  app.get("/", async (request, reply) => {
+    try {
+      const rows = await db.select().from(restaurants);
+      return rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        slug: r.slug,
+        description: r.description,
+        cuisineType: r.cuisineType,
+        address: r.address,
+        phone: r.phone,
+        email: r.email,
+        timezone: r.timezone,
+        locale: r.locale,
+        operatingHours: r.operatingHours,
+        package: r.package,
+        widgetConfig: r.widgetConfig,
+      }));
+    } catch (error: unknown) {
+      return sendCaughtRestaurantError(request, reply, error, "RESTAURANT_LIST_FAILED");
+    }
   });
 
   // GET /:id — restaurant details
   app.get("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const [row] = await db
-      .select()
-      .from(restaurants)
-      .where(eq(restaurants.id, id))
-      .limit(1);
+    let row: typeof restaurants.$inferSelect | undefined;
+    try {
+      [row] = await db
+        .select()
+        .from(restaurants)
+        .where(eq(restaurants.id, id))
+        .limit(1);
+    } catch (error: unknown) {
+      return sendCaughtRestaurantError(request, reply, error, "RESTAURANT_LOOKUP_FAILED", {
+        restaurantLookupId: id,
+      });
+    }
 
     if (!row) {
       return sendRestaurantError(
@@ -194,11 +219,19 @@ export async function restaurantRoutes(app: FastifyInstance) {
 
     updates.updatedAt = new Date();
 
-    const [updated] = await db
-      .update(restaurants)
-      .set(updates)
-      .where(eq(restaurants.id, id))
-      .returning();
+    let updated: typeof restaurants.$inferSelect | undefined;
+    try {
+      [updated] = await db
+        .update(restaurants)
+        .set(updates)
+        .where(eq(restaurants.id, id))
+        .returning();
+    } catch (error: unknown) {
+      return sendCaughtRestaurantError(request, reply, error, "RESTAURANT_UPDATE_FAILED", {
+        restaurantLookupId: id,
+        updateFields: Object.keys(updates).filter((key) => key !== "updatedAt"),
+      });
+    }
 
     if (!updated) {
       return sendRestaurantError(
@@ -247,11 +280,19 @@ export async function restaurantRoutes(app: FastifyInstance) {
 
     const today = new Date().toISOString().slice(0, 10);
 
-    const [restaurant] = await db
-      .select()
-      .from(restaurants)
-      .where(eq(restaurants.id, id))
-      .limit(1);
+    let restaurant: typeof restaurants.$inferSelect | undefined;
+    try {
+      [restaurant] = await db
+        .select()
+        .from(restaurants)
+        .where(eq(restaurants.id, id))
+        .limit(1);
+    } catch (error: unknown) {
+      return sendCaughtRestaurantError(request, reply, error, "RESTAURANT_DASHBOARD_FAILED", {
+        restaurantLookupId: id,
+        stage: "restaurant_lookup",
+      });
+    }
 
     if (!restaurant) {
       return sendRestaurantError(
@@ -264,13 +305,22 @@ export async function restaurantRoutes(app: FastifyInstance) {
       );
     }
 
-    const todayReservations = await db
-      .select()
-      .from(reservations)
-      .where(
-        and(eq(reservations.restaurantId, id), eq(reservations.date, today)),
-      )
-      .orderBy(reservations.timeStart);
+    let todayReservations: Array<typeof reservations.$inferSelect>;
+    try {
+      todayReservations = await db
+        .select()
+        .from(reservations)
+        .where(
+          and(eq(reservations.restaurantId, id), eq(reservations.date, today)),
+        )
+        .orderBy(reservations.timeStart);
+    } catch (error: unknown) {
+      return sendCaughtRestaurantError(request, reply, error, "RESTAURANT_DASHBOARD_FAILED", {
+        restaurantLookupId: id,
+        date: today,
+        stage: "reservations_lookup",
+      });
+    }
 
     const activeStatuses = ["pending", "confirmed", "seated", "completed"];
     const active = todayReservations.filter((r) =>
@@ -370,11 +420,19 @@ export async function restaurantRoutes(app: FastifyInstance) {
       );
     }
 
-    const [restaurant] = await db
-      .select()
-      .from(restaurants)
-      .where(eq(restaurants.id, id))
-      .limit(1);
+    let restaurant: typeof restaurants.$inferSelect | undefined;
+    try {
+      [restaurant] = await db
+        .select()
+        .from(restaurants)
+        .where(eq(restaurants.id, id))
+        .limit(1);
+    } catch (error: unknown) {
+      return sendCaughtRestaurantError(request, reply, error, "RESTAURANT_SUMMARY_FAILED", {
+        restaurantLookupId: id,
+        stage: "restaurant_lookup",
+      });
+    }
 
     if (!restaurant) {
       return sendRestaurantError(
@@ -388,8 +446,16 @@ export async function restaurantRoutes(app: FastifyInstance) {
     }
 
     const targetDate = date || new Date().toISOString().slice(0, 10);
-    const summary = await getDailySummary(id, targetDate);
-    return summary;
+    try {
+      const summary = await getDailySummary(id, targetDate);
+      return summary;
+    } catch (error: unknown) {
+      return sendCaughtRestaurantError(request, reply, error, "RESTAURANT_SUMMARY_FAILED", {
+        restaurantLookupId: id,
+        date: targetDate,
+        stage: "summary_build",
+      });
+    }
   });
 
   // GET /:id/table-status — live table status for today
@@ -410,36 +476,55 @@ export async function restaurantRoutes(app: FastifyInstance) {
     const today = new Date().toISOString().slice(0, 10);
     const nowTime = new Date().toTimeString().slice(0, 5); // HH:MM
 
-    // Get all active tables
-    const allTables = await db
-      .select()
-      .from(tables)
-      .where(and(eq(tables.restaurantId, id), eq(tables.isActive, true)));
+    let allTables: Array<typeof tables.$inferSelect>;
+    let todayReservations: Array<{
+      id: string;
+      guestId: string;
+      date: string;
+      timeStart: string;
+      timeEnd: string | null;
+      partySize: number;
+      tableIds: unknown;
+      status: string;
+    }>;
+    let guestRows: Array<{ id: string; name: string }>;
+    try {
+      // Get all active tables
+      allTables = await db
+        .select()
+        .from(tables)
+        .where(and(eq(tables.restaurantId, id), eq(tables.isActive, true)));
 
-    // Get today's reservations that aren't cancelled/no_show/completed
-    const todayReservations = await db
-      .select({
-        id: reservations.id,
-        guestId: reservations.guestId,
-        date: reservations.date,
-        timeStart: reservations.timeStart,
-        timeEnd: reservations.timeEnd,
-        partySize: reservations.partySize,
-        tableIds: reservations.tableIds,
-        status: reservations.status,
-      })
-      .from(reservations)
-      .where(
-        and(
-          eq(reservations.restaurantId, id),
-          eq(reservations.date, today),
-        ),
-      );
+      // Get today's reservations that aren't cancelled/no_show/completed
+      todayReservations = await db
+        .select({
+          id: reservations.id,
+          guestId: reservations.guestId,
+          date: reservations.date,
+          timeStart: reservations.timeStart,
+          timeEnd: reservations.timeEnd,
+          partySize: reservations.partySize,
+          tableIds: reservations.tableIds,
+          status: reservations.status,
+        })
+        .from(reservations)
+        .where(
+          and(
+            eq(reservations.restaurantId, id),
+            eq(reservations.date, today),
+          ),
+        );
 
-    const guestRows = await db
-      .select({ id: guestsTable.id, name: guestsTable.name })
-      .from(guestsTable)
-      .where(eq(guestsTable.restaurantId, id));
+      guestRows = await db
+        .select({ id: guestsTable.id, name: guestsTable.name })
+        .from(guestsTable)
+        .where(eq(guestsTable.restaurantId, id));
+    } catch (error: unknown) {
+      return sendCaughtRestaurantError(request, reply, error, "RESTAURANT_TABLE_STATUS_FAILED", {
+        restaurantLookupId: id,
+        date: today,
+      });
+    }
 
     const guestNameById = new Map(guestRows.map((guest) => [guest.id, guest.name]));
 
@@ -518,11 +603,19 @@ export async function restaurantRoutes(app: FastifyInstance) {
       );
     }
 
-    const [restaurant] = await db
-      .select()
-      .from(restaurants)
-      .where(eq(restaurants.id, id))
-      .limit(1);
+    let restaurant: typeof restaurants.$inferSelect | undefined;
+    try {
+      [restaurant] = await db
+        .select()
+        .from(restaurants)
+        .where(eq(restaurants.id, id))
+        .limit(1);
+    } catch (error: unknown) {
+      return sendCaughtRestaurantError(request, reply, error, "RESTAURANT_RESET_RESERVATIONS_FAILED", {
+        restaurantLookupId: id,
+        stage: "restaurant_lookup",
+      });
+    }
 
     if (!restaurant) {
       return sendRestaurantError(
@@ -535,10 +628,18 @@ export async function restaurantRoutes(app: FastifyInstance) {
       );
     }
 
-    const result = await db
-      .delete(reservations)
-      .where(eq(reservations.restaurantId, id))
-      .returning({ id: reservations.id });
+    let result: Array<{ id: string }>;
+    try {
+      result = await db
+        .delete(reservations)
+        .where(eq(reservations.restaurantId, id))
+        .returning({ id: reservations.id });
+    } catch (error: unknown) {
+      return sendCaughtRestaurantError(request, reply, error, "RESTAURANT_RESET_RESERVATIONS_FAILED", {
+        restaurantLookupId: id,
+        stage: "reservation_delete",
+      });
+    }
 
     return { deleted: result.length };
   });
@@ -558,10 +659,17 @@ export async function restaurantRoutes(app: FastifyInstance) {
       );
     }
 
-    const rows = await db
-      .select()
-      .from(tables)
-      .where(and(eq(tables.restaurantId, id), eq(tables.isActive, true)));
+    let rows: Array<typeof tables.$inferSelect>;
+    try {
+      rows = await db
+        .select()
+        .from(tables)
+        .where(and(eq(tables.restaurantId, id), eq(tables.isActive, true)));
+    } catch (error: unknown) {
+      return sendCaughtRestaurantError(request, reply, error, "RESTAURANT_TABLES_FAILED", {
+        restaurantLookupId: id,
+      });
+    }
 
     return rows.map((t) => ({
       id: t.id,

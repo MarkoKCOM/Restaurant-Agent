@@ -275,6 +275,14 @@ OPENSEAT_TOKEN=... pnpm debug:owner-delivery
 
 On the VPS, `JWT_SECRET` is enough for this command to synthesize a short-lived super-admin token. The command reads `/api/v1/admin/restaurants`, prints masked restaurant phone/WhatsApp fields, and gives a ready-to-run `PATCH /api/v1/restaurants/:id` repair command for each restaurant missing `ownerWhatsapp`.
 
+To apply one known owner WhatsApp value and immediately re-check readiness:
+
+```bash
+OPENSEAT_OWNER_DELIVERY_RESTAURANT_ID=... \
+OPENSEAT_OWNER_DELIVERY_OWNER_WHATSAPP=... \
+pnpm debug:owner-delivery -- --repair=true
+```
+
 ## Queue State
 
 Use the queue summary for delayed or scheduled background work:

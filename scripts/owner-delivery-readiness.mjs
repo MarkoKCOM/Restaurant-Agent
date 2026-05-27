@@ -54,6 +54,35 @@ async function getJson(url, token, requestId) {
   }
 }
 
+async function patchJson(url, token, requestId, body) {
+  try {
+    const response = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        "x-request-id": requestId,
+      },
+      body: JSON.stringify(body),
+    });
+    const text = await response.text();
+    return {
+      ok: response.ok,
+      status: response.status,
+      requestId: response.headers.get("x-request-id") ?? requestId,
+      body: parseJson(text),
+      bodyPreview: text.slice(0, 500),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: null,
+      requestId,
+      error: sanitizeConnectionError(error),
+    };
+  }
+}
+
 function failStep(name, result) {
   console.error(`${name} failed status=${result.status ?? "network"} requestId=${result.requestId}`);
   if (result.error) {
@@ -72,10 +101,31 @@ const token = explicitToken || createSignedSuperAdminToken();
 const packageFilter = readOption("package", "");
 const onlyMissing = readOption("only-missing", "true") !== "false";
 const artifactPath = readOption("artifact-path", process.env.OPENSEAT_OWNER_DELIVERY_ARTIFACT_PATH ?? "");
+const repair = readOption("repair", "false") === "true";
+const repairRestaurantId = readOption("restaurant-id", process.env.OPENSEAT_OWNER_DELIVERY_RESTAURANT_ID ?? "");
+const repairOwnerWhatsapp = readOption("owner-whatsapp", process.env.OPENSEAT_OWNER_DELIVERY_OWNER_WHATSAPP ?? "");
 
 if (!token) {
   console.error("Missing OPENSEAT_TOKEN or JWT_SECRET for a super-admin owner delivery readiness token.");
   process.exit(1);
+}
+
+let repairResult = null;
+if (repair) {
+  if (!repairRestaurantId || !repairOwnerWhatsapp.trim()) {
+    console.error("Repair mode requires --restaurant-id and --owner-whatsapp, or OPENSEAT_OWNER_DELIVERY_RESTAURANT_ID and OPENSEAT_OWNER_DELIVERY_OWNER_WHATSAPP.");
+    process.exit(1);
+  }
+  repairResult = await patchJson(
+    new URL(`${apiUrl}/api/v1/restaurants/${repairRestaurantId}`),
+    token,
+    requestIdFor("repair"),
+    { ownerWhatsapp: repairOwnerWhatsapp.trim() },
+  );
+  if (!repairResult.ok) {
+    failStep("owner WhatsApp repair", repairResult);
+    process.exit(1);
+  }
 }
 
 const restaurantsResult = await getJson(new URL(`${apiUrl}/api/v1/admin/restaurants`), token, requestIdFor("restaurants"));
@@ -108,6 +158,14 @@ const report = {
   tokenSource: explicitToken ? "provided" : "jwt_secret",
   packageFilter: packageFilter || null,
   onlyMissing,
+  repair: repairResult
+    ? {
+      status: "applied",
+      restaurantId: repairRestaurantId,
+      requestId: repairResult.requestId,
+      ownerWhatsappConfigured: Boolean(repairResult.body?.ownerWhatsapp?.trim?.()),
+    }
+    : null,
   totals: {
     restaurants: restaurants.length,
     ownerWhatsappConfigured: configured.length,
@@ -138,6 +196,10 @@ console.log("Owner Delivery Readiness");
 console.log(`apiUrl=${apiUrl}`);
 console.log(`restaurantsRequestId=${restaurantsResult.requestId}`);
 console.log(`tokenSource=${explicitToken ? "provided" : "jwt_secret"}`);
+if (repairResult) {
+  console.log(`repair=applied restaurantId=${repairRestaurantId} requestId=${repairResult.requestId} ownerWhatsappConfigured=${repairResult.body?.ownerWhatsapp ? "yes" : "no"}`);
+  console.log("");
+}
 if (packageFilter) console.log(`packageFilter=${packageFilter}`);
 console.log(`total=${restaurants.length}`);
 console.log(`ownerWhatsappConfigured=${configured.length}`);

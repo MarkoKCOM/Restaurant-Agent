@@ -1,0 +1,120 @@
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { z } from "zod";
+import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
+import {
+  getCampaignRoiAnalytics,
+  getLoyaltyAnalytics,
+  getRetentionAnalytics,
+} from "../services/analytics.service.js";
+
+const analyticsQuerySchema = z.object({
+  restaurantId: z.string().uuid(),
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+const campaignRoiQuerySchema = analyticsQuerySchema.extend({
+  campaignId: z.string().uuid().optional(),
+  attributionDays: z.coerce.number().int().min(1).max(90).optional(),
+  costPerMessage: z.coerce.number().min(0).max(100).optional(),
+});
+
+function sendAnalyticsError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  statusCode: number,
+  message: string,
+  code: string,
+  context: Record<string, unknown> = {},
+) {
+  request.log.warn(
+    {
+      ...context,
+      code,
+      requestId: request.id,
+      statusCode,
+      userId: request.user?.id,
+      restaurantId: request.user?.restaurantId,
+      role: request.user?.role,
+    },
+    "Analytics request rejected",
+  );
+
+  return reply.status(statusCode).send({
+    error: message,
+    code,
+    requestId: request.id,
+    ...context,
+  });
+}
+
+function enforceAnalyticsAccess(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  restaurantId: string,
+) {
+  const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
+  if (err) {
+    return sendAnalyticsError(request, reply, 403, err, "ANALYTICS_FORBIDDEN", { restaurantId });
+  }
+  return null;
+}
+
+export async function analyticsRoutes(app: FastifyInstance) {
+  app.get("/retention", async (request, reply) => {
+    const query = analyticsQuerySchema.parse(request.query ?? {});
+    const accessError = enforceAnalyticsAccess(request, reply, query.restaurantId);
+    if (accessError) return accessError;
+
+    const retention = await getRetentionAnalytics(query);
+    request.log.info(
+      {
+        restaurantId: query.restaurantId,
+        requestId: request.id,
+        uniqueGuests: retention.current.uniqueGuests,
+        returningGuestRatio: retention.current.returningGuestRatio,
+      },
+      "Retention analytics generated",
+    );
+    return { retention };
+  });
+
+  app.get("/loyalty", async (request, reply) => {
+    const query = analyticsQuerySchema.parse(request.query ?? {});
+    const accessError = enforceAnalyticsAccess(request, reply, query.restaurantId);
+    if (accessError) return accessError;
+
+    const loyalty = await getLoyaltyAnalytics(query);
+    request.log.info(
+      {
+        restaurantId: query.restaurantId,
+        requestId: request.id,
+        activeMembers: loyalty.activeMembers,
+        pointsIssued: loyalty.pointsIssued,
+        pointsRedeemed: loyalty.pointsRedeemed,
+      },
+      "Loyalty analytics generated",
+    );
+    return { loyalty };
+  });
+
+  app.get("/campaign-roi", async (request, reply) => {
+    const query = campaignRoiQuerySchema.parse(request.query ?? {});
+    const accessError = enforceAnalyticsAccess(request, reply, query.restaurantId);
+    if (accessError) return accessError;
+
+    const campaignRoi = await getCampaignRoiAnalytics(query);
+    request.log.info(
+      {
+        restaurantId: query.restaurantId,
+        requestId: request.id,
+        campaigns: campaignRoi.totals.campaigns,
+        sent: campaignRoi.totals.sent,
+        attributedReservations: campaignRoi.totals.attributedReservations,
+        attributedRevenue: campaignRoi.totals.attributedRevenue,
+      },
+      "Campaign ROI analytics generated",
+    );
+    return { campaignRoi };
+  });
+}

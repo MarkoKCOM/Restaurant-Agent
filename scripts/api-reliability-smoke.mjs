@@ -1532,6 +1532,34 @@ async function main() {
     throw new Error(`Campaign STOP opt-out behavior failed: ${JSON.stringify({ agentOptOut, optedOutGuest, optOutDelivery })}`);
   }
 
+  const analyticsFrom = plusDays(-120);
+  const analyticsTo = plusDays(1);
+  const analyticsQuery = `restaurantId=${restaurantId}&from=${analyticsFrom}&to=${analyticsTo}`;
+  const retentionAnalytics = await request(`/api/v1/analytics/retention?${analyticsQuery}`, { token });
+  const loyaltyAnalytics = await request(`/api/v1/analytics/loyalty?${analyticsQuery}`, { token });
+  const campaignRoiAnalytics = await request(`/api/v1/analytics/campaign-roi?${analyticsQuery}&costPerMessage=0.35`, { token });
+  record("analytics.growth-summary", {
+    retentionUniqueGuests: retentionAnalytics.retention?.current?.uniqueGuests ?? null,
+    retentionWindows: (retentionAnalytics.retention?.retentionWindows ?? []).map((window) => window.days),
+    activeMembers: loyaltyAnalytics.loyalty?.activeMembers ?? null,
+    pointsIssued: loyaltyAnalytics.loyalty?.pointsIssued ?? null,
+    tierBronze: loyaltyAnalytics.loyalty?.tierDistribution?.bronze ?? null,
+    campaigns: campaignRoiAnalytics.campaignRoi?.totals?.campaigns ?? null,
+    campaignSent: campaignRoiAnalytics.campaignRoi?.totals?.sent ?? null,
+    hasCampaignRoi: campaignRoiAnalytics.campaignRoi?.totals?.roi !== undefined,
+  });
+  if (
+    !Array.isArray(retentionAnalytics.retention?.retentionWindows)
+    || retentionAnalytics.retention.retentionWindows.length !== 3
+    || typeof loyaltyAnalytics.loyalty?.activeMembers !== "number"
+    || typeof loyaltyAnalytics.loyalty?.pointsIssued !== "number"
+    || !loyaltyAnalytics.loyalty?.tierDistribution
+    || typeof campaignRoiAnalytics.campaignRoi?.totals?.campaigns !== "number"
+    || typeof campaignRoiAnalytics.campaignRoi?.totals?.sent !== "number"
+  ) {
+    throw new Error(`Growth analytics endpoints returned incomplete metrics: ${JSON.stringify({ retentionAnalytics, loyaltyAnalytics, campaignRoiAnalytics })}`);
+  }
+
   await request(`/api/v1/engagement/win-back/check?restaurantId=${restaurantId}`, {
     method: "POST",
     token,

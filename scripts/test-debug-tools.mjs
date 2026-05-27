@@ -317,6 +317,14 @@ await writeFile(queueDebugSummaryPath, [
   "- daily-morning-summary expected=9 found=9 pattern=0 9 * * * status=ok",
   "- daily-summary expected=9 found=9 pattern=0 23 * * * status=ok",
   "- restaurantTimezones=Asia/Jerusalem:9",
+  "Queue: engagement",
+  "engagement schedule health:",
+  "- restaurants=9",
+  "- win-back-check expected=9 found=9 pattern=0 10 * * * status=ok",
+  "- birthday-check expected=9 found=9 pattern=0 9 * * * status=ok",
+  "- anniversary-check expected=9 found=9 pattern=15 9 * * * status=ok",
+  "- birthday-week-challenge-check expected=9 found=9 pattern=30 9 * * * status=ok",
+  "- restaurantTimezones=Asia/Jerusalem:9",
   "failed samples:",
   "- none",
   "",
@@ -521,6 +529,22 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
             ],
           },
         },
+        {
+          name: "engagement",
+          status: "ok",
+          failed: 0,
+          repeatableJobs: [],
+          scheduleHealth: {
+            restaurantCount: 9,
+            restaurantTimezones: { "Asia/Jerusalem": 9 },
+            checks: [
+              { name: "win-back-check", expected: 9, found: 9, pattern: "0 10 * * *", status: "ok" },
+              { name: "birthday-check", expected: 9, found: 9, pattern: "0 9 * * *", status: "ok" },
+              { name: "anniversary-check", expected: 9, found: 9, pattern: "15 9 * * *", status: "ok" },
+              { name: "birthday-week-challenge-check", expected: 9, found: 9, pattern: "30 9 * * *", status: "ok" },
+            ],
+          },
+        },
         { name: "membership-events", status: "ok", failed: 0 },
       ],
       attentionSamples: [
@@ -556,8 +580,9 @@ assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overd
 assertIncludes(debugBundleManifestOutput, "Campaigns: attention total=6 draft=1 scheduled=2 sent=3 overdue=1 deliverySent=12 skipped=4 optedOut=2 weekLimit=1 monthLimit=1");
 assertIncludes(debugBundleManifestOutput, "Outbound messages: attention total=5 logged=4 sent=0 skipped=0 failed=1 ownerWhatsappMissing=2 types=daily_morning_summary:2,thank_you:3 errors=OUTBOUND_RECIPIENT_MISSING:1");
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");
-assertIncludes(debugBundleManifestOutput, "Queues: daily-summary:ok/failed=0/repeat=0, membership-events:ok/failed=0/repeat=?");
+assertIncludes(debugBundleManifestOutput, "Queues: daily-summary:ok/failed=0/repeat=0, engagement:ok/failed=0/repeat=0, membership-events:ok/failed=0/repeat=?");
 assertIncludes(debugBundleManifestOutput, "Summary schedules: restaurants=9 morning expected=9 found=9 pattern=0 9 * * * status=ok closing expected=9 found=9 pattern=0 23 * * * status=ok timezones=Asia/Jerusalem:9");
+assertIncludes(debugBundleManifestOutput, "Engagement schedules: restaurants=9 winBack expected=9 found=9 pattern=0 10 * * * status=ok birthday expected=9 found=9 pattern=0 9 * * * status=ok anniversary expected=9 found=9 pattern=15 9 * * * status=ok birthdayWeek expected=9 found=9 pattern=30 9 * * * status=ok timezones=Asia/Jerusalem:9");
 assertIncludes(debugBundleManifestOutput, "Operational attention: Gamification, Engagement, Campaigns, Outbound messages");
 assertIncludes(debugBundleManifestOutput, "Attention samples:");
 assertIncludes(debugBundleManifestOutput, "- membership id=mpf-1 stage=loyalty guest=guest-1 reservation=res-1 error=POINTS_WRITE_FAILED");
@@ -580,10 +605,13 @@ for (const expectedSummarizerContent of [
   "Engagement",
   "Campaigns",
   "Summary schedules",
+  "Engagement schedules",
   "Operational attention",
   "operationalAttentionLabels",
   "parseSummaryScheduleHealth",
+  "parseEngagementScheduleHealth",
   "formatSummaryScheduleHealthFromDiagnostics",
+  "formatEngagementScheduleHealthFromDiagnostics",
   "Agent membership intents",
 ]) {
   assertIncludes(artifactSummarizer, expectedSummarizerContent);
@@ -922,12 +950,15 @@ for (const requiredQueueDebugContent of [
   "getDelayed",
   "OPENSEAT_QUEUE_DEBUG_SAMPLE_LIMIT",
   "summary schedule health",
+  "engagement schedule health",
   "campaign delivery health",
   "campaign skipped reasons",
   "overdue campaign samples",
   "loadCampaignDeliveryContext",
   "skippedRateLimitedWeek",
   "daily-morning-summary",
+  "win-back-check",
+  "birthday-week-challenge-check",
   "restaurantTimezones",
   "DATABASE_URL not configured",
   "sanitizeConnectionError",
@@ -939,13 +970,19 @@ for (const requiredQueueDebugContent of [
 
 for (const requiredDiagnosticsContent of [
   "scheduleHealth",
+  "REPEATABLE_JOB_INSPECT_LIMIT",
   "inspectSummaryScheduleHealth",
+  "inspectScheduleHealth",
   "buildScheduleCheck",
   "inspectCampaigns",
   "overdueScheduled",
   "skippedRateLimitedWeek",
   "daily-morning-summary",
+  "win-back-check",
+  "birthday-week-challenge-check",
   "0 9 * * *",
+  "0 10 * * *",
+  "30 9 * * *",
   "0 23 * * *",
   "queue.scheduleHealth?.status !== \"attention\"",
   "operationalStatuses.every((sectionStatus) => sectionStatus === \"ok\")",
@@ -1117,6 +1154,7 @@ for (const requiredReadmeContent of [
   "queue-debug-summary.txt",
   "scheduleHealth",
   "formatSummaryScheduleHealth",
+  "formatEngagementScheduleHealth",
   "OPENSEAT_QUEUE_DEBUG_SAMPLE_LIMIT",
   "OPENSEAT_BUNDLE_RESTAURANT_ID",
   "OPENSEAT_BUNDLE_RESTAURANT_SLUG",
@@ -1128,6 +1166,7 @@ for (const requiredReadmeContent of [
   "OPENSEAT_BUNDLE_READY_TIMEOUT_MS",
   "Queues:",
   "Summary schedules:",
+  "Engagement schedules:",
   "Diagnostics request:",
   "## Open First",
   "admin-diagnostics.txt",

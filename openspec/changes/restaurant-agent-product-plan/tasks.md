@@ -116,7 +116,7 @@
 - [x] 11.4 Implement campaign ROI tracking — attributed reservations and estimated revenue per campaign
 - [x] 11.5 Implement loyalty program analytics — active members, points issued/redeemed, tier distribution
 - [x] 11.6 Build React analytics dashboard page with charts (reservation heatmap, retention trend, tier distribution)
-- [ ] 11.7 Implement WhatsApp daily morning summary (09:00) — yesterday's stats, today's bookings, notable guests
+- [x] 11.7 Implement WhatsApp daily morning summary (09:00) — yesterday's stats, today's bookings, notable guests
 
 ## 12. Multi-Restaurant & Billing
 
@@ -137,6 +137,7 @@
 - [ ] 13.6 Test owner daily summary and alert notifications
 - [ ] 13.7 Run 1-week soft launch with pilot restaurant, collect feedback, iterate
 - [ ] 13.8 Validate name/brand — check domain availability for "OpenSeat" or chosen name, secure domain
+- [x] 13.9 Add operational diagnostics for Growth retention schedules — daily summaries, win-back, birthdays, anniversaries, birthday-week challenges
 
 ## 14. Branding & Landing Page
 

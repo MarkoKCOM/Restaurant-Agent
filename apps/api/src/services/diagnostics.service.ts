@@ -26,6 +26,7 @@ import {
 import { getOutboundMessageDiagnostics, type OutboundMessageDiagnostics } from "./outbound-message.service.js";
 
 const execFileAsync = promisify(execFile);
+const REPEATABLE_JOB_INSPECT_LIMIT = 100;
 
 export type DiagnosticStatus = "ok" | "error";
 
@@ -468,7 +469,7 @@ async function inspectQueue(name: string, queue: Queue): Promise<QueueDiagnostic
     const [counts, failedJobs, repeatableJobs] = await Promise.all([
       queue.getJobCounts("waiting", "active", "delayed", "completed", "failed", "paused"),
       queue.getFailed(0, 2),
-      queue.getRepeatableJobs(0, 20),
+      queue.getRepeatableJobs(0, REPEATABLE_JOB_INSPECT_LIMIT),
     ]);
 
     const normalizedRepeatableJobs = repeatableJobs.map((job) => ({
@@ -478,9 +479,7 @@ async function inspectQueue(name: string, queue: Queue): Promise<QueueDiagnostic
       next: job.next,
     }));
 
-    const scheduleHealth = name === "daily-summary"
-      ? await inspectSummaryScheduleHealth(normalizedRepeatableJobs)
-      : undefined;
+    const scheduleHealth = await inspectScheduleHealth(name, normalizedRepeatableJobs);
 
     return {
       name,
@@ -515,8 +514,41 @@ async function inspectQueue(name: string, queue: Queue): Promise<QueueDiagnostic
   }
 }
 
+async function inspectScheduleHealth(
+  queueName: string,
+  repeatableJobs: NonNullable<QueueDiagnostic["repeatableJobs"]>,
+): Promise<NonNullable<QueueDiagnostic["scheduleHealth"]> | undefined> {
+  if (queueName === "daily-summary") {
+    return inspectRestaurantScheduleHealth(repeatableJobs, [
+      { name: "daily-morning-summary", pattern: "0 9 * * *" },
+      { name: "daily-summary", pattern: "0 23 * * *" },
+    ]);
+  }
+
+  if (queueName === "engagement") {
+    return inspectRestaurantScheduleHealth(repeatableJobs, [
+      { name: "win-back-check", pattern: "0 10 * * *" },
+      { name: "birthday-check", pattern: "0 9 * * *" },
+      { name: "anniversary-check", pattern: "15 9 * * *" },
+      { name: "birthday-week-challenge-check", pattern: "30 9 * * *" },
+    ]);
+  }
+
+  return undefined;
+}
+
 async function inspectSummaryScheduleHealth(
   repeatableJobs: NonNullable<QueueDiagnostic["repeatableJobs"]>,
+): Promise<NonNullable<QueueDiagnostic["scheduleHealth"]>> {
+  return inspectRestaurantScheduleHealth(repeatableJobs, [
+    { name: "daily-morning-summary", pattern: "0 9 * * *" },
+    { name: "daily-summary", pattern: "0 23 * * *" },
+  ]);
+}
+
+async function inspectRestaurantScheduleHealth(
+  repeatableJobs: NonNullable<QueueDiagnostic["repeatableJobs"]>,
+  expectedSchedules: Array<{ name: string; pattern: string }>,
 ): Promise<NonNullable<QueueDiagnostic["scheduleHealth"]>> {
   const restaurantRows = await db
     .select({
@@ -530,10 +562,8 @@ async function inspectSummaryScheduleHealth(
     restaurantTimezones[timezone] = (restaurantTimezones[timezone] ?? 0) + 1;
   }
 
-  const checks = [
-    buildScheduleCheck(repeatableJobs, "daily-morning-summary", "0 9 * * *", restaurantCount),
-    buildScheduleCheck(repeatableJobs, "daily-summary", "0 23 * * *", restaurantCount),
-  ];
+  const checks = expectedSchedules.map((schedule) =>
+    buildScheduleCheck(repeatableJobs, schedule.name, schedule.pattern, restaurantCount));
 
   return {
     status: checks.every((check) => check.status === "ok") ? "ok" : "attention",

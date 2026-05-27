@@ -238,6 +238,47 @@ function printSummaryScheduleHealth(repeatableJobs, scheduleContext) {
   console.log(`- restaurantTimezones=${countBy(restaurants.map((restaurant) => restaurant.timezone)) || "none"}`);
 }
 
+function printEngagementScheduleHealth(repeatableJobs, scheduleContext) {
+  console.log("engagement schedule health:");
+  if (scheduleContext.status === "skipped") {
+    console.log(`- skipped reason=${scheduleContext.reason}`);
+    return;
+  }
+  if (scheduleContext.status === "error") {
+    console.log(`- error=${JSON.stringify(scheduleContext.error)}`);
+    return;
+  }
+
+  const restaurants = scheduleContext.restaurants ?? [];
+  const expected = restaurants.length;
+  console.log(`- restaurants=${expected}`);
+  console.log(formatScheduleStatus({
+    name: "win-back-check",
+    pattern: "0 10 * * *",
+    expected,
+    repeatableJobs,
+  }));
+  console.log(formatScheduleStatus({
+    name: "birthday-check",
+    pattern: "0 9 * * *",
+    expected,
+    repeatableJobs,
+  }));
+  console.log(formatScheduleStatus({
+    name: "anniversary-check",
+    pattern: "15 9 * * *",
+    expected,
+    repeatableJobs,
+  }));
+  console.log(formatScheduleStatus({
+    name: "birthday-week-challenge-check",
+    pattern: "30 9 * * *",
+    expected,
+    repeatableJobs,
+  }));
+  console.log(`- restaurantTimezones=${countBy(restaurants.map((restaurant) => restaurant.timezone)) || "none"}`);
+}
+
 function printCampaignDeliveryHealth(campaignContext) {
   console.log("campaign delivery health:");
   if (campaignContext.status === "skipped") {
@@ -282,7 +323,7 @@ const queueNames = String(readOption("queues", DEFAULT_QUEUES.join(",")))
 const sampleLimit = Math.min(Math.max(Number(readOption("sample-limit", process.env[SAMPLE_LIMIT_ENV] ?? "5")) || 5, 1), 25);
 const connection = parseRedisUrl(redisUrl);
 const queues = queueNames.map((name) => new Queue(name, { connection }));
-const scheduleContext = queueNames.includes("daily-summary")
+const scheduleContext = queueNames.includes("daily-summary") || queueNames.includes("engagement")
   ? await loadRestaurantScheduleContext()
   : null;
 const campaignContext = queueNames.includes("campaign-delivery")
@@ -318,6 +359,9 @@ try {
 
     if (queue.name === "daily-summary" && scheduleContext) {
       printSummaryScheduleHealth(repeatableJobs, scheduleContext);
+    }
+    if (queue.name === "engagement" && scheduleContext) {
+      printEngagementScheduleHealth(repeatableJobs, scheduleContext);
     }
     if (queue.name === "campaign-delivery" && campaignContext) {
       printCampaignDeliveryHealth(campaignContext);

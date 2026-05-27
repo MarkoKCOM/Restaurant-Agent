@@ -252,19 +252,15 @@ async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
 }
 
-function formatSummaryScheduleHealth(queues) {
-  const dailySummaryQueue = queues.find((queue) => queue.name === "daily-summary" && isObject(queue.scheduleHealth));
-  const health = dailySummaryQueue?.scheduleHealth;
+function formatQueueScheduleHealth(queues, queueName, labels = {}) {
+  const queue = queues.find((item) => item.name === queueName && isObject(item.scheduleHealth));
+  const health = queue?.scheduleHealth;
   if (!isObject(health)) return "";
 
   const parts = [`restaurants=${health.restaurantCount ?? "?"}`];
   const checks = Array.isArray(health.checks) ? health.checks : [];
   for (const check of checks) {
-    const label = check.name === "daily-morning-summary"
-      ? "morning"
-      : check.name === "daily-summary"
-        ? "closing"
-        : check.name;
+    const label = labels[check.name] ?? check.name;
     const wrong = check.wrongPattern ? ` wrongPattern=${check.wrongPattern}` : "";
     parts.push(`${label} expected=${check.expected ?? "?"} found=${check.found ?? "?"} pattern=${check.pattern ?? "?"} status=${check.status ?? "?"}${wrong}`);
   }
@@ -275,6 +271,22 @@ function formatSummaryScheduleHealth(queues) {
   if (timezones) parts.push(`timezones=${timezones}`);
 
   return parts.join(" ");
+}
+
+function formatSummaryScheduleHealth(queues) {
+  return formatQueueScheduleHealth(queues, "daily-summary", {
+    "daily-morning-summary": "morning",
+    "daily-summary": "closing",
+  });
+}
+
+function formatEngagementScheduleHealth(queues) {
+  return formatQueueScheduleHealth(queues, "engagement", {
+    "win-back-check": "winBack",
+    "birthday-check": "birthday",
+    "anniversary-check": "anniversary",
+    "birthday-week-challenge-check": "birthdayWeek",
+  });
 }
 
 function operationalAttentionLabels(adminDiagnostics) {
@@ -553,6 +565,10 @@ async function writeReadme() {
       const summaryScheduleHealth = formatSummaryScheduleHealth(queues);
       if (summaryScheduleHealth) {
         lines.push(`- Summary schedules: ${summaryScheduleHealth}`);
+      }
+      const engagementScheduleHealth = formatEngagementScheduleHealth(queues);
+      if (engagementScheduleHealth) {
+        lines.push(`- Engagement schedules: ${engagementScheduleHealth}`);
       }
       const attention = operationalAttentionLabels(adminDiagnostics);
       if (attention.length > 0) {

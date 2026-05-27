@@ -41,7 +41,7 @@ function formatCheckout(value) {
   return value.shortCommit ?? value.commit ?? value.status ?? "unknown";
 }
 
-async function parseSummaryScheduleHealth(commands) {
+async function parseQueueScheduleHealth(commands, sectionLabel, labels = {}) {
   const queueCommand = commands.find((command) => command.name === "queue-debug-summary" && command.outputPath);
   if (!queueCommand) return null;
 
@@ -53,7 +53,7 @@ async function parseSummaryScheduleHealth(commands) {
   }
 
   const lines = text.split(/\r?\n/);
-  const start = lines.findIndex((line) => line.trim() === "summary schedule health:");
+  const start = lines.findIndex((line) => line.trim() === `${sectionLabel}:`);
   if (start < 0) return null;
 
   const section = [];
@@ -63,8 +63,6 @@ async function parseSummaryScheduleHealth(commands) {
   }
 
   const restaurants = section.find((line) => line.startsWith("restaurants="))?.split("=")[1];
-  const morning = section.find((line) => line.startsWith("daily-morning-summary "));
-  const closing = section.find((line) => line.startsWith("daily-summary "));
   const timezones = section.find((line) => line.startsWith("restaurantTimezones="))?.slice("restaurantTimezones=".length);
   const skipped = section.find((line) => line.startsWith("skipped reason="))?.slice("skipped reason=".length);
   const error = section.find((line) => line.startsWith("error="))?.slice("error=".length);
@@ -74,24 +72,39 @@ async function parseSummaryScheduleHealth(commands) {
 
   const parts = [];
   if (restaurants) parts.push(`restaurants=${restaurants}`);
-  if (morning) parts.push(morning.replace("daily-morning-summary ", "morning "));
-  if (closing) parts.push(closing.replace("daily-summary ", "closing "));
+  for (const line of section) {
+    const [name] = line.split(" ");
+    if (!name || name.includes("=") || name === "restaurantTimezones") continue;
+    parts.push(line.replace(`${name} `, `${labels[name] ?? name} `));
+  }
   if (timezones) parts.push(`timezones=${timezones}`);
   return parts.length > 0 ? parts.join(" ") : null;
 }
 
-function formatSummaryScheduleHealthFromDiagnostics(queues) {
-  const dailySummaryQueue = queues.find((queue) => queue.name === "daily-summary" && queue.scheduleHealth);
-  const health = dailySummaryQueue?.scheduleHealth;
+async function parseSummaryScheduleHealth(commands) {
+  return parseQueueScheduleHealth(commands, "summary schedule health", {
+    "daily-morning-summary": "morning",
+    "daily-summary": "closing",
+  });
+}
+
+async function parseEngagementScheduleHealth(commands) {
+  return parseQueueScheduleHealth(commands, "engagement schedule health", {
+    "win-back-check": "winBack",
+    "birthday-check": "birthday",
+    "anniversary-check": "anniversary",
+    "birthday-week-challenge-check": "birthdayWeek",
+  });
+}
+
+function formatQueueScheduleHealthFromDiagnostics(queues, queueName, labels = {}) {
+  const queue = queues.find((item) => item.name === queueName && item.scheduleHealth);
+  const health = queue?.scheduleHealth;
   if (!health) return null;
 
   const parts = [`restaurants=${health.restaurantCount ?? "?"}`];
   for (const check of asArray(health.checks)) {
-    const label = check.name === "daily-morning-summary"
-      ? "morning"
-      : check.name === "daily-summary"
-        ? "closing"
-        : check.name;
+    const label = labels[check.name] ?? check.name;
     const wrong = check.wrongPattern ? ` wrongPattern=${check.wrongPattern}` : "";
     parts.push(`${label} expected=${check.expected ?? "?"} found=${check.found ?? "?"} pattern=${check.pattern ?? "?"} status=${check.status ?? "?"}${wrong}`);
   }
@@ -102,6 +115,22 @@ function formatSummaryScheduleHealthFromDiagnostics(queues) {
   if (timezones) parts.push(`timezones=${timezones}`);
 
   return parts.join(" ");
+}
+
+function formatSummaryScheduleHealthFromDiagnostics(queues) {
+  return formatQueueScheduleHealthFromDiagnostics(queues, "daily-summary", {
+    "daily-morning-summary": "morning",
+    "daily-summary": "closing",
+  });
+}
+
+function formatEngagementScheduleHealthFromDiagnostics(queues) {
+  return formatQueueScheduleHealthFromDiagnostics(queues, "engagement", {
+    "win-back-check": "winBack",
+    "birthday-check": "birthday",
+    "anniversary-check": "anniversary",
+    "birthday-week-challenge-check": "birthdayWeek",
+  });
 }
 
 function operationalAttentionLabels(adminDiagnostics) {
@@ -424,6 +453,8 @@ async function summarizeDebugBundleManifest(report) {
   const queues = asArray(adminDiagnostics.queues);
   const summaryScheduleHealth = formatSummaryScheduleHealthFromDiagnostics(queues)
     ?? await parseSummaryScheduleHealth(commands);
+  const engagementScheduleHealth = formatEngagementScheduleHealthFromDiagnostics(queues)
+    ?? await parseEngagementScheduleHealth(commands);
   const operationalAttention = operationalAttentionLabels(adminDiagnostics);
 
   console.log(`Artifact: ${basename(artifactPath)}`);
@@ -503,6 +534,9 @@ async function summarizeDebugBundleManifest(report) {
   }
   if (summaryScheduleHealth) {
     printLine("Summary schedules", summaryScheduleHealth);
+  }
+  if (engagementScheduleHealth) {
+    printLine("Engagement schedules", engagementScheduleHealth);
   }
   if (operationalAttention.length > 0) {
     printLine("Operational attention", operationalAttention.join(", "));

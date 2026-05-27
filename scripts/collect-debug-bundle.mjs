@@ -266,6 +266,7 @@ async function captureDiagnosticsHighlights(commandRecord) {
         challenges: gamification.challenges,
         referrals: gamification.referrals,
         menuExploration: gamification.menuExploration,
+        streaks: gamification.streaks,
         error: gamification.error,
       },
       engagement: {
@@ -352,8 +353,9 @@ async function writeReadme() {
       const challenges = gamification.challenges ?? {};
       const referrals = gamification.referrals ?? {};
       const menuExploration = gamification.menuExploration ?? {};
+      const streaks = gamification.streaks ?? {};
       lines.push(
-        `- Gamification: ${gamification.status ?? "unknown"} activeChallenges=${challenges.active ?? "?"} smokeChallenges=${challenges.activeSmokeChallenges ?? "?"} birthdayWeekActive=${challenges.activeBirthdayWeekChallenges ?? "?"} birthdayWeekDue=${challenges.birthdayWeekDueUncreated ?? "?"} stuckChallenges=${challenges.stuckCompletions ?? "?"} duplicateProgress=${challenges.duplicateProgressGroups ?? "?"} referralCodes=${referrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${referrals.referrerCreditMismatches ?? "?"} menuBadgeGuests=${menuExploration.guestsWithBadges ?? "?"}`,
+        `- Gamification: ${gamification.status ?? "unknown"} activeChallenges=${challenges.active ?? "?"} smokeChallenges=${challenges.activeSmokeChallenges ?? "?"} birthdayWeekActive=${challenges.activeBirthdayWeekChallenges ?? "?"} birthdayWeekDue=${challenges.birthdayWeekDueUncreated ?? "?"} stuckChallenges=${challenges.stuckCompletions ?? "?"} duplicateProgress=${challenges.duplicateProgressGroups ?? "?"} referralCodes=${referrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${referrals.referrerCreditMismatches ?? "?"} menuBadgeGuests=${menuExploration.guestsWithBadges ?? "?"} streakActive=${streaks.active ?? "?"} staleStreaks=${streaks.stale ?? "?"} invalidStreaks=${streaks.invalid ?? "?"} streakBonusMissing=${streaks.milestoneBonusMissing ?? "?"}`,
       );
       const engagement = adminDiagnostics.engagement ?? {};
       const engagementTotals = engagement.totals ?? {};

@@ -113,6 +113,7 @@ function summarizeSmoke(report) {
       || step.step === "gamification.expired-challenge.window"
       || step.step === "gamification.expired-challenge.cleanup"
       || step.step === "gamification.challenge-idempotency"
+      || step.step === "gamification.streak-after-completion"
       || step.step === "loyalty.off-peak-multiplier"
       || step.step === "gamification.menu-exploration"
       || step.step === "gamification.birthday-week-challenge"
@@ -152,6 +153,8 @@ function summarizeSmoke(report) {
         console.log(`- gamification.expired-challenge.cleanup: active=${step.isActive === false ? "no" : "yes"} challengeId=${step.challengeId ?? "?"}`);
       } else if (step.step === "gamification.challenge-idempotency") {
         console.log(`- gamification.challenge-idempotency: progress=${step.progress ?? "?"}/${step.target ?? "?"} points=${step.pointsBefore ?? "?"}->${step.pointsAfter ?? "?"} duplicateAward=${step.pointsBefore === step.pointsAfter ? "no" : "yes"}`);
+      } else if (step.step === "gamification.streak-after-completion") {
+        console.log(`- gamification.streak-after-completion: current=${step.current ?? "?"} best=${step.best ?? "?"} week=${step.lastVisitWeek ?? "?"}`);
       } else if (step.step === "loyalty.off-peak-multiplier") {
         console.log(`- loyalty.off-peak-multiplier: visitPoints=${step.actualVisitPoints ?? "?"}/${step.expectedVisitPoints ?? "?"} reason=${step.reason ?? "?"}`);
       } else if (step.step === "gamification.menu-exploration") {
@@ -245,6 +248,7 @@ function summarizeDebugBundleManifest(report) {
   const gamificationChallenges = gamification.challenges ?? {};
   const gamificationReferrals = gamification.referrals ?? {};
   const gamificationMenuExploration = gamification.menuExploration ?? {};
+  const gamificationStreaks = gamification.streaks ?? {};
   const engagement = adminDiagnostics.engagement ?? {};
   const engagementTotals = engagement.totals ?? {};
   const engagementWinBack = engagement.winBack ?? {};
@@ -299,7 +303,7 @@ function summarizeDebugBundleManifest(report) {
   if (gamification.status) {
     printLine(
       "Gamification",
-      `${gamification.status} activeChallenges=${gamificationChallenges.active ?? "?"} smokeChallenges=${gamificationChallenges.activeSmokeChallenges ?? "?"} birthdayWeekActive=${gamificationChallenges.activeBirthdayWeekChallenges ?? "?"} birthdayWeekDue=${gamificationChallenges.birthdayWeekDueUncreated ?? "?"} stuckChallenges=${gamificationChallenges.stuckCompletions ?? "?"} duplicateProgress=${gamificationChallenges.duplicateProgressGroups ?? "?"} referralCodes=${gamificationReferrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${gamificationReferrals.referrerCreditMismatches ?? "?"} menuBadgeGuests=${gamificationMenuExploration.guestsWithBadges ?? "?"}`,
+      `${gamification.status} activeChallenges=${gamificationChallenges.active ?? "?"} smokeChallenges=${gamificationChallenges.activeSmokeChallenges ?? "?"} birthdayWeekActive=${gamificationChallenges.activeBirthdayWeekChallenges ?? "?"} birthdayWeekDue=${gamificationChallenges.birthdayWeekDueUncreated ?? "?"} stuckChallenges=${gamificationChallenges.stuckCompletions ?? "?"} duplicateProgress=${gamificationChallenges.duplicateProgressGroups ?? "?"} referralCodes=${gamificationReferrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${gamificationReferrals.referrerCreditMismatches ?? "?"} menuBadgeGuests=${gamificationMenuExploration.guestsWithBadges ?? "?"} streakActive=${gamificationStreaks.active ?? "?"} staleStreaks=${gamificationStreaks.stale ?? "?"} invalidStreaks=${gamificationStreaks.invalid ?? "?"} streakBonusMissing=${gamificationStreaks.milestoneBonusMissing ?? "?"}`,
     );
   }
   if (engagement.status) {

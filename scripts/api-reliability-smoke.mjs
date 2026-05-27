@@ -479,6 +479,17 @@ async function main() {
     visits: loyalty.stampCard?.visits,
   });
 
+  const membershipSummaryAfterCompletion = await request(`/api/v1/loyalty/${reservation.guestId}/summary`, { token });
+  const streakAfterCompletion = membershipSummaryAfterCompletion.summary?.streak;
+  record("gamification.streak-after-completion", {
+    current: streakAfterCompletion?.current ?? null,
+    best: streakAfterCompletion?.best ?? null,
+    lastVisitWeek: streakAfterCompletion?.lastVisitWeek ?? null,
+  });
+  if (!streakAfterCompletion || streakAfterCompletion.current < 1 || streakAfterCompletion.best < streakAfterCompletion.current) {
+    throw new Error(`Reservation completion did not update streak summary: ${JSON.stringify(streakAfterCompletion ?? null)}`);
+  }
+
   const loyaltyHistory = await request(`/api/v1/loyalty/${reservation.guestId}/history?limit=20`, { token });
   const visitCompletionTransaction = (loyaltyHistory.transactions ?? []).find((tx) =>
     tx.reservationId === reservation.id && tx.reason === "visit_completion"

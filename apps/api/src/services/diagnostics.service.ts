@@ -206,6 +206,20 @@ export interface GamificationDiagnostic {
       badgeCount: number;
     }>;
   };
+  streaks?: {
+    guestsWithStreak: number;
+    active: number;
+    stale: number;
+    invalid: number;
+    milestoneBonusMissing: number;
+    samples: Array<{
+      guestId: string;
+      current: number | null;
+      best: number | null;
+      lastVisitWeek: string | null;
+      issue: string;
+    }>;
+  };
   error?: DiagnosticCheck["error"];
 }
 
@@ -491,6 +505,8 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
       referrerMismatchRows,
       menuExplorationRows,
       menuExplorationSampleRows,
+      streakRows,
+      streakIssueRows,
       birthdayWeekDueRows,
     ] = await Promise.all([
       db.execute(sql`
@@ -656,6 +672,133 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
         badge_count: number;
       }>>,
       db.execute(sql`
+        with streak_guests as (
+          select
+            id,
+            preferences->'streak' as streak,
+            preferences->'streak'->>'current' as current_text,
+            preferences->'streak'->>'best' as best_text,
+            preferences->'streak'->>'lastVisitWeek' as last_visit_week
+          from ${guests}
+          where preferences ? 'streak'
+        ),
+        normalized as (
+          select
+            id,
+            case when current_text ~ '^\\d+$' then current_text::int end as current_value,
+            case when best_text ~ '^\\d+$' then best_text::int end as best_value,
+            last_visit_week,
+            (
+              current_text ~ '^\\d+$'
+              and best_text ~ '^\\d+$'
+              and coalesce(last_visit_week, '') ~ '^\\d{4}-W\\d{2}$'
+            ) as valid
+          from streak_guests
+        ),
+        stale as (
+          select *
+          from normalized
+          where valid
+            and current_value >= 3
+            and to_date(last_visit_week || '-1', 'IYYY-"W"IW-ID') < current_date - interval '14 days'
+        ),
+        missing_bonus as (
+          select n.*
+          from normalized n
+          where n.valid
+            and n.current_value in (3, 5, 10, 20)
+            and not exists (
+              select 1
+              from ${loyaltyTransactions} lt
+              where lt.guest_id = n.id
+                and lt.reason = 'streak_milestone:' || n.current_value::text
+            )
+        )
+        select
+          (select count(*)::int from streak_guests) as guests_with_streak,
+          (select count(*)::int from normalized where valid and current_value > 0) as active,
+          (select count(*)::int from stale) as stale,
+          (select count(*)::int from normalized where not valid) as invalid,
+          (select count(*)::int from missing_bonus) as milestone_bonus_missing
+      `) as Promise<Array<{
+        guests_with_streak: number;
+        active: number;
+        stale: number;
+        invalid: number;
+        milestone_bonus_missing: number;
+      }>>,
+      db.execute(sql`
+        with streak_guests as (
+          select
+            id,
+            preferences->'streak'->>'current' as current_text,
+            preferences->'streak'->>'best' as best_text,
+            preferences->'streak'->>'lastVisitWeek' as last_visit_week
+          from ${guests}
+          where preferences ? 'streak'
+        ),
+        normalized as (
+          select
+            id,
+            case when current_text ~ '^\\d+$' then current_text::int end as current_value,
+            case when best_text ~ '^\\d+$' then best_text::int end as best_value,
+            last_visit_week,
+            (
+              current_text ~ '^\\d+$'
+              and best_text ~ '^\\d+$'
+              and coalesce(last_visit_week, '') ~ '^\\d{4}-W\\d{2}$'
+            ) as valid
+          from streak_guests
+        ),
+        issues as (
+          select
+            id,
+            current_value,
+            best_value,
+            last_visit_week,
+            'invalid_streak_preferences' as issue
+          from normalized
+          where not valid
+          union all
+          select
+            id,
+            current_value,
+            best_value,
+            last_visit_week,
+            'stale_active_streak' as issue
+          from normalized
+          where valid
+            and current_value >= 3
+            and to_date(last_visit_week || '-1', 'IYYY-"W"IW-ID') < current_date - interval '14 days'
+          union all
+          select
+            n.id,
+            n.current_value,
+            n.best_value,
+            n.last_visit_week,
+            'streak_milestone_bonus_missing' as issue
+          from normalized n
+          where n.valid
+            and n.current_value in (3, 5, 10, 20)
+            and not exists (
+              select 1
+              from ${loyaltyTransactions} lt
+              where lt.guest_id = n.id
+                and lt.reason = 'streak_milestone:' || n.current_value::text
+            )
+        )
+        select *
+        from issues
+        order by issue asc, current_value desc nulls last
+        limit 5
+      `) as Promise<Array<{
+        id: string;
+        current_value: number | null;
+        best_value: number | null;
+        last_visit_week: string | null;
+        issue: string;
+      }>>,
+      db.execute(sql`
         with birthday_guests as (
           select
             g.id,
@@ -736,15 +879,19 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
     const referralSummary = referralRows[0];
     const welcomeBonusSummary = welcomeBonusRows[0];
     const menuExplorationSummary = menuExplorationRows[0];
+    const streakSummary = streakRows[0];
     const stuckCompletions = Number(stuckChallengeRows[0]?.stuck_count ?? 0);
     const duplicateProgressGroups = Number(duplicateProgressRows[0]?.duplicate_group_count ?? 0);
     const activeSmokeChallenges = Number(challengeSummary?.active_smoke_challenges ?? 0);
     const birthdayWeekDueUncreated = Number(birthdayWeekDueRows[0]?.birthday_week_due_uncreated ?? 0);
     const referredGuestsWithoutWelcomeBonus = Number(welcomeBonusSummary?.referred_without_welcome_bonus ?? 0);
     const referrerCreditMismatches = Number(referrerMismatchRows[0]?.mismatch_count ?? 0);
+    const staleStreaks = Number(streakSummary?.stale ?? 0);
+    const invalidStreaks = Number(streakSummary?.invalid ?? 0);
+    const milestoneBonusMissing = Number(streakSummary?.milestone_bonus_missing ?? 0);
 
     return {
-      status: activeSmokeChallenges > 0 || stuckCompletions > 0 || duplicateProgressGroups > 0 || referredGuestsWithoutWelcomeBonus > 0 || referrerCreditMismatches > 0 || birthdayWeekDueUncreated > 0
+      status: activeSmokeChallenges > 0 || stuckCompletions > 0 || duplicateProgressGroups > 0 || referredGuestsWithoutWelcomeBonus > 0 || referrerCreditMismatches > 0 || birthdayWeekDueUncreated > 0 || staleStreaks > 0 || invalidStreaks > 0 || milestoneBonusMissing > 0
         ? "attention"
         : "ok",
       challenges: {
@@ -792,6 +939,20 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
           guestId: row.guest_id,
           categoryCount: Number(row.category_count),
           badgeCount: Number(row.badge_count),
+        })),
+      },
+      streaks: {
+        guestsWithStreak: Number(streakSummary?.guests_with_streak ?? 0),
+        active: Number(streakSummary?.active ?? 0),
+        stale: staleStreaks,
+        invalid: invalidStreaks,
+        milestoneBonusMissing,
+        samples: streakIssueRows.map((row) => ({
+          guestId: row.id,
+          current: row.current_value === null ? null : Number(row.current_value),
+          best: row.best_value === null ? null : Number(row.best_value),
+          lastVisitWeek: row.last_visit_week,
+          issue: row.issue,
         })),
       },
     };

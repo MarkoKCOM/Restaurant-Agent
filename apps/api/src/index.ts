@@ -92,6 +92,24 @@ app.setErrorHandler((error, request, reply) => {
   });
 });
 
+app.setNotFoundHandler((request, reply) => {
+  request.log.warn({
+    code: "ROUTE_NOT_FOUND",
+    requestId: request.id,
+    method: request.method,
+    url: request.url,
+    userId: request.user?.id,
+    restaurantId: request.user?.restaurantId,
+    role: request.user?.role,
+  }, "Route not found");
+
+  return reply.status(404).send({
+    error: "Route not found",
+    code: "ROUTE_NOT_FOUND",
+    requestId: request.id,
+  });
+});
+
 // Auth middleware (runs before all routes)
 await app.register(authMiddleware);
 

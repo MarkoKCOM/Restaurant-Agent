@@ -194,6 +194,7 @@ console.log("");
 printCounts("Outbound messages by status:", countBy(messages, "status"));
 printCounts("Outbound messages by type:", countBy(messages, "messageType"));
 printCounts("Outbound messages by provider:", countBy(messages, "provider"));
+printCounts("Outbound messages by error code:", countBy(messages.filter((message) => message.errorCode), "errorCode"));
 console.log("");
 
 if (messages.length === 0) {
@@ -205,6 +206,9 @@ if (messages.length === 0) {
     console.log(
       `- ${message.id} status=${message.status} type=${message.messageType} category=${message.messageCategory} provider=${message.provider} recipient=${message.recipientMasked ?? "none"} subject=${subject}`,
     );
+    if (message.errorCode || message.errorMessage) {
+      console.log(`  errorCode=${message.errorCode ?? "none"} errorMessage=${JSON.stringify(message.errorMessage ?? "")}`);
+    }
     console.log(`  createdAt=${message.createdAt} preview=${JSON.stringify(message.textPreview ?? "")}`);
   }
 }

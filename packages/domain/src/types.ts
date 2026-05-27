@@ -277,6 +277,14 @@ export interface AchievementSummary {
   count: number;
 }
 
+export interface LeaderboardMemberSummary {
+  optedIn: boolean;
+  optedInAt?: string;
+  rank: number | null;
+  pointsEarned: number | null;
+  period: string | null;
+}
+
 export interface MembershipSummary {
   guestId: string;
   restaurantId: string;
@@ -303,5 +311,6 @@ export interface MembershipSummary {
   streak: StreakSummary;
   menuExploration: MenuExplorationSummary;
   achievements: AchievementSummary;
+  leaderboard: LeaderboardMemberSummary;
   optedOutCampaigns: boolean;
 }

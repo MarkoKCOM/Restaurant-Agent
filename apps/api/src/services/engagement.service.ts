@@ -13,7 +13,8 @@ export type EngagementJobType =
   | "anniversary"
   | "win_back_30"
   | "win_back_60"
-  | "win_back_90";
+  | "win_back_90"
+  | "leaderboard_summary";
 
 export const PROMOTIONAL_ENGAGEMENT_TYPES = [
   "review_request",
@@ -22,6 +23,7 @@ export const PROMOTIONAL_ENGAGEMENT_TYPES = [
   "win_back_30",
   "win_back_60",
   "win_back_90",
+  "leaderboard_summary",
 ] as const;
 
 const PROMOTIONAL_WEEKLY_LIMIT = 2;
@@ -790,6 +792,32 @@ export async function routeNegativeFeedbackForRecovery(params: {
       "escalate_to_manager",
     ],
   };
+}
+
+export async function scheduleLeaderboardSummary(
+  guestId: string,
+  restaurantId: string,
+  period: string,
+): Promise<EngagementJobRow> {
+  void period;
+  const triggerAt = await applyRestaurantQuietHours(restaurantId, new Date(Date.now() + 5 * 60 * 1000));
+  const existingJob = await findEngagementJobInWindow({
+    guestId,
+    restaurantId,
+    type: "leaderboard_summary",
+    windowStart: new Date(triggerAt.getTime() - WEEK_MS),
+    windowEnd: new Date(triggerAt.getTime() + WEEK_MS),
+  });
+  if (existingJob) return existingJob;
+
+  const job = await scheduleEngagementJob({
+    guestId,
+    restaurantId,
+    type: "leaderboard_summary",
+    triggerAt,
+  });
+
+  return job;
 }
 
 interface WinBackResult {

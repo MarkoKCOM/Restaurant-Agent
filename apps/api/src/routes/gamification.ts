@@ -15,6 +15,12 @@ import {
   listActiveChallenges,
   updateChallenge,
 } from "../services/challenge.service.js";
+import {
+  finalizeMonthlyLeaderboard,
+  getLeaderboard,
+  getGuestLeaderboardRank,
+  setLeaderboardOptIn,
+} from "../services/leaderboard.service.js";
 import { getGuestById } from "../services/guest.service.js";
 import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
 
@@ -305,6 +311,107 @@ export async function gamificationRoutes(app: FastifyInstance) {
       return { result };
     } catch (err: unknown) {
       return sendCaughtGamificationError(request, reply, err, "BIRTHDAY_WEEK_CHECK_FAILED", { restaurantId });
+    }
+  });
+
+  // ── Leaderboard ──────────────────────────────────────
+
+  const leaderboardQuerySchema = z.object({
+    restaurantId: z.string().uuid(),
+    period: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+    limit: z.coerce.number().int().min(1).max(100).optional(),
+  });
+
+  app.get("/leaderboard", async (request, reply) => {
+    const query = leaderboardQuerySchema.parse(request.query);
+    const err = enforceTenant(request.user!, query.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", {
+        restaurantId: query.restaurantId,
+      });
+    }
+
+    try {
+      const leaderboard = await getLeaderboard(query.restaurantId, query.period, query.limit ?? 10);
+      return { leaderboard };
+    } catch (err: unknown) {
+      return sendCaughtGamificationError(request, reply, err, "LEADERBOARD_LOOKUP_FAILED", {
+        restaurantId: query.restaurantId,
+        period: query.period,
+      });
+    }
+  });
+
+  const finalizeLeaderboardSchema = z.object({
+    restaurantId: z.string().uuid(),
+    period: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+    rewards: z.array(z.coerce.number().int().min(0)).min(1).max(10).optional(),
+  });
+
+  app.post("/leaderboard/finalize", async (request, reply) => {
+    const parsed = finalizeLeaderboardSchema.parse(request.body ?? {});
+    const err = enforceTenant(request.user!, parsed.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", {
+        restaurantId: parsed.restaurantId,
+      });
+    }
+
+    try {
+      const result = await finalizeMonthlyLeaderboard(parsed);
+      return { result };
+    } catch (err: unknown) {
+      return sendCaughtGamificationError(request, reply, err, "LEADERBOARD_FINALIZE_FAILED", {
+        restaurantId: parsed.restaurantId,
+        period: parsed.period,
+      });
+    }
+  });
+
+  app.post("/:guestId/leaderboard/opt-in", async (request, reply) => {
+    const { guestId } = request.params as { guestId: string };
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
+    }
+
+    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", {
+        guestId,
+        restaurantId: guest.restaurantId,
+      });
+    }
+
+    try {
+      const leaderboard = await setLeaderboardOptIn(guestId, true);
+      const rank = await getGuestLeaderboardRank(guestId, guest.restaurantId);
+      return { leaderboard, rank };
+    } catch (err: unknown) {
+      return sendCaughtGamificationError(request, reply, err, "LEADERBOARD_OPT_IN_FAILED", { guestId });
+    }
+  });
+
+  app.post("/:guestId/leaderboard/opt-out", async (request, reply) => {
+    const { guestId } = request.params as { guestId: string };
+    const guest = await getGuestById(guestId);
+    if (!guest) {
+      return sendGamificationError(request, reply, 404, "Guest not found", "GUEST_NOT_FOUND", { guestId });
+    }
+
+    const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", {
+        guestId,
+        restaurantId: guest.restaurantId,
+      });
+    }
+
+    try {
+      const leaderboard = await setLeaderboardOptIn(guestId, false);
+      return { leaderboard };
+    } catch (err: unknown) {
+      return sendCaughtGamificationError(request, reply, err, "LEADERBOARD_OPT_OUT_FAILED", { guestId });
     }
   });
 

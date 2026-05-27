@@ -201,7 +201,7 @@ async function markSmokeEngagementJobSent(jobId, type = "thank_you") {
   if (!isUuid(jobId)) {
     throw new Error(`Refusing to cleanup invalid engagement job id: ${jobId}`);
   }
-  if (!["thank_you", "review_request"].includes(type)) {
+  if (!["thank_you", "review_request", "leaderboard_summary"].includes(type)) {
     throw new Error(`Refusing to cleanup unsupported engagement job type: ${type}`);
   }
 
@@ -587,6 +587,63 @@ async function main() {
   if (seededStreakInDb && streakMilestoneTransaction?.points !== 20) {
     throw new Error(`Streak milestone bonus was not applied as 2x visit points: expected 20, got ${streakMilestoneTransaction?.points ?? "missing"}`);
   }
+
+  const leaderboardOptIn = await request(`/api/v1/gamification/${reservation.guestId}/leaderboard/opt-in`, {
+    method: "POST",
+    token,
+  });
+  record("gamification.leaderboard.opt-in", {
+    optedIn: leaderboardOptIn.leaderboard?.optedIn ?? null,
+    rank: leaderboardOptIn.rank?.rank ?? null,
+    pointsEarned: leaderboardOptIn.rank?.pointsEarned ?? null,
+  });
+  if (leaderboardOptIn.leaderboard?.optedIn !== true || !leaderboardOptIn.rank) {
+    throw new Error(`Leaderboard opt-in did not return a ranked guest: ${JSON.stringify(leaderboardOptIn)}`);
+  }
+
+  const leaderboard = await request(`/api/v1/gamification/leaderboard?restaurantId=${restaurantId}&limit=5`, { token });
+  const leaderboardEntry = (leaderboard.leaderboard?.entries ?? []).find((entry) => entry.guestId === reservation.guestId);
+  record("gamification.leaderboard.rank", {
+    participantCount: leaderboard.leaderboard?.participantCount ?? null,
+    rank: leaderboardEntry?.rank ?? null,
+    pointsEarned: leaderboardEntry?.pointsEarned ?? null,
+  });
+  if (!leaderboardEntry || leaderboardEntry.pointsEarned < 1) {
+    throw new Error(`Leaderboard did not include opted-in smoke guest: ${JSON.stringify(leaderboard.leaderboard ?? null)}`);
+  }
+
+  const finalizedLeaderboard = await request("/api/v1/gamification/leaderboard/finalize", {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      rewards: [30],
+    },
+  });
+  const leaderboardWinner = (finalizedLeaderboard.result?.winners ?? []).find((winner) => winner.guestId === reservation.guestId);
+  record("gamification.leaderboard.finalize", {
+    winnerCount: finalizedLeaderboard.result?.winners?.length ?? 0,
+    rank: leaderboardWinner?.rank ?? null,
+    rewardPoints: leaderboardWinner?.rewardPoints ?? null,
+    summaryJobId: leaderboardWinner?.summaryJobId ?? null,
+  });
+  if (!leaderboardWinner || leaderboardWinner.rewardPoints !== 30 || !leaderboardWinner.summaryJobId) {
+    throw new Error(`Leaderboard finalization did not reward/schedule smoke guest: ${JSON.stringify(finalizedLeaderboard.result ?? null)}`);
+  }
+  cleanupTasks.push(async () => {
+    const cleaned = await markSmokeEngagementJobSent(leaderboardWinner.summaryJobId, "leaderboard_summary");
+    record("gamification.leaderboard.cleanup", {
+      jobId: leaderboardWinner.summaryJobId,
+      markedSent: cleaned,
+    });
+    const optedOut = await request(`/api/v1/gamification/${reservation.guestId}/leaderboard/opt-out`, {
+      method: "POST",
+      token,
+    });
+    record("gamification.leaderboard.opt-out", {
+      optedIn: optedOut.leaderboard?.optedIn ?? null,
+    });
+  });
 
   const challengesAfterCompletion = await request(`/api/v1/gamification/${reservation.guestId}/challenges?restaurantId=${restaurantId}`, { token });
   const smokeChallengeAfter = (challengesAfterCompletion.challenges ?? []).find((item) => item.challenge?.id === smokeChallengeId);

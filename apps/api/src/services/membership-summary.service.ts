@@ -7,6 +7,7 @@ import { getStreak } from "./challenge.service.js";
 import { getGuestClaims } from "./reward-claims.service.js";
 import { getMenuExplorationFromPreferences } from "./visit.service.js";
 import { getAchievementsFromPreferences } from "./achievement.service.js";
+import { currentLeaderboardPeriod, getGuestLeaderboardRank, getLeaderboardPreference } from "./leaderboard.service.js";
 
 export interface MembershipSummary {
   guestId: string;
@@ -85,6 +86,13 @@ export interface MembershipSummary {
       unlockedAt: string;
     }>;
   };
+  leaderboard: {
+    optedIn: boolean;
+    optedInAt?: string;
+    rank: number | null;
+    pointsEarned: number | null;
+    period: string | null;
+  };
   optedOutCampaigns: boolean;
 }
 
@@ -99,7 +107,7 @@ export async function getMembershipSummary(
 
   if (!guest) return null;
 
-  const [stampCard, allClaims, referralStats, streak, rewardRows] = await Promise.all([
+  const [stampCard, allClaims, referralStats, streak, rewardRows, leaderboardRank] = await Promise.all([
     checkStampCard(guestId),
     getGuestClaims(guestId),
     getReferralStats(guestId),
@@ -108,7 +116,9 @@ export async function getMembershipSummary(
       .select()
       .from(rewards)
       .where(and(eq(rewards.restaurantId, guest.restaurantId), eq(rewards.isActive, true))),
+    getGuestLeaderboardRank(guestId, guest.restaurantId),
   ]);
+  const leaderboardPreference = getLeaderboardPreference(guest.preferences);
 
   const rewardsWithClaimability = rewardRows.map((r) => ({
     id: r.id,
@@ -169,6 +179,13 @@ export async function getMembershipSummary(
     streak,
     menuExploration: getMenuExplorationFromPreferences(guest.preferences),
     achievements: getAchievementsFromPreferences(guest.preferences),
+    leaderboard: {
+      optedIn: leaderboardPreference.optedIn,
+      optedInAt: leaderboardPreference.optedInAt,
+      rank: leaderboardRank?.rank ?? null,
+      pointsEarned: leaderboardRank?.pointsEarned ?? null,
+      period: leaderboardRank ? currentLeaderboardPeriod() : null,
+    },
     optedOutCampaigns: guest.optedOutCampaigns,
   };
 }

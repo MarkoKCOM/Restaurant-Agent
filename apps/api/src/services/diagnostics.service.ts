@@ -218,6 +218,16 @@ export interface GamificationDiagnostic {
       issue: string;
     }>;
   };
+  leaderboard?: {
+    optedIn: number;
+    currentMonthRanked: number;
+    invalid: number;
+    topThreeRewardMissing: number;
+    samples: Array<{
+      guestId: string;
+      issue: string;
+    }>;
+  };
   streaks?: {
     guestsWithStreak: number;
     active: number;
@@ -519,6 +529,8 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
       menuExplorationSampleRows,
       achievementRows,
       achievementIssueRows,
+      leaderboardRows,
+      leaderboardIssueRows,
       streakRows,
       streakIssueRows,
       birthdayWeekDueRows,
@@ -784,6 +796,114 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
         issue: string;
       }>>,
       db.execute(sql`
+        with opted as (
+          select
+            id,
+            restaurant_id,
+            preferences,
+            (preferences->'leaderboard'->>'optedIn')::boolean as opted_in
+          from ${guests}
+          where preferences->'leaderboard'->>'optedIn' = 'true'
+        ),
+        earned as (
+          select
+            o.id,
+            o.restaurant_id,
+            coalesce(sum(lt.points) filter (where lt.type = 'earn'), 0)::int as points_earned
+          from opted o
+          left join ${loyaltyTransactions} lt on lt.guest_id = o.id
+            and lt.restaurant_id = o.restaurant_id
+            and lt.created_at >= date_trunc('month', now())
+            and lt.created_at < date_trunc('month', now()) + interval '1 month'
+          group by o.id, o.restaurant_id
+        ),
+        ranked as (
+          select
+            *,
+            rank() over (partition by restaurant_id order by points_earned desc, id asc)::int as rank
+          from earned
+          where points_earned > 0
+        ),
+        missing_rewards as (
+          select r.*
+          from ranked r
+          where r.rank <= 3
+            and not exists (
+              select 1
+              from ${loyaltyTransactions} lt
+              where lt.guest_id = r.id
+                and lt.restaurant_id = r.restaurant_id
+                and lt.reason = 'leaderboard_monthly:' || to_char(now(), 'YYYY-MM') || ':rank:' || r.rank::text
+            )
+        )
+        select
+          (select count(*)::int from opted) as opted_in,
+          (select count(*)::int from ranked) as current_month_ranked,
+          count(*) filter (
+            where preferences ? 'leaderboard'
+              and jsonb_typeof(preferences->'leaderboard'->'optedIn') not in ('boolean')
+          )::int as invalid,
+          (select count(*)::int from missing_rewards) as top_three_reward_missing
+        from ${guests}
+      `) as Promise<Array<{
+        opted_in: number;
+        current_month_ranked: number;
+        invalid: number;
+        top_three_reward_missing: number;
+      }>>,
+      db.execute(sql`
+        with opted as (
+          select
+            id,
+            restaurant_id
+          from ${guests}
+          where preferences->'leaderboard'->>'optedIn' = 'true'
+        ),
+        earned as (
+          select
+            o.id,
+            o.restaurant_id,
+            coalesce(sum(lt.points) filter (where lt.type = 'earn'), 0)::int as points_earned
+          from opted o
+          left join ${loyaltyTransactions} lt on lt.guest_id = o.id
+            and lt.restaurant_id = o.restaurant_id
+            and lt.created_at >= date_trunc('month', now())
+            and lt.created_at < date_trunc('month', now()) + interval '1 month'
+          group by o.id, o.restaurant_id
+        ),
+        ranked as (
+          select
+            *,
+            rank() over (partition by restaurant_id order by points_earned desc, id asc)::int as rank
+          from earned
+          where points_earned > 0
+        ),
+        issues as (
+          select id, 'invalid_leaderboard_preferences' as issue
+          from ${guests}
+          where preferences ? 'leaderboard'
+            and jsonb_typeof(preferences->'leaderboard'->'optedIn') not in ('boolean')
+          union all
+          select r.id, 'leaderboard_monthly_reward_missing' as issue
+          from ranked r
+          where r.rank <= 3
+            and not exists (
+              select 1
+              from ${loyaltyTransactions} lt
+              where lt.guest_id = r.id
+                and lt.restaurant_id = r.restaurant_id
+                and lt.reason = 'leaderboard_monthly:' || to_char(now(), 'YYYY-MM') || ':rank:' || r.rank::text
+            )
+        )
+        select *
+        from issues
+        order by issue asc, id asc
+        limit 5
+      `) as Promise<Array<{
+        id: string;
+        issue: string;
+      }>>,
+      db.execute(sql`
         with streak_guests as (
           select
             id,
@@ -992,6 +1112,7 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
     const welcomeBonusSummary = welcomeBonusRows[0];
     const menuExplorationSummary = menuExplorationRows[0];
     const achievementSummary = achievementRows[0];
+    const leaderboardSummary = leaderboardRows[0];
     const streakSummary = streakRows[0];
     const stuckCompletions = Number(stuckChallengeRows[0]?.stuck_count ?? 0);
     const duplicateProgressGroups = Number(duplicateProgressRows[0]?.duplicate_group_count ?? 0);
@@ -1005,9 +1126,11 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
     const firstVisitAchievementMissing = Number(achievementSummary?.first_visit_missing ?? 0);
     const tenVisitAchievementMissing = Number(achievementSummary?.ten_visit_missing ?? 0);
     const invalidAchievements = Number(achievementSummary?.invalid ?? 0);
+    const invalidLeaderboard = Number(leaderboardSummary?.invalid ?? 0);
+    const topThreeRewardMissing = Number(leaderboardSummary?.top_three_reward_missing ?? 0);
 
     return {
-      status: activeSmokeChallenges > 0 || stuckCompletions > 0 || duplicateProgressGroups > 0 || referredGuestsWithoutWelcomeBonus > 0 || referrerCreditMismatches > 0 || birthdayWeekDueUncreated > 0 || staleStreaks > 0 || invalidStreaks > 0 || milestoneBonusMissing > 0 || firstVisitAchievementMissing > 0 || tenVisitAchievementMissing > 0 || invalidAchievements > 0
+      status: activeSmokeChallenges > 0 || stuckCompletions > 0 || duplicateProgressGroups > 0 || referredGuestsWithoutWelcomeBonus > 0 || referrerCreditMismatches > 0 || birthdayWeekDueUncreated > 0 || staleStreaks > 0 || invalidStreaks > 0 || milestoneBonusMissing > 0 || firstVisitAchievementMissing > 0 || tenVisitAchievementMissing > 0 || invalidAchievements > 0 || invalidLeaderboard > 0 || topThreeRewardMissing > 0
         ? "attention"
         : "ok",
       challenges: {
@@ -1066,6 +1189,16 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
         samples: achievementIssueRows.map((row) => ({
           guestId: row.id,
           visitCount: Number(row.visit_count),
+          issue: row.issue,
+        })),
+      },
+      leaderboard: {
+        optedIn: Number(leaderboardSummary?.opted_in ?? 0),
+        currentMonthRanked: Number(leaderboardSummary?.current_month_ranked ?? 0),
+        invalid: invalidLeaderboard,
+        topThreeRewardMissing,
+        samples: leaderboardIssueRows.map((row) => ({
+          guestId: row.id,
           issue: row.issue,
         })),
       },

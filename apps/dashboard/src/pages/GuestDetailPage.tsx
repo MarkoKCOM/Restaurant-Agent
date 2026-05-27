@@ -557,6 +557,20 @@ export function GuestDetailPage() {
             </div>
           </div>
 
+          <div className="rounded-xl border border-gray-200 p-4 mb-4">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <h4 className="font-medium text-gray-900">{t.guestDetail.memberLeaderboard}</h4>
+              <span className="text-xs text-gray-500">
+                {membershipSummary.summary.leaderboard.optedIn ? t.guestDetail.memberLeaderboardOptedIn : t.guestDetail.memberLeaderboardOptedOut}
+              </span>
+            </div>
+            {membershipSummary.summary.leaderboard.optedIn && membershipSummary.summary.leaderboard.rank ? (
+              <p className="mt-2 text-sm text-gray-700">
+                #{membershipSummary.summary.leaderboard.rank} · {membershipSummary.summary.leaderboard.pointsEarned ?? 0} pts · {membershipSummary.summary.leaderboard.period}
+              </p>
+            ) : null}
+          </div>
+
           <div className="grid md:grid-cols-2 gap-4">
             <div className="rounded-xl border border-gray-200 p-4">
               <h4 className="font-medium text-gray-900 mb-3">{t.guestDetail.memberActiveClaims}</h4>

@@ -557,6 +557,13 @@ export interface MembershipSummaryData {
       unlockedAt: string;
     }[];
   };
+  leaderboard: {
+    optedIn: boolean;
+    optedInAt?: string;
+    rank: number | null;
+    pointsEarned: number | null;
+    period: string | null;
+  };
   optedOutCampaigns: boolean;
 }
 

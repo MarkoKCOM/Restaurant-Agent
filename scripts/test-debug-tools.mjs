@@ -100,6 +100,11 @@ const smokePath = await writeJson("smoke.json", {
     { step: "gamification.streak-after-completion", current: 3, best: 3, lastVisitWeek: "2026-W22", seeded: true },
     { step: "gamification.streak-milestone-bonus", expectedBonusPoints: 20, actualBonusPoints: 20, reason: "streak_milestone:3" },
     { step: "gamification.achievements-after-completion", count: 1, badges: ["first_visit"] },
+    { step: "gamification.leaderboard.opt-in", optedIn: true, rank: 1, pointsEarned: 45 },
+    { step: "gamification.leaderboard.rank", participantCount: 1, rank: 1, pointsEarned: 45 },
+    { step: "gamification.leaderboard.finalize", winnerCount: 1, rank: 1, rewardPoints: 30, summaryJobId: "leaderboard-job-test-1" },
+    { step: "gamification.leaderboard.cleanup", jobId: "leaderboard-job-test-1", markedSent: true },
+    { step: "gamification.leaderboard.opt-out", optedIn: false },
     { step: "gamification.menu-exploration", categoryCount: 2, badges: ["first_taste", "menu_explorer"] },
     { step: "gamification.achievements-after-visit", count: 2, badges: ["first_visit", "tasting_menu"] },
     { step: "gamification.birthday-week-challenge", created: 1, skippedExisting: 0, progress: 1, target: 1, completed: true, leakedToOtherGuest: false, pointsBefore: 0, pointsAfter: 50 },
@@ -150,6 +155,11 @@ assertIncludes(smokeOutput, "gamification.challenge.cleanup: active=no challenge
 assertIncludes(smokeOutput, "gamification.streak-after-completion: current=3 best=3 week=2026-W22 seeded=true");
 assertIncludes(smokeOutput, "gamification.streak-milestone-bonus: points=20/20 reason=streak_milestone:3");
 assertIncludes(smokeOutput, "gamification.achievements-after-completion: count=1 badges=first_visit");
+assertIncludes(smokeOutput, "gamification.leaderboard.opt-in: optedIn=yes rank=1 points=45");
+assertIncludes(smokeOutput, "gamification.leaderboard.rank: participants=1 rank=1 points=45");
+assertIncludes(smokeOutput, "gamification.leaderboard.finalize: winners=1 rank=1 reward=30 summaryJob=yes");
+assertIncludes(smokeOutput, "gamification.leaderboard.cleanup: markedSent=yes jobId=leaderboard-job-test-1");
+assertIncludes(smokeOutput, "gamification.leaderboard.opt-out: optedIn=no");
 assertIncludes(smokeOutput, "gamification.menu-exploration: categories=2 badges=first_taste,menu_explorer");
 assertIncludes(smokeOutput, "gamification.achievements-after-visit: count=2 badges=first_visit,tasting_menu");
 assertIncludes(smokeOutput, "gamification.birthday-week-challenge: created=1 existing=0 progress=1/1 completed=yes leaked=no points=0->50");
@@ -322,6 +332,11 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
           tenVisitMissing: 1,
           invalid: 1,
         },
+        leaderboard: {
+          optedIn: 3,
+          topThreeRewardMissing: 1,
+          invalid: 1,
+        },
         streaks: {
           active: 3,
           stale: 1,
@@ -373,7 +388,7 @@ assertIncludes(debugBundleManifestOutput, "Membership processing: ok open=2 atte
 assertIncludes(debugBundleManifestOutput, "Membership repair summary: passed output=/tmp/openseat-debug-bundle/membership-debug-summary.txt");
 assertIncludes(
   debugBundleManifestOutput,
-  "Gamification: attention activeChallenges=2 smokeChallenges=1 birthdayWeekActive=1 birthdayWeekDue=1 stuckChallenges=1 duplicateProgress=1 referralCodes=7 referralCreditMismatches=1 menuBadgeGuests=5 achievementGuests=4 achievementMissing=1/1 invalidAchievements=1 streakActive=3 staleStreaks=1 invalidStreaks=1 streakBonusMissing=1",
+  "Gamification: attention activeChallenges=2 smokeChallenges=1 birthdayWeekActive=1 birthdayWeekDue=1 stuckChallenges=1 duplicateProgress=1 referralCodes=7 referralCreditMismatches=1 menuBadgeGuests=5 achievementGuests=4 achievementMissing=1/1 invalidAchievements=1 leaderboardOptedIn=3 leaderboardRewardMissing=1 invalidLeaderboard=1 streakActive=3 staleStreaks=1 invalidStreaks=1 streakBonusMissing=1",
 );
 assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overdue=1 failed=1 skipped=3 winBackDue=2 birthdayDue=1 anniversaryDue=1 reviewWithoutPositive=1 negativeWithReview=1");
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");

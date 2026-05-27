@@ -86,7 +86,7 @@
 - [x] 8.7 Implement menu exploration badges — track categories tried, award badges for exploration milestones
 - [x] 8.8 Implement off-peak bonus multipliers — configurable time windows with 2x/3x point multipliers
 - [x] 8.9 Implement birthday week challenge — auto-created 7 days before birthday, special reward + bonus points
-- [ ] 8.10 Implement opt-in leaderboard — monthly rankings, top 3 rewards, WhatsApp summary to participants
+- [x] 8.10 Implement opt-in leaderboard — monthly rankings, top 3 rewards, WhatsApp summary to participants
 
 ## 9. Engagement Automation (Growth)
 

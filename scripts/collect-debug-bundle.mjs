@@ -267,6 +267,7 @@ async function captureDiagnosticsHighlights(commandRecord) {
         referrals: gamification.referrals,
         menuExploration: gamification.menuExploration,
         achievements: gamification.achievements,
+        leaderboard: gamification.leaderboard,
         streaks: gamification.streaks,
         error: gamification.error,
       },
@@ -355,9 +356,10 @@ async function writeReadme() {
       const referrals = gamification.referrals ?? {};
       const menuExploration = gamification.menuExploration ?? {};
       const achievements = gamification.achievements ?? {};
+      const leaderboard = gamification.leaderboard ?? {};
       const streaks = gamification.streaks ?? {};
       lines.push(
-        `- Gamification: ${gamification.status ?? "unknown"} activeChallenges=${challenges.active ?? "?"} smokeChallenges=${challenges.activeSmokeChallenges ?? "?"} birthdayWeekActive=${challenges.activeBirthdayWeekChallenges ?? "?"} birthdayWeekDue=${challenges.birthdayWeekDueUncreated ?? "?"} stuckChallenges=${challenges.stuckCompletions ?? "?"} duplicateProgress=${challenges.duplicateProgressGroups ?? "?"} referralCodes=${referrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${referrals.referrerCreditMismatches ?? "?"} menuBadgeGuests=${menuExploration.guestsWithBadges ?? "?"} achievementGuests=${achievements.guestsWithAchievements ?? "?"} achievementMissing=${achievements.firstVisitMissing ?? "?"}/${achievements.tenVisitMissing ?? "?"} invalidAchievements=${achievements.invalid ?? "?"} streakActive=${streaks.active ?? "?"} staleStreaks=${streaks.stale ?? "?"} invalidStreaks=${streaks.invalid ?? "?"} streakBonusMissing=${streaks.milestoneBonusMissing ?? "?"}`,
+        `- Gamification: ${gamification.status ?? "unknown"} activeChallenges=${challenges.active ?? "?"} smokeChallenges=${challenges.activeSmokeChallenges ?? "?"} birthdayWeekActive=${challenges.activeBirthdayWeekChallenges ?? "?"} birthdayWeekDue=${challenges.birthdayWeekDueUncreated ?? "?"} stuckChallenges=${challenges.stuckCompletions ?? "?"} duplicateProgress=${challenges.duplicateProgressGroups ?? "?"} referralCodes=${referrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${referrals.referrerCreditMismatches ?? "?"} menuBadgeGuests=${menuExploration.guestsWithBadges ?? "?"} achievementGuests=${achievements.guestsWithAchievements ?? "?"} achievementMissing=${achievements.firstVisitMissing ?? "?"}/${achievements.tenVisitMissing ?? "?"} invalidAchievements=${achievements.invalid ?? "?"} leaderboardOptedIn=${leaderboard.optedIn ?? "?"} leaderboardRewardMissing=${leaderboard.topThreeRewardMissing ?? "?"} invalidLeaderboard=${leaderboard.invalid ?? "?"} streakActive=${streaks.active ?? "?"} staleStreaks=${streaks.stale ?? "?"} invalidStreaks=${streaks.invalid ?? "?"} streakBonusMissing=${streaks.milestoneBonusMissing ?? "?"}`,
       );
       const engagement = adminDiagnostics.engagement ?? {};
       const engagementTotals = engagement.totals ?? {};

@@ -484,6 +484,9 @@ export const translations = {
       memberNoMenuBadges: "אין עדיין תגי תפריט",
       memberAchievements: "הישגים",
       memberNoAchievements: "אין עדיין הישגים",
+      memberLeaderboard: "לידרבורד",
+      memberLeaderboardOptedIn: "משתתף",
+      memberLeaderboardOptedOut: "לא משתתף",
       // Hospitality signals
       signalBirthday: "יום הולדת",
       signalCelebration: "חגיגה",
@@ -1194,6 +1197,9 @@ export const translations = {
       memberNoMenuBadges: "No menu badges yet",
       memberAchievements: "Achievements",
       memberNoAchievements: "No achievements yet",
+      memberLeaderboard: "Leaderboard",
+      memberLeaderboardOptedIn: "Opted in",
+      memberLeaderboardOptedOut: "Not opted in",
       // Hospitality signals
       signalBirthday: "Birthday",
       signalCelebration: "Celebration",

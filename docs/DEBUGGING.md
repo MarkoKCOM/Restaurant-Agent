@@ -70,7 +70,7 @@ Set `OPENSEAT_E2E_ARTIFACT_PATH` to write the artifact somewhere specific, such 
 OPENSEAT_E2E_ARTIFACT_PATH=/tmp/openseat-e2e.json pnpm --filter @openseat/e2e test
 ```
 
-The push-time API Smoke workflow also uploads an `api-reliability-smoke` artifact. It includes every smoke request with method, path, HTTP status, elapsed milliseconds, generated request ID, returned request ID, and any stable error code. For local smoke runs, set:
+The push-time API Smoke workflow also uploads an `api-reliability-smoke` artifact. When smoke credentials are configured, it includes every smoke request with method, path, HTTP status, elapsed milliseconds, generated request ID, returned request ID, and any stable error code. If credentials are missing, the artifact says the smoke run was skipped instead of leaving a green run ambiguous. For local smoke runs, set:
 
 ```bash
 OPENSEAT_SMOKE_ARTIFACT_PATH=/tmp/openseat-smoke.json node scripts/api-reliability-smoke.mjs

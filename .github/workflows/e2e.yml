@@ -40,6 +40,17 @@ jobs:
           OPENSEAT_SMOKE_ARTIFACT_PATH: artifacts/api-reliability-smoke.json
         run: node scripts/api-reliability-smoke.mjs
 
+      - name: Record skipped API smoke artifact
+        if: env.OPENSEAT_ADMIN_PASSWORD == ''
+        run: |
+          mkdir -p artifacts
+          cat > artifacts/api-reliability-smoke.json <<'JSON'
+          {
+            "status": "skipped",
+            "reason": "OPENSEAT_ADMIN_PASSWORD secret is not configured for this workflow run"
+          }
+          JSON
+
       - name: Upload API smoke artifact
         if: always()
         uses: actions/upload-artifact@v4

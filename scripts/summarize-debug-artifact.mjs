@@ -127,6 +127,32 @@ async function parseEngagementScheduleHealth(commands) {
   });
 }
 
+async function parseMembershipEngagementDebug(command) {
+  if (!command?.outputPath) return null;
+
+  let text;
+  try {
+    text = await readFile(command.outputPath, "utf8");
+  } catch {
+    return null;
+  }
+
+  const overdue = text.match(/^Overdue pending engagement jobs: (\d+)/m)?.[1];
+  const failed = text.match(/^Failed engagement jobs: (\d+)/m)?.[1];
+  if (overdue === undefined && failed === undefined) return null;
+
+  const skippedReasonCounts = new Map();
+  for (const match of text.matchAll(/\bskipReason=([A-Za-z0-9._:-]+)/g)) {
+    skippedReasonCounts.set(match[1], (skippedReasonCounts.get(match[1]) ?? 0) + 1);
+  }
+  const skippedReasons = [...skippedReasonCounts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([reason, count]) => `${reason}:${count}`)
+    .join(",") || "none";
+
+  return `overduePending=${overdue ?? "?"} failed=${failed ?? "?"} skippedReasons=${skippedReasons} output=${command.outputPath}`;
+}
+
 function formatQueueScheduleHealthFromDiagnostics(queues, queueName, labels = {}) {
   const queue = queues.find((item) => item.name === queueName && item.scheduleHealth);
   const health = queue?.scheduleHealth;
@@ -512,6 +538,7 @@ async function summarizeDebugBundleManifest(report) {
     ?? await parseSummaryScheduleHealth(commands);
   const engagementScheduleHealth = formatEngagementScheduleHealthFromDiagnostics(queues)
     ?? await parseEngagementScheduleHealth(commands);
+  const membershipEngagementDebug = await parseMembershipEngagementDebug(membershipDebugSummary);
   const operationalAttention = operationalAttentionLabels(adminDiagnostics);
 
   console.log(`Artifact: ${basename(artifactPath)}`);
@@ -559,6 +586,9 @@ async function summarizeDebugBundleManifest(report) {
     const output = membershipDebugSummary.outputPath ? ` output=${membershipDebugSummary.outputPath}` : "";
     const reason = membershipDebugSummary.reason ? ` reason=${membershipDebugSummary.reason}` : "";
     printLine("Membership repair summary", `${membershipDebugSummary.status}${output}${reason}`);
+  }
+  if (membershipEngagementDebug) {
+    printLine("Membership engagement jobs", membershipEngagementDebug);
   }
   if (gamification.status) {
     printLine(

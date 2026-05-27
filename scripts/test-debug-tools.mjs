@@ -337,6 +337,26 @@ await writeFile(queueDebugSummaryPath, [
   "",
 ].join("\n"));
 
+const membershipDebugSummaryPath = join(tempDir, "membership-debug-summary.txt");
+await writeFile(membershipDebugSummaryPath, [
+  "Membership Debug Summary",
+  "restaurantId=restaurant-1",
+  "failuresRequestId=debug-membership-failures-1",
+  "engagementRequestId=debug-membership-engagement-1",
+  "",
+  "Overdue pending engagement jobs: 2",
+  "- job-overdue-1 type=win_back_30 status=pending category=promotional guest=guest-1 triggerAt=2026-05-27T09:00:00.000Z ageMinutes=90",
+  "",
+  "Failed engagement jobs: 1",
+  "- job-failed-1 type=thank_you status=failed category=transactional guest=guest-2 triggerAt=2026-05-27T08:00:00.000Z ageMinutes=150",
+  "",
+  "Recent skipped engagement reasons:",
+  "- job-skipped-1 type=win_back_30 status=skipped category=promotional guest=guest-3 triggerAt=2026-05-27T07:00:00.000Z ageMinutes=210 skipReason=guest_opted_out_promotional",
+  "- job-skipped-2 type=win_back_60 status=skipped category=promotional guest=guest-4 triggerAt=2026-05-27T06:00:00.000Z ageMinutes=270 skipReason=weekly_promotional_limit_reached",
+  "- job-skipped-3 type=win_back_90 status=skipped category=promotional guest=guest-5 triggerAt=2026-05-27T05:00:00.000Z ageMinutes=330 skipReason=weekly_promotional_limit_reached",
+  "",
+].join("\n"));
+
 const debugBundleManifestPath = await writeJson("manifest.json", {
   createdAt: "2026-05-27T12:00:00.000Z",
   apiUrl: "http://localhost:3001",
@@ -354,7 +374,7 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
   commands: [
     { name: "health-probe", status: "passed", outputPath: "/tmp/openseat-debug-bundle/health-probe.txt" },
     { name: "queue-debug-summary", status: "passed", outputPath: queueDebugSummaryPath },
-    { name: "membership-debug-summary", status: "passed", outputPath: "/tmp/openseat-debug-bundle/membership-debug-summary.txt" },
+    { name: "membership-debug-summary", status: "passed", outputPath: membershipDebugSummaryPath },
     {
       name: "api-smoke",
       status: "failed",
@@ -664,7 +684,8 @@ assertIncludes(debugBundleManifestOutput, "Admin diagnostics: degraded");
 assertIncludes(debugBundleManifestOutput, "Running build: abc1234 checkout=abc1234 matches=true");
 assertIncludes(debugBundleManifestOutput, "Migration drift: ok code=202605270001 database=202605270001");
 assertIncludes(debugBundleManifestOutput, "Membership processing: ok open=2 attempts=3");
-assertIncludes(debugBundleManifestOutput, "Membership repair summary: passed output=/tmp/openseat-debug-bundle/membership-debug-summary.txt");
+assertIncludes(debugBundleManifestOutput, `Membership repair summary: passed output=${membershipDebugSummaryPath}`);
+assertIncludes(debugBundleManifestOutput, `Membership engagement jobs: overduePending=2 failed=1 skippedReasons=weekly_promotional_limit_reached:2,guest_opted_out_promotional:1 output=${membershipDebugSummaryPath}`);
 assertIncludes(
   debugBundleManifestOutput,
   "Gamification: attention activeChallenges=2 smokeChallenges=1 birthdayWeekActive=1 birthdayWeekDue=1 stuckChallenges=1 duplicateProgress=1 referralCodes=7 referralCreditMismatches=1 menuBadgeGuests=5 achievementGuests=4 achievementMissing=1/1 invalidAchievements=1 leaderboardOptedIn=3 leaderboardRewardMissing=1 invalidLeaderboard=1 streakActive=3 staleStreaks=1 invalidStreaks=1 streakBonusMissing=1",
@@ -702,6 +723,9 @@ for (const expectedSummarizerContent of [
   "Type: debug-bundle",
   "Membership processing",
   "Membership repair summary",
+  "Membership engagement jobs",
+  "parseMembershipEngagementDebug",
+  "skipReason=",
   "Gamification",
   "Engagement",
   "Campaigns",

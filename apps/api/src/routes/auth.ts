@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
@@ -18,6 +18,36 @@ const loginSchema = z.object({
   email: z.string().trim().email(),
   password: z.string().min(1),
 }).strict();
+
+function sendAuthError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  statusCode: number,
+  message: string,
+  code: string,
+  context: Record<string, unknown> = {},
+  details?: unknown,
+) {
+  const logPayload = {
+    ...context,
+    code,
+    requestId: request.id,
+    statusCode,
+  };
+
+  if (statusCode >= 500) {
+    request.log.error(logPayload, "Auth request failed");
+  } else {
+    request.log.warn(logPayload, "Auth request rejected");
+  }
+
+  return reply.status(statusCode).send({
+    error: message,
+    code,
+    requestId: request.id,
+    ...(details === undefined ? {} : { details }),
+  });
+}
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -142,7 +172,15 @@ export async function authRoutes(app: FastifyInstance) {
   app.post("/login", async (request, reply) => {
     const parsedBody = loginSchema.safeParse(request.body);
     if (!parsedBody.success) {
-      return reply.status(400).send({ error: "Email and password are required" });
+      return sendAuthError(
+        request,
+        reply,
+        400,
+        "Email and password are required",
+        "AUTH_INVALID_LOGIN_PAYLOAD",
+        {},
+        parsedBody.error.flatten(),
+      );
     }
 
     const email = normalizeEmail(parsedBody.data.email);
@@ -155,30 +193,45 @@ export async function authRoutes(app: FastifyInstance) {
       .limit(1);
 
     if (!user) {
-      return reply.status(401).send({ error: "Invalid email or password" });
+      return sendAuthError(request, reply, 401, "Invalid email or password", "AUTH_INVALID_CREDENTIALS", {
+        userFound: false,
+      });
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      return reply.status(401).send({ error: "Invalid email or password" });
+      return sendAuthError(request, reply, 401, "Invalid email or password", "AUTH_INVALID_CREDENTIALS", {
+        userId: user.id,
+      });
     }
 
     try {
       return await buildAuthResponse(user);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unknown error";
-      request.log.error({ error }, "Failed to build login auth response");
-      return reply.status(500).send({ error: message === "Invalid role configuration" ? message : "Unable to log in" });
+      return sendAuthError(
+        request,
+        reply,
+        500,
+        message === "Invalid role configuration" ? message : "Unable to log in",
+        "AUTH_LOGIN_RESPONSE_FAILED",
+        { err: error, userId: user.id, role: user.role },
+      );
     }
   });
 
   app.post("/signup", async (request, reply) => {
     const parsedBody = selfServeSignupSchema.safeParse(request.body);
     if (!parsedBody.success) {
-      return reply.status(400).send({
-        error: "Invalid signup payload",
-        details: parsedBody.error.flatten(),
-      });
+      return sendAuthError(
+        request,
+        reply,
+        400,
+        "Invalid signup payload",
+        "AUTH_INVALID_SIGNUP_PAYLOAD",
+        {},
+        parsedBody.error.flatten(),
+      );
     }
 
     const { owner, restaurant, tables: initialTables } = parsedBody.data;
@@ -191,7 +244,7 @@ export async function authRoutes(app: FastifyInstance) {
       .limit(1);
 
     if (existingUser) {
-      return reply.status(409).send({ error: "An account with this email already exists" });
+      return sendAuthError(request, reply, 409, "An account with this email already exists", "AUTH_EMAIL_EXISTS");
     }
 
     const passwordHash = await bcrypt.hash(owner.password, 10);
@@ -256,13 +309,26 @@ export async function authRoutes(app: FastifyInstance) {
       return buildAuthResponse(createdUser, createdRestaurant);
     } catch (error: unknown) {
       const errorCode = getErrorCode(error);
-      request.log.error({ error }, "Failed to complete self-serve signup");
 
       if (errorCode === "23505") {
-        return reply.status(409).send({ error: "Signup conflicted with an existing account or restaurant. Please try again." });
+        return sendAuthError(
+          request,
+          reply,
+          409,
+          "Signup conflicted with an existing account or restaurant. Please try again.",
+          "AUTH_SIGNUP_CONFLICT",
+          { err: error, restaurantName: restaurant.name },
+        );
       }
 
-      return reply.status(500).send({ error: "Unable to complete signup" });
+      return sendAuthError(
+        request,
+        reply,
+        500,
+        "Unable to complete signup",
+        "AUTH_SIGNUP_FAILED",
+        { err: error, restaurantName: restaurant.name },
+      );
     }
   });
 }

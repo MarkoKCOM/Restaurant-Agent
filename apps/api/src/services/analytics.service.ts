@@ -42,6 +42,19 @@ export interface AnalyticsPeriod {
   to: string;
 }
 
+export class AnalyticsInputError extends Error {
+  readonly code: string;
+  readonly statusCode = 400;
+  readonly details?: Record<string, unknown>;
+
+  constructor(message: string, code: string, details?: Record<string, unknown>) {
+    super(message);
+    this.name = "AnalyticsInputError";
+    this.code = code;
+    this.details = details;
+  }
+}
+
 function toDateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
@@ -49,7 +62,7 @@ function toDateKey(date: Date): string {
 function parseDateKey(value: string | undefined, fallback: Date): string {
   if (!value) return toDateKey(fallback);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    throw new Error("Analytics date must use YYYY-MM-DD format");
+    throw new AnalyticsInputError("Analytics date must use YYYY-MM-DD format", "ANALYTICS_DATE_FORMAT_INVALID", { value });
   }
   return value;
 }
@@ -65,7 +78,11 @@ export function resolveAnalyticsPeriod(params: {
   defaultFrom.setUTCDate(defaultFrom.getUTCDate() - (DEFAULT_LOOKBACK_DAYS - 1));
   const from = parseDateKey(params.from, defaultFrom);
   if (from > to) {
-    throw new Error("Analytics from date must be before or equal to to date");
+    throw new AnalyticsInputError(
+      "Analytics from date must be before or equal to to date",
+      "ANALYTICS_DATE_RANGE_INVALID",
+      { from, to },
+    );
   }
   return { from, to };
 }

@@ -1027,6 +1027,7 @@ const authRoutes = await readFile("apps/api/src/routes/auth.ts", "utf8");
 const authMiddleware = await readFile("apps/api/src/middleware/auth.ts", "utf8");
 const campaignRoutes = await readFile("apps/api/src/routes/campaigns.ts", "utf8");
 const analyticsRoutes = await readFile("apps/api/src/routes/analytics.ts", "utf8");
+const analyticsService = await readFile("apps/api/src/services/analytics.service.ts", "utf8");
 const agentRoutes = await readFile("apps/api/src/routes/agent.ts", "utf8");
 const engagementRoutes = await readFile("apps/api/src/routes/engagement.ts", "utf8");
 const visitsRoutes = await readFile("apps/api/src/routes/visits.ts", "utf8");
@@ -1355,6 +1356,8 @@ assertNotIncludes(campaignRoutes, "if (accessError) return accessError;");
 
 for (const requiredAnalyticsPackageContent of [
   "async function enforceAnalyticsAccess",
+  "AnalyticsInputError",
+  "err instanceof AnalyticsInputError",
   "requireGrowthPackage",
   "requiredPackage: \"growth\"",
   "packageAccess.code === \"RESTAURANT_NOT_FOUND\" ? 404 : 403",
@@ -1371,6 +1374,16 @@ for (const requiredAnalyticsPackageContent of [
   assertIncludes(analyticsRoutes, requiredAnalyticsPackageContent);
 }
 assertNotIncludes(analyticsRoutes, "if (accessError) return accessError;");
+
+for (const requiredAnalyticsServiceContent of [
+  "export class AnalyticsInputError extends Error",
+  "readonly statusCode = 400",
+  "ANALYTICS_DATE_FORMAT_INVALID",
+  "ANALYTICS_DATE_RANGE_INVALID",
+  "{ from, to }",
+]) {
+  assertIncludes(analyticsService, requiredAnalyticsServiceContent);
+}
 
 for (const requiredEngagementPackageContent of [
   "enforceEngagementAccess",

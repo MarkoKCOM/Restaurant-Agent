@@ -7,6 +7,7 @@ import {
   getLoyaltyAnalytics,
   getReservationAnalytics,
   getRetentionAnalytics,
+  AnalyticsInputError,
 } from "../services/analytics.service.js";
 import { formatMorningSummaryMessage, getMorningSummary } from "../services/summary.service.js";
 import { recordOutboundDelivery } from "../services/outbound-message.service.js";
@@ -76,11 +77,14 @@ function sendCaughtAnalyticsError(
   context: Record<string, unknown> = {},
 ) {
   const message = err instanceof Error ? err.message : "Analytics operation failed";
+  if (err instanceof AnalyticsInputError) {
+    return sendAnalyticsError(request, reply, err.statusCode, message, err.code, {
+      ...context,
+      details: err.details,
+    });
+  }
   if (message.includes("Restaurant not found")) {
     return sendAnalyticsError(request, reply, 404, message, "ANALYTICS_RESTAURANT_NOT_FOUND", context);
-  }
-  if (message.includes("date must") || message.includes("from date must")) {
-    return sendAnalyticsError(request, reply, 400, message, "ANALYTICS_DATE_RANGE_INVALID", context);
   }
   return sendAnalyticsError(request, reply, 500, message, fallbackCode, {
     ...context,

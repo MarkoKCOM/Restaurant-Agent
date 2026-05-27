@@ -210,6 +210,8 @@ pnpm debug:api -- http://localhost:3001/api/v1/campaigns/audience-preview
 
 Use the response `requestId` with `pnpm debug:logs` if a package rejection is missing or returns the wrong code.
 
+Analytics input problems use typed 400 responses before they can look like backend failures: `ANALYTICS_DATE_FORMAT_INVALID` for bad date strings and `ANALYTICS_DATE_RANGE_INVALID` when `from` is after `to`. Growth analytics execution failures still use surface-specific 500 codes such as `ANALYTICS_RETENTION_FAILED`, `ANALYTICS_LOYALTY_FAILED`, or `ANALYTICS_CAMPAIGN_ROI_FAILED`.
+
 To check all major Growth-only surfaces in one pass, run:
 
 ```bash

@@ -87,6 +87,7 @@
 - [x] 8.8 Implement off-peak bonus multipliers — configurable time windows with 2x/3x point multipliers
 - [x] 8.9 Implement birthday week challenge — auto-created 7 days before birthday, special reward + bonus points
 - [x] 8.10 Implement opt-in leaderboard — monthly rankings, top 3 rewards, WhatsApp summary to participants
+- [x] 8.11 Harden challenge active windows against timezone drift — active challenge listings, auto-progress, and API smoke date windows use the restaurant-local calendar day
 
 ## 9. Engagement Automation (Growth)
 

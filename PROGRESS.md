@@ -90,6 +90,8 @@
 - API startup, worker, cron scheduling, and shutdown messages now use structured Fastify logs.
 - Added validated `LOG_LEVEL` env var and documented it in `.env.example`.
 - README now links to the debugging guide.
+- Active challenge listings and visit-triggered challenge auto-progress now evaluate date windows with the restaurant-local calendar day, matching birthday-week challenge creation and preventing midnight timezone gaps in gamification/member-visible challenges.
+- API reliability smoke date windows now use the same restaurant-local calendar day so live gamification checks exercise the product behavior instead of UTC-only artifacts.
 
 ### Verified
 - `pnpm --filter @openseat/domain build`
@@ -98,6 +100,7 @@
 - `pnpm --filter @openseat/api build`
 - `pnpm --filter @openseat/dashboard build`
 - `pnpm debug:api -- http://localhost:3001/api/v1/health`
+- `OPENSEAT_SMOKE_ARTIFACT_PATH=/tmp/openseat-smoke-64d8552.json node scripts/api-reliability-smoke.mjs`
 - `git diff --check`
 
 ### Notes

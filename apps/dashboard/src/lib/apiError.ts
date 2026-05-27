@@ -133,3 +133,7 @@ export function formatApiErrorMessage(error: unknown, fallback: string): string 
 
   return details.length > 0 ? `${fallback} (${details.join(" - ")})` : fallback;
 }
+
+export function isApiErrorCode(error: unknown, code: string): boolean {
+  return error instanceof ApiError && error.code === code;
+}

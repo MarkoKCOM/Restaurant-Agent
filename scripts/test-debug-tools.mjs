@@ -806,6 +806,8 @@ for (const expectedDashboardApiErrorContent of [
   "FETCH_FAILED",
   "Network error (request",
   "fallbackRequestId",
+  "debugCommand",
+  "isApiErrorCode",
 ]) {
   assertIncludes(dashboardApiError, expectedDashboardApiErrorContent);
 }
@@ -825,8 +827,26 @@ for (const expectedDashboardAuthContent of [
   'createRequestId("dashboard-auth")',
   '"x-request-id": requestId',
   "apiErrorFromFetchFailure",
+  "apiErrorFromResponse(res, \"POST\", requestId)",
 ]) {
   assertIncludes(dashboardAuth, expectedDashboardAuthContent);
+}
+
+const dashboardLogin = await readFile("apps/dashboard/src/pages/LoginPage.tsx", "utf8");
+for (const expectedDashboardLoginContent of [
+  "isApiErrorCode",
+  "AUTH_INVALID_CREDENTIALS",
+  "formatApiErrorMessage",
+]) {
+  assertIncludes(dashboardLogin, expectedDashboardLoginContent);
+}
+
+const dashboardSignup = await readFile("apps/dashboard/src/pages/SignupPage.tsx", "utf8");
+for (const expectedDashboardSignupContent of [
+  "formatApiErrorMessage",
+  "t.signup.validation.submit",
+]) {
+  assertIncludes(dashboardSignup, expectedDashboardSignupContent);
 }
 
 const dashboardChatWidget = await readFile("apps/dashboard/src/components/ChatWidget.tsx", "utf8");

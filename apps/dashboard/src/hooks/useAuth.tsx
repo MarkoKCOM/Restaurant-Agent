@@ -209,9 +209,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (!res.ok) {
-      if (res.status === 401) {
-        throw new Error("INVALID_CREDENTIALS");
-      }
       const error = await apiErrorFromResponse(res, "POST", requestId);
       logApiError(error);
       throw error;

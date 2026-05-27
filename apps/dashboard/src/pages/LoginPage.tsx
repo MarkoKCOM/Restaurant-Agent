@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
 import { useLang } from "../i18n.js";
-import { formatApiErrorMessage } from "../lib/apiError.js";
+import { formatApiErrorMessage, isApiErrorCode } from "../lib/apiError.js";
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -23,7 +23,7 @@ export function LoginPage() {
       const result = await login(email, password);
       navigate(result.role === "super_admin" ? "/restaurants" : "/today", { replace: true });
     } catch (err) {
-      if (err instanceof Error && err.message === "INVALID_CREDENTIALS") {
+      if (isApiErrorCode(err, "AUTH_INVALID_CREDENTIALS")) {
         setError(t.login.errorInvalid);
       } else {
         setError(formatApiErrorMessage(err, t.login.errorGeneral));

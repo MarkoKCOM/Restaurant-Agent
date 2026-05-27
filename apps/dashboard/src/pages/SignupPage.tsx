@@ -10,6 +10,7 @@ import {
 } from "@openseat/domain";
 import { useAuth } from "../hooks/useAuth.js";
 import { useLang } from "../i18n.js";
+import { formatApiErrorMessage } from "../lib/apiError.js";
 
 const STEPS = ["owner", "restaurant", "hours", "tables"] as const;
 const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
@@ -272,7 +273,7 @@ export function SignupPage() {
       await signup(buildSignupPayload());
       navigate("/today", { replace: true });
     } catch (signupError: unknown) {
-      setError(signupError instanceof Error ? signupError.message : t.signup.validation.submit);
+      setError(formatApiErrorMessage(signupError, t.signup.validation.submit));
     } finally {
       setLoading(false);
     }

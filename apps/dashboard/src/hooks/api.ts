@@ -564,6 +564,17 @@ export interface MembershipSummaryData {
     pointsEarned: number | null;
     period: string | null;
   };
+  luckySpin: {
+    enabled: boolean;
+    triggerEvery: number;
+    nextEligibleVisit: number | null;
+    lastPrize: {
+      key: string;
+      points: number;
+      awardedAt: string;
+      reservationId: string | null;
+    } | null;
+  };
   shareTemplates: {
     key: string;
     moment: string;

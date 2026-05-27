@@ -117,6 +117,9 @@ function summarizeSmoke(report) {
       || step.step === "gamification.streak-milestone-bonus"
       || step.step === "gamification.achievements-after-completion"
       || step.step === "gamification.achievements-after-visit"
+      || step.step === "gamification.lucky-spin-config"
+      || step.step === "gamification.lucky-spin-award"
+      || step.step === "gamification.lucky-spin.cleanup"
       || step.step === "gamification.leaderboard.opt-in"
       || step.step === "gamification.leaderboard.rank"
       || step.step === "gamification.leaderboard.finalize"
@@ -170,6 +173,12 @@ function summarizeSmoke(report) {
         console.log(`- gamification.achievements-after-completion: count=${step.count ?? "?"} badges=${asArray(step.badges).join(",") || "none"}`);
       } else if (step.step === "gamification.achievements-after-visit") {
         console.log(`- gamification.achievements-after-visit: count=${step.count ?? "?"} badges=${asArray(step.badges).join(",") || "none"}`);
+      } else if (step.step === "gamification.lucky-spin-config") {
+        console.log(`- gamification.lucky-spin-config: enabled=${step.enabled === true ? "yes" : "no"} every=${step.triggerEvery ?? "?"} prizes=${step.prizeCount ?? "?"} points=${step.prizePoints ?? "?"}`);
+      } else if (step.step === "gamification.lucky-spin-award") {
+        console.log(`- gamification.lucky-spin-award: points=${step.points ?? "?"} reason=${step.reason ?? "?"}`);
+      } else if (step.step === "gamification.lucky-spin.cleanup") {
+        console.log(`- gamification.lucky-spin.cleanup: markedSent=${step.markedSent === true ? "yes" : "no"} jobId=${step.jobId ?? "?"}`);
       } else if (step.step === "gamification.leaderboard.opt-in") {
         console.log(`- gamification.leaderboard.opt-in: optedIn=${step.optedIn === true ? "yes" : "no"} rank=${step.rank ?? "?"} points=${step.pointsEarned ?? "?"}`);
       } else if (step.step === "gamification.leaderboard.rank") {

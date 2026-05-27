@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { and, eq, desc, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
@@ -8,6 +9,7 @@ import {
   rewards,
 } from "../db/schema.js";
 import type { InferSelectModel } from "drizzle-orm";
+import { scheduleLuckySpinReward } from "./engagement.service.js";
 
 export type LoyaltyTransactionRow = InferSelectModel<typeof loyaltyTransactions>;
 export type RewardRow = InferSelectModel<typeof rewards>;
@@ -37,6 +39,34 @@ interface OffPeakMultiplierConfig {
   multiplier: number;
   days?: DayKey[];
   enabled?: boolean;
+}
+
+interface LuckySpinPrizeConfig {
+  key: string;
+  labelHe?: string;
+  labelEn?: string;
+  points: number;
+  weight: number;
+  enabled?: boolean;
+}
+
+interface LuckySpinConfig {
+  enabled: boolean;
+  triggerEvery: number;
+  prizePool: LuckySpinPrizeConfig[];
+}
+
+export interface LuckySpinResult {
+  eligible: boolean;
+  alreadyAwarded: boolean;
+  prize: {
+    key: string;
+    labelHe: string;
+    labelEn: string;
+    points: number;
+  } | null;
+  transactionId: string | null;
+  engagementJobId: string | null;
 }
 
 export function getTierMultiplier(tier: Tier): number {
@@ -91,6 +121,140 @@ function getConfiguredOffPeakMultiplier(
       : reservationMinutes >= start || reservationMinutes < end;
     return inWindow ? Math.max(best, Math.min(window.multiplier, 5)) : best;
   }, 1);
+}
+
+function objectRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function normalizeLuckySpinPrize(rawPrize: unknown): LuckySpinPrizeConfig | null {
+  const prize = objectRecord(rawPrize);
+  const key = typeof prize.key === "string" && prize.key.trim().length > 0 ? prize.key.trim() : null;
+  const points = typeof prize.points === "number" && Number.isFinite(prize.points) ? Math.max(0, Math.round(prize.points)) : null;
+  const weight = typeof prize.weight === "number" && Number.isFinite(prize.weight) ? prize.weight : null;
+  if (!key || points === null || weight === null || weight <= 0) return null;
+
+  return {
+    key,
+    labelHe: typeof prize.labelHe === "string" && prize.labelHe.trim().length > 0 ? prize.labelHe.trim() : undefined,
+    labelEn: typeof prize.labelEn === "string" && prize.labelEn.trim().length > 0 ? prize.labelEn.trim() : undefined,
+    points,
+    weight,
+    enabled: typeof prize.enabled === "boolean" ? prize.enabled : undefined,
+  };
+}
+
+export function getConfiguredLuckySpin(dashboardConfig: unknown): LuckySpinConfig {
+  const dashboard = objectRecord(dashboardConfig);
+  const gamification = objectRecord(dashboard.gamification);
+  const luckySpin = objectRecord(gamification.luckySpin);
+  const enabled = luckySpin.enabled === true;
+  const triggerEvery = typeof luckySpin.triggerEvery === "number" && Number.isFinite(luckySpin.triggerEvery)
+    ? Math.max(1, Math.round(luckySpin.triggerEvery))
+    : 5;
+  const prizePool = Array.isArray(luckySpin.prizePool)
+    ? luckySpin.prizePool.flatMap((prize) => {
+      const normalized = normalizeLuckySpinPrize(prize);
+      return normalized && normalized.enabled !== false ? [normalized] : [];
+    })
+    : [];
+
+  return {
+    enabled,
+    triggerEvery,
+    prizePool,
+  };
+}
+
+function deterministicLuckySpinRoll(seed: string): number {
+  const hash = createHash("sha256").update(seed).digest();
+  const value = hash.readUInt32BE(0);
+  return value / 0xffffffff;
+}
+
+function pickLuckySpinPrize(config: LuckySpinConfig, seed: string): LuckySpinPrizeConfig | null {
+  const totalWeight = config.prizePool.reduce((sum, prize) => sum + prize.weight, 0);
+  if (totalWeight <= 0) return null;
+
+  let cursor = deterministicLuckySpinRoll(seed) * totalWeight;
+  for (const prize of config.prizePool) {
+    cursor -= prize.weight;
+    if (cursor <= 0) return prize;
+  }
+  return config.prizePool.at(-1) ?? null;
+}
+
+async function awardLuckySpinForVisit(params: {
+  guestId: string;
+  restaurantId: string;
+  reservationId: string;
+  visitCount: number;
+  dashboardConfig: unknown;
+}): Promise<LuckySpinResult> {
+  const config = getConfiguredLuckySpin(params.dashboardConfig);
+  if (!config.enabled || params.visitCount <= 0 || params.visitCount % config.triggerEvery !== 0) {
+    return { eligible: false, alreadyAwarded: false, prize: null, transactionId: null, engagementJobId: null };
+  }
+
+  const [existingSpin] = await db
+    .select({
+      id: loyaltyTransactions.id,
+      reason: loyaltyTransactions.reason,
+      points: loyaltyTransactions.points,
+    })
+    .from(loyaltyTransactions)
+    .where(
+      and(
+        eq(loyaltyTransactions.guestId, params.guestId),
+        eq(loyaltyTransactions.restaurantId, params.restaurantId),
+        eq(loyaltyTransactions.reservationId, params.reservationId),
+        sql`${loyaltyTransactions.reason} like 'lucky_spin:%'`,
+      ),
+    )
+    .limit(1);
+
+  if (existingSpin) {
+    const existingPrizeKey = existingSpin.reason?.replace(/^lucky_spin:/, "") ?? "unknown";
+    return {
+      eligible: true,
+      alreadyAwarded: true,
+      prize: {
+        key: existingPrizeKey,
+        labelHe: existingPrizeKey,
+        labelEn: existingPrizeKey,
+        points: Number(existingSpin.points),
+      },
+      transactionId: existingSpin.id,
+      engagementJobId: null,
+    };
+  }
+
+  const prize = pickLuckySpinPrize(config, `${params.restaurantId}:${params.guestId}:${params.reservationId}:${params.visitCount}`);
+  if (!prize) {
+    return { eligible: true, alreadyAwarded: false, prize: null, transactionId: null, engagementJobId: null };
+  }
+
+  const transaction = await awardPoints(
+    params.guestId,
+    params.restaurantId,
+    prize.points,
+    `lucky_spin:${prize.key}`,
+    params.reservationId,
+  );
+  const engagementJob = await scheduleLuckySpinReward(params.guestId, params.restaurantId);
+
+  return {
+    eligible: true,
+    alreadyAwarded: false,
+    prize: {
+      key: prize.key,
+      labelHe: prize.labelHe ?? prize.key,
+      labelEn: prize.labelEn ?? prize.key,
+      points: prize.points,
+    },
+    transactionId: transaction.id,
+    engagementJobId: engagementJob.id,
+  };
 }
 
 // ── Points ─────────────────────────────────────────────
@@ -423,6 +587,7 @@ export async function onVisitCompleted(
   pointsAwarded: number;
   visitPointsAwarded: number;
   stampBonus: boolean;
+  luckySpin: LuckySpinResult;
   tierChange: TierEvaluation | null;
 }> {
   // Guest visitCount was already incremented before this call
@@ -535,6 +700,14 @@ export async function onVisitCompleted(
     }
   }
 
+  const luckySpin = await awardLuckySpinForVisit({
+    guestId,
+    restaurantId,
+    reservationId,
+    visitCount: guest.visitCount,
+    dashboardConfig: reservation?.dashboardConfig,
+  });
+
   // Evaluate tier
   const tierChange = await evaluateTier(guestId);
 
@@ -542,9 +715,11 @@ export async function onVisitCompleted(
     pointsAwarded:
       pointsForVisit
       + (stampBonus ? STAMP_BONUS_POINTS : 0)
-      + (hostGroupBonus ? HOST_GROUP_BONUS_POINTS : 0),
+      + (hostGroupBonus ? HOST_GROUP_BONUS_POINTS : 0)
+      + (!luckySpin.alreadyAwarded ? luckySpin.prize?.points ?? 0 : 0),
     visitPointsAwarded: pointsForVisit,
     stampBonus,
+    luckySpin,
     tierChange,
   };
 }

@@ -487,6 +487,11 @@ export const translations = {
       memberLeaderboard: "לידרבורד",
       memberLeaderboardOptedIn: "משתתף",
       memberLeaderboardOptedOut: "לא משתתף",
+      memberLuckySpin: "גלגל מזל",
+      memberLuckySpinEnabled: "פעיל כל {n} ביקורים",
+      memberLuckySpinDisabled: "לא פעיל",
+      memberLuckySpinLastPrize: "פרס אחרון",
+      memberLuckySpinNextVisit: "ביקור זכאי הבא",
       memberShareTemplates: "תבניות שיתוף",
       memberNoShareTemplates: "אין עדיין רגעים מוכנים לשיתוף",
       // Hospitality signals
@@ -1202,6 +1207,11 @@ export const translations = {
       memberLeaderboard: "Leaderboard",
       memberLeaderboardOptedIn: "Opted in",
       memberLeaderboardOptedOut: "Not opted in",
+      memberLuckySpin: "Lucky spin",
+      memberLuckySpinEnabled: "Active every {n} visits",
+      memberLuckySpinDisabled: "Not active",
+      memberLuckySpinLastPrize: "Last prize",
+      memberLuckySpinNextVisit: "Next eligible visit",
       memberShareTemplates: "Share templates",
       memberNoShareTemplates: "No share-ready moments yet",
       // Hospitality signals

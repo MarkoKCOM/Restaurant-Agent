@@ -228,6 +228,16 @@ export interface GamificationDiagnostic {
       issue: string;
     }>;
   };
+  luckySpin?: {
+    awards: number;
+    duplicateReservationAwards: number;
+    pendingRewardJobs: number;
+    samples: Array<{
+      guestId: string;
+      reservationId: string | null;
+      issue: string;
+    }>;
+  };
   streaks?: {
     guestsWithStreak: number;
     active: number;
@@ -531,6 +541,8 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
       achievementIssueRows,
       leaderboardRows,
       leaderboardIssueRows,
+      luckySpinRows,
+      luckySpinIssueRows,
       streakRows,
       streakIssueRows,
       birthdayWeekDueRows,
@@ -904,6 +916,47 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
         issue: string;
       }>>,
       db.execute(sql`
+        with duplicate_awards as (
+          select guest_id, reservation_id, count(*)::int as award_count
+          from ${loyaltyTransactions}
+          where reason like 'lucky_spin:%'
+            and reservation_id is not null
+          group by guest_id, reservation_id
+          having count(*) > 1
+        )
+        select
+          (select count(*)::int from ${loyaltyTransactions} where reason like 'lucky_spin:%') as awards,
+          (select count(*)::int from duplicate_awards) as duplicate_reservation_awards,
+          (
+            select count(*)::int
+            from ${engagementJobs}
+            where type = 'lucky_spin_reward'
+              and status = 'pending'
+          ) as pending_reward_jobs
+      `) as Promise<Array<{
+        awards: number;
+        duplicate_reservation_awards: number;
+        pending_reward_jobs: number;
+      }>>,
+      db.execute(sql`
+        with duplicate_awards as (
+          select guest_id, reservation_id, count(*)::int as award_count
+          from ${loyaltyTransactions}
+          where reason like 'lucky_spin:%'
+            and reservation_id is not null
+          group by guest_id, reservation_id
+          having count(*) > 1
+        )
+        select guest_id, reservation_id, 'duplicate_lucky_spin_award' as issue
+        from duplicate_awards
+        order by award_count desc, guest_id asc
+        limit 5
+      `) as Promise<Array<{
+        guest_id: string;
+        reservation_id: string | null;
+        issue: string;
+      }>>,
+      db.execute(sql`
         with streak_guests as (
           select
             id,
@@ -1113,6 +1166,7 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
     const menuExplorationSummary = menuExplorationRows[0];
     const achievementSummary = achievementRows[0];
     const leaderboardSummary = leaderboardRows[0];
+    const luckySpinSummary = luckySpinRows[0];
     const streakSummary = streakRows[0];
     const stuckCompletions = Number(stuckChallengeRows[0]?.stuck_count ?? 0);
     const duplicateProgressGroups = Number(duplicateProgressRows[0]?.duplicate_group_count ?? 0);
@@ -1128,9 +1182,10 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
     const invalidAchievements = Number(achievementSummary?.invalid ?? 0);
     const invalidLeaderboard = Number(leaderboardSummary?.invalid ?? 0);
     const topThreeRewardMissing = Number(leaderboardSummary?.top_three_reward_missing ?? 0);
+    const duplicateLuckySpinAwards = Number(luckySpinSummary?.duplicate_reservation_awards ?? 0);
 
     return {
-      status: activeSmokeChallenges > 0 || stuckCompletions > 0 || duplicateProgressGroups > 0 || referredGuestsWithoutWelcomeBonus > 0 || referrerCreditMismatches > 0 || birthdayWeekDueUncreated > 0 || staleStreaks > 0 || invalidStreaks > 0 || milestoneBonusMissing > 0 || firstVisitAchievementMissing > 0 || tenVisitAchievementMissing > 0 || invalidAchievements > 0 || invalidLeaderboard > 0 || topThreeRewardMissing > 0
+      status: activeSmokeChallenges > 0 || stuckCompletions > 0 || duplicateProgressGroups > 0 || referredGuestsWithoutWelcomeBonus > 0 || referrerCreditMismatches > 0 || birthdayWeekDueUncreated > 0 || staleStreaks > 0 || invalidStreaks > 0 || milestoneBonusMissing > 0 || firstVisitAchievementMissing > 0 || tenVisitAchievementMissing > 0 || invalidAchievements > 0 || invalidLeaderboard > 0 || topThreeRewardMissing > 0 || duplicateLuckySpinAwards > 0
         ? "attention"
         : "ok",
       challenges: {
@@ -1199,6 +1254,16 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
         topThreeRewardMissing,
         samples: leaderboardIssueRows.map((row) => ({
           guestId: row.id,
+          issue: row.issue,
+        })),
+      },
+      luckySpin: {
+        awards: Number(luckySpinSummary?.awards ?? 0),
+        duplicateReservationAwards: duplicateLuckySpinAwards,
+        pendingRewardJobs: Number(luckySpinSummary?.pending_reward_jobs ?? 0),
+        samples: luckySpinIssueRows.map((row) => ({
+          guestId: row.guest_id,
+          reservationId: row.reservation_id,
           issue: row.issue,
         })),
       },

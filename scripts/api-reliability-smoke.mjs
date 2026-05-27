@@ -201,7 +201,7 @@ async function markSmokeEngagementJobSent(jobId, type = "thank_you") {
   if (!isUuid(jobId)) {
     throw new Error(`Refusing to cleanup invalid engagement job id: ${jobId}`);
   }
-  if (!["thank_you", "review_request", "leaderboard_summary"].includes(type)) {
+  if (!["thank_you", "review_request", "leaderboard_summary", "lucky_spin_reward"].includes(type)) {
     throw new Error(`Refusing to cleanup unsupported engagement job type: ${type}`);
   }
 
@@ -350,6 +350,23 @@ async function main() {
       ...(originalDashboardConfig.engagement ?? {}),
       quietHours: thankYouQuietHours,
     },
+    gamification: {
+      ...(originalDashboardConfig.gamification ?? {}),
+      luckySpin: {
+        enabled: true,
+        triggerEvery: 1,
+        prizePool: [
+          {
+            key: "smoke_bonus",
+            labelHe: "בונוס בדיקה",
+            labelEn: "Smoke bonus",
+            points: 15,
+            weight: 1,
+            enabled: true,
+          },
+        ],
+      },
+    },
   };
 
   await request(`/api/v1/restaurants/${restaurantId}`, {
@@ -373,6 +390,12 @@ async function main() {
   record("engagement.quiet-hours-config", {
     start: thankYouQuietHours.start,
     end: thankYouQuietHours.end,
+  });
+  record("gamification.lucky-spin-config", {
+    enabled: true,
+    triggerEvery: 1,
+    prizeCount: 1,
+    prizePoints: 15,
   });
 
   const futureChallengeDate = plusDays(60);
@@ -570,6 +593,9 @@ async function main() {
   const streakMilestoneTransaction = (loyaltyHistory.transactions ?? []).find((tx) =>
     tx.reservationId === reservation.id && tx.reason === "streak_milestone:3"
   );
+  const luckySpinTransaction = (loyaltyHistory.transactions ?? []).find((tx) =>
+    tx.reservationId === reservation.id && tx.reason === "lucky_spin:smoke_bonus"
+  );
   record("loyalty.off-peak-multiplier", {
     expectedVisitPoints: 20,
     actualVisitPoints: visitCompletionTransaction?.points ?? null,
@@ -586,6 +612,14 @@ async function main() {
   });
   if (seededStreakInDb && streakMilestoneTransaction?.points !== 20) {
     throw new Error(`Streak milestone bonus was not applied as 2x visit points: expected 20, got ${streakMilestoneTransaction?.points ?? "missing"}`);
+  }
+  record("gamification.lucky-spin-award", {
+    reason: luckySpinTransaction?.reason ?? null,
+    points: luckySpinTransaction?.points ?? null,
+    reservationId: luckySpinTransaction?.reservationId ?? null,
+  });
+  if (luckySpinTransaction?.points !== 15) {
+    throw new Error(`Lucky spin bonus was not awarded: expected 15, got ${luckySpinTransaction?.points ?? "missing"}`);
   }
 
   const challengesAfterCompletion = await request(`/api/v1/gamification/${reservation.guestId}/challenges?restaurantId=${restaurantId}`, { token });
@@ -736,6 +770,7 @@ async function main() {
 
   const engagementJobs = await request(`/api/v1/engagement/jobs?restaurantId=${restaurantId}&guestId=${reservation.guestId}`, { token });
   const thankYouJob = (engagementJobs.jobs ?? []).find((job) => job.type === "thank_you");
+  const luckySpinJob = (engagementJobs.jobs ?? []).find((job) => job.type === "lucky_spin_reward");
   const thankYouTriggerTime = thankYouJob?.triggerAt ? timeInJerusalem(thankYouJob.triggerAt) : null;
   const thankYouOutsideQuietHours = thankYouTriggerTime
     ? !isTimeInWindow(thankYouTriggerTime, thankYouQuietHours.start, thankYouQuietHours.end)
@@ -750,6 +785,9 @@ async function main() {
     thankYouQuietEnd: thankYouQuietHours.end,
     thankYouOutsideQuietHours,
   });
+  if (!luckySpinJob || luckySpinJob.status !== "pending") {
+    throw new Error(`Lucky spin reward delivery job was not scheduled: ${JSON.stringify(engagementJobs.jobs ?? [])}`);
+  }
   if (!thankYouJob) {
     throw new Error("Reservation completion did not schedule a thank-you engagement job");
   }
@@ -760,6 +798,13 @@ async function main() {
     const cleaned = await markSmokeEngagementJobSent(thankYouJob.id);
     record("engagement.thank-you.cleanup", {
       jobId: thankYouJob.id,
+      markedSent: cleaned,
+    });
+  });
+  cleanupTasks.push(async () => {
+    const cleaned = await markSmokeEngagementJobSent(luckySpinJob.id, "lucky_spin_reward");
+    record("gamification.lucky-spin.cleanup", {
+      jobId: luckySpinJob.id,
       markedSent: cleaned,
     });
   });

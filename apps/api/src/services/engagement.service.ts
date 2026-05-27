@@ -14,7 +14,8 @@ export type EngagementJobType =
   | "win_back_30"
   | "win_back_60"
   | "win_back_90"
-  | "leaderboard_summary";
+  | "leaderboard_summary"
+  | "lucky_spin_reward";
 
 export const PROMOTIONAL_ENGAGEMENT_TYPES = [
   "review_request",
@@ -24,6 +25,7 @@ export const PROMOTIONAL_ENGAGEMENT_TYPES = [
   "win_back_60",
   "win_back_90",
   "leaderboard_summary",
+  "lucky_spin_reward",
 ] as const;
 
 const PROMOTIONAL_WEEKLY_LIMIT = 2;
@@ -818,6 +820,19 @@ export async function scheduleLeaderboardSummary(
   });
 
   return job;
+}
+
+export async function scheduleLuckySpinReward(
+  guestId: string,
+  restaurantId: string,
+): Promise<EngagementJobRow> {
+  const triggerAt = await applyRestaurantQuietHours(restaurantId, new Date(Date.now() + 5 * 60 * 1000));
+  return scheduleEngagementJob({
+    guestId,
+    restaurantId,
+    type: "lucky_spin_reward",
+    triggerAt,
+  });
 }
 
 interface WinBackResult {

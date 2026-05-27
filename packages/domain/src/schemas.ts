@@ -153,6 +153,23 @@ export const dashboardEngagementConfigSchema = z.object({
   quietHours: dashboardEngagementQuietHoursSchema.optional(),
 }).passthrough();
 
+export const dashboardLuckySpinPrizeSchema = z.object({
+  key: z.string().trim().min(1).max(80),
+  labelHe: z.string().trim().max(120).optional(),
+  labelEn: z.string().trim().max(120).optional(),
+  points: z.coerce.number().int().min(0).max(10000),
+  weight: z.coerce.number().min(0.01).max(1000),
+  enabled: z.boolean().optional(),
+}).strict();
+
+export const dashboardGamificationConfigSchema = z.object({
+  luckySpin: z.object({
+    enabled: z.boolean().optional(),
+    triggerEvery: z.coerce.number().int().min(1).max(100).optional(),
+    prizePool: z.array(dashboardLuckySpinPrizeSchema).max(20).optional(),
+  }).passthrough().optional(),
+}).passthrough();
+
 export const dashboardConfigSchema = z.object({
   // Legacy fields (kept for compatibility)
   accentColor: hexColor,
@@ -162,6 +179,7 @@ export const dashboardConfigSchema = z.object({
   branding: dashboardBrandingSchema.optional(),
   loyalty: dashboardLoyaltyConfigSchema.optional(),
   engagement: dashboardEngagementConfigSchema.optional(),
+  gamification: dashboardGamificationConfigSchema.optional(),
   language: z.enum(["he", "en"]).optional(),
   visiblePages: z.array(z.string()).optional(),
   features: z.object({

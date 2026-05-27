@@ -75,6 +75,25 @@ export interface DashboardEngagementConfig {
   quietHours?: DashboardEngagementQuietHoursConfig;
 }
 
+export interface DashboardLuckySpinPrize {
+  key: string;
+  labelHe?: string;
+  labelEn?: string;
+  points: number;
+  weight: number;
+  enabled?: boolean;
+}
+
+export interface DashboardLuckySpinConfig {
+  enabled?: boolean;
+  triggerEvery?: number;
+  prizePool?: DashboardLuckySpinPrize[];
+}
+
+export interface DashboardGamificationConfig {
+  luckySpin?: DashboardLuckySpinConfig;
+}
+
 export interface DashboardConfig {
   // ── Legacy fields — kept for backward compatibility ──
   /** @deprecated Use palette.primary instead. */
@@ -87,6 +106,7 @@ export interface DashboardConfig {
   branding?: DashboardBranding;
   loyalty?: DashboardLoyaltyConfig;
   engagement?: DashboardEngagementConfig;
+  gamification?: DashboardGamificationConfig;
 
   language?: "he" | "en";
   visiblePages?: string[];
@@ -353,6 +373,17 @@ export interface MembershipSummary {
   menuExploration: MenuExplorationSummary;
   achievements: AchievementSummary;
   leaderboard: LeaderboardMemberSummary;
+  luckySpin: {
+    enabled: boolean;
+    triggerEvery: number;
+    nextEligibleVisit: number | null;
+    lastPrize: {
+      key: string;
+      points: number;
+      awardedAt: string;
+      reservationId: string | null;
+    } | null;
+  };
   shareTemplates: ShareTemplate[];
   optedOutCampaigns: boolean;
 }

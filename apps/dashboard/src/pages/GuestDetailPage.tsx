@@ -572,6 +572,27 @@ export function GuestDetailPage() {
           </div>
 
           <div className="rounded-xl border border-gray-200 p-4 mb-4">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <h4 className="font-medium text-gray-900">{t.guestDetail.memberLuckySpin}</h4>
+              <span className="text-xs text-gray-500">
+                {membershipSummary.summary.luckySpin.enabled
+                  ? t.guestDetail.memberLuckySpinEnabled.replace("{n}", String(membershipSummary.summary.luckySpin.triggerEvery))
+                  : t.guestDetail.memberLuckySpinDisabled}
+              </span>
+            </div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <p className="text-sm text-gray-700">
+                {t.guestDetail.memberLuckySpinNextVisit}: {membershipSummary.summary.luckySpin.nextEligibleVisit ?? "-"}
+              </p>
+              {membershipSummary.summary.luckySpin.lastPrize ? (
+                <p className="text-sm text-gray-700">
+                  {t.guestDetail.memberLuckySpinLastPrize}: {membershipSummary.summary.luckySpin.lastPrize.points} pts
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 p-4 mb-4">
             <h4 className="font-medium text-gray-900 mb-3">{t.guestDetail.memberShareTemplates}</h4>
             {membershipSummary.summary.shareTemplates.length === 0 ? (
               <p className="text-sm text-gray-500">{t.guestDetail.memberNoShareTemplates}</p>

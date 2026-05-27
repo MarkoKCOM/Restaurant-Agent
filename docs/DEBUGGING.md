@@ -74,6 +74,8 @@ pnpm debug:bundle --since "30 minutes ago"
 
 The bundle is written to `artifacts/debug-bundles/<timestamp>/`. Set `OPENSEAT_TOKEN`, `JWT_SECRET`, or super-admin credentials to include `/api/v1/admin/diagnostics`, set `OPENSEAT_RESTAURANT_ID`, `OPENSEAT_BUNDLE_RESTAURANT_ID`, `OPENSEAT_RESTAURANT_SLUG`, `OPENSEAT_BUNDLE_RESTAURANT_SLUG`, or a restaurant-scoped `OPENSEAT_TOKEN` to include `pnpm debug:membership`, and set the normal smoke credentials to include the API smoke run. Use `--out /tmp/openseat-debug` to choose a specific folder.
 
+Bundle summaries separate command failures from operational attention. If all bundle commands pass but a diagnostics section reports `attention`, `pnpm debug:artifact` prints `Operational attention` and `Bundle command issues: none` instead of hiding the operational signal behind `Bundle issues: none`.
+
 When `JWT_SECRET` is available on the VPS, `pnpm debug:membership` and `pnpm debug:outbound` can synthesize a short-lived super-admin token. You still need a restaurant selector such as `OPENSEAT_RESTAURANT_ID` or `OPENSEAT_RESTAURANT_SLUG`. The scripts print `tokenSource=jwt_secret` or `tokenSource=provided` so support can see which auth path was used.
 
 The bundle also runs deterministic membership-intent probes against `/api/v1/agent/debug/membership-intent`, covering balance, reward, referral, and promotional opt-out phrases. These checks do not call the LLM; they prove the agent debugging layer still maps common membership questions to the expected tools.

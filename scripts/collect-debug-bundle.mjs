@@ -186,6 +186,24 @@ function formatSummaryScheduleHealth(queues) {
   return parts.join(" ");
 }
 
+function operationalAttentionLabels(adminDiagnostics) {
+  const labels = [];
+  for (const [label, section] of [
+    ["Membership processing", adminDiagnostics.membershipProcessing],
+    ["Gamification", adminDiagnostics.gamification],
+    ["Engagement", adminDiagnostics.engagement],
+    ["Campaigns", adminDiagnostics.campaigns],
+    ["Outbound messages", adminDiagnostics.outboundMessages],
+  ]) {
+    if (section?.status === "attention") labels.push(label);
+  }
+  const queues = Array.isArray(adminDiagnostics.queues) ? adminDiagnostics.queues : [];
+  for (const queue of queues) {
+    if (queue.scheduleHealth?.status === "attention") labels.push(`${queue.name} schedule`);
+  }
+  return labels;
+}
+
 async function captureAgentIntentHighlights(artifactPath) {
   try {
     const report = await readJson(artifactPath);
@@ -431,6 +449,10 @@ async function writeReadme() {
       const summaryScheduleHealth = formatSummaryScheduleHealth(queues);
       if (summaryScheduleHealth) {
         lines.push(`- Summary schedules: ${summaryScheduleHealth}`);
+      }
+      const attention = operationalAttentionLabels(adminDiagnostics);
+      if (attention.length > 0) {
+        lines.push(`- Operational attention: ${attention.join(", ")}`);
       }
       if (adminDiagnostics.requestId) {
         lines.push(`- Diagnostics request: ${adminDiagnostics.requestId}`);

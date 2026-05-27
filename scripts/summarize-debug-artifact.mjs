@@ -104,6 +104,26 @@ function formatSummaryScheduleHealthFromDiagnostics(queues) {
   return parts.join(" ");
 }
 
+function operationalAttentionLabels(adminDiagnostics) {
+  const labels = [];
+  const sections = [
+    ["Membership processing", adminDiagnostics.membershipProcessing],
+    ["Gamification", adminDiagnostics.gamification],
+    ["Engagement", adminDiagnostics.engagement],
+    ["Campaigns", adminDiagnostics.campaigns],
+    ["Outbound messages", adminDiagnostics.outboundMessages],
+  ];
+  for (const [label, section] of sections) {
+    if (section?.status === "attention") labels.push(label);
+  }
+  for (const queue of asArray(adminDiagnostics.queues)) {
+    if (queue.scheduleHealth?.status === "attention") {
+      labels.push(`${queue.name} schedule`);
+    }
+  }
+  return labels;
+}
+
 function summarizeE2e(report) {
   const results = asArray(report.results);
   const failed = results.filter((result) => !result.pass);
@@ -403,6 +423,7 @@ async function summarizeDebugBundleManifest(report) {
   const queues = asArray(adminDiagnostics.queues);
   const summaryScheduleHealth = formatSummaryScheduleHealthFromDiagnostics(queues)
     ?? await parseSummaryScheduleHealth(commands);
+  const operationalAttention = operationalAttentionLabels(adminDiagnostics);
 
   console.log(`Artifact: ${basename(artifactPath)}`);
   console.log("Type: debug-bundle");
@@ -482,9 +503,12 @@ async function summarizeDebugBundleManifest(report) {
   if (summaryScheduleHealth) {
     printLine("Summary schedules", summaryScheduleHealth);
   }
+  if (operationalAttention.length > 0) {
+    printLine("Operational attention", operationalAttention.join(", "));
+  }
 
   if (failed.length === 0 && skipped.length === 0) {
-    console.log("Bundle issues: none");
+    console.log(operationalAttention.length > 0 ? "Bundle command issues: none" : "Bundle issues: none");
     return;
   }
 

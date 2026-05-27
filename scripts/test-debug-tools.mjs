@@ -492,6 +492,7 @@ assertIncludes(debugBundleManifestOutput, "Outbound messages: attention total=5 
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");
 assertIncludes(debugBundleManifestOutput, "Queues: daily-summary:ok/failed=0/repeat=0, membership-events:ok/failed=0/repeat=?");
 assertIncludes(debugBundleManifestOutput, "Summary schedules: restaurants=9 morning expected=9 found=9 pattern=0 9 * * * status=ok closing expected=9 found=9 pattern=0 23 * * * status=ok timezones=Asia/Jerusalem:9");
+assertIncludes(debugBundleManifestOutput, "Operational attention: Gamification, Engagement, Campaigns, Outbound messages");
 assertIncludes(debugBundleManifestOutput, "Failed commands: 1");
 assertIncludes(debugBundleManifestOutput, "- api-smoke: exitCode=1 output=/tmp/openseat-debug-bundle/api-smoke.txt");
 assertIncludes(debugBundleManifestOutput, "Skipped commands: 1");
@@ -507,6 +508,8 @@ for (const expectedSummarizerContent of [
   "Engagement",
   "Campaigns",
   "Summary schedules",
+  "Operational attention",
+  "operationalAttentionLabels",
   "parseSummaryScheduleHealth",
   "formatSummaryScheduleHealthFromDiagnostics",
   "Agent membership intents",
@@ -897,6 +900,7 @@ for (const requiredReadmeContent of [
   "engagement",
   "campaigns",
   "Campaigns:",
+  "Operational attention:",
   "outboundMessages",
   "manifest.highlights.agentMembershipIntents",
   "membershipDebugRestaurantId",

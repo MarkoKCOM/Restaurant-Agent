@@ -176,9 +176,12 @@ function summarizeApiLogEvent(event) {
 function expectedBundleLogIssue(event) {
   const requestId = String(event.reqId ?? "");
   const code = String(event.code ?? event.err?.code ?? "");
+  const message = String(event.msg ?? event.err?.message ?? "");
   if (requestId.startsWith("debug-package-") && code === "PACKAGE_GROWTH_REQUIRED") return true;
   if (requestId.startsWith("smoke-") && code === "RESERVATION_NO_TABLE_COMBINATION") return true;
   if (requestId.startsWith("smoke-") && code === "CAMPAIGN_SCHEDULE_REQUIRES_ADJUSTMENT") return true;
+  if (requestId.startsWith("smoke-") && message === "Feedback should alert owner") return true;
+  if (requestId.startsWith("smoke-") && message === "Negative feedback routed to private service recovery") return true;
   return false;
 }
 

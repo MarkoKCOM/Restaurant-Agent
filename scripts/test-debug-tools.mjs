@@ -1360,6 +1360,8 @@ for (const requiredReadmeContent of [
   "Bundle-run unexpected API log samples",
   "Bundle-run expected API log samples",
   "expectedBundleLogIssue",
+  "Feedback should alert owner",
+  "Negative feedback routed to private service recovery",
   "unexpectedIssueEvents",
   "manifest.json",
   "README.md",

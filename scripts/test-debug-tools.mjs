@@ -832,6 +832,7 @@ for (const requiredOutboundServiceContent of [
   "deliveryMode",
   "deliverySkipped",
   "status: missingRequiredRecipient ? \"skipped\" : \"logged\"",
+  "case when ${outboundMessages.errorCode} is not null or ${outboundMessages.status} in ('failed', 'skipped') then 0 else 1 end",
 ]) {
   assertIncludes(outboundMessageService, requiredOutboundServiceContent);
 }

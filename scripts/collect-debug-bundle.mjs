@@ -120,7 +120,9 @@ function buildAttentionSamples({ membershipProcessing, gamification, engagement,
   pushAttentionSamples(samples, "campaign.overdue", campaigns.overdueSamples, (row) =>
     `campaign=${formatAttentionValue(row.id)} restaurant=${formatAttentionValue(row.restaurantId)} scheduledAt=${formatAttentionValue(row.scheduledAt, "none")} name=${formatAttentionValue(row.name)}`);
 
-  pushAttentionSamples(samples, "outbound", outboundMessages.samples, (row) =>
+  const outboundAttentionSamples = asArray(outboundMessages.samples).filter((row) =>
+    isObject(row) && (row.errorCode || row.status === "failed" || row.status === "skipped"));
+  pushAttentionSamples(samples, "outbound", outboundAttentionSamples, (row) =>
     `message=${formatAttentionValue(row.id)} restaurant=${formatAttentionValue(row.restaurantId)} guest=${formatAttentionValue(row.guestId, "none")} type=${formatAttentionValue(row.messageType)} status=${formatAttentionValue(row.status)} error=${formatAttentionValue(row.errorCode, "none")}`);
 
   return samples.slice(0, limit);

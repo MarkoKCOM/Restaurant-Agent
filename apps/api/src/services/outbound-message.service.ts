@@ -182,7 +182,10 @@ export async function getOutboundMessageDiagnostics(params: {
       })
       .from(outboundMessages)
       .where(gte(outboundMessages.createdAt, since))
-      .orderBy(desc(outboundMessages.createdAt))
+      .orderBy(
+        sql`case when ${outboundMessages.errorCode} is not null or ${outboundMessages.status} in ('failed', 'skipped') then 0 else 1 end`,
+        desc(outboundMessages.createdAt),
+      )
       .limit(sampleLimit),
   ]);
 

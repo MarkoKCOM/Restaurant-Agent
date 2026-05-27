@@ -482,6 +482,8 @@ export const translations = {
       memberMenuBadges: "תגי חקר תפריט",
       memberMenuCategories: "קטגוריות שנוסו",
       memberNoMenuBadges: "אין עדיין תגי תפריט",
+      memberAchievements: "הישגים",
+      memberNoAchievements: "אין עדיין הישגים",
       // Hospitality signals
       signalBirthday: "יום הולדת",
       signalCelebration: "חגיגה",
@@ -1190,6 +1192,8 @@ export const translations = {
       memberMenuBadges: "Menu exploration badges",
       memberMenuCategories: "categories tried",
       memberNoMenuBadges: "No menu badges yet",
+      memberAchievements: "Achievements",
+      memberNoAchievements: "No achievements yet",
       // Hospitality signals
       signalBirthday: "Birthday",
       signalCelebration: "Celebration",

@@ -263,6 +263,20 @@ export interface MenuExplorationSummary {
   badges: MenuExplorationBadge[];
 }
 
+export interface AchievementBadge {
+  key: string;
+  nameHe: string;
+  nameEn: string;
+  descriptionHe: string;
+  descriptionEn: string;
+  unlockedAt: string;
+}
+
+export interface AchievementSummary {
+  badges: AchievementBadge[];
+  count: number;
+}
+
 export interface MembershipSummary {
   guestId: string;
   restaurantId: string;
@@ -288,5 +302,6 @@ export interface MembershipSummary {
   referrals: ReferralSummary;
   streak: StreakSummary;
   menuExploration: MenuExplorationSummary;
+  achievements: AchievementSummary;
   optedOutCampaigns: boolean;
 }

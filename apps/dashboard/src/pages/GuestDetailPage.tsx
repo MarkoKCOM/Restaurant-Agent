@@ -611,6 +611,21 @@ export function GuestDetailPage() {
                 </div>
               )}
             </div>
+            <div className="rounded-xl border border-gray-200 p-4 md:col-span-2">
+              <h4 className="font-medium text-gray-900 mb-3">{t.guestDetail.memberAchievements}</h4>
+              {membershipSummary.summary.achievements.badges.length === 0 ? (
+                <p className="text-sm text-gray-500">{t.guestDetail.memberNoAchievements}</p>
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {membershipSummary.summary.achievements.badges.map((badge) => (
+                    <div key={badge.key} className="rounded-lg bg-violet-50 px-3 py-2">
+                      <p className="text-sm font-medium text-violet-900">{lang === "he" ? badge.nameHe : badge.nameEn}</p>
+                      <p className="text-xs text-violet-700">{lang === "he" ? badge.descriptionHe : badge.descriptionEn}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

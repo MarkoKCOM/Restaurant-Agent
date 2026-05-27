@@ -24,6 +24,7 @@ import {
   recordMembershipProcessingFailure,
   type MembershipProcessingStage,
 } from "./membership-processing.service.js";
+import { awardVisitAchievements } from "./achievement.service.js";
 
 export type ReservationRow = InferSelectModel<typeof reservations>;
 
@@ -723,6 +724,19 @@ export async function updateReservation(
     } catch (error) {
       await recordCompletionFailure({
         stage: "loyalty_updates",
+        reservationId: updated.id,
+        guestId: updated.guestId,
+        restaurantId: updated.restaurantId,
+        error,
+        logger: options.logger,
+      });
+    }
+
+    try {
+      await awardVisitAchievements(updated.guestId);
+    } catch (error) {
+      await recordCompletionFailure({
+        stage: "achievement_update",
         reservationId: updated.id,
         guestId: updated.guestId,
         restaurantId: updated.restaurantId,

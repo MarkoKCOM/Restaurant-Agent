@@ -206,6 +206,18 @@ export interface GamificationDiagnostic {
       badgeCount: number;
     }>;
   };
+  achievements?: {
+    guestsWithAchievements: number;
+    totalBadges: number;
+    firstVisitMissing: number;
+    tenVisitMissing: number;
+    invalid: number;
+    samples: Array<{
+      guestId: string;
+      visitCount: number;
+      issue: string;
+    }>;
+  };
   streaks?: {
     guestsWithStreak: number;
     active: number;
@@ -505,6 +517,8 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
       referrerMismatchRows,
       menuExplorationRows,
       menuExplorationSampleRows,
+      achievementRows,
+      achievementIssueRows,
       streakRows,
       streakIssueRows,
       birthdayWeekDueRows,
@@ -670,6 +684,104 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
         guest_id: string;
         category_count: number;
         badge_count: number;
+      }>>,
+      db.execute(sql`
+        with normalized as (
+          select
+            id,
+            visit_count,
+            preferences,
+            case
+              when preferences ? 'achievements'
+                and jsonb_typeof(preferences->'achievements'->'badges') = 'array'
+              then preferences->'achievements'->'badges'
+              else '[]'::jsonb
+            end as badges,
+            case
+              when preferences ? 'achievements'
+              then jsonb_typeof(preferences->'achievements'->'badges') = 'array'
+              else true
+            end as valid
+          from ${guests}
+        )
+        select
+          count(*) filter (where jsonb_array_length(badges) > 0)::int as guests_with_achievements,
+          coalesce(sum(jsonb_array_length(badges)), 0)::int as total_badges,
+          count(*) filter (
+            where visit_count >= 1
+              and not exists (
+                select 1
+                from jsonb_array_elements(badges) badge
+                where badge->>'key' = 'first_visit'
+              )
+          )::int as first_visit_missing,
+          count(*) filter (
+            where visit_count >= 10
+              and not exists (
+                select 1
+                from jsonb_array_elements(badges) badge
+                where badge->>'key' = 'ten_visits'
+              )
+          )::int as ten_visit_missing,
+          count(*) filter (where not valid)::int as invalid
+        from normalized
+      `) as Promise<Array<{
+        guests_with_achievements: number;
+        total_badges: number;
+        first_visit_missing: number;
+        ten_visit_missing: number;
+        invalid: number;
+      }>>,
+      db.execute(sql`
+        with normalized as (
+          select
+            id,
+            visit_count,
+            preferences,
+            case
+              when preferences ? 'achievements'
+                and jsonb_typeof(preferences->'achievements'->'badges') = 'array'
+              then preferences->'achievements'->'badges'
+              else '[]'::jsonb
+            end as badges,
+            case
+              when preferences ? 'achievements'
+              then jsonb_typeof(preferences->'achievements'->'badges') = 'array'
+              else true
+            end as valid
+          from ${guests}
+        ),
+        issues as (
+          select id, visit_count, 'invalid_achievements_preferences' as issue
+          from normalized
+          where not valid
+          union all
+          select id, visit_count, 'first_visit_achievement_missing' as issue
+          from normalized
+          where visit_count >= 1
+            and not exists (
+              select 1
+              from jsonb_array_elements(badges) badge
+              where badge->>'key' = 'first_visit'
+            )
+          union all
+          select id, visit_count, 'ten_visits_achievement_missing' as issue
+          from normalized
+          where visit_count >= 10
+            and not exists (
+              select 1
+              from jsonb_array_elements(badges) badge
+              where badge->>'key' = 'ten_visits'
+            )
+        )
+        select *
+        from issues
+        order by issue asc, visit_count desc
+        limit 5
+      `) as Promise<Array<{
+        id: string;
+        visit_count: number;
+        issue: string;
       }>>,
       db.execute(sql`
         with streak_guests as (
@@ -879,6 +991,7 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
     const referralSummary = referralRows[0];
     const welcomeBonusSummary = welcomeBonusRows[0];
     const menuExplorationSummary = menuExplorationRows[0];
+    const achievementSummary = achievementRows[0];
     const streakSummary = streakRows[0];
     const stuckCompletions = Number(stuckChallengeRows[0]?.stuck_count ?? 0);
     const duplicateProgressGroups = Number(duplicateProgressRows[0]?.duplicate_group_count ?? 0);
@@ -889,9 +1002,12 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
     const staleStreaks = Number(streakSummary?.stale ?? 0);
     const invalidStreaks = Number(streakSummary?.invalid ?? 0);
     const milestoneBonusMissing = Number(streakSummary?.milestone_bonus_missing ?? 0);
+    const firstVisitAchievementMissing = Number(achievementSummary?.first_visit_missing ?? 0);
+    const tenVisitAchievementMissing = Number(achievementSummary?.ten_visit_missing ?? 0);
+    const invalidAchievements = Number(achievementSummary?.invalid ?? 0);
 
     return {
-      status: activeSmokeChallenges > 0 || stuckCompletions > 0 || duplicateProgressGroups > 0 || referredGuestsWithoutWelcomeBonus > 0 || referrerCreditMismatches > 0 || birthdayWeekDueUncreated > 0 || staleStreaks > 0 || invalidStreaks > 0 || milestoneBonusMissing > 0
+      status: activeSmokeChallenges > 0 || stuckCompletions > 0 || duplicateProgressGroups > 0 || referredGuestsWithoutWelcomeBonus > 0 || referrerCreditMismatches > 0 || birthdayWeekDueUncreated > 0 || staleStreaks > 0 || invalidStreaks > 0 || milestoneBonusMissing > 0 || firstVisitAchievementMissing > 0 || tenVisitAchievementMissing > 0 || invalidAchievements > 0
         ? "attention"
         : "ok",
       challenges: {
@@ -939,6 +1055,18 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
           guestId: row.guest_id,
           categoryCount: Number(row.category_count),
           badgeCount: Number(row.badge_count),
+        })),
+      },
+      achievements: {
+        guestsWithAchievements: Number(achievementSummary?.guests_with_achievements ?? 0),
+        totalBadges: Number(achievementSummary?.total_badges ?? 0),
+        firstVisitMissing: firstVisitAchievementMissing,
+        tenVisitMissing: tenVisitAchievementMissing,
+        invalid: invalidAchievements,
+        samples: achievementIssueRows.map((row) => ({
+          guestId: row.id,
+          visitCount: Number(row.visit_count),
+          issue: row.issue,
         })),
       },
       streaks: {

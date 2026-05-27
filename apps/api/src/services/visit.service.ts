@@ -1,6 +1,7 @@
 import { and, eq, desc, sql, gte, lte } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { visitLogs, guests, reservations } from "../db/schema.js";
+import { applyVisitAchievements } from "./achievement.service.js";
 
 // ── Types ─────────────────────────────────────────────
 
@@ -189,13 +190,17 @@ export async function logVisit(data: LogVisitInput) {
   if (guest) {
     const newVisitCount = guest.visitCount + 1;
     const menuExploration = applyMenuExplorationBadges(guest.preferences, data.items);
+    const achievements = applyVisitAchievements(menuExploration.preferences, {
+      visitCount: newVisitCount,
+      items: data.items ?? [],
+    });
     const updates: Record<string, unknown> = {
       visitCount: newVisitCount,
       lastVisitDate: data.date,
       updatedAt: new Date(),
     };
-    if (menuExploration.changed) {
-      updates.preferences = menuExploration.preferences;
+    if (menuExploration.changed || achievements.changed) {
+      updates.preferences = achievements.preferences;
     }
     if (!guest.firstVisitDate) {
       updates.firstVisitDate = data.date;

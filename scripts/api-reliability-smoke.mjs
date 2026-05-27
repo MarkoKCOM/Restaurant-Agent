@@ -541,6 +541,8 @@ async function main() {
 
   const membershipSummaryAfterCompletion = await request(`/api/v1/loyalty/${reservation.guestId}/summary`, { token });
   const streakAfterCompletion = membershipSummaryAfterCompletion.summary?.streak;
+  const achievementsAfterCompletion = membershipSummaryAfterCompletion.summary?.achievements;
+  const achievementKeysAfterCompletion = (achievementsAfterCompletion?.badges ?? []).map((badge) => badge.key);
   record("gamification.streak-after-completion", {
     current: streakAfterCompletion?.current ?? null,
     best: streakAfterCompletion?.best ?? null,
@@ -552,6 +554,13 @@ async function main() {
   }
   if (seededStreakInDb && streakAfterCompletion.current !== 3) {
     throw new Error(`Seeded consecutive streak did not reach milestone 3: ${JSON.stringify(streakAfterCompletion)}`);
+  }
+  record("gamification.achievements-after-completion", {
+    count: achievementsAfterCompletion?.count ?? null,
+    badges: achievementKeysAfterCompletion,
+  });
+  if (!achievementKeysAfterCompletion.includes("first_visit")) {
+    throw new Error(`Reservation completion did not unlock first visit achievement: badges=${achievementKeysAfterCompletion.join(",") || "none"}`);
   }
 
   const loyaltyHistory = await request(`/api/v1/loyalty/${reservation.guestId}/history?limit=20`, { token });
@@ -975,7 +984,7 @@ async function main() {
       date: visitDate,
       partySize: 2,
       items: [
-        { name: "Burger", category: "main", price: 72, rating: 5 },
+        { name: "Smoke tasting menu", category: "tasting_menu", price: 72, rating: 5 },
         { name: "Fries", category: "side", price: 24, rating: 4 },
       ],
       totalSpend: 96,
@@ -992,12 +1001,21 @@ async function main() {
   const membershipSummaryAfterVisit = await request(`/api/v1/loyalty/${reservation.guestId}/summary`, { token });
   const menuExploration = membershipSummaryAfterVisit.summary?.menuExploration;
   const badgeKeys = (menuExploration?.badges ?? []).map((badge) => badge.key);
+  const achievementsAfterVisit = membershipSummaryAfterVisit.summary?.achievements;
+  const achievementKeysAfterVisit = (achievementsAfterVisit?.badges ?? []).map((badge) => badge.key);
   record("gamification.menu-exploration", {
     categoryCount: menuExploration?.categoryCount ?? null,
     badges: badgeKeys,
   });
   if (!badgeKeys.includes("menu_explorer")) {
     throw new Error(`Visit items did not unlock menu exploration badge: badges=${badgeKeys.join(",") || "none"}`);
+  }
+  record("gamification.achievements-after-visit", {
+    count: achievementsAfterVisit?.count ?? null,
+    badges: achievementKeysAfterVisit,
+  });
+  if (!achievementKeysAfterVisit.includes("tasting_menu")) {
+    throw new Error(`Tasting-menu visit did not unlock tasting menu achievement: badges=${achievementKeysAfterVisit.join(",") || "none"}`);
   }
 
   const insights = await request(`/api/v1/visits/${reservation.guestId}/insights`, { token });

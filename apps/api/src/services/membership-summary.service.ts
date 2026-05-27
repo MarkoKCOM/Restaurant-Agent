@@ -6,6 +6,7 @@ import { getReferralStats } from "./referral.service.js";
 import { getStreak } from "./challenge.service.js";
 import { getGuestClaims } from "./reward-claims.service.js";
 import { getMenuExplorationFromPreferences } from "./visit.service.js";
+import { getAchievementsFromPreferences } from "./achievement.service.js";
 
 export interface MembershipSummary {
   guestId: string;
@@ -70,6 +71,17 @@ export interface MembershipSummary {
       key: string;
       nameHe: string;
       nameEn: string;
+      unlockedAt: string;
+    }>;
+  };
+  achievements: {
+    count: number;
+    badges: Array<{
+      key: string;
+      nameHe: string;
+      nameEn: string;
+      descriptionHe: string;
+      descriptionEn: string;
       unlockedAt: string;
     }>;
   };
@@ -156,6 +168,7 @@ export async function getMembershipSummary(
     },
     streak,
     menuExploration: getMenuExplorationFromPreferences(guest.preferences),
+    achievements: getAchievementsFromPreferences(guest.preferences),
     optedOutCampaigns: guest.optedOutCampaigns,
   };
 }

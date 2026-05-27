@@ -6,10 +6,12 @@ import { refreshVisitAutoTags } from "./guest.service.js";
 import { onVisitCompleted } from "./loyalty.service.js";
 import { updateStreak } from "./challenge.service.js";
 import { scheduleReviewRequest, scheduleThankYou } from "./engagement.service.js";
+import { awardVisitAchievements } from "./achievement.service.js";
 
 export type MembershipProcessingStage =
   | "visit_auto_tags"
   | "loyalty_updates"
+  | "achievement_update"
   | "streak_update"
   | "challenge_progress"
   | "engagement_scheduling";
@@ -98,6 +100,11 @@ async function runStage(failure: MembershipProcessingFailureRow): Promise<void> 
       throw new Error("Cannot retry loyalty updates without a reservationId");
     }
     await onVisitCompleted(failure.guestId, failure.restaurantId, failure.reservationId);
+    return;
+  }
+
+  if (stage === "achievement_update") {
+    await awardVisitAchievements(failure.guestId);
     return;
   }
 

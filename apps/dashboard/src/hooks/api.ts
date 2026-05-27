@@ -546,6 +546,17 @@ export interface MembershipSummaryData {
     categoryCount: number;
     badges: { key: string; nameHe: string; nameEn: string; unlockedAt: string }[];
   };
+  achievements: {
+    count: number;
+    badges: {
+      key: string;
+      nameHe: string;
+      nameEn: string;
+      descriptionHe: string;
+      descriptionEn: string;
+      unlockedAt: string;
+    }[];
+  };
   optedOutCampaigns: boolean;
 }
 

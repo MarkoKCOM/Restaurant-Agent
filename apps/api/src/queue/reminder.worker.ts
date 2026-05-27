@@ -2,7 +2,7 @@ import { Worker } from "bullmq";
 import type { Job } from "bullmq";
 import type { FastifyBaseLogger } from "fastify";
 import { redisConnection } from "./index.js";
-import { logOutboundMessage } from "../services/outbound-message.service.js";
+import { recordOutboundDelivery } from "../services/outbound-message.service.js";
 
 export interface ReminderJobData {
   reservationId: string;
@@ -21,7 +21,7 @@ function maskPhone(phone: string): string {
 async function processReminder(job: Job<ReminderJobData>, logger: FastifyBaseLogger): Promise<void> {
   const { guestPhone, date, timeStart, partySize, reservationId } = job.data;
   const text = `Reminder: your reservation is on ${date} at ${timeStart} for ${partySize} guests. Reply confirm or cancel.`;
-  const outbound = await logOutboundMessage({
+  const outbound = await recordOutboundDelivery({
     restaurantId: job.data.restaurantId,
     guestId: job.data.guestId,
     recipient: guestPhone,

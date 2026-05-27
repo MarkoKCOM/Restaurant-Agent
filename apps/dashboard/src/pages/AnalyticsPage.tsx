@@ -198,7 +198,7 @@ export function AnalyticsPage() {
     setLogFeedback("");
     try {
       const result = await logMorningSummary.mutateAsync({ restaurantId: restaurant.id });
-      setLogFeedback(`${t.logSuccess}: ${result.outboundMessage.id}`);
+      setLogFeedback(`${t.logSuccess}: ${result.outboundMessage.id} (${result.outboundMessage.status})`);
     } catch (err) {
       setLogFeedback(formatApiErrorMessage(err, t.morningSummaryLogError));
     }

@@ -25,6 +25,10 @@ export interface LogOutboundMessageParams {
   sentAt?: Date | null;
 }
 
+export interface RecordOutboundDeliveryParams extends Omit<LogOutboundMessageParams, "status" | "errorCode" | "errorMessage" | "sentAt"> {
+  requireRecipient?: boolean;
+}
+
 export interface ListOutboundMessagesParams {
   restaurantId: string;
   status?: string;
@@ -100,6 +104,24 @@ export async function logOutboundMessage(params: LogOutboundMessageParams) {
     .returning();
 
   return row;
+}
+
+export async function recordOutboundDelivery(params: RecordOutboundDeliveryParams) {
+  const hasRecipient = Boolean(params.recipient || params.recipientMasked);
+  const missingRequiredRecipient = params.requireRecipient !== false && !hasRecipient;
+
+  return logOutboundMessage({
+    ...params,
+    provider: params.provider ?? "debug_log",
+    status: missingRequiredRecipient ? "skipped" : "logged",
+    errorCode: missingRequiredRecipient ? "OUTBOUND_RECIPIENT_MISSING" : null,
+    errorMessage: missingRequiredRecipient ? "Outbound recipient is not configured." : null,
+    payload: {
+      ...params.payload,
+      deliveryMode: "debug_log",
+      deliverySkipped: missingRequiredRecipient,
+    },
+  });
 }
 
 export async function listOutboundMessages(params: ListOutboundMessagesParams) {

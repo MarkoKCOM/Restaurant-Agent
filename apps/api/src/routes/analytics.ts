@@ -9,7 +9,7 @@ import {
   getRetentionAnalytics,
 } from "../services/analytics.service.js";
 import { formatMorningSummaryMessage, getMorningSummary } from "../services/summary.service.js";
-import { logOutboundMessage } from "../services/outbound-message.service.js";
+import { recordOutboundDelivery } from "../services/outbound-message.service.js";
 
 const analyticsQuerySchema = z.object({
   restaurantId: z.string().uuid(),
@@ -164,7 +164,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
 
     const summary = await getMorningSummary(parsed);
     const message = formatMorningSummaryMessage(summary);
-    const outboundMessage = await logOutboundMessage({
+    const outboundMessage = await recordOutboundDelivery({
       restaurantId: parsed.restaurantId,
       recipientMasked: summary.ownerRecipientMasked,
       messageType: "daily_morning_summary",

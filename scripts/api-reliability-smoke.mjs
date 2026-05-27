@@ -1622,10 +1622,12 @@ async function main() {
     messageType: loggedMorningSummary.outboundMessage?.messageType ?? null,
     listed: Boolean(loggedOutbound),
     recipientMasked: loggedMorningSummary.outboundMessage?.recipientMasked ?? null,
+    errorCode: loggedMorningSummary.outboundMessage?.errorCode ?? null,
   });
+  const expectedMorningOutboundStatus = loggedMorningSummary.summary?.ownerWhatsappConfigured === false ? "skipped" : "logged";
   if (
     !loggedMorningSummary.outboundMessage?.id
-    || loggedMorningSummary.outboundMessage.status !== "logged"
+    || loggedMorningSummary.outboundMessage.status !== expectedMorningOutboundStatus
     || loggedMorningSummary.outboundMessage.messageType !== "daily_morning_summary"
     || !loggedOutbound
   ) {

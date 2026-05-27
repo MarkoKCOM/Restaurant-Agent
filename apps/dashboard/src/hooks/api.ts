@@ -303,6 +303,8 @@ export interface DailyMorningSummaryLogResponse extends DailyMorningSummaryRespo
     messageType: string;
     provider: string;
     recipientMasked: string | null;
+    errorCode: string | null;
+    errorMessage: string | null;
     createdAt: string;
   };
 }

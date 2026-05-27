@@ -635,6 +635,7 @@ const apiLogTrace = await readFile("scripts/api-log-trace.mjs", "utf8");
 const membershipDebugSummary = await readFile("scripts/membership-debug-summary.mjs", "utf8");
 const outboundDebugSummary = await readFile("scripts/outbound-debug-summary.mjs", "utf8");
 const queueDebugSummary = await readFile("apps/api/scripts/queue-debug-summary.mjs", "utf8");
+const outboundMessageService = await readFile("apps/api/src/services/outbound-message.service.ts", "utf8");
 const debugErrorHelpers = await readFile("scripts/lib/debug-errors.mjs", "utf8");
 const rootPackageJson = await readFile("package.json", "utf8");
 const apiPackageJson = await readFile("apps/api/package.json", "utf8");
@@ -676,6 +677,16 @@ for (const requiredOutboundDebugContent of [
   "/api/v1/engagement/outbound-messages",
 ]) {
   assertIncludes(outboundDebugSummary, requiredOutboundDebugContent);
+}
+
+for (const requiredOutboundServiceContent of [
+  "recordOutboundDelivery",
+  "OUTBOUND_RECIPIENT_MISSING",
+  "deliveryMode",
+  "deliverySkipped",
+  "status: missingRequiredRecipient ? \"skipped\" : \"logged\"",
+]) {
+  assertIncludes(outboundMessageService, requiredOutboundServiceContent);
 }
 
 for (const requiredQueueDebugContent of [

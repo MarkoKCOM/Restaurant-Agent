@@ -7,7 +7,7 @@ import { db } from "../db/index.js";
 import { engagementJobs, guests, restaurants } from "../db/schema.js";
 import { checkAnniversaries, checkBirthdays, checkWinBack, shouldSendEngagementJob } from "../services/engagement.service.js";
 import { checkBirthdayWeekChallenges } from "../services/challenge.service.js";
-import { logOutboundMessage } from "../services/outbound-message.service.js";
+import { recordOutboundDelivery } from "../services/outbound-message.service.js";
 
 export interface EngagementJobData {
   jobId?: string;
@@ -177,7 +177,7 @@ async function processEngagement(job: Job<EngagementJobData>, logger: FastifyBas
     restaurantName: restaurant.name,
     pointsBalance: guest.pointsBalance,
   });
-  const outbound = await logOutboundMessage({
+  const outbound = await recordOutboundDelivery({
     restaurantId,
     guestId,
     recipient: guest.phone,
@@ -211,6 +211,17 @@ async function processEngagement(job: Job<EngagementJobData>, logger: FastifyBas
     },
     "Engagement message ready to send",
   );
+
+  if (outbound.status === "skipped") {
+    await db
+      .update(engagementJobs)
+      .set({
+        status: "skipped",
+        skipReason: outbound.errorCode ?? "outbound_delivery_skipped",
+      })
+      .where(eq(engagementJobs.id, jobId));
+    return;
+  }
 
   // Mark job as sent
   await db

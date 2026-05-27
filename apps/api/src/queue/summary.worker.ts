@@ -7,7 +7,7 @@ import {
   getDailySummary,
   getMorningSummary,
 } from "../services/summary.service.js";
-import { logOutboundMessage } from "../services/outbound-message.service.js";
+import { recordOutboundDelivery } from "../services/outbound-message.service.js";
 
 export interface SummaryJobData {
   restaurantId: string;
@@ -20,7 +20,7 @@ async function processSummary(job: Job<SummaryJobData>, logger: FastifyBaseLogge
   if (type === "morning") {
     const summary = await getMorningSummary({ restaurantId });
     const message = formatMorningSummaryMessage(summary);
-    const outbound = await logOutboundMessage({
+    const outbound = await recordOutboundDelivery({
       restaurantId,
       recipientMasked: summary.ownerRecipientMasked,
       messageType: "daily_morning_summary",
@@ -68,7 +68,7 @@ async function processSummary(job: Job<SummaryJobData>, logger: FastifyBaseLogge
 
   const summary = await getDailySummary(restaurantId, today);
   const text = `Daily summary for ${today}: ${summary.totalCovers} covers, ${summary.completedCount} completed, ${summary.cancelledCount} cancellations, ${summary.noShowCount} no-shows.`;
-  const outbound = await logOutboundMessage({
+  const outbound = await recordOutboundDelivery({
     restaurantId,
     messageType: "daily_closing_summary",
     messageCategory: "transactional",

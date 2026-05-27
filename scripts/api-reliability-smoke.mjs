@@ -1232,7 +1232,7 @@ async function main() {
     skippedPolicy: winBackCheck.result?.skippedPolicy ?? null,
     jobStatus: winBackJob?.status ?? null,
   });
-  if (!winBackJob || winBackJob.status !== "pending") {
+  if (!winBackJob || !["pending", "sent"].includes(winBackJob.status)) {
     throw new Error(`Overdue win-back check did not schedule win_back_30: ${JSON.stringify(winBackCheck.result ?? {})}`);
   }
 

@@ -49,6 +49,11 @@ export interface OutboundMessageDiagnostics {
   };
   byType?: Record<string, number>;
   byErrorCode?: Record<string, number>;
+  byErrorCodeDetails?: Record<string, {
+    count: number;
+    firstSeenAt: string;
+    lastSeenAt: string;
+  }>;
   deliveryReadiness?: {
     ownerWhatsappMissing: number;
     ownerDeliveryRecipientMissing: number;
@@ -174,6 +179,8 @@ export async function getOutboundMessageDiagnostics(params: {
       .select({
         errorCode: outboundMessages.errorCode,
         count: sql<number>`count(*)::int`,
+        firstSeenAt: sql<Date>`min(${outboundMessages.createdAt})`,
+        lastSeenAt: sql<Date>`max(${outboundMessages.createdAt})`,
       })
       .from(outboundMessages)
       .where(and(gte(outboundMessages.createdAt, since), sql`${outboundMessages.errorCode} is not null`))
@@ -238,6 +245,7 @@ export async function getOutboundMessageDiagnostics(params: {
   };
   const byType: Record<string, number> = {};
   const byErrorCode: Record<string, number> = {};
+  const byErrorCodeDetails: NonNullable<OutboundMessageDiagnostics["byErrorCodeDetails"]> = {};
   for (const row of summaryRows) {
     const count = Number(row.count ?? 0);
     totals.total += count;
@@ -248,7 +256,13 @@ export async function getOutboundMessageDiagnostics(params: {
   }
   for (const row of errorRows) {
     if (!row.errorCode) continue;
-    byErrorCode[row.errorCode] = Number(row.count ?? 0);
+    const count = Number(row.count ?? 0);
+    byErrorCode[row.errorCode] = count;
+    byErrorCodeDetails[row.errorCode] = {
+      count,
+      firstSeenAt: row.firstSeenAt.toISOString(),
+      lastSeenAt: row.lastSeenAt.toISOString(),
+    };
   }
   const ownerWhatsappMissing = Number(ownerWhatsappMissingRows[0]?.missingCount ?? 0);
   const ownerDeliveryRecipientMissing = Number(ownerWhatsappMissingRows[0]?.recipientMissingCount ?? 0);
@@ -268,6 +282,7 @@ export async function getOutboundMessageDiagnostics(params: {
     totals,
     byType,
     byErrorCode,
+    byErrorCodeDetails,
     deliveryReadiness: {
       ownerWhatsappMissing,
       ownerDeliveryRecipientMissing,

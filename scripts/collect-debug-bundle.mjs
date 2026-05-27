@@ -604,6 +604,7 @@ async function captureDiagnosticsHighlights(commandRecord) {
         totals: outboundMessages.totals,
         byType: outboundMessages.byType,
         byErrorCode: outboundMessages.byErrorCode,
+        byErrorCodeDetails: outboundMessages.byErrorCodeDetails,
         deliveryReadiness: outboundMessages.deliveryReadiness,
         samples: outboundMessages.samples,
         error: outboundMessages.error,
@@ -730,11 +731,19 @@ async function writeReadme() {
       const outboundTotals = outboundMessages.totals ?? {};
       const outboundByType = outboundMessages.byType ?? {};
       const outboundByErrorCode = outboundMessages.byErrorCode ?? {};
+      const outboundByErrorCodeDetails = outboundMessages.byErrorCodeDetails ?? {};
       const outboundDeliveryReadiness = outboundMessages.deliveryReadiness ?? {};
       const outboundReasons = asArray(outboundMessages.statusReasons).join(",") || "none";
+      const outboundErrors = Object.entries(outboundByErrorCode).map(([code, count]) => {
+        const detail = outboundByErrorCodeDetails[code] ?? {};
+        const window = detail.firstSeenAt || detail.lastSeenAt
+          ? `[${detail.firstSeenAt ?? "?"}..${detail.lastSeenAt ?? "?"}]`
+          : "";
+        return `${code}:${count}${window}`;
+      }).join(",") || "none";
       const ownerDeliveryReadiness = manifest.highlights.ownerDeliveryReadiness;
       lines.push(
-        `- Outbound messages: ${outboundMessages.status ?? "unknown"} reasons=${outboundReasons} total=${outboundTotals.total ?? "?"} logged=${outboundTotals.logged ?? "?"} sent=${outboundTotals.sent ?? "?"} skipped=${outboundTotals.skipped ?? "?"} failed=${outboundTotals.failed ?? "?"} ownerWhatsappMissing=${outboundDeliveryReadiness.ownerWhatsappMissing ?? "?"} ownerDeliveryBlocked=${outboundDeliveryReadiness.ownerDeliveryBlocked === true ? "yes" : "no"} configOnly=${outboundDeliveryReadiness.ownerWhatsappConfigOnlyMissing === true ? "yes" : "no"} types=${Object.entries(outboundByType).map(([type, count]) => `${type}:${count}`).join(",") || "none"} errors=${Object.entries(outboundByErrorCode).map(([code, count]) => `${code}:${count}`).join(",") || "none"}`,
+        `- Outbound messages: ${outboundMessages.status ?? "unknown"} reasons=${outboundReasons} total=${outboundTotals.total ?? "?"} logged=${outboundTotals.logged ?? "?"} sent=${outboundTotals.sent ?? "?"} skipped=${outboundTotals.skipped ?? "?"} failed=${outboundTotals.failed ?? "?"} ownerWhatsappMissing=${outboundDeliveryReadiness.ownerWhatsappMissing ?? "?"} ownerDeliveryBlocked=${outboundDeliveryReadiness.ownerDeliveryBlocked === true ? "yes" : "no"} configOnly=${outboundDeliveryReadiness.ownerWhatsappConfigOnlyMissing === true ? "yes" : "no"} types=${Object.entries(outboundByType).map(([type, count]) => `${type}:${count}`).join(",") || "none"} errors=${outboundErrors}`,
       );
       if (ownerDeliveryReadiness?.status === "unparsed") {
         lines.push(`- Owner delivery readiness: unparsed file=${ownerDeliveryReadiness.outputPath ?? "unknown"} error=${ownerDeliveryReadiness.error}`);

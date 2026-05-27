@@ -496,6 +496,13 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
         byErrorCode: {
           OUTBOUND_RECIPIENT_MISSING: 1,
         },
+        byErrorCodeDetails: {
+          OUTBOUND_RECIPIENT_MISSING: {
+            count: 1,
+            firstSeenAt: "2026-05-27T09:00:00.000Z",
+            lastSeenAt: "2026-05-27T09:30:00.000Z",
+          },
+        },
         deliveryReadiness: {
           ownerWhatsappMissing: 2,
           ownerDeliveryRecipientMissing: 0,
@@ -618,7 +625,7 @@ assertIncludes(
 );
 assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overdue=1 failed=1 skipped=3 winBackDue=2 birthdayDue=1 anniversaryDue=1 reviewWithoutPositive=1 negativeWithReview=1");
 assertIncludes(debugBundleManifestOutput, "Campaigns: attention total=6 draft=1 scheduled=2 sent=3 overdue=1 deliverySent=12 skipped=4 optedOut=2 weekLimit=1 monthLimit=1");
-assertIncludes(debugBundleManifestOutput, "Outbound messages: attention reasons=failed_outbound_messages,historical_delivery_errors,owner_whatsapp_config_missing total=5 logged=4 sent=0 skipped=0 failed=1 ownerWhatsappMissing=2 ownerDeliveryBlocked=no configOnly=yes types=daily_morning_summary:2,thank_you:3 errors=OUTBOUND_RECIPIENT_MISSING:1");
+assertIncludes(debugBundleManifestOutput, "Outbound messages: attention reasons=failed_outbound_messages,historical_delivery_errors,owner_whatsapp_config_missing total=5 logged=4 sent=0 skipped=0 failed=1 ownerWhatsappMissing=2 ownerDeliveryBlocked=no configOnly=yes types=daily_morning_summary:2,thank_you:3 errors=OUTBOUND_RECIPIENT_MISSING:1[2026-05-27T09:00:00.000Z..2026-05-27T09:30:00.000Z]");
 assertIncludes(debugBundleManifestOutput, "Owner delivery readiness: ok total=9 configured=7 missing=2 output=/tmp/openseat-debug-bundle/owner-delivery-readiness.json");
 assertIncludes(debugBundleManifestOutput, "Owner delivery recipients: configured=8 missing=1 fallbackAvailable=1");
 assertIncludes(debugBundleManifestOutput, "Owner delivery repair samples:");
@@ -979,6 +986,9 @@ for (const requiredOutboundServiceContent of [
   "byErrorCode",
   "statusReasons",
   "deliveryReadiness",
+  "byErrorCodeDetails",
+  "firstSeenAt",
+  "lastSeenAt",
   "ownerWhatsappMissing",
   "ownerDeliveryRecipientMissing",
   "ownerDeliveryFallbackAvailable",
@@ -1221,6 +1231,7 @@ for (const expectedTokenHelper of [
 assertIncludes(debugBundleCollector, 'import { createSignedSuperAdminToken } from "./lib/debug-token.mjs";');
 assertIncludes(debugBundleCollector, 'OPENSEAT_TOKEN: diagnosticsToken.token || process.env.OPENSEAT_TOKEN');
 assertIncludes(debugBundleCollector, "statusReasons: outboundMessages.statusReasons");
+assertIncludes(debugBundleCollector, "byErrorCodeDetails: outboundMessages.byErrorCodeDetails");
 assert(!debugBundleCollector.includes("function createSignedSuperAdminToken()"), "Expected debug bundle to use shared token helper");
 
 for (const requiredReadmeContent of [

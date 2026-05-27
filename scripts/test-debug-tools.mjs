@@ -1018,6 +1018,9 @@ const guestRoutes = await readFile("apps/api/src/routes/guests.ts", "utf8");
 const waitlistRoutes = await readFile("apps/api/src/routes/waitlist.ts", "utf8");
 const tableRoutes = await readFile("apps/api/src/routes/tables.ts", "utf8");
 const engagementService = await readFile("apps/api/src/services/engagement.service.ts", "utf8");
+const dashboardApp = await readFile("apps/dashboard/src/App.tsx", "utf8");
+const restaurantPickerPage = await readFile("apps/dashboard/src/pages/RestaurantPickerPage.tsx", "utf8");
+const dashboardI18n = await readFile("apps/dashboard/src/i18n.tsx", "utf8");
 const feedbackService = await readFile("apps/api/src/services/feedback.service.ts", "utf8");
 const challengeService = await readFile("apps/api/src/services/challenge.service.ts", "utf8");
 const loyaltyRoutes = await readFile("apps/api/src/routes/loyalty.ts", "utf8");
@@ -1388,6 +1391,16 @@ for (const requiredEngagementServiceContent of [
   "reservationId",
 ]) {
   assertIncludes(engagementService, requiredEngagementServiceContent);
+}
+
+for (const requiredDashboardDebugContent of [
+  "formatApiErrorMessage(error, t.superAdmin.currentRestaurantLoadError)",
+  "const { restaurant, isLoading, error } = useCurrentRestaurant()",
+  "return <div className=\"p-8 text-sm text-gray-500\">{t.settings.loading}</div>",
+  "formatApiErrorMessage(error, t.superAdmin.loadError)",
+  "currentRestaurantLoadError",
+]) {
+  assertIncludes(`${dashboardApp}\n${restaurantPickerPage}\n${dashboardI18n}`, requiredDashboardDebugContent);
 }
 
 for (const requiredVisitRouteContent of [

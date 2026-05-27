@@ -132,6 +132,7 @@ export const translations = {
       openButton: "פתח דאשבורד",
       noRestaurantSelected: "בחר מסעדה",
       switchHint: "ניתן לעבור בין מסעדות מכל המסעדות",
+      currentRestaurantLoadError: "שגיאה בטעינת המסעדה הפעילה",
     },
 
     // Statuses
@@ -864,6 +865,7 @@ export const translations = {
       openButton: "Open dashboard",
       noRestaurantSelected: "Choose restaurant",
       switchHint: "Switch restaurants any time from All Restaurants",
+      currentRestaurantLoadError: "Could not load the active restaurant",
     },
 
     status: {

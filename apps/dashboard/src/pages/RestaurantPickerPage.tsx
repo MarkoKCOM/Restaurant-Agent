@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAdminRestaurants } from "../hooks/api.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { useLang } from "../i18n.js";
+import { formatApiErrorMessage } from "../lib/apiError.js";
 
 export function RestaurantPickerPage() {
   const navigate = useNavigate();
@@ -60,7 +61,7 @@ export function RestaurantPickerPage() {
         </div>
       ) : error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {t.superAdmin.loadError}
+          {formatApiErrorMessage(error, t.superAdmin.loadError)}
         </div>
       ) : restaurants.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center text-gray-500">

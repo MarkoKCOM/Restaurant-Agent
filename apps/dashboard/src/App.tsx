@@ -15,9 +15,10 @@ import { AuthProvider, useAuth } from "./hooks/useAuth.js";
 import { useCurrentRestaurant } from "./hooks/useCurrentRestaurant.js";
 import type { DashboardPageKey } from "@openseat/domain";
 import { isFeatureEnabled, isPageVisible } from "@openseat/domain";
-import { LangProvider } from "./i18n.js";
+import { LangProvider, useLang } from "./i18n.js";
 import { HelpPage } from "./pages/HelpPage.js";
 import { RestaurantPickerPage } from "./pages/RestaurantPickerPage.js";
+import { formatApiErrorMessage } from "./lib/apiError.js";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -51,8 +52,23 @@ function PageAccessRoute({
   children: React.ReactNode;
 }) {
   const { canAccess, dashboardAccess, isSuperAdmin, role } = useAuth();
-  const { restaurant } = useCurrentRestaurant();
+  const { restaurant, isLoading, error } = useCurrentRestaurant();
+  const { t } = useLang();
   const config = restaurant?.dashboardConfig;
+
+  if (isLoading) {
+    return <div className="p-8 text-sm text-gray-500">{t.settings.loading}</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          {formatApiErrorMessage(error, t.superAdmin.currentRestaurantLoadError)}
+        </div>
+      </div>
+    );
+  }
 
   const isVisible = role
     ? isPageVisible(page, dashboardAccess, config, role)

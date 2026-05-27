@@ -1,16 +1,45 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { eq, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { adminUsers, restaurants } from "../db/schema.js";
 import { requireSuperAdmin } from "../middleware/auth.js";
 import { getDiagnosticsReport } from "../services/diagnostics.service.js";
 
+function sendAdminError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  statusCode: number,
+  message: string,
+  code: string,
+) {
+  const logPayload = {
+    code,
+    requestId: request.id,
+    statusCode,
+    userId: request.user?.id,
+    restaurantId: request.user?.restaurantId,
+    role: request.user?.role,
+  };
+
+  if (statusCode >= 500) {
+    request.log.error(logPayload, "Admin request failed");
+  } else {
+    request.log.warn(logPayload, "Admin request rejected");
+  }
+
+  return reply.status(statusCode).send({
+    error: message,
+    code,
+    requestId: request.id,
+  });
+}
+
 export async function adminRoutes(app: FastifyInstance) {
   // GET /diagnostics — dependency health snapshot (super_admin only)
   app.get("/diagnostics", async (request, reply) => {
     const user = request.user!;
     const err = requireSuperAdmin(user);
-    if (err) return reply.status(403).send({ error: err });
+    if (err) return sendAdminError(request, reply, 403, err, "ADMIN_FORBIDDEN");
 
     const report = await getDiagnosticsReport();
     const statusCode = report.status === "ok" ? 200 : 503;
@@ -24,7 +53,7 @@ export async function adminRoutes(app: FastifyInstance) {
   app.get("/restaurants", async (request, reply) => {
     const user = request.user!;
     const err = requireSuperAdmin(user);
-    if (err) return reply.status(403).send({ error: err });
+    if (err) return sendAdminError(request, reply, 403, err, "ADMIN_FORBIDDEN");
 
     const [restaurantRows, adminCountRows] = await Promise.all([
       db

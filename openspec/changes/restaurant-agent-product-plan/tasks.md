@@ -110,7 +110,7 @@
 
 ## 11. Analytics Dashboard (Growth)
 
-- [ ] 11.1 Implement reservation analytics API — bookings, covers, occupancy by slot, cancellation/no-show rates
+- [x] 11.1 Implement reservation analytics API — bookings, covers, occupancy by slot, cancellation/no-show rates
 - [x] 11.2 Implement retention analytics API — new vs returning, visit frequency, 30/60/90-day retention rate
 - [ ] 11.3 Implement CLV calculation — per guest and per segment/tier
 - [x] 11.4 Implement campaign ROI tracking — attributed reservations and estimated revenue per campaign

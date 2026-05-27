@@ -6,6 +6,7 @@ import {
   loyaltyTransactions,
   reservations,
   rewardClaims,
+  tables,
   visitLogs,
 } from "../db/schema.js";
 
@@ -111,6 +112,83 @@ function ratio(numerator: number, denominator: number): number {
 
 function sum(values: number[]): number {
   return values.reduce((total, value) => total + value, 0);
+}
+
+export async function getReservationAnalytics(params: {
+  restaurantId: string;
+  from?: string;
+  to?: string;
+}) {
+  const period = resolveAnalyticsPeriod(params);
+  const previous = previousPeriod(period);
+  const [reservationRows, tableRows] = await Promise.all([
+    db.select().from(reservations).where(eq(reservations.restaurantId, params.restaurantId)),
+    db.select().from(tables).where(eq(tables.restaurantId, params.restaurantId)),
+  ]);
+  const activeSeatCapacity = tableRows
+    .filter((table) => table.isActive)
+    .reduce((total, table) => total + table.maxSeats, 0);
+
+  function summarize(targetPeriod: AnalyticsPeriod) {
+    const rows = reservationRows.filter((reservation) => isDateInPeriod(reservation.date, targetPeriod));
+    const completed = rows.filter((reservation) => reservation.status === "completed");
+    const cancelled = rows.filter((reservation) => reservation.status === "cancelled");
+    const noShows = rows.filter((reservation) => reservation.status === "no_show");
+    const active = rows.filter((reservation) => !["cancelled", "no_show"].includes(reservation.status));
+    const covers = sum(active.map((reservation) => reservation.partySize));
+    const completedCovers = sum(completed.map((reservation) => reservation.partySize));
+    const occupancyBySlot = new Map<string, { reservations: number; covers: number }>();
+
+    for (const reservation of active) {
+      const slot = reservation.timeStart.slice(0, 5);
+      const current = occupancyBySlot.get(slot) ?? { reservations: 0, covers: 0 };
+      occupancyBySlot.set(slot, {
+        reservations: current.reservations + 1,
+        covers: current.covers + reservation.partySize,
+      });
+    }
+
+    const slotRows = [...occupancyBySlot.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([slot, value]) => ({
+        slot,
+        reservations: value.reservations,
+        covers: value.covers,
+        occupancyRate: activeSeatCapacity > 0 ? ratio(value.covers, activeSeatCapacity) : 0,
+      }));
+
+    const peakSlot = slotRows.reduce<typeof slotRows[number] | null>((peak, slot) => {
+      if (!peak || slot.covers > peak.covers) return slot;
+      return peak;
+    }, null);
+
+    return {
+      bookings: rows.length,
+      activeBookings: active.length,
+      completedBookings: completed.length,
+      covers,
+      completedCovers,
+      cancellations: cancelled.length,
+      noShows: noShows.length,
+      cancellationRate: ratio(cancelled.length, rows.length),
+      noShowRate: ratio(noShows.length, rows.length),
+      occupancyBySlot: slotRows,
+      peakSlot,
+    };
+  }
+
+  return {
+    restaurantId: params.restaurantId,
+    generatedAt: new Date().toISOString(),
+    period,
+    previousPeriod: previous,
+    capacity: {
+      activeTables: tableRows.filter((table) => table.isActive).length,
+      activeSeats: activeSeatCapacity,
+    },
+    current: summarize(period),
+    previous: summarize(previous),
+  };
 }
 
 export async function getRetentionAnalytics(params: {

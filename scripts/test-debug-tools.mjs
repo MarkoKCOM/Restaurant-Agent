@@ -125,7 +125,7 @@ const smokePath = await writeJson("smoke.json", {
     { step: "campaign.delivery", firstSent: 1, firstSkippedOptOut: 1, secondSent: 1, thirdSent: 0, thirdSkippedWeek: 1, hasMessagePreview: true, rateLimitedTarget: true },
     { step: "campaign.delivery-events", delivered: 1, read: 1, replied: 1, hasDeliveredAt: true, hasReadAt: true, hasRepliedAt: true },
     { step: "campaign.opt-out-keyword", optedOut: true, llmRounds: 0, deterministicAction: "campaign_opt_out", tool: "set_membership_messaging_opt_out", deliverySent: 0, deliverySkippedOptOut: 2 },
-    { step: "analytics.growth-summary", retentionUniqueGuests: 4, retentionWindows: [30, 60, 90], activeMembers: 9, pointsIssued: 120, tierBronze: 7, campaigns: 3, campaignSent: 2, hasCampaignRoi: true },
+    { step: "analytics.growth-summary", reservationBookings: 12, reservationCovers: 34, reservationSlots: 5, cancellationRate: 0.1, noShowRate: 0.05, retentionUniqueGuests: 4, retentionWindows: [30, 60, 90], activeMembers: 9, pointsIssued: 120, tierBronze: 7, campaigns: 3, campaignSent: 2, hasCampaignRoi: true },
   ],
   requests: [
     {
@@ -194,7 +194,7 @@ assertIncludes(smokeOutput, "campaign.creation-scheduling: templates=5 winBack=y
 assertIncludes(smokeOutput, "campaign.delivery: firstSent=1 firstOptOut=1 secondSent=1 thirdSent=0 thirdWeekLimit=1 preview=yes rateLimitedTarget=yes");
 assertIncludes(smokeOutput, "campaign.delivery-events: delivered=1 read=1 replied=1 deliveredAt=yes readAt=yes repliedAt=yes");
 assertIncludes(smokeOutput, "campaign.opt-out-keyword: optedOut=yes llmRounds=0 action=campaign_opt_out tool=set_membership_messaging_opt_out sent=0 skippedOptOut=2");
-assertIncludes(smokeOutput, "analytics.growth-summary: retentionGuests=4 windows=30,60,90 members=9 pointsIssued=120 bronze=7 campaigns=3 sent=2 roi=yes");
+assertIncludes(smokeOutput, "analytics.growth-summary: bookings=12 covers=34 slots=5 cancelRate=0.1 noShowRate=0.05 retentionGuests=4 windows=30,60,90 members=9 pointsIssued=120 bronze=7 campaigns=3 sent=2 roi=yes");
 assertIncludes(smokeOutput, "Unhandled HTTP failures: 1");
 assertIncludes(smokeOutput, "POST /api/v1/reservations -> 500 code=INTERNAL_ERROR requestId=smoke-test-2");
 assertIncludes(smokeOutput, 'pnpm debug:logs smoke-test-2 --since "2 hours ago"');

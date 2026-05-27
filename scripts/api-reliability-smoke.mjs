@@ -1535,10 +1535,16 @@ async function main() {
   const analyticsFrom = plusDays(-120);
   const analyticsTo = plusDays(1);
   const analyticsQuery = `restaurantId=${restaurantId}&from=${analyticsFrom}&to=${analyticsTo}`;
+  const reservationAnalytics = await request(`/api/v1/analytics/reservations?${analyticsQuery}`, { token });
   const retentionAnalytics = await request(`/api/v1/analytics/retention?${analyticsQuery}`, { token });
   const loyaltyAnalytics = await request(`/api/v1/analytics/loyalty?${analyticsQuery}`, { token });
   const campaignRoiAnalytics = await request(`/api/v1/analytics/campaign-roi?${analyticsQuery}&costPerMessage=0.35`, { token });
   record("analytics.growth-summary", {
+    reservationBookings: reservationAnalytics.reservations?.current?.bookings ?? null,
+    reservationCovers: reservationAnalytics.reservations?.current?.covers ?? null,
+    reservationSlots: reservationAnalytics.reservations?.current?.occupancyBySlot?.length ?? null,
+    cancellationRate: reservationAnalytics.reservations?.current?.cancellationRate ?? null,
+    noShowRate: reservationAnalytics.reservations?.current?.noShowRate ?? null,
     retentionUniqueGuests: retentionAnalytics.retention?.current?.uniqueGuests ?? null,
     retentionWindows: (retentionAnalytics.retention?.retentionWindows ?? []).map((window) => window.days),
     activeMembers: loyaltyAnalytics.loyalty?.activeMembers ?? null,
@@ -1549,7 +1555,13 @@ async function main() {
     hasCampaignRoi: campaignRoiAnalytics.campaignRoi?.totals?.roi !== undefined,
   });
   if (
-    !Array.isArray(retentionAnalytics.retention?.retentionWindows)
+    typeof reservationAnalytics.reservations?.current?.bookings !== "number"
+    || typeof reservationAnalytics.reservations?.current?.covers !== "number"
+    || !Array.isArray(reservationAnalytics.reservations?.current?.occupancyBySlot)
+    || typeof reservationAnalytics.reservations?.current?.cancellationRate !== "number"
+    || typeof reservationAnalytics.reservations?.current?.noShowRate !== "number"
+    || typeof reservationAnalytics.reservations?.capacity?.activeSeats !== "number"
+    || !Array.isArray(retentionAnalytics.retention?.retentionWindows)
     || retentionAnalytics.retention.retentionWindows.length !== 3
     || typeof loyaltyAnalytics.loyalty?.activeMembers !== "number"
     || typeof loyaltyAnalytics.loyalty?.pointsIssued !== "number"
@@ -1557,7 +1569,7 @@ async function main() {
     || typeof campaignRoiAnalytics.campaignRoi?.totals?.campaigns !== "number"
     || typeof campaignRoiAnalytics.campaignRoi?.totals?.sent !== "number"
   ) {
-    throw new Error(`Growth analytics endpoints returned incomplete metrics: ${JSON.stringify({ retentionAnalytics, loyaltyAnalytics, campaignRoiAnalytics })}`);
+    throw new Error(`Growth analytics endpoints returned incomplete metrics: ${JSON.stringify({ reservationAnalytics, retentionAnalytics, loyaltyAnalytics, campaignRoiAnalytics })}`);
   }
 
   await request(`/api/v1/engagement/win-back/check?restaurantId=${restaurantId}`, {

@@ -4,6 +4,7 @@ import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
 import {
   getCampaignRoiAnalytics,
   getLoyaltyAnalytics,
+  getReservationAnalytics,
   getRetentionAnalytics,
 } from "../services/analytics.service.js";
 
@@ -61,6 +62,26 @@ function enforceAnalyticsAccess(
 }
 
 export async function analyticsRoutes(app: FastifyInstance) {
+  app.get("/reservations", async (request, reply) => {
+    const query = analyticsQuerySchema.parse(request.query ?? {});
+    const accessError = enforceAnalyticsAccess(request, reply, query.restaurantId);
+    if (accessError) return accessError;
+
+    const reservationAnalytics = await getReservationAnalytics(query);
+    request.log.info(
+      {
+        restaurantId: query.restaurantId,
+        requestId: request.id,
+        bookings: reservationAnalytics.current.bookings,
+        covers: reservationAnalytics.current.covers,
+        cancellations: reservationAnalytics.current.cancellations,
+        noShows: reservationAnalytics.current.noShows,
+      },
+      "Reservation analytics generated",
+    );
+    return { reservations: reservationAnalytics };
+  });
+
   app.get("/retention", async (request, reply) => {
     const query = analyticsQuerySchema.parse(request.query ?? {});
     const accessError = enforceAnalyticsAccess(request, reply, query.restaurantId);

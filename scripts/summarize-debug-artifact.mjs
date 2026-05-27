@@ -234,7 +234,7 @@ function summarizeSmoke(report) {
       } else if (step.step === "campaign.opt-out-keyword") {
         console.log(`- campaign.opt-out-keyword: optedOut=${step.optedOut === true ? "yes" : "no"} llmRounds=${step.llmRounds ?? "?"} action=${step.deterministicAction ?? "?"} tool=${step.tool ?? "?"} sent=${step.deliverySent ?? "?"} skippedOptOut=${step.deliverySkippedOptOut ?? "?"}`);
       } else if (step.step === "analytics.growth-summary") {
-        console.log(`- analytics.growth-summary: retentionGuests=${step.retentionUniqueGuests ?? "?"} windows=${asArray(step.retentionWindows).join(",") || "none"} members=${step.activeMembers ?? "?"} pointsIssued=${step.pointsIssued ?? "?"} bronze=${step.tierBronze ?? "?"} campaigns=${step.campaigns ?? "?"} sent=${step.campaignSent ?? "?"} roi=${step.hasCampaignRoi === true ? "yes" : "no"}`);
+        console.log(`- analytics.growth-summary: bookings=${step.reservationBookings ?? "?"} covers=${step.reservationCovers ?? "?"} slots=${step.reservationSlots ?? "?"} cancelRate=${step.cancellationRate ?? "?"} noShowRate=${step.noShowRate ?? "?"} retentionGuests=${step.retentionUniqueGuests ?? "?"} windows=${asArray(step.retentionWindows).join(",") || "none"} members=${step.activeMembers ?? "?"} pointsIssued=${step.pointsIssued ?? "?"} bronze=${step.tierBronze ?? "?"} campaigns=${step.campaigns ?? "?"} sent=${step.campaignSent ?? "?"} roi=${step.hasCampaignRoi === true ? "yes" : "no"}`);
       }
     }
   }

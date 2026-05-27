@@ -1452,6 +1452,36 @@ async function main() {
     throw new Error(`Campaign delivery/rate-limit behavior failed: ${JSON.stringify({ firstCampaignDelivery, secondCampaignDelivery, thirdCampaignDelivery })}`);
   }
 
+  const agentOptOut = await request("/api/v1/agent/message", {
+    method: "POST",
+    body: {
+      restaurantId,
+      senderId: campaignGuest.guest.phone,
+      guestPhone: campaignGuest.guest.phone,
+      guestName: campaignGuest.guest?.name,
+      message: "STOP",
+    },
+  });
+  const optedOutGuest = await request(`/api/v1/guests/${campaignGuestId}`, { token });
+  const optOutDelivery = await createAndDeliverCampaign(`Smoke opt-out delivery ${runId}`);
+  record("campaign.opt-out-keyword", {
+    optedOut: optedOutGuest.guest?.optedOutCampaigns === true,
+    llmRounds: agentOptOut.diagnostics?.llmRounds ?? null,
+    deterministicAction: agentOptOut.diagnostics?.deterministicAction?.type ?? null,
+    tool: agentOptOut.toolsUsed?.[0] ?? null,
+    deliverySent: optOutDelivery.delivery?.sent ?? null,
+    deliverySkippedOptOut: optOutDelivery.delivery?.skippedOptedOut ?? null,
+  });
+  if (
+    optedOutGuest.guest?.optedOutCampaigns !== true
+    || agentOptOut.diagnostics?.llmRounds !== 0
+    || agentOptOut.diagnostics?.deterministicAction?.type !== "campaign_opt_out"
+    || optOutDelivery.delivery?.sent !== 0
+    || optOutDelivery.delivery?.skippedOptedOut !== 2
+  ) {
+    throw new Error(`Campaign STOP opt-out behavior failed: ${JSON.stringify({ agentOptOut, optedOutGuest, optOutDelivery })}`);
+  }
+
   await request(`/api/v1/engagement/win-back/check?restaurantId=${restaurantId}`, {
     method: "POST",
     token,

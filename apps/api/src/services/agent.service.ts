@@ -6,8 +6,12 @@
  */
 
 import { Redis } from "ioredis";
+import { and, eq } from "drizzle-orm";
 import { env } from "../env.js";
 import { agentTools, executeTool } from "./agent-tools.js";
+import { db } from "../db/index.js";
+import { guests } from "../db/schema.js";
+import { debugMembershipIntent } from "./membership-intent-debug.service.js";
 
 const redis = new Redis(env.REDIS_URL);
 
@@ -179,6 +183,45 @@ export interface AgentResponse {
   diagnostics: {
     llmRounds: number;
     toolTrace: AgentToolTraceEvent[];
+    deterministicAction?: {
+      type: "campaign_opt_out";
+      guestId?: string;
+      phone: string;
+      success: boolean;
+      reason?: string;
+    };
+  };
+}
+
+async function applyDeterministicCampaignOptOut(params: {
+  restaurantId: string;
+  phone: string;
+}): Promise<NonNullable<AgentResponse["diagnostics"]["deterministicAction"]>> {
+  const [existing] = await db
+    .select()
+    .from(guests)
+    .where(and(eq(guests.restaurantId, params.restaurantId), eq(guests.phone, params.phone)))
+    .limit(1);
+
+  if (!existing) {
+    return {
+      type: "campaign_opt_out",
+      phone: params.phone,
+      success: false,
+      reason: "guest_not_found",
+    };
+  }
+
+  await db
+    .update(guests)
+    .set({ optedOutCampaigns: true, updatedAt: new Date() })
+    .where(eq(guests.id, existing.id));
+
+  return {
+    type: "campaign_opt_out",
+    guestId: existing.id,
+    phone: params.phone,
+    success: true,
   };
 }
 
@@ -194,6 +237,42 @@ export async function handleMessage(req: AgentRequest): Promise<AgentResponse> {
 
   // Add user message
   ctx.messages.push({ role: "user", content: message });
+
+  const intent = debugMembershipIntent(message);
+  const inferredPhone = guestPhone ?? senderId;
+  if (intent.intent === "messaging_opt_out") {
+    const startedAt = Date.now();
+    const deterministicAction = await applyDeterministicCampaignOptOut({
+      restaurantId,
+      phone: inferredPhone,
+    });
+    const reply = deterministicAction.success
+      ? ctx.language === "he"
+        ? "הסרתי אותך מהודעות מועדון ומבצעים. עדכונים חיוניים להזמנות עדיין יישלחו."
+        : "You're opted out of club and promotional messages. Essential reservation updates will still continue."
+      : ctx.language === "he"
+        ? "לא מצאתי פרופיל חבר למספר הזה, אבל לא אשלח הודעות מועדון ללא אישור."
+        : "I couldn't find a member profile for this number, but I will not send club messages without consent.";
+
+    ctx.messages.push({ role: "assistant", content: reply });
+    await saveContext(restaurantId, senderId, ctx);
+
+    return {
+      reply,
+      language: ctx.language,
+      toolsUsed: ["set_membership_messaging_opt_out"],
+      diagnostics: {
+        llmRounds: 0,
+        toolTrace: [{
+          tool: "deterministic_campaign_opt_out",
+          success: deterministicAction.success,
+          elapsedMs: Date.now() - startedAt,
+          error: deterministicAction.success ? undefined : deterministicAction.reason,
+        }],
+        deterministicAction,
+      },
+    };
+  }
 
   // Build messages for LLM
   const systemMsg: Message = { role: "system", content: buildSystemPrompt(ctx) };

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
 import { useLang } from "../i18n.js";
+import { formatApiErrorMessage } from "../lib/apiError.js";
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -25,7 +26,7 @@ export function LoginPage() {
       if (err instanceof Error && err.message === "INVALID_CREDENTIALS") {
         setError(t.login.errorInvalid);
       } else {
-        setError(t.login.errorGeneral);
+        setError(formatApiErrorMessage(err, t.login.errorGeneral));
       }
     } finally {
       setLoading(false);

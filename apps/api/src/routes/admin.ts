@@ -5,6 +5,13 @@ import { adminUsers, restaurants } from "../db/schema.js";
 import { requireSuperAdmin } from "../middleware/auth.js";
 import { getDiagnosticsReport } from "../services/diagnostics.service.js";
 
+function maskPhone(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const normalized = value.replace(/\s+/g, "");
+  if (normalized.length <= 4) return "****";
+  return `${normalized.slice(0, 3)}****${normalized.slice(-2)}`;
+}
+
 function sendAdminError(
   request: FastifyRequest,
   reply: FastifyReply,
@@ -63,6 +70,9 @@ export async function adminRoutes(app: FastifyInstance) {
           cuisineType: restaurants.cuisineType,
           address: restaurants.address,
           phone: restaurants.phone,
+          whatsappNumber: restaurants.whatsappNumber,
+          ownerPhone: restaurants.ownerPhone,
+          ownerWhatsapp: restaurants.ownerWhatsapp,
           package: restaurants.package,
           createdAt: restaurants.createdAt,
         })
@@ -86,6 +96,15 @@ export async function adminRoutes(app: FastifyInstance) {
 
     return restaurantRows.map((restaurant) => ({
       ...restaurant,
+      phoneMasked: maskPhone(restaurant.phone),
+      whatsappNumberMasked: maskPhone(restaurant.whatsappNumber),
+      ownerPhoneMasked: maskPhone(restaurant.ownerPhone),
+      ownerWhatsappMasked: maskPhone(restaurant.ownerWhatsapp),
+      ownerWhatsappConfigured: Boolean(restaurant.ownerWhatsapp?.trim()),
+      phone: undefined,
+      whatsappNumber: undefined,
+      ownerPhone: undefined,
+      ownerWhatsapp: undefined,
       adminCount: adminCountByRestaurant.get(restaurant.id) ?? 0,
     }));
   });

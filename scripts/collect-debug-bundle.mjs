@@ -583,6 +583,7 @@ async function writeReadme() {
     lines.push("- `queue-debug-summary.txt` for BullMQ repeatable jobs, delayed jobs, and failed job samples.");
     lines.push("- `membership-debug-summary.txt` for open membership repair rows, engagement job counts, and retry commands.");
     lines.push("- `outbound-debug-summary.txt` for the recent WhatsApp-bound message log and message IDs.");
+    lines.push("- `owner-delivery-readiness.txt` for restaurants missing owner WhatsApp delivery settings.");
     lines.push("- `package-enforcement-smoke.txt` for starter-vs-Growth package guard probes.");
     lines.push("- `api-smoke-summary.txt` for end-to-end API flow status and any failing request IDs.");
     lines.push("- `recent-api-logs.txt` for service-side context around this bundle run.");
@@ -683,6 +684,14 @@ if (diagnosticsToken.token) {
   });
   packageCommand.tokenSource = diagnosticsToken.source;
 
+  const ownerDeliveryCommand = await runStep("owner-delivery-readiness", "node", ["scripts/owner-delivery-readiness.mjs"], {
+    env: {
+      OPENSEAT_API_URL: apiUrl,
+      OPENSEAT_TOKEN: diagnosticsToken.token,
+    },
+  });
+  ownerDeliveryCommand.tokenSource = diagnosticsToken.source;
+
   const tokenRestaurantId = decodeTokenRestaurantId(diagnosticsToken.token);
   const resolvedMembershipDebugRestaurantId = membershipDebugRestaurantId || tokenRestaurantId;
   const resolvedOutboundDebugRestaurantId = outboundDebugRestaurantId || tokenRestaurantId;
@@ -741,6 +750,11 @@ if (diagnosticsToken.token) {
   });
   manifest.commands.push({
     name: "package-enforcement-smoke",
+    status: "skipped",
+    reason: diagnosticsToken.reason,
+  });
+  manifest.commands.push({
+    name: "owner-delivery-readiness",
     status: "skipped",
     reason: diagnosticsToken.reason,
   });

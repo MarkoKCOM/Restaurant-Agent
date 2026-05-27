@@ -785,9 +785,11 @@ const apiLogTrace = await readFile("scripts/api-log-trace.mjs", "utf8");
 const membershipDebugSummary = await readFile("scripts/membership-debug-summary.mjs", "utf8");
 const outboundDebugSummary = await readFile("scripts/outbound-debug-summary.mjs", "utf8");
 const packageEnforcementSmoke = await readFile("scripts/package-enforcement-smoke.mjs", "utf8");
+const ownerDeliveryReadiness = await readFile("scripts/owner-delivery-readiness.mjs", "utf8");
 const queueDebugSummary = await readFile("apps/api/scripts/queue-debug-summary.mjs", "utf8");
 const diagnosticsService = await readFile("apps/api/src/services/diagnostics.service.ts", "utf8");
 const adminRoutes = await readFile("apps/api/src/routes/admin.ts", "utf8");
+const restaurantRoutes = await readFile("apps/api/src/routes/restaurants.ts", "utf8");
 const authMiddleware = await readFile("apps/api/src/middleware/auth.ts", "utf8");
 const campaignRoutes = await readFile("apps/api/src/routes/campaigns.ts", "utf8");
 const analyticsRoutes = await readFile("apps/api/src/routes/analytics.ts", "utf8");
@@ -804,6 +806,7 @@ const apiPackageJson = await readFile("apps/api/package.json", "utf8");
 assertIncludes(rootPackageJson, '"debug:membership": "node scripts/membership-debug-summary.mjs"');
 assertIncludes(rootPackageJson, '"debug:outbound": "node scripts/outbound-debug-summary.mjs"');
 assertIncludes(rootPackageJson, '"debug:packages": "node scripts/package-enforcement-smoke.mjs"');
+assertIncludes(rootPackageJson, '"debug:owner-delivery": "node scripts/owner-delivery-readiness.mjs"');
 assertIncludes(rootPackageJson, '"debug:queues": "pnpm --filter @openseat/api queue:debug"');
 assertIncludes(apiPackageJson, '"queue:debug": "node scripts/queue-debug-summary.mjs"');
 
@@ -865,6 +868,20 @@ for (const requiredPackageSmokeContent of [
   "Package enforcement smoke passed.",
 ]) {
   assertIncludes(packageEnforcementSmoke, requiredPackageSmokeContent);
+}
+
+for (const requiredOwnerDeliveryContent of [
+  "Owner Delivery Readiness",
+  "/api/v1/admin/restaurants",
+  "ownerWhatsappConfigured",
+  "ownerWhatsappMissing",
+  "ownerPhoneMasked",
+  "whatsappNumberMasked",
+  "phoneMasked",
+  "METHOD=PATCH BODY='{\"ownerWhatsapp\":\"<owner-whatsapp-number>\"}'",
+  "/api/v1/restaurants/",
+]) {
+  assertIncludes(ownerDeliveryReadiness, requiredOwnerDeliveryContent);
 }
 
 for (const requiredOutboundServiceContent of [
@@ -935,6 +952,27 @@ for (const requiredDiagnosticsContent of [
 
 assertIncludes(adminRoutes, "return reply.status(200).send({");
 assertNotIncludes(adminRoutes, "report.status === \"ok\" ? 200 : 503");
+
+for (const requiredAdminRestaurantContent of [
+  "phoneMasked: maskPhone(restaurant.phone)",
+  "whatsappNumberMasked: maskPhone(restaurant.whatsappNumber)",
+  "ownerPhoneMasked: maskPhone(restaurant.ownerPhone)",
+  "ownerWhatsappMasked: maskPhone(restaurant.ownerWhatsapp)",
+  "ownerWhatsappConfigured: Boolean(restaurant.ownerWhatsapp?.trim())",
+]) {
+  assertIncludes(adminRoutes, requiredAdminRestaurantContent);
+}
+
+for (const requiredRestaurantPatchContent of [
+  "\"whatsappNumber\"",
+  "\"ownerPhone\"",
+  "\"ownerWhatsapp\"",
+  "whatsappNumber: updated.whatsappNumber",
+  "ownerPhone: updated.ownerPhone",
+  "ownerWhatsapp: updated.ownerWhatsapp",
+]) {
+  assertIncludes(restaurantRoutes, requiredRestaurantPatchContent);
+}
 
 for (const requiredPackageEnforcementContent of [
   "requireGrowthPackage",
@@ -1065,6 +1103,8 @@ for (const requiredReadmeContent of [
   "membership-debug-summary.txt",
   "outbound-debug-summary",
   "outbound-debug-summary.txt",
+  "owner-delivery-readiness",
+  "owner-delivery-readiness.txt",
   "package-enforcement-smoke",
   "package-enforcement-smoke.txt",
   "queue-debug-summary",

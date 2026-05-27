@@ -11,6 +11,7 @@
     "debug:bundle": "node scripts/collect-debug-bundle.mjs",
     "debug:agent-intents": "node scripts/agent-membership-intent-smoke.mjs",
     "debug:packages": "node scripts/package-enforcement-smoke.mjs",
+    "debug:owner-delivery": "node scripts/owner-delivery-readiness.mjs",
     "debug:membership": "node scripts/membership-debug-summary.mjs",
     "debug:outbound": "node scripts/outbound-debug-summary.mjs",
     "debug:queues": "pnpm --filter @openseat/api queue:debug",

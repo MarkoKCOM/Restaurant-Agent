@@ -265,6 +265,14 @@ The script prints counts by status, message type, provider, and error code, then
 
 Use this before reading logs when debugging retention automations such as birthday, anniversary, win-back, challenge-completion, leaderboard, reservation-reminder, or daily owner-summary delivery.
 
+When owner-bound messages are skipped with `OUTBOUND_RECIPIENT_MISSING`, list every restaurant blocking owner delivery:
+
+```bash
+OPENSEAT_TOKEN=... pnpm debug:owner-delivery
+```
+
+On the VPS, `JWT_SECRET` is enough for this command to synthesize a short-lived super-admin token. The command reads `/api/v1/admin/restaurants`, prints masked restaurant phone/WhatsApp fields, and gives a ready-to-run `PATCH /api/v1/restaurants/:id` repair command for each restaurant missing `ownerWhatsapp`.
+
 ## Queue State
 
 Use the queue summary for delayed or scheduled background work:

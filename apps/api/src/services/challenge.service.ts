@@ -59,6 +59,7 @@ export interface CreateChallengeInput {
   reward: number; // points
   startDate?: string;
   endDate?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export async function createChallenge(
@@ -75,6 +76,7 @@ export async function createChallenge(
       rewardPoints: data.reward,
       startDate: data.startDate ?? null,
       endDate: data.endDate ?? null,
+      metadata: data.metadata ?? null,
       isActive: true,
     })
     .returning();
@@ -126,6 +128,7 @@ export async function updateChallenge(
     reward?: number;
     startDate?: string | null;
     endDate?: string | null;
+    metadata?: Record<string, unknown> | null;
     isActive?: boolean;
   },
 ): Promise<ChallengeRow | null> {
@@ -148,6 +151,7 @@ export async function updateChallenge(
       ...(data.reward !== undefined ? { rewardPoints: data.reward } : {}),
       ...(data.startDate !== undefined ? { startDate: data.startDate } : {}),
       ...(data.endDate !== undefined ? { endDate: data.endDate } : {}),
+      ...(data.metadata !== undefined ? { metadata: data.metadata } : {}),
       ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
     })
     .where(and(eq(challenges.id, challengeId), eq(challenges.restaurantId, restaurantId)))
@@ -269,7 +273,7 @@ export async function getGuestActiveChallenges(
   const activeChallenges = await listActiveChallenges(restaurantId);
 
   const results = await Promise.all(
-    activeChallenges.map(async (challenge) => {
+    activeChallenges.filter((challenge) => isChallengeVisibleToGuest(challenge, guestId)).map(async (challenge) => {
       const progress = await getGuestChallengeProgress(guestId, challenge.id);
       return { challenge, progress };
     }),
@@ -284,13 +288,13 @@ export async function autoProgressVisitCountChallenges(
 ): Promise<Array<{ challengeId: string; completed: boolean; progress: number; target: number }>> {
   const today = new Date().toISOString().slice(0, 10);
   const activeChallenges = await db
-    .select({ id: challenges.id })
+    .select({ id: challenges.id, type: challenges.type, metadata: challenges.metadata })
     .from(challenges)
     .where(
       and(
         eq(challenges.restaurantId, restaurantId),
         eq(challenges.isActive, true),
-        eq(challenges.type, "visit_count"),
+        sql`${challenges.type} in ('visit_count', 'birthday_week')`,
         sql`(${challenges.startDate} IS NULL OR ${challenges.startDate} <= ${today})`,
         sql`(${challenges.endDate} IS NULL OR ${challenges.endDate} >= ${today})`,
       ),
@@ -299,6 +303,9 @@ export async function autoProgressVisitCountChallenges(
   const results: Array<{ challengeId: string; completed: boolean; progress: number; target: number }> = [];
 
   for (const challenge of activeChallenges) {
+    if (challenge.type === "birthday_week" && getMetadataGuestId(challenge.metadata) !== guestId) {
+      continue;
+    }
     const result = await incrementChallengeProgress(guestId, challenge.id);
     results.push({
       challengeId: challenge.id,
@@ -309,6 +316,158 @@ export async function autoProgressVisitCountChallenges(
   }
 
   return results;
+}
+
+interface BirthdayWeekChallengeResult {
+  due: number;
+  created: number;
+  skippedExisting: number;
+  skippedInvalidBirthday: number;
+}
+
+function getMetadataGuestId(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const value = (metadata as Record<string, unknown>).guestId;
+  return typeof value === "string" ? value : null;
+}
+
+function isChallengeVisibleToGuest(challenge: ChallengeRow, guestId: string): boolean {
+  if (challenge.type !== "birthday_week") return true;
+  return getMetadataGuestId(challenge.metadata) === guestId;
+}
+
+function getBirthdayMonthDay(birthday: unknown): string | null {
+  if (typeof birthday !== "string") return null;
+  const normalized = birthday.trim();
+  if (/^\d{2}-\d{2}$/.test(normalized)) return normalized;
+  const isoDate = normalized.match(/^\d{4}-(\d{2}-\d{2})$/);
+  return isoDate?.[1] ?? null;
+}
+
+function getJerusalemDateParts(date = new Date()): { year: number; month: string; day: string } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jerusalem",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  return {
+    year: Number(parts.find((part) => part.type === "year")?.value),
+    month: parts.find((part) => part.type === "month")?.value ?? "01",
+    day: parts.find((part) => part.type === "day")?.value ?? "01",
+  };
+}
+
+function formatJerusalemDate(date: Date): string {
+  const { year, month, day } = getJerusalemDateParts(date);
+  return `${year}-${month}-${day}`;
+}
+
+function getUpcomingBirthdayOccurrence(monthDay: string, referenceDate = new Date()): { occurrenceDate: Date; occurrenceYear: number; daysUntil: number } | null {
+  const [month, day] = monthDay.split("-");
+  if (!month || !day) return null;
+
+  const { year } = getJerusalemDateParts(referenceDate);
+  const todayDate = new Date(`${formatJerusalemDate(referenceDate)}T00:00:00+03:00`);
+  const candidates = [
+    new Date(`${year}-${month}-${day}T00:00:00+03:00`),
+    new Date(`${year + 1}-${month}-${day}T00:00:00+03:00`),
+  ];
+
+  for (const occurrenceDate of candidates) {
+    if (Number.isNaN(occurrenceDate.getTime())) continue;
+    const daysUntil = Math.round((occurrenceDate.getTime() - todayDate.getTime()) / (24 * 60 * 60 * 1000));
+    if (daysUntil >= 0 && daysUntil <= 7) {
+      return { occurrenceDate, occurrenceYear: Number(formatJerusalemDate(occurrenceDate).slice(0, 4)), daysUntil };
+    }
+  }
+
+  return null;
+}
+
+async function findBirthdayWeekChallenge(params: {
+  restaurantId: string;
+  guestId: string;
+  occurrenceYear: number;
+}): Promise<ChallengeRow | null> {
+  const [existing] = await db
+    .select()
+    .from(challenges)
+    .where(
+      and(
+        eq(challenges.restaurantId, params.restaurantId),
+        eq(challenges.type, "birthday_week"),
+        sql`${challenges.metadata} ->> 'source' = 'birthday_week'`,
+        sql`${challenges.metadata} ->> 'guestId' = ${params.guestId}`,
+        sql`(${challenges.metadata} ->> 'occurrenceYear')::int = ${params.occurrenceYear}`,
+      ),
+    )
+    .limit(1);
+
+  return existing ?? null;
+}
+
+export async function checkBirthdayWeekChallenges(
+  restaurantId: string,
+): Promise<BirthdayWeekChallengeResult> {
+  const result: BirthdayWeekChallengeResult = {
+    due: 0,
+    created: 0,
+    skippedExisting: 0,
+    skippedInvalidBirthday: 0,
+  };
+
+  const restaurantGuests = await db
+    .select()
+    .from(guests)
+    .where(eq(guests.restaurantId, restaurantId));
+
+  for (const guest of restaurantGuests) {
+    const prefs = parsePreferences(guest.preferences);
+    if (!("birthday" in prefs)) continue;
+
+    const monthDay = getBirthdayMonthDay(prefs.birthday);
+    if (!monthDay) {
+      result.skippedInvalidBirthday++;
+      continue;
+    }
+
+    const occurrence = getUpcomingBirthdayOccurrence(monthDay);
+    if (!occurrence) continue;
+
+    result.due++;
+    const existing = await findBirthdayWeekChallenge({
+      restaurantId,
+      guestId: guest.id,
+      occurrenceYear: occurrence.occurrenceYear,
+    });
+    if (existing) {
+      result.skippedExisting++;
+      continue;
+    }
+
+    const startDate = new Date(occurrence.occurrenceDate);
+    startDate.setDate(startDate.getDate() - 7);
+    await createChallenge({
+      restaurantId,
+      name: `Birthday week challenge: ${guest.name}`,
+      description: "A private birthday-week visit challenge with bonus points for celebrating at the restaurant.",
+      type: "birthday_week",
+      target: 1,
+      reward: 50,
+      startDate: formatJerusalemDate(startDate),
+      endDate: formatJerusalemDate(occurrence.occurrenceDate),
+      metadata: {
+        source: "birthday_week",
+        guestId: guest.id,
+        birthdayMonthDay: monthDay,
+        occurrenceYear: occurrence.occurrenceYear,
+      },
+    });
+    result.created++;
+  }
+
+  return result;
 }
 
 // ── Streak tracking ───────────────────────────────────────

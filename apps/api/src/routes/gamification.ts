@@ -7,6 +7,7 @@ import {
 } from "../services/referral.service.js";
 import {
   createChallenge,
+  checkBirthdayWeekChallenges,
   getChallengeById,
   getGuestActiveChallenges,
   getStreak,
@@ -197,6 +198,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
     reward: z.coerce.number().int().min(0),
     startDate: z.string().optional(),
     endDate: z.string().optional(),
+    metadata: z.record(z.unknown()).optional(),
   });
 
   app.post("/challenges", async (request, reply) => {
@@ -219,6 +221,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
         reward: parsed.reward!,
         startDate: parsed.startDate,
         endDate: parsed.endDate,
+        metadata: parsed.metadata,
       });
       reply.code(201);
       return { challenge };
@@ -239,6 +242,7 @@ export async function gamificationRoutes(app: FastifyInstance) {
     reward: z.coerce.number().int().min(0).optional(),
     startDate: z.string().nullable().optional(),
     endDate: z.string().nullable().optional(),
+    metadata: z.record(z.unknown()).nullable().optional(),
     isActive: z.boolean().optional(),
   });
 
@@ -274,6 +278,33 @@ export async function gamificationRoutes(app: FastifyInstance) {
         challengeId,
         restaurantId: challenge.restaurantId,
       });
+    }
+  });
+
+  // POST /birthday-week/check — create private birthday-week challenges for due guests
+  app.post("/birthday-week/check", async (request, reply) => {
+    const { restaurantId } = request.query as { restaurantId?: string };
+
+    if (!restaurantId) {
+      return sendGamificationError(
+        request,
+        reply,
+        400,
+        "restaurantId query parameter is required",
+        "RESTAURANT_ID_REQUIRED",
+      );
+    }
+
+    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return sendGamificationError(request, reply, 403, err, "GAMIFICATION_FORBIDDEN", { restaurantId });
+    }
+
+    try {
+      const result = await checkBirthdayWeekChallenges(restaurantId);
+      return { result };
+    } catch (err: unknown) {
+      return sendCaughtGamificationError(request, reply, err, "BIRTHDAY_WEEK_CHECK_FAILED", { restaurantId });
     }
   });
 

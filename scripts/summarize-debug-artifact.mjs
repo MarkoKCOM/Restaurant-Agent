@@ -111,6 +111,8 @@ function summarizeSmoke(report) {
       || step.step === "gamification.challenge-idempotency"
       || step.step === "loyalty.off-peak-multiplier"
       || step.step === "gamification.menu-exploration"
+      || step.step === "gamification.birthday-week-challenge"
+      || step.step === "gamification.birthday-week.cleanup"
       || step.step === "engagement.birthday-check"
       || step.step === "engagement.anniversary-check"
       || step.step === "engagement.win-back-overdue"
@@ -141,6 +143,10 @@ function summarizeSmoke(report) {
         console.log(`- loyalty.off-peak-multiplier: visitPoints=${step.actualVisitPoints ?? "?"}/${step.expectedVisitPoints ?? "?"} reason=${step.reason ?? "?"}`);
       } else if (step.step === "gamification.menu-exploration") {
         console.log(`- gamification.menu-exploration: categories=${step.categoryCount ?? "?"} badges=${asArray(step.badges).join(",") || "none"}`);
+      } else if (step.step === "gamification.birthday-week-challenge") {
+        console.log(`- gamification.birthday-week-challenge: created=${step.created ?? "?"} existing=${step.skippedExisting ?? "?"} progress=${step.progress ?? "?"}/${step.target ?? "?"} completed=${step.completed === true ? "yes" : "no"} leaked=${step.leakedToOtherGuest === true ? "yes" : "no"} points=${step.pointsBefore ?? "?"}->${step.pointsAfter ?? "?"}`);
+      } else if (step.step === "gamification.birthday-week.cleanup") {
+        console.log(`- gamification.birthday-week.cleanup: active=${step.isActive === false ? "no" : "yes"} cleaned=${step.cleanedCount ?? "?"} challengeId=${step.challengeId ?? "?"}`);
       } else if (step.step === "engagement.birthday-check") {
         console.log(`- engagement.birthday-check: due=${step.due ?? "?"} scheduled=${step.scheduled ?? "?"} existing=${step.skippedExisting ?? "?"} policy=${step.skippedPolicy ?? "?"} status=${step.jobStatus ?? "?"}`);
       } else if (step.step === "engagement.anniversary-check") {
@@ -279,7 +285,7 @@ function summarizeDebugBundleManifest(report) {
   if (gamification.status) {
     printLine(
       "Gamification",
-      `${gamification.status} activeChallenges=${gamificationChallenges.active ?? "?"} smokeChallenges=${gamificationChallenges.activeSmokeChallenges ?? "?"} stuckChallenges=${gamificationChallenges.stuckCompletions ?? "?"} duplicateProgress=${gamificationChallenges.duplicateProgressGroups ?? "?"} referralCodes=${gamificationReferrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${gamificationReferrals.referrerCreditMismatches ?? "?"} menuBadgeGuests=${gamificationMenuExploration.guestsWithBadges ?? "?"}`,
+      `${gamification.status} activeChallenges=${gamificationChallenges.active ?? "?"} smokeChallenges=${gamificationChallenges.activeSmokeChallenges ?? "?"} birthdayWeekActive=${gamificationChallenges.activeBirthdayWeekChallenges ?? "?"} birthdayWeekDue=${gamificationChallenges.birthdayWeekDueUncreated ?? "?"} stuckChallenges=${gamificationChallenges.stuckCompletions ?? "?"} duplicateProgress=${gamificationChallenges.duplicateProgressGroups ?? "?"} referralCodes=${gamificationReferrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${gamificationReferrals.referrerCreditMismatches ?? "?"} menuBadgeGuests=${gamificationMenuExploration.guestsWithBadges ?? "?"}`,
     );
   }
   if (engagement.status) {

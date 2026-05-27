@@ -196,6 +196,18 @@ try {
       },
     );
 
+    await engagementQueue.add(
+      "birthday-week-challenge-check",
+      { type: "birthday_week_challenge_cron", restaurantId: restaurant.id },
+      {
+        repeat: {
+          pattern: "30 9 * * *",
+          tz: "Asia/Jerusalem",
+        },
+        jobId: `birthday-week-challenge-cron-${restaurant.id}`,
+      },
+    );
+
     app.log.info(
       { restaurantId: restaurant.id, restaurantName: restaurant.name },
       "Scheduled recurring jobs for restaurant",

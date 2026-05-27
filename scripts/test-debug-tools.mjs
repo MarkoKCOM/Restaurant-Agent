@@ -94,6 +94,8 @@ const smokePath = await writeJson("smoke.json", {
     { step: "gamification.challenge-idempotency", challengeId: "challenge-test-1", progress: 1, target: 1, completed: true, pointsBefore: 15, pointsAfter: 15 },
     { step: "gamification.challenge.cleanup", challengeId: "challenge-test-1", isActive: false },
     { step: "gamification.menu-exploration", categoryCount: 2, badges: ["first_taste", "menu_explorer"] },
+    { step: "gamification.birthday-week-challenge", created: 1, skippedExisting: 0, progress: 1, target: 1, completed: true, leakedToOtherGuest: false, pointsBefore: 0, pointsAfter: 50 },
+    { step: "gamification.birthday-week.cleanup", challengeId: "birthday-week-test-1", cleanedCount: 1, isActive: false },
     { step: "engagement.birthday-check", due: 1, scheduled: 1, skippedExisting: 0, skippedPolicy: 0, jobStatus: "pending" },
     { step: "engagement.anniversary-check", due: 1, scheduled: 1, skippedExisting: 0, skippedPolicy: 0, jobStatus: "pending" },
     { step: "engagement.win-back-overdue", scheduled30: 1, skippedExisting: 0, skippedPolicy: 0, jobStatus: "pending" },
@@ -134,6 +136,8 @@ assertIncludes(smokeOutput, "gamification.challenge-progress: progress=1/1 statu
 assertIncludes(smokeOutput, "gamification.challenge-idempotency: progress=1/1 points=15->15 duplicateAward=no");
 assertIncludes(smokeOutput, "gamification.challenge.cleanup: active=no challengeId=challenge-test-1");
 assertIncludes(smokeOutput, "gamification.menu-exploration: categories=2 badges=first_taste,menu_explorer");
+assertIncludes(smokeOutput, "gamification.birthday-week-challenge: created=1 existing=0 progress=1/1 completed=yes leaked=no points=0->50");
+assertIncludes(smokeOutput, "gamification.birthday-week.cleanup: active=no cleaned=1 challengeId=birthday-week-test-1");
 assertIncludes(smokeOutput, "engagement.birthday-check: due=1 scheduled=1 existing=0 policy=0 status=pending");
 assertIncludes(smokeOutput, "engagement.anniversary-check: due=1 scheduled=1 existing=0 policy=0 status=pending");
 assertIncludes(smokeOutput, "engagement.win-back-overdue: scheduled30=1 existing=0 policy=0 status=pending");
@@ -284,6 +288,8 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
         challenges: {
           active: 2,
           activeSmokeChallenges: 1,
+          activeBirthdayWeekChallenges: 1,
+          birthdayWeekDueUncreated: 1,
           stuckCompletions: 1,
           duplicateProgressGroups: 1,
         },
@@ -335,7 +341,7 @@ assertIncludes(debugBundleManifestOutput, "Membership processing: ok open=2 atte
 assertIncludes(debugBundleManifestOutput, "Membership repair summary: passed output=/tmp/openseat-debug-bundle/membership-debug-summary.txt");
 assertIncludes(
   debugBundleManifestOutput,
-  "Gamification: attention activeChallenges=2 smokeChallenges=1 stuckChallenges=1 duplicateProgress=1 referralCodes=7 referralCreditMismatches=1 menuBadgeGuests=5",
+  "Gamification: attention activeChallenges=2 smokeChallenges=1 birthdayWeekActive=1 birthdayWeekDue=1 stuckChallenges=1 duplicateProgress=1 referralCodes=7 referralCreditMismatches=1 menuBadgeGuests=5",
 );
 assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overdue=1 failed=1 skipped=3 winBackDue=2 birthdayDue=1 anniversaryDue=1");
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");

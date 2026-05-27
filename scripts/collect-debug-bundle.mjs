@@ -352,7 +352,7 @@ async function writeReadme() {
       const referrals = gamification.referrals ?? {};
       const menuExploration = gamification.menuExploration ?? {};
       lines.push(
-        `- Gamification: ${gamification.status ?? "unknown"} activeChallenges=${challenges.active ?? "?"} smokeChallenges=${challenges.activeSmokeChallenges ?? "?"} stuckChallenges=${challenges.stuckCompletions ?? "?"} duplicateProgress=${challenges.duplicateProgressGroups ?? "?"} referralCodes=${referrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${referrals.referrerCreditMismatches ?? "?"} menuBadgeGuests=${menuExploration.guestsWithBadges ?? "?"}`,
+        `- Gamification: ${gamification.status ?? "unknown"} activeChallenges=${challenges.active ?? "?"} smokeChallenges=${challenges.activeSmokeChallenges ?? "?"} birthdayWeekActive=${challenges.activeBirthdayWeekChallenges ?? "?"} birthdayWeekDue=${challenges.birthdayWeekDueUncreated ?? "?"} stuckChallenges=${challenges.stuckCompletions ?? "?"} duplicateProgress=${challenges.duplicateProgressGroups ?? "?"} referralCodes=${referrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${referrals.referrerCreditMismatches ?? "?"} menuBadgeGuests=${menuExploration.guestsWithBadges ?? "?"}`,
       );
       const engagement = adminDiagnostics.engagement ?? {};
       const engagementTotals = engagement.totals ?? {};

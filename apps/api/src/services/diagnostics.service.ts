@@ -157,6 +157,8 @@ export interface GamificationDiagnostic {
     total: number;
     active: number;
     activeSmokeChallenges: number;
+    activeBirthdayWeekChallenges: number;
+    birthdayWeekDueUncreated: number;
     progressRows: number;
     inProgress: number;
     completed: number;
@@ -463,6 +465,7 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
       referrerMismatchRows,
       menuExplorationRows,
       menuExplorationSampleRows,
+      birthdayWeekDueRows,
     ] = await Promise.all([
       db.execute(sql`
         select
@@ -471,12 +474,17 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
           count(*) filter (
             where is_active = true
               and name like 'Smoke visit challenge %'
-          )::int as active_smoke_challenges
+          )::int as active_smoke_challenges,
+          count(*) filter (
+            where is_active = true
+              and type = 'birthday_week'
+          )::int as active_birthday_week_challenges
         from ${challenges}
       `) as Promise<Array<{
         total_challenges: number;
         active_challenges: number;
         active_smoke_challenges: number;
+        active_birthday_week_challenges: number;
       }>>,
       db.execute(sql`
         select
@@ -621,6 +629,81 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
         category_count: number;
         badge_count: number;
       }>>,
+      db.execute(sql`
+        with birthday_guests as (
+          select
+            g.id,
+            g.restaurant_id,
+            case
+              when g.preferences ->> 'birthday' ~ '^\\d{4}-\\d{2}-\\d{2}$' then substring(g.preferences ->> 'birthday' from 6 for 5)
+              when g.preferences ->> 'birthday' ~ '^\\d{2}-\\d{2}$' then g.preferences ->> 'birthday'
+            end as month_day
+          from ${guests} g
+          where g.preferences ? 'birthday'
+        ),
+        valid_birthday_guests as (
+          select *
+          from birthday_guests bg
+          where bg.month_day is not null
+            and split_part(bg.month_day, '-', 1)::int between 1 and 12
+            and split_part(bg.month_day, '-', 2)::int between 1 and extract(day from (
+              date_trunc(
+                'month',
+                make_date(
+                  extract(year from now() at time zone 'Asia/Jerusalem')::int,
+                  split_part(bg.month_day, '-', 1)::int,
+                  1
+                )
+              ) + interval '1 month - 1 day'
+            ))::int
+        ),
+        due as (
+          select
+            vbg.id,
+            vbg.restaurant_id,
+            case
+              when make_date(
+                extract(year from now() at time zone 'Asia/Jerusalem')::int,
+                split_part(vbg.month_day, '-', 1)::int,
+                split_part(vbg.month_day, '-', 2)::int
+              ) < (now() at time zone 'Asia/Jerusalem')::date
+              then make_date(
+                extract(year from now() at time zone 'Asia/Jerusalem')::int + 1,
+                split_part(vbg.month_day, '-', 1)::int,
+                split_part(vbg.month_day, '-', 2)::int
+              )
+              else make_date(
+                extract(year from now() at time zone 'Asia/Jerusalem')::int,
+                split_part(vbg.month_day, '-', 1)::int,
+                split_part(vbg.month_day, '-', 2)::int
+              )
+            end as occurrence_date
+          from valid_birthday_guests vbg
+        ),
+        due_window as (
+          select *
+          from due
+          where occurrence_date >= (now() at time zone 'Asia/Jerusalem')::date
+            and occurrence_date <= (now() at time zone 'Asia/Jerusalem')::date + interval '7 days'
+        ),
+        uncreated as (
+          select dw.*
+          from due_window dw
+          where not exists (
+            select 1
+            from ${challenges} c
+            where c.restaurant_id = dw.restaurant_id
+              and c.type = 'birthday_week'
+              and c.metadata ->> 'source' = 'birthday_week'
+              and c.metadata ->> 'guestId' = dw.id::text
+              and (c.metadata ->> 'occurrenceYear')::int = extract(year from dw.occurrence_date)::int
+          )
+        )
+        select count(*)::int as birthday_week_due_uncreated
+        from uncreated
+      `) as Promise<Array<{
+        birthday_week_due_uncreated: number;
+      }>>,
     ]);
     const challengeSummary = challengeRows[0];
     const progressSummary = progressRows[0];
@@ -630,17 +713,20 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
     const stuckCompletions = Number(stuckChallengeRows[0]?.stuck_count ?? 0);
     const duplicateProgressGroups = Number(duplicateProgressRows[0]?.duplicate_group_count ?? 0);
     const activeSmokeChallenges = Number(challengeSummary?.active_smoke_challenges ?? 0);
+    const birthdayWeekDueUncreated = Number(birthdayWeekDueRows[0]?.birthday_week_due_uncreated ?? 0);
     const referredGuestsWithoutWelcomeBonus = Number(welcomeBonusSummary?.referred_without_welcome_bonus ?? 0);
     const referrerCreditMismatches = Number(referrerMismatchRows[0]?.mismatch_count ?? 0);
 
     return {
-      status: activeSmokeChallenges > 0 || stuckCompletions > 0 || duplicateProgressGroups > 0 || referredGuestsWithoutWelcomeBonus > 0 || referrerCreditMismatches > 0
+      status: activeSmokeChallenges > 0 || stuckCompletions > 0 || duplicateProgressGroups > 0 || referredGuestsWithoutWelcomeBonus > 0 || referrerCreditMismatches > 0 || birthdayWeekDueUncreated > 0
         ? "attention"
         : "ok",
       challenges: {
         total: Number(challengeSummary?.total_challenges ?? 0),
         active: Number(challengeSummary?.active_challenges ?? 0),
         activeSmokeChallenges,
+        activeBirthdayWeekChallenges: Number(challengeSummary?.active_birthday_week_challenges ?? 0),
+        birthdayWeekDueUncreated,
         progressRows: Number(progressSummary?.progress_rows ?? 0),
         inProgress: Number(progressSummary?.in_progress ?? 0),
         completed: Number(progressSummary?.completed ?? 0),

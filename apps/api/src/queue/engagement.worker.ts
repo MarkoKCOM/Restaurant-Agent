@@ -6,6 +6,7 @@ import { redisConnection } from "./index.js";
 import { db } from "../db/index.js";
 import { engagementJobs, guests, restaurants } from "../db/schema.js";
 import { checkAnniversaries, checkBirthdays, checkWinBack, shouldSendEngagementJob } from "../services/engagement.service.js";
+import { checkBirthdayWeekChallenges } from "../services/challenge.service.js";
 
 export interface EngagementJobData {
   jobId?: string;
@@ -57,6 +58,19 @@ async function processEngagement(job: Job<EngagementJobData>, logger: FastifyBas
     logger.info(
       { queue: "engagement", jobId: job.id, restaurantId, engagementType: type, ...result },
       "Anniversary check complete",
+    );
+    return;
+  }
+
+  if (type === "birthday_week_challenge_cron") {
+    logger.info(
+      { queue: "engagement", jobId: job.id, restaurantId, engagementType: type },
+      "Running daily birthday-week challenge check",
+    );
+    const result = await checkBirthdayWeekChallenges(restaurantId);
+    logger.info(
+      { queue: "engagement", jobId: job.id, restaurantId, engagementType: type, ...result },
+      "Birthday-week challenge check complete",
     );
     return;
   }

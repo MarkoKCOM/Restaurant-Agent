@@ -76,7 +76,7 @@ The bundle is written to `artifacts/debug-bundles/<timestamp>/`. Set `OPENSEAT_T
 
 The bundle also runs deterministic membership-intent probes against `/api/v1/agent/debug/membership-intent`, covering balance, reward, referral, and promotional opt-out phrases. These checks do not call the LLM; they prove the agent debugging layer still maps common membership questions to the expected tools.
 
-The API reliability smoke creates future-dated and expired challenges to verify launch windows are respected, creates a short-lived current visit-count challenge, completes a test reservation, verifies that the guest challenge progress is created and completed, retries the completed challenge to prove points are not awarded twice, then deactivates all smoke challenges. This catches regressions where challenges leak outside their active window, duplicate completion rewards are issued, or the retention/gamification stage stops running even though the reservation itself completed successfully.
+The API reliability smoke creates future-dated and expired challenges to verify launch windows are respected, creates a short-lived current visit-count challenge, completes a test reservation, verifies that the guest challenge progress is created and completed, retries the completed challenge to prove points are not awarded twice, creates a targeted birthday-week challenge to prove private challenge visibility and bonus-point rewards, then deactivates all smoke challenges. This catches regressions where challenges leak outside their active window, duplicate completion rewards are issued, targeted birthday challenges leak to unrelated guests, or the retention/gamification stage stops running even though the reservation itself completed successfully.
 
 Before endpoint probes run, the bundle waits for `/api/v1/health` to become ready. Tune startup waiting with `OPENSEAT_BUNDLE_READY_TIMEOUT_MS` and `OPENSEAT_BUNDLE_READY_INTERVAL_MS` when collecting immediately after a restart.
 
@@ -151,7 +151,7 @@ The endpoint returns:
 - BullMQ queue counts for reservation reminders, daily summaries, and engagement jobs
 - up to two failed-job samples per queue, including job ID, name, attempts, and sanitized failure reason
 - open post-visit membership processing failures, grouped by stage with recent samples, so loyalty/retention repair work is visible without hitting a separate endpoint first
-- gamification health for active challenges, stuck challenge completions, referral-code adoption, and referral reward-credit mismatches
+- gamification health for active challenges, targeted birthday-week challenge creation, stuck challenge completions, referral-code adoption, and referral reward-credit mismatches
 - engagement automation health for pending, overdue, failed, skipped, unscheduled win-back-due guests, unscheduled birthday greetings due today, and unscheduled first-visit anniversary greetings due today, including top skip reasons for retention/promotional policy decisions
 - sanitized failure name/code/message
 - runtime flags such as `NODE_ENV`, `LOG_LEVEL`, selected AI models, and whether OpenRouter is configured

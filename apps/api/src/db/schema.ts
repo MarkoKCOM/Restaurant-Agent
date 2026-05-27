@@ -270,6 +270,7 @@ export const challenges = pgTable("challenges", {
   rewardPoints: integer("reward_points").notNull(),
   startDate: date("start_date"),
   endDate: date("end_date"),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>(),
   isActive: boolean("is_active").notNull().default(true),
 });
 

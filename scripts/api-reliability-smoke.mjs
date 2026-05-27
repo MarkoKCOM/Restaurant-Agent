@@ -101,6 +101,13 @@ function jerusalemMonthDay() {
   return `${month}-${day}`;
 }
 
+function jerusalemMonthDayPlusDays(days) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  const { month, day } = jerusalemDateParts(date);
+  return `${month}-${day}`;
+}
+
 function lastYearJerusalemDate() {
   const { year, month, day } = jerusalemDateParts();
   return `${Number(year) - 1}-${month}-${day}`;
@@ -515,6 +522,89 @@ async function main() {
   });
   if (!birthdayJob || !["pending", "sent", "skipped"].includes(birthdayJob.status)) {
     throw new Error(`Birthday check did not create a birthday engagement job: ${JSON.stringify(birthdayCheck.result ?? {})}`);
+  }
+
+  const birthdayChallengeGuest = await request("/api/v1/guests", {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      name: `Smoke Birthday Challenge ${runId}`,
+      phone: `055${String(Date.now()).slice(-7)}`,
+      language: "he",
+      source: "web",
+    },
+  });
+  const birthdayChallengeGuestId = birthdayChallengeGuest.guest?.id;
+  if (!birthdayChallengeGuestId) throw new Error("Birthday-week smoke guest create endpoint did not return guest.id");
+  await request(`/api/v1/guests/${birthdayChallengeGuestId}`, {
+    method: "PATCH",
+    token,
+    body: { preferences: { birthday: jerusalemMonthDayPlusDays(7) } },
+  });
+  const birthdayWeekCheck = await request(`/api/v1/gamification/birthday-week/check?restaurantId=${restaurantId}`, {
+    method: "POST",
+    token,
+  });
+  const birthdayWeekChallenges = await request(`/api/v1/gamification/${birthdayChallengeGuestId}/challenges?restaurantId=${restaurantId}`, { token });
+  const birthdayWeekChallenge = (birthdayWeekChallenges.challenges ?? []).find((item) =>
+    item.challenge?.type === "birthday_week" && item.challenge?.metadata?.guestId === birthdayChallengeGuestId
+  );
+  if (!birthdayWeekChallenge?.challenge?.id) {
+    throw new Error(`Birthday-week check did not create a targeted challenge: ${JSON.stringify(birthdayWeekCheck.result ?? {})}`);
+  }
+  const unrelatedGuestChallenges = await request(`/api/v1/gamification/${reservation.guestId}/challenges?restaurantId=${restaurantId}`, { token });
+  const leakedBirthdayWeekChallenge = (unrelatedGuestChallenges.challenges ?? []).some((item) => item.challenge?.id === birthdayWeekChallenge.challenge.id);
+  const birthdayWeekBalanceBefore = await request(`/api/v1/loyalty/${birthdayChallengeGuestId}/balance`, { token });
+  const birthdayWeekIncrement = await request(`/api/v1/gamification/${birthdayChallengeGuestId}/challenges/${birthdayWeekChallenge.challenge.id}/increment`, {
+    method: "POST",
+    token,
+  });
+  const birthdayWeekBalanceAfter = await request(`/api/v1/loyalty/${birthdayChallengeGuestId}/balance`, { token });
+  record("gamification.birthday-week-challenge", {
+    guestId: birthdayChallengeGuestId,
+    challengeId: birthdayWeekChallenge.challenge.id,
+    due: birthdayWeekCheck.result?.due ?? null,
+    created: birthdayWeekCheck.result?.created ?? null,
+    skippedExisting: birthdayWeekCheck.result?.skippedExisting ?? null,
+    target: birthdayWeekChallenge.challenge.targetValue,
+    reward: birthdayWeekChallenge.challenge.rewardPoints,
+    progress: birthdayWeekIncrement.progress,
+    completed: birthdayWeekIncrement.completed,
+    leakedToOtherGuest: leakedBirthdayWeekChallenge,
+    pointsBefore: birthdayWeekBalanceBefore.pointsBalance,
+    pointsAfter: birthdayWeekBalanceAfter.pointsBalance,
+  });
+  if (leakedBirthdayWeekChallenge) {
+    throw new Error(`Birthday-week challenge leaked to unrelated guest: ${birthdayWeekChallenge.challenge.id}`);
+  }
+  if (!birthdayWeekIncrement.completed || birthdayWeekBalanceAfter.pointsBalance - birthdayWeekBalanceBefore.pointsBalance !== birthdayWeekChallenge.challenge.rewardPoints) {
+    throw new Error(`Birthday-week challenge did not award expected points: before=${birthdayWeekBalanceBefore.pointsBalance} after=${birthdayWeekBalanceAfter.pointsBalance} reward=${birthdayWeekChallenge.challenge.rewardPoints}`);
+  }
+  const activeBirthdayWeekChallenges = await request(`/api/v1/gamification/challenges?restaurantId=${restaurantId}`, { token });
+  const smokeBirthdayWeekChallenges = (activeBirthdayWeekChallenges.challenges ?? []).filter((item) =>
+    item.type === "birthday_week"
+    && typeof item.name === "string"
+    && item.name.startsWith("Birthday week challenge: Smoke ")
+  );
+  let targetBirthdayWeekChallengeActive = true;
+  for (const item of smokeBirthdayWeekChallenges) {
+    const deactivated = await request(`/api/v1/gamification/challenges/${item.id}`, {
+      method: "PATCH",
+      token,
+      body: { isActive: false },
+    });
+    if (item.id === birthdayWeekChallenge.challenge.id) {
+      targetBirthdayWeekChallengeActive = deactivated.challenge?.isActive !== false;
+    }
+  }
+  record("gamification.birthday-week.cleanup", {
+    challengeId: birthdayWeekChallenge.challenge.id,
+    cleanedCount: smokeBirthdayWeekChallenges.length,
+    isActive: targetBirthdayWeekChallengeActive,
+  });
+  if (targetBirthdayWeekChallengeActive) {
+    throw new Error(`Birthday-week smoke challenge cleanup did not deactivate challenge: ${birthdayWeekChallenge.challenge.id}`);
   }
 
   const anniversaryGuest = await request("/api/v1/guests", {

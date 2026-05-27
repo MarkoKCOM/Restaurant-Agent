@@ -23,6 +23,10 @@
   - daily restaurant anniversary checks schedule a promotional anniversary greeting for returning guests on their first-visit anniversary
   - manual `POST /api/v1/engagement/anniversaries/check` uses the same tenant checks and policy gates as other engagement automation
   - diagnostics/debug-bundle summaries expose unscheduled anniversary greetings due today, and API smoke verifies the anniversary path creates an engagement job
+- Birthday-week challenge automation:
+  - daily birthday-week checks create private one-visit challenges for guests whose birthday is within seven days
+  - challenge metadata targets the challenge to the birthday guest so it does not leak into unrelated member challenge lists
+  - diagnostics/debug-bundle summaries expose active birthday-week challenges and due guests missing a challenge, and API smoke verifies reward points plus cleanup
 - WhatsApp-ready referral retrieval/share flow:
   - `GET /api/v1/loyalty/:guestId/referral-share` generates or returns a member referral code
   - response includes referral stats and Hebrew/English share copy

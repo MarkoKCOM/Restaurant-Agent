@@ -74,24 +74,66 @@ function sendCampaignError(
   code: string,
   context: Record<string, unknown> = {},
 ) {
-  request.log.warn(
-    {
-      ...context,
-      code,
-      requestId: request.id,
-      statusCode,
-      userId: request.user?.id,
-      restaurantId: request.user?.restaurantId,
-      role: request.user?.role,
-    },
-    "Campaign request rejected",
-  );
+  const responseContext = { ...context };
+  delete responseContext.err;
+  const logPayload = {
+    ...context,
+    code,
+    requestId: request.id,
+    statusCode,
+    userId: request.user?.id,
+    restaurantId: request.user?.restaurantId,
+    role: request.user?.role,
+  };
+
+  if (statusCode >= 500) {
+    request.log.error(logPayload, "Campaign request failed");
+  } else {
+    request.log.warn(logPayload, "Campaign request rejected");
+  }
 
   return reply.status(statusCode).send({
     error: message,
     code,
     requestId: request.id,
+    ...responseContext,
+  });
+}
+
+function sendCaughtCampaignError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  err: unknown,
+  fallbackCode: string,
+  context: Record<string, unknown> = {},
+) {
+  const message = err instanceof Error ? err.message : "Campaign operation failed";
+  const schedule = err instanceof Error && "schedule" in err
+    ? (err as Error & { schedule?: unknown }).schedule
+    : undefined;
+
+  if (message.includes("Unknown campaign personalization variables")) {
+    return sendCampaignError(request, reply, 400, message, "CAMPAIGN_TEMPLATE_VARIABLE_UNKNOWN", context);
+  }
+  if (message.includes("schedule requires adjustment")) {
+    return sendCampaignError(request, reply, 400, message, "CAMPAIGN_SCHEDULE_REQUIRES_ADJUSTMENT", {
+      ...context,
+      schedule,
+    });
+  }
+  if (message.includes("not found") && message.includes("recipient")) {
+    return sendCampaignError(request, reply, 404, message, "CAMPAIGN_RECIPIENT_NOT_FOUND", context);
+  }
+  if (message.includes("not found")) {
+    return sendCampaignError(request, reply, 404, message, "CAMPAIGN_NOT_FOUND", context);
+  }
+  if (message.includes("cannot be delivered")) {
+    return sendCampaignError(request, reply, 409, message, "CAMPAIGN_DELIVERY_STATUS_INVALID", context);
+  }
+
+  return sendCampaignError(request, reply, 500, message, fallbackCode, {
     ...context,
+    err,
   });
 }
 
@@ -208,22 +250,9 @@ export async function campaignRoutes(app: FastifyInstance) {
 
       return reply.status(201).send(result);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Campaign creation failed";
-      const schedule = err instanceof Error && "schedule" in err
-        ? (err as Error & { schedule?: unknown }).schedule
-        : undefined;
-      if (message.includes("Unknown campaign personalization variables")) {
-        return sendCampaignError(request, reply, 400, message, "CAMPAIGN_TEMPLATE_VARIABLE_UNKNOWN", {
-          restaurantId: parsed.restaurantId,
-        });
-      }
-      if (message.includes("schedule requires adjustment")) {
-        return sendCampaignError(request, reply, 400, message, "CAMPAIGN_SCHEDULE_REQUIRES_ADJUSTMENT", {
-          restaurantId: parsed.restaurantId,
-          schedule,
-        });
-      }
-      throw err;
+      return sendCaughtCampaignError(request, reply, err, "CAMPAIGN_CREATE_FAILED", {
+        restaurantId: parsed.restaurantId,
+      });
     }
   });
 
@@ -257,20 +286,10 @@ export async function campaignRoutes(app: FastifyInstance) {
 
       return result;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Campaign delivery failed";
-      if (message.includes("not found")) {
-        return sendCampaignError(request, reply, 404, message, "CAMPAIGN_NOT_FOUND", {
-          restaurantId: parsed.restaurantId,
-          campaignId: params.campaignId,
-        });
-      }
-      if (message.includes("cannot be delivered")) {
-        return sendCampaignError(request, reply, 409, message, "CAMPAIGN_DELIVERY_STATUS_INVALID", {
-          restaurantId: parsed.restaurantId,
-          campaignId: params.campaignId,
-        });
-      }
-      throw err;
+      return sendCaughtCampaignError(request, reply, err, "CAMPAIGN_DELIVERY_FAILED", {
+        restaurantId: parsed.restaurantId,
+        campaignId: params.campaignId,
+      });
     }
   });
 
@@ -307,22 +326,12 @@ export async function campaignRoutes(app: FastifyInstance) {
 
       return result;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Campaign delivery event failed";
-      if (message.includes("not found") && message.includes("recipient")) {
-        return sendCampaignError(request, reply, 404, message, "CAMPAIGN_RECIPIENT_NOT_FOUND", {
-          restaurantId: parsed.restaurantId,
-          campaignId: params.campaignId,
-          guestId: parsed.guestId,
-        });
-      }
-      if (message.includes("not found")) {
-        return sendCampaignError(request, reply, 404, message, "CAMPAIGN_NOT_FOUND", {
-          restaurantId: parsed.restaurantId,
-          campaignId: params.campaignId,
-          guestId: parsed.guestId,
-        });
-      }
-      throw err;
+      return sendCaughtCampaignError(request, reply, err, "CAMPAIGN_DELIVERY_EVENT_FAILED", {
+        restaurantId: parsed.restaurantId,
+        campaignId: params.campaignId,
+        guestId: parsed.guestId,
+        event: parsed.event,
+      });
     }
   });
 }

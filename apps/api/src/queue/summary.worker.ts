@@ -2,14 +2,46 @@ import { Worker } from "bullmq";
 import type { Job } from "bullmq";
 import type { FastifyBaseLogger } from "fastify";
 import { redisConnection } from "./index.js";
-import { getDailySummary } from "../services/summary.service.js";
+import {
+  formatMorningSummaryMessage,
+  getDailySummary,
+  getMorningSummary,
+} from "../services/summary.service.js";
 
 export interface SummaryJobData {
   restaurantId: string;
+  type?: "closing" | "morning";
 }
 
 async function processSummary(job: Job<SummaryJobData>, logger: FastifyBaseLogger): Promise<void> {
-  const { restaurantId } = job.data;
+  const { restaurantId, type = "closing" } = job.data;
+
+  if (type === "morning") {
+    const summary = await getMorningSummary({ restaurantId });
+    const message = formatMorningSummaryMessage(summary);
+
+    // TODO: Replace log delivery with the WhatsApp sender once Baileys integration is ready.
+    logger.info(
+      {
+        queue: "daily-summary",
+        jobId: job.id,
+        type,
+        restaurantId,
+        date: summary.summaryDate,
+        yesterdayDate: summary.yesterdayDate,
+        yesterdayCovers: summary.yesterday.totalCovers,
+        todayBookings: summary.today.totalReservations,
+        todayCovers: summary.today.totalCovers,
+        notableGuestCount: summary.notableGuests.length,
+        alertCount: summary.alerts.length,
+        ownerWhatsappConfigured: summary.ownerWhatsappConfigured,
+        messagePreview: message.slice(0, 500),
+      },
+      "Daily morning summary ready to send",
+    );
+    return;
+  }
+
   const today = new Date().toISOString().slice(0, 10);
 
   const summary = await getDailySummary(restaurantId, today);
@@ -19,6 +51,7 @@ async function processSummary(job: Job<SummaryJobData>, logger: FastifyBaseLogge
     {
       queue: "daily-summary",
       jobId: job.id,
+      type,
       restaurantId,
       date: summary.date,
       totalReservations: summary.totalReservations,
@@ -41,14 +74,14 @@ export function createSummaryWorker(logger: FastifyBaseLogger): Worker<SummaryJo
 
   worker.on("completed", (job) => {
     logger.info(
-      { queue: "daily-summary", jobId: job.id, restaurantId: job.data.restaurantId },
+      { queue: "daily-summary", jobId: job.id, restaurantId: job.data.restaurantId, type: job.data.type ?? "closing" },
       "Summary job completed",
     );
   });
 
   worker.on("failed", (job, err) => {
     logger.error(
-      { err, queue: "daily-summary", jobId: job?.id, restaurantId: job?.data.restaurantId },
+      { err, queue: "daily-summary", jobId: job?.id, restaurantId: job?.data.restaurantId, type: job?.data.type ?? "closing" },
       "Summary job failed",
     );
   });

@@ -143,6 +143,7 @@ function summarizeSmoke(report) {
       || step.step === "campaign.delivery-events"
       || step.step === "campaign.opt-out-keyword"
       || step.step === "analytics.growth-summary"
+      || step.step === "analytics.daily-morning-summary"
     )
   );
   if (operationalSteps.length > 0) {
@@ -235,6 +236,8 @@ function summarizeSmoke(report) {
         console.log(`- campaign.opt-out-keyword: optedOut=${step.optedOut === true ? "yes" : "no"} llmRounds=${step.llmRounds ?? "?"} action=${step.deterministicAction ?? "?"} tool=${step.tool ?? "?"} sent=${step.deliverySent ?? "?"} skippedOptOut=${step.deliverySkippedOptOut ?? "?"}`);
       } else if (step.step === "analytics.growth-summary") {
         console.log(`- analytics.growth-summary: bookings=${step.reservationBookings ?? "?"} covers=${step.reservationCovers ?? "?"} slots=${step.reservationSlots ?? "?"} cancelRate=${step.cancellationRate ?? "?"} noShowRate=${step.noShowRate ?? "?"} retentionGuests=${step.retentionUniqueGuests ?? "?"} windows=${asArray(step.retentionWindows).join(",") || "none"} members=${step.activeMembers ?? "?"} pointsIssued=${step.pointsIssued ?? "?"} bronze=${step.tierBronze ?? "?"} clvGuests=${step.clvGuests ?? "?"} clvRevenue=${step.clvRevenue ?? "?"} clvAvg=${step.clvAverage ?? "?"} clvTiers=${step.clvTierCount ?? "?"} clvTop=${step.clvTopGuests ?? "?"} campaigns=${step.campaigns ?? "?"} sent=${step.campaignSent ?? "?"} roi=${step.hasCampaignRoi === true ? "yes" : "no"}`);
+      } else if (step.step === "analytics.daily-morning-summary") {
+        console.log(`- analytics.daily-morning-summary: date=${step.date ?? "?"} yesterdayCovers=${step.yesterdayCovers ?? "?"} todayBookings=${step.todayBookings ?? "?"} todayCovers=${step.todayCovers ?? "?"} notable=${step.notableGuestCount ?? "?"} alerts=${step.alertCount ?? "?"} message=${step.hasMessage === true ? "yes" : "no"}`);
       }
     }
   }
@@ -387,7 +390,7 @@ function summarizeDebugBundleManifest(report) {
     );
   }
   if (queues.length > 0) {
-    printLine("Queues", queues.map((queue) => `${queue.name}:${queue.status}/failed=${queue.failed ?? "?"}`).join(", "));
+    printLine("Queues", queues.map((queue) => `${queue.name}:${queue.status}/failed=${queue.failed ?? "?"}/repeat=${queue.repeatableJobs?.length ?? "?"}`).join(", "));
   }
 
   if (failed.length === 0 && skipped.length === 0) {

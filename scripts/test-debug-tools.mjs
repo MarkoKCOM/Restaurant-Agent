@@ -126,6 +126,7 @@ const smokePath = await writeJson("smoke.json", {
     { step: "campaign.delivery-events", delivered: 1, read: 1, replied: 1, hasDeliveredAt: true, hasReadAt: true, hasRepliedAt: true },
     { step: "campaign.opt-out-keyword", optedOut: true, llmRounds: 0, deterministicAction: "campaign_opt_out", tool: "set_membership_messaging_opt_out", deliverySent: 0, deliverySkippedOptOut: 2 },
     { step: "analytics.growth-summary", reservationBookings: 12, reservationCovers: 34, reservationSlots: 5, cancellationRate: 0.1, noShowRate: 0.05, retentionUniqueGuests: 4, retentionWindows: [30, 60, 90], activeMembers: 9, pointsIssued: 120, tierBronze: 7, clvGuests: 9, clvRevenue: 4500, clvAverage: 500, clvTierCount: 3, clvTopGuests: 5, campaigns: 3, campaignSent: 2, hasCampaignRoi: true },
+    { step: "analytics.daily-morning-summary", date: "2026-05-27", yesterdayCovers: 18, todayBookings: 7, todayCovers: 22, notableGuestCount: 3, alertCount: 1, hasMessage: true },
   ],
   requests: [
     {
@@ -195,6 +196,7 @@ assertIncludes(smokeOutput, "campaign.delivery: firstSent=1 firstOptOut=1 second
 assertIncludes(smokeOutput, "campaign.delivery-events: delivered=1 read=1 replied=1 deliveredAt=yes readAt=yes repliedAt=yes");
 assertIncludes(smokeOutput, "campaign.opt-out-keyword: optedOut=yes llmRounds=0 action=campaign_opt_out tool=set_membership_messaging_opt_out sent=0 skippedOptOut=2");
 assertIncludes(smokeOutput, "analytics.growth-summary: bookings=12 covers=34 slots=5 cancelRate=0.1 noShowRate=0.05 retentionGuests=4 windows=30,60,90 members=9 pointsIssued=120 bronze=7 clvGuests=9 clvRevenue=4500 clvAvg=500 clvTiers=3 clvTop=5 campaigns=3 sent=2 roi=yes");
+assertIncludes(smokeOutput, "analytics.daily-morning-summary: date=2026-05-27 yesterdayCovers=18 todayBookings=7 todayCovers=22 notable=3 alerts=1 message=yes");
 assertIncludes(smokeOutput, "Unhandled HTTP failures: 1");
 assertIncludes(smokeOutput, "POST /api/v1/reservations -> 500 code=INTERNAL_ERROR requestId=smoke-test-2");
 assertIncludes(smokeOutput, 'pnpm debug:logs smoke-test-2 --since "2 hours ago"');

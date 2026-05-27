@@ -376,7 +376,7 @@ async function writeReadme() {
         );
       }
       if (queues.length > 0) {
-        lines.push(`- Queues: ${queues.map((queue) => `${queue.name}:${queue.status}/failed=${queue.failed ?? "?"}`).join(", ")}`);
+        lines.push(`- Queues: ${queues.map((queue) => `${queue.name}:${queue.status}/failed=${queue.failed ?? "?"}/repeat=${queue.repeatableJobs?.length ?? "?"}`).join(", ")}`);
       }
       if (adminDiagnostics.requestId) {
         lines.push(`- Diagnostics request: ${adminDiagnostics.requestId}`);

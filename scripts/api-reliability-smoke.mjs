@@ -1584,6 +1584,29 @@ async function main() {
     throw new Error(`Growth analytics endpoints returned incomplete metrics: ${JSON.stringify({ reservationAnalytics, retentionAnalytics, loyaltyAnalytics, clvAnalytics, campaignRoiAnalytics })}`);
   }
 
+  const morningSummary = await request(`/api/v1/analytics/daily-morning-summary?restaurantId=${restaurantId}&date=${reservationDate}`, { token });
+  record("analytics.daily-morning-summary", {
+    date: morningSummary.summary?.summaryDate ?? null,
+    yesterdayCovers: morningSummary.summary?.yesterday?.totalCovers ?? null,
+    todayBookings: morningSummary.summary?.today?.totalReservations ?? null,
+    todayCovers: morningSummary.summary?.today?.totalCovers ?? null,
+    notableGuestCount: morningSummary.summary?.notableGuests?.length ?? null,
+    alertCount: morningSummary.summary?.alerts?.length ?? null,
+    ownerWhatsappConfigured: morningSummary.summary?.ownerWhatsappConfigured ?? null,
+    hasMessage: typeof morningSummary.message === "string" && morningSummary.message.includes(reservationDate),
+  });
+  if (
+    morningSummary.summary?.summaryDate !== reservationDate
+    || typeof morningSummary.summary?.yesterday?.totalCovers !== "number"
+    || typeof morningSummary.summary?.today?.totalReservations !== "number"
+    || morningSummary.summary.today.totalReservations < 1
+    || !Array.isArray(morningSummary.summary?.notableGuests)
+    || typeof morningSummary.message !== "string"
+    || !morningSummary.message.includes(reservationDate)
+  ) {
+    throw new Error(`Daily morning summary preview is incomplete: ${JSON.stringify(morningSummary)}`);
+  }
+
   await request(`/api/v1/engagement/win-back/check?restaurantId=${restaurantId}`, {
     method: "POST",
     token,

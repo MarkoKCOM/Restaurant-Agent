@@ -156,13 +156,25 @@ try {
   for (const restaurant of allRestaurants) {
     await summaryQueue.add(
       "daily-summary",
-      { restaurantId: restaurant.id },
+      { type: "closing", restaurantId: restaurant.id },
       {
         repeat: {
           pattern: "0 23 * * *",
-          tz: "Asia/Jerusalem",
+          tz: restaurant.timezone || "Asia/Jerusalem",
         },
         jobId: `daily-summary-${restaurant.id}`,
+      },
+    );
+
+    await summaryQueue.add(
+      "daily-morning-summary",
+      { type: "morning", restaurantId: restaurant.id },
+      {
+        repeat: {
+          pattern: "0 9 * * *",
+          tz: restaurant.timezone || "Asia/Jerusalem",
+        },
+        jobId: `daily-morning-summary-${restaurant.id}`,
       },
     );
 

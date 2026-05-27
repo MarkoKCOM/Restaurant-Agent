@@ -128,6 +128,12 @@ export interface QueueDiagnostic {
     timestamp?: number;
     finishedOn?: number;
   }>;
+  repeatableJobs?: Array<{
+    name: string;
+    pattern?: string;
+    tz?: string;
+    next?: number;
+  }>;
   error?: DiagnosticCheck["error"];
 }
 
@@ -398,9 +404,10 @@ async function inspectQueue(name: string, queue: Queue): Promise<QueueDiagnostic
   const startedAt = Date.now();
 
   try {
-    const [counts, failedJobs] = await Promise.all([
+    const [counts, failedJobs, repeatableJobs] = await Promise.all([
       queue.getJobCounts("waiting", "active", "delayed", "completed", "failed", "paused"),
       queue.getFailed(0, 2),
+      queue.getRepeatableJobs(0, 20),
     ]);
 
     return {
@@ -422,6 +429,12 @@ async function inspectQueue(name: string, queue: Queue): Promise<QueueDiagnostic
         failedReason: job.failedReason,
         timestamp: job.timestamp,
         finishedOn: job.finishedOn,
+      })),
+      repeatableJobs: repeatableJobs.map((job) => ({
+        name: job.name,
+        pattern: job.pattern ?? undefined,
+        tz: job.tz ?? undefined,
+        next: job.next,
       })),
     };
   } catch (error: unknown) {

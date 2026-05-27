@@ -8,6 +8,7 @@ import {
   getReservationAnalytics,
   getRetentionAnalytics,
 } from "../services/analytics.service.js";
+import { formatMorningSummaryMessage, getMorningSummary } from "../services/summary.service.js";
 
 const analyticsQuerySchema = z.object({
   restaurantId: z.string().uuid(),
@@ -23,6 +24,11 @@ const campaignRoiQuerySchema = analyticsQuerySchema.extend({
 
 const clvQuerySchema = analyticsQuerySchema.extend({
   topLimit: z.coerce.number().int().min(1).max(50).optional(),
+});
+
+const morningSummaryQuerySchema = z.object({
+  restaurantId: z.string().uuid(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 function sendAnalyticsError(
@@ -122,6 +128,30 @@ export async function analyticsRoutes(app: FastifyInstance) {
       "Loyalty analytics generated",
     );
     return { loyalty };
+  });
+
+  app.get("/daily-morning-summary", async (request, reply) => {
+    const query = morningSummaryQuerySchema.parse(request.query ?? {});
+    const accessError = enforceAnalyticsAccess(request, reply, query.restaurantId);
+    if (accessError) return accessError;
+
+    const summary = await getMorningSummary(query);
+    const message = formatMorningSummaryMessage(summary);
+    request.log.info(
+      {
+        restaurantId: query.restaurantId,
+        requestId: request.id,
+        date: summary.summaryDate,
+        yesterdayCovers: summary.yesterday.totalCovers,
+        todayBookings: summary.today.totalReservations,
+        todayCovers: summary.today.totalCovers,
+        notableGuestCount: summary.notableGuests.length,
+        alertCount: summary.alerts.length,
+        ownerWhatsappConfigured: summary.ownerWhatsappConfigured,
+      },
+      "Daily morning summary preview generated",
+    );
+    return { summary, message };
   });
 
   app.get("/clv", async (request, reply) => {

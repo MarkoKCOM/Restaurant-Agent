@@ -20,6 +20,7 @@ import {
   getReservationLifecycleEvents,
   getReservationSourceTone,
 } from "../lib/reservationLifecycle.js";
+import { formatApiErrorMessage } from "../lib/apiError.js";
 import type { Reservation, ReservationStatus } from "@openseat/domain";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -109,7 +110,7 @@ function getClaimFeedbackMessage(
   const message = error instanceof Error ? error.message : "";
   if (message.includes("already redeemed")) return t.today.claimAlreadyRedeemed;
   if (message.includes("not found")) return t.today.claimNotFound;
-  return fallback;
+  return formatApiErrorMessage(error, fallback);
 }
 
 function getLifecycleTimestampLabel(timestamp: string, lang: string) {
@@ -260,7 +261,7 @@ export function ReservationsPage() {
       { id, data: { status } },
       {
         onSuccess: () => showToast(toastKeys[status] ?? t.res.toastStatusUpdated),
-        onError: () => showToast(t.res.toastStatusError, "error"),
+        onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.res.toastStatusError), "error"),
       },
     );
   }
@@ -269,7 +270,7 @@ export function ReservationsPage() {
     if (status === "cancelled") {
       cancelMutation.mutate(id, {
         onSuccess: () => showToast(t.res.toastCancelled),
-        onError: () => showToast(t.res.toastStatusError, "error"),
+        onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.res.toastStatusError), "error"),
       });
       return;
     }
@@ -277,7 +278,7 @@ export function ReservationsPage() {
     if (status === "no_show") {
       noShowMutation.mutate(id, {
         onSuccess: () => showToast(t.res.toastNoShow),
-        onError: () => showToast(t.res.toastNoShowError, "error"),
+        onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.res.toastNoShowError), "error"),
       });
       return;
     }
@@ -714,7 +715,7 @@ function ReservationDetailPanel({
           setTimeout(() => setSaved(false), 2000);
           showToast(t.res.toastUpdated);
         },
-        onError: () => showToast(t.res.toastUpdateError, "error"),
+        onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.res.toastUpdateError), "error"),
       },
     );
   }
@@ -731,7 +732,7 @@ function ReservationDetailPanel({
         }
         onClose();
       },
-      onError: () => showToast(t.res.toastStatusError, "error"),
+      onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.res.toastStatusError), "error"),
     });
   }
 
@@ -741,7 +742,7 @@ function ReservationDetailPanel({
         showToast(t.res.toastNoShow);
         onClose();
       },
-      onError: () => showToast(t.res.toastNoShowError, "error"),
+      onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.res.toastNoShowError), "error"),
     });
   }
 
@@ -762,7 +763,7 @@ function ReservationDetailPanel({
           showToast(getActionLabel(action, t));
           onClose();
         },
-        onError: () => showToast(t.res.toastStatusError, "error"),
+        onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.res.toastStatusError), "error"),
       },
     );
   }
@@ -775,7 +776,7 @@ function ReservationDetailPanel({
         setVerifiedClaim(claim);
         showToast(claim.status === "redeemed" ? t.today.claimAlreadyRedeemed : t.today.claimVerified);
       },
-      onError: (error) => {
+      onError: (error: unknown) => {
         setVerifiedClaim(null);
         showToast(getClaimFeedbackMessage(error, t, t.today.claimVerifyError), "error");
       },
@@ -791,7 +792,7 @@ function ReservationDetailPanel({
         setClaimCode("");
         showToast(t.today.claimRedeemed);
       },
-      onError: (error) => showToast(getClaimFeedbackMessage(error, t, t.today.claimRedeemError), "error"),
+      onError: (error: unknown) => showToast(getClaimFeedbackMessage(error, t, t.today.claimRedeemError), "error"),
     });
   }
 

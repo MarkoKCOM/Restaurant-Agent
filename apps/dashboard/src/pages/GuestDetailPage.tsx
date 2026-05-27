@@ -5,6 +5,7 @@ import type { LoyaltyTransaction, GuestPreferences } from "../hooks/api.js";
 import { useToast } from "../components/Toast.js";
 import { useLang } from "../i18n.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
+import { formatApiErrorMessage } from "../lib/apiError.js";
 import { isFeatureEnabled } from "@openseat/domain";
 import type { Reservation } from "@openseat/domain";
 
@@ -145,7 +146,7 @@ export function GuestDetailPage() {
           setEditingNotes(false);
           showToast(t.guestDetail.toastNotesSaved);
         },
-        onError: () => showToast(t.guestDetail.toastNotesError, "error"),
+        onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.guestDetail.toastNotesError), "error"),
       },
     );
   }
@@ -165,7 +166,7 @@ export function GuestDetailPage() {
           setNewTag("");
           showToast(t.guestDetail.toastTagAdded);
         },
-        onError: () => showToast(t.guestDetail.toastTagAddError, "error"),
+        onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.guestDetail.toastTagAddError), "error"),
       },
     );
   }
@@ -177,7 +178,7 @@ export function GuestDetailPage() {
       { id, data: { tags: currentTags.filter((t) => t !== tag) } },
       {
         onSuccess: () => showToast(t.guestDetail.toastTagRemoved),
-        onError: () => showToast(t.guestDetail.toastTagRemoveError, "error"),
+        onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.guestDetail.toastTagRemoveError), "error"),
       },
     );
   }
@@ -227,7 +228,7 @@ export function GuestDetailPage() {
           setEditingPrefs(false);
           showToast(t.guestDetail.toastPrefsSaved);
         },
-        onError: () => showToast(t.guestDetail.toastPrefsError, "error"),
+        onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.guestDetail.toastPrefsError), "error"),
       },
     );
   }

@@ -4,6 +4,7 @@ import { useRewards, useCreateReward, useUpdateReward } from "../hooks/api.js";
 import { useToast } from "./Toast.js";
 import { useLang } from "../i18n.js";
 import { useAuth } from "../hooks/useAuth.js";
+import { formatApiErrorMessage } from "../lib/apiError.js";
 import {
   BFF_REWARD_TEMPLATES,
   REWARD_MOMENT_LABELS,
@@ -71,7 +72,7 @@ export function LoyaltyRewardsManager({
           setRewardPitchEn("");
           showToast(t.settings.membership_toastRewardCreated);
         },
-        onError: () => showToast(t.settings.membership_toastError, "error"),
+        onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.settings.membership_toastError), "error"),
       },
     );
   }
@@ -81,7 +82,7 @@ export function LoyaltyRewardsManager({
       { id, data: { isActive: !isActive } },
       {
         onSuccess: () => showToast(t.settings.membership_toastRewardUpdated),
-        onError: () => showToast(t.settings.membership_toastError, "error"),
+        onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.settings.membership_toastError), "error"),
       },
     );
   }

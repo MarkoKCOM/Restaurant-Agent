@@ -70,3 +70,17 @@ export function logApiError(error: unknown): void {
     message: error.message,
   });
 }
+
+export function formatApiErrorMessage(error: unknown, fallback: string): string {
+  if (!(error instanceof ApiError)) {
+    return fallback;
+  }
+
+  const details = [
+    `HTTP ${error.status}`,
+    error.code,
+    error.requestId ? `request ${error.requestId}` : undefined,
+  ].filter(Boolean);
+
+  return details.length > 0 ? `${fallback} (${details.join(" - ")})` : fallback;
+}

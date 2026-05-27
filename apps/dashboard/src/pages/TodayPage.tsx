@@ -4,6 +4,7 @@ import type { RewardClaimVerified, TableStatusItem } from "../hooks/api.js";
 import { useCurrentRestaurant } from "../hooks/useCurrentRestaurant.js";
 import { useToast } from "../components/Toast.js";
 import { useLang } from "../i18n.js";
+import { formatApiErrorMessage } from "../lib/apiError.js";
 import { isFeatureEnabled } from "@openseat/domain";
 import type { Reservation, Table } from "@openseat/domain";
 
@@ -98,7 +99,7 @@ function getClaimFeedbackMessage(
   const message = error instanceof Error ? error.message : "";
   if (message.includes("already redeemed")) return t.today.claimAlreadyRedeemed;
   if (message.includes("not found")) return t.today.claimNotFound;
-  return fallback;
+  return formatApiErrorMessage(error, fallback);
 }
 
 function OccupancyHeatmap({
@@ -298,7 +299,7 @@ export function TodayPage() {
       { id, data: { status } },
       {
         onSuccess: () => showToast(labels[status] ?? t.today.toastStatusUpdated),
-        onError: () => showToast(t.today.toastStatusError, "error"),
+        onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.today.toastStatusError), "error"),
       },
     );
   }
@@ -306,7 +307,7 @@ export function TodayPage() {
   function handleNoShow(id: string) {
     noShowMutation.mutate(id, {
       onSuccess: () => showToast(t.today.toastNoShow),
-      onError: () => showToast(t.today.toastNoShowError, "error"),
+      onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.today.toastNoShowError), "error"),
     });
   }
 
@@ -318,7 +319,7 @@ export function TodayPage() {
         setVerifiedClaim(claim);
         showToast(claim.status === "redeemed" ? t.today.claimAlreadyRedeemed : t.today.claimVerified);
       },
-      onError: (error) => {
+      onError: (error: unknown) => {
         setVerifiedClaim(null);
         showToast(getClaimFeedbackMessage(error, t, t.today.claimVerifyError), "error");
       },
@@ -334,7 +335,7 @@ export function TodayPage() {
         setClaimCode("");
         showToast(t.today.claimRedeemed);
       },
-      onError: (error) => showToast(getClaimFeedbackMessage(error, t, t.today.claimRedeemError), "error"),
+      onError: (error: unknown) => showToast(getClaimFeedbackMessage(error, t, t.today.claimRedeemError), "error"),
     });
   }
 

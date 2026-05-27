@@ -13,6 +13,7 @@ import { ModalPortal } from "../components/ModalPortal.js";
 import { useLang } from "../i18n.js";
 import type { Table, DashboardConfig } from "@openseat/domain";
 import { resolveTheme } from "../lib/dashboardTheme.js";
+import { formatApiErrorMessage } from "../lib/apiError.js";
 import { LoyaltyRewardsManager } from "../components/LoyaltyRewardsManager.js";
 
 const DAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
@@ -110,7 +111,7 @@ function DashboardCustomization({ restaurant, updateMutation }: { restaurant: an
       { id: restaurant.id, data: { dashboardConfig } },
       {
         onSuccess: () => showToast(t.settings.toastCustomSaved),
-        onError: () => showToast(t.settings.toastCustomError, "error"),
+        onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.settings.toastCustomError), "error"),
       },
     );
   }
@@ -326,7 +327,7 @@ export function SettingsPage() {
       { id: restaurant.id, data: { name, phone, address } },
       {
         onSuccess: () => showToast(t.settings.toastDetailsSaved),
-        onError: () => showToast(t.settings.toastDetailsError, "error"),
+        onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.settings.toastDetailsError), "error"),
       },
     );
   }
@@ -342,7 +343,7 @@ export function SettingsPage() {
           setTimeout(() => setHoursSaved(false), 2000);
           showToast(t.settings.toastHoursSaved);
         },
-        onError: () => showToast(t.settings.toastHoursError, "error"),
+        onError: (error: unknown) => showToast(formatApiErrorMessage(error, t.settings.toastHoursError), "error"),
       },
     );
   }
@@ -354,9 +355,9 @@ export function SettingsPage() {
         setShowResetConfirm(false);
         showToast(`${(data as { deleted: number }).deleted} ${t.settings.resetReservations}`);
       },
-      onError: () => {
+      onError: (error: unknown) => {
         setShowResetConfirm(false);
-        showToast(t.settings.toastResetError, "error");
+        showToast(formatApiErrorMessage(error, t.settings.toastResetError), "error");
       },
     });
   }

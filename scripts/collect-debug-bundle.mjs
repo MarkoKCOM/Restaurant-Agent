@@ -600,6 +600,7 @@ async function captureDiagnosticsHighlights(commandRecord) {
       },
       outboundMessages: {
         status: outboundMessages.status,
+        statusReasons: outboundMessages.statusReasons,
         totals: outboundMessages.totals,
         byType: outboundMessages.byType,
         byErrorCode: outboundMessages.byErrorCode,

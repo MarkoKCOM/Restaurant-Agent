@@ -1220,6 +1220,7 @@ for (const expectedTokenHelper of [
 }
 assertIncludes(debugBundleCollector, 'import { createSignedSuperAdminToken } from "./lib/debug-token.mjs";');
 assertIncludes(debugBundleCollector, 'OPENSEAT_TOKEN: diagnosticsToken.token || process.env.OPENSEAT_TOKEN');
+assertIncludes(debugBundleCollector, "statusReasons: outboundMessages.statusReasons");
 assert(!debugBundleCollector.includes("function createSignedSuperAdminToken()"), "Expected debug bundle to use shared token helper");
 
 for (const requiredReadmeContent of [

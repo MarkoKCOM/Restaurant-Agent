@@ -56,6 +56,9 @@
 - Outbound delivery diagnostics:
   - workers and manual morning-summary logging now use one outbound delivery helper
   - missing outbound recipients are recorded as `skipped` with `OUTBOUND_RECIPIENT_MISSING` instead of looking like a normal logged send
+- Debug CLI authentication:
+  - membership and outbound debug CLIs can synthesize a short-lived super-admin token from `JWT_SECRET` when no explicit `OPENSEAT_TOKEN` is provided
+  - CLI output reports whether the token came from the caller or the local JWT secret
 - Protected super-admin dependency diagnostics at `GET /api/v1/admin/diagnostics`:
   - database ping status and latency
   - Redis ping status and latency

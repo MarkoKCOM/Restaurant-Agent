@@ -239,6 +239,7 @@ const missingMembershipDebugEnv = await expectCommandFailure("node", [
 });
 assertIncludes(missingMembershipDebugEnv.stderr, "Missing OPENSEAT_TOKEN and a restaurant selector");
 assertIncludes(missingMembershipDebugEnv.stderr, "pnpm debug:membership");
+assertIncludes(missingMembershipDebugEnv.stderr, "JWT_SECRET");
 assertIncludes(missingMembershipDebugEnv.stderr, "Restaurant admin tokens can also infer");
 
 const agentIntentPath = await writeJson("agent-intents.json", {
@@ -636,6 +637,7 @@ const membershipDebugSummary = await readFile("scripts/membership-debug-summary.
 const outboundDebugSummary = await readFile("scripts/outbound-debug-summary.mjs", "utf8");
 const queueDebugSummary = await readFile("apps/api/scripts/queue-debug-summary.mjs", "utf8");
 const outboundMessageService = await readFile("apps/api/src/services/outbound-message.service.ts", "utf8");
+const debugTokenHelpers = await readFile("scripts/lib/debug-token.mjs", "utf8");
 const debugErrorHelpers = await readFile("scripts/lib/debug-errors.mjs", "utf8");
 const rootPackageJson = await readFile("package.json", "utf8");
 const apiPackageJson = await readFile("apps/api/package.json", "utf8");
@@ -652,6 +654,9 @@ for (const requiredMembershipDebugContent of [
   "engagementRequestId=",
   "restaurantLookupRequestId=",
   "restaurantIdSource=",
+  "tokenSource=",
+  "createSignedSuperAdminToken",
+  "JWT_SECRET",
   "decodeTokenRestaurantId",
   "OPENSEAT_RESTAURANT_SLUG",
   "pnpm debug:logs",
@@ -673,6 +678,9 @@ for (const requiredOutboundDebugContent of [
   "errorMessage=",
   "restaurantLookupRequestId=",
   "restaurantIdSource=",
+  "tokenSource=",
+  "createSignedSuperAdminToken",
+  "JWT_SECRET",
   "decodeTokenRestaurantId",
   "OPENSEAT_RESTAURANT_SLUG",
   "pnpm debug:logs",
@@ -728,6 +736,15 @@ for (const expectedHelper of [
   "sanitizeConnectionCause",
 ]) {
   assertIncludes(debugErrorHelpers, expectedHelper);
+}
+
+for (const expectedTokenHelper of [
+  "createSignedSuperAdminToken",
+  "debug-cli-super-admin@openseat.local",
+  "exp: now + 60 * 10",
+  "createHmac",
+]) {
+  assertIncludes(debugTokenHelpers, expectedTokenHelper);
 }
 
 for (const requiredReadmeContent of [

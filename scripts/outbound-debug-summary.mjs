@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { sanitizeConnectionError } from "./lib/debug-errors.mjs";
+import { createSignedSuperAdminToken } from "./lib/debug-token.mjs";
 
 const args = process.argv.slice(2);
 
@@ -140,7 +141,8 @@ async function resolveRestaurantId(params) {
 }
 
 const apiUrl = (readOption("api-url", process.env.OPENSEAT_API_URL ?? "http://127.0.0.1:3001") ?? "").replace(/\/$/, "");
-const token = readOption("token", process.env.OPENSEAT_TOKEN ?? "");
+const explicitToken = readOption("token", process.env.OPENSEAT_TOKEN ?? "");
+const token = explicitToken || createSignedSuperAdminToken();
 const explicitRestaurantId = readOption("restaurant-id", process.env.OPENSEAT_RESTAURANT_ID ?? "");
 const restaurantSlug = readOption("restaurant-slug", process.env.OPENSEAT_RESTAURANT_SLUG ?? "");
 const tokenRestaurantId = decodeTokenRestaurantId(token);
@@ -152,6 +154,7 @@ if (!token || (!explicitRestaurantId && !restaurantSlug && !tokenRestaurantId)) 
   console.error("Missing OPENSEAT_TOKEN and a restaurant selector.");
   console.error("Usage: OPENSEAT_TOKEN=... OPENSEAT_RESTAURANT_ID=... pnpm debug:outbound");
   console.error("   or: OPENSEAT_TOKEN=... OPENSEAT_RESTAURANT_SLUG=... pnpm debug:outbound");
+  console.error("If JWT_SECRET is available, the command can synthesize a short-lived super-admin token.");
   console.error("Restaurant admin tokens can also infer the selector from their JWT restaurantId.");
   process.exit(1);
 }
@@ -182,6 +185,7 @@ const messages = Array.isArray(result.body?.messages) ? result.body.messages : [
 console.log("Outbound Message Debug Summary");
 console.log(`restaurantId=${restaurantId}`);
 if (restaurant.source) console.log(`restaurantIdSource=${restaurant.source}`);
+console.log(`tokenSource=${explicitToken ? "provided" : "jwt_secret"}`);
 if (restaurant.restaurantSlug) console.log(`restaurantSlug=${restaurant.restaurantSlug}`);
 if (restaurant.restaurantName) console.log(`restaurantName=${restaurant.restaurantName}`);
 if (restaurant.requestId) console.log(`restaurantLookupRequestId=${restaurant.requestId}`);

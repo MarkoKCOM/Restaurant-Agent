@@ -207,7 +207,7 @@ async function markSmokeEngagementJobSent(jobId, type = "thank_you") {
   if (!isUuid(jobId)) {
     throw new Error(`Refusing to cleanup invalid engagement job id: ${jobId}`);
   }
-  if (!["thank_you", "review_request", "leaderboard_summary", "lucky_spin_reward", "challenge_completion", "streak_broken"].includes(type)) {
+  if (!["thank_you", "review_request", "leaderboard_summary", "lucky_spin_reward", "challenge_completion", "streak_broken", "win_back_30"].includes(type)) {
     throw new Error(`Refusing to cleanup unsupported engagement job type: ${type}`);
   }
 
@@ -1290,6 +1290,17 @@ async function main() {
   }
   if (!campaignSampleIdsWithOptOut.includes(optedOutCampaignGuestId)) {
     throw new Error(`Campaign audience preview did not include opted-out guest when requested: ${JSON.stringify(campaignPreviewWithOptOut.preview ?? null)}`);
+  }
+  await request(`/api/v1/engagement/win-back/check?restaurantId=${restaurantId}`, {
+    method: "POST",
+    token,
+  });
+  for (const guestId of [campaignGuestId, optedOutCampaignGuestId]) {
+    const campaignGuestJobs = await request(`/api/v1/engagement/jobs?restaurantId=${restaurantId}&guestId=${guestId}`, { token });
+    const campaignWinBackJob = (campaignGuestJobs.jobs ?? []).find((job) => job.type === "win_back_30");
+    if (campaignWinBackJob?.status === "pending") {
+      await markSmokeEngagementJobSent(campaignWinBackJob.id, "win_back_30");
+    }
   }
 
   const tableStatus = await request(`/api/v1/restaurants/${restaurantId}/table-status`, { token });

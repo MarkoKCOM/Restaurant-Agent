@@ -592,6 +592,25 @@ export function GuestDetailPage() {
                 <p className="mt-3 text-xs text-gray-500">{t.guestDetail.memberReferralCode}: {membershipSummary.summary.referrals.referralCode}</p>
               )}
             </div>
+            <div className="rounded-xl border border-gray-200 p-4 md:col-span-2">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-3">
+                <h4 className="font-medium text-gray-900">{t.guestDetail.memberMenuBadges}</h4>
+                <span className="text-xs text-gray-500">
+                  {membershipSummary.summary.menuExploration.categoryCount} {t.guestDetail.memberMenuCategories}
+                </span>
+              </div>
+              {membershipSummary.summary.menuExploration.badges.length === 0 ? (
+                <p className="text-sm text-gray-500">{t.guestDetail.memberNoMenuBadges}</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {membershipSummary.summary.menuExploration.badges.map((badge) => (
+                    <span key={badge.key} className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800">
+                      {lang === "he" ? badge.nameHe : badge.nameEn}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -110,6 +110,7 @@ function summarizeSmoke(report) {
       || step.step === "gamification.expired-challenge.cleanup"
       || step.step === "gamification.challenge-idempotency"
       || step.step === "loyalty.off-peak-multiplier"
+      || step.step === "gamification.menu-exploration"
     )
   );
   if (operationalSteps.length > 0) {
@@ -135,6 +136,8 @@ function summarizeSmoke(report) {
         console.log(`- gamification.challenge-idempotency: progress=${step.progress ?? "?"}/${step.target ?? "?"} points=${step.pointsBefore ?? "?"}->${step.pointsAfter ?? "?"} duplicateAward=${step.pointsBefore === step.pointsAfter ? "no" : "yes"}`);
       } else if (step.step === "loyalty.off-peak-multiplier") {
         console.log(`- loyalty.off-peak-multiplier: visitPoints=${step.actualVisitPoints ?? "?"}/${step.expectedVisitPoints ?? "?"} reason=${step.reason ?? "?"}`);
+      } else if (step.step === "gamification.menu-exploration") {
+        console.log(`- gamification.menu-exploration: categories=${step.categoryCount ?? "?"} badges=${asArray(step.badges).join(",") || "none"}`);
       }
     }
   }
@@ -213,6 +216,7 @@ function summarizeDebugBundleManifest(report) {
   const gamification = adminDiagnostics.gamification ?? {};
   const gamificationChallenges = gamification.challenges ?? {};
   const gamificationReferrals = gamification.referrals ?? {};
+  const gamificationMenuExploration = gamification.menuExploration ?? {};
   const engagement = adminDiagnostics.engagement ?? {};
   const engagementTotals = engagement.totals ?? {};
   const agentMembershipIntents = highlights.agentMembershipIntents ?? {};
@@ -263,7 +267,7 @@ function summarizeDebugBundleManifest(report) {
   if (gamification.status) {
     printLine(
       "Gamification",
-      `${gamification.status} activeChallenges=${gamificationChallenges.active ?? "?"} smokeChallenges=${gamificationChallenges.activeSmokeChallenges ?? "?"} stuckChallenges=${gamificationChallenges.stuckCompletions ?? "?"} duplicateProgress=${gamificationChallenges.duplicateProgressGroups ?? "?"} referralCodes=${gamificationReferrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${gamificationReferrals.referrerCreditMismatches ?? "?"}`,
+      `${gamification.status} activeChallenges=${gamificationChallenges.active ?? "?"} smokeChallenges=${gamificationChallenges.activeSmokeChallenges ?? "?"} stuckChallenges=${gamificationChallenges.stuckCompletions ?? "?"} duplicateProgress=${gamificationChallenges.duplicateProgressGroups ?? "?"} referralCodes=${gamificationReferrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${gamificationReferrals.referrerCreditMismatches ?? "?"} menuBadgeGuests=${gamificationMenuExploration.guestsWithBadges ?? "?"}`,
     );
   }
   if (engagement.status) {

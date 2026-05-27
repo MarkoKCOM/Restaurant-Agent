@@ -239,6 +239,19 @@ export interface StreakSummary {
   lastVisitWeek: string;
 }
 
+export interface MenuExplorationBadge {
+  key: string;
+  nameHe: string;
+  nameEn: string;
+  unlockedAt: string;
+}
+
+export interface MenuExplorationSummary {
+  categoriesTried: string[];
+  categoryCount: number;
+  badges: MenuExplorationBadge[];
+}
+
 export interface MembershipSummary {
   guestId: string;
   restaurantId: string;
@@ -263,5 +276,6 @@ export interface MembershipSummary {
   };
   referrals: ReferralSummary;
   streak: StreakSummary;
+  menuExploration: MenuExplorationSummary;
   optedOutCampaigns: boolean;
 }

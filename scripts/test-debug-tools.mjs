@@ -93,6 +93,7 @@ const smokePath = await writeJson("smoke.json", {
     { step: "gamification.challenge-progress", progress: 1, target: 1, status: "completed", completed: true },
     { step: "gamification.challenge-idempotency", challengeId: "challenge-test-1", progress: 1, target: 1, completed: true, pointsBefore: 15, pointsAfter: 15 },
     { step: "gamification.challenge.cleanup", challengeId: "challenge-test-1", isActive: false },
+    { step: "gamification.menu-exploration", categoryCount: 2, badges: ["first_taste", "menu_explorer"] },
   ],
   requests: [
     {
@@ -129,6 +130,7 @@ assertIncludes(smokeOutput, "gamification.expired-challenge.cleanup: active=no c
 assertIncludes(smokeOutput, "gamification.challenge-progress: progress=1/1 status=completed completed=yes");
 assertIncludes(smokeOutput, "gamification.challenge-idempotency: progress=1/1 points=15->15 duplicateAward=no");
 assertIncludes(smokeOutput, "gamification.challenge.cleanup: active=no challengeId=challenge-test-1");
+assertIncludes(smokeOutput, "gamification.menu-exploration: categories=2 badges=first_taste,menu_explorer");
 assertIncludes(smokeOutput, "Unhandled HTTP failures: 1");
 assertIncludes(smokeOutput, "POST /api/v1/reservations -> 500 code=INTERNAL_ERROR requestId=smoke-test-2");
 assertIncludes(smokeOutput, 'pnpm debug:logs smoke-test-2 --since "2 hours ago"');
@@ -283,6 +285,9 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
           guestsWithReferralCode: 7,
           referrerCreditMismatches: 1,
         },
+        menuExploration: {
+          guestsWithBadges: 5,
+        },
       },
       engagement: {
         status: "attention",
@@ -315,7 +320,7 @@ assertIncludes(debugBundleManifestOutput, "Membership processing: ok open=2 atte
 assertIncludes(debugBundleManifestOutput, "Membership repair summary: passed output=/tmp/openseat-debug-bundle/membership-debug-summary.txt");
 assertIncludes(
   debugBundleManifestOutput,
-  "Gamification: attention activeChallenges=2 smokeChallenges=1 stuckChallenges=1 duplicateProgress=1 referralCodes=7 referralCreditMismatches=1",
+  "Gamification: attention activeChallenges=2 smokeChallenges=1 stuckChallenges=1 duplicateProgress=1 referralCodes=7 referralCreditMismatches=1 menuBadgeGuests=5",
 );
 assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overdue=1 failed=1 skipped=3");
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");

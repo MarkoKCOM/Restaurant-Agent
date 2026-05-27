@@ -188,6 +188,16 @@ export interface GamificationDiagnostic {
       bonusCount: number;
     }>;
   };
+  menuExploration?: {
+    guestsWithCategories: number;
+    guestsWithBadges: number;
+    maxCategoryCount: number;
+    badgeSamples: Array<{
+      guestId: string;
+      categoryCount: number;
+      badgeCount: number;
+    }>;
+  };
   error?: DiagnosticCheck["error"];
 }
 
@@ -422,6 +432,8 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
       referralRows,
       welcomeBonusRows,
       referrerMismatchRows,
+      menuExplorationRows,
+      menuExplorationSampleRows,
     ] = await Promise.all([
       db.execute(sql`
         select
@@ -542,11 +554,50 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
         bonus_count: number;
         mismatch_count: number;
       }>>,
+      db.execute(sql`
+        select
+          count(*) filter (
+            where jsonb_typeof(preferences->'menuExploration'->'categoriesTried') = 'array'
+              and jsonb_array_length(preferences->'menuExploration'->'categoriesTried') > 0
+          )::int as guests_with_categories,
+          count(*) filter (
+            where jsonb_typeof(preferences->'menuExploration'->'badges') = 'array'
+              and jsonb_array_length(preferences->'menuExploration'->'badges') > 0
+          )::int as guests_with_badges,
+          coalesce(max(
+            case
+              when jsonb_typeof(preferences->'menuExploration'->'categoriesTried') = 'array'
+              then jsonb_array_length(preferences->'menuExploration'->'categoriesTried')
+              else 0
+            end
+          ), 0)::int as max_category_count
+        from ${guests}
+      `) as Promise<Array<{
+        guests_with_categories: number;
+        guests_with_badges: number;
+        max_category_count: number;
+      }>>,
+      db.execute(sql`
+        select
+          id as guest_id,
+          jsonb_array_length(preferences->'menuExploration'->'categoriesTried')::int as category_count,
+          jsonb_array_length(preferences->'menuExploration'->'badges')::int as badge_count
+        from ${guests}
+        where jsonb_typeof(preferences->'menuExploration'->'badges') = 'array'
+          and jsonb_array_length(preferences->'menuExploration'->'badges') > 0
+        order by badge_count desc, category_count desc
+        limit 5
+      `) as Promise<Array<{
+        guest_id: string;
+        category_count: number;
+        badge_count: number;
+      }>>,
     ]);
     const challengeSummary = challengeRows[0];
     const progressSummary = progressRows[0];
     const referralSummary = referralRows[0];
     const welcomeBonusSummary = welcomeBonusRows[0];
+    const menuExplorationSummary = menuExplorationRows[0];
     const stuckCompletions = Number(stuckChallengeRows[0]?.stuck_count ?? 0);
     const duplicateProgressGroups = Number(duplicateProgressRows[0]?.duplicate_group_count ?? 0);
     const activeSmokeChallenges = Number(challengeSummary?.active_smoke_challenges ?? 0);
@@ -590,6 +641,16 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
           referrerId: row.referrer_id,
           referralCount: Number(row.referral_count),
           bonusCount: Number(row.bonus_count),
+        })),
+      },
+      menuExploration: {
+        guestsWithCategories: Number(menuExplorationSummary?.guests_with_categories ?? 0),
+        guestsWithBadges: Number(menuExplorationSummary?.guests_with_badges ?? 0),
+        maxCategoryCount: Number(menuExplorationSummary?.max_category_count ?? 0),
+        badgeSamples: menuExplorationSampleRows.map((row) => ({
+          guestId: row.guest_id,
+          categoryCount: Number(row.category_count),
+          badgeCount: Number(row.badge_count),
         })),
       },
     };

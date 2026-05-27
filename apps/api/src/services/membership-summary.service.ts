@@ -5,6 +5,7 @@ import { checkStampCard } from "./loyalty.service.js";
 import { getReferralStats } from "./referral.service.js";
 import { getStreak } from "./challenge.service.js";
 import { getGuestClaims } from "./reward-claims.service.js";
+import { getMenuExplorationFromPreferences } from "./visit.service.js";
 
 export interface MembershipSummary {
   guestId: string;
@@ -61,6 +62,16 @@ export interface MembershipSummary {
     current: number;
     best: number;
     lastVisitWeek: string;
+  };
+  menuExploration: {
+    categoriesTried: string[];
+    categoryCount: number;
+    badges: Array<{
+      key: string;
+      nameHe: string;
+      nameEn: string;
+      unlockedAt: string;
+    }>;
   };
   optedOutCampaigns: boolean;
 }
@@ -144,6 +155,7 @@ export async function getMembershipSummary(
       totalReferralPoints: referralStats.totalPointsEarned,
     },
     streak,
+    menuExploration: getMenuExplorationFromPreferences(guest.preferences),
     optedOutCampaigns: guest.optedOutCampaigns,
   };
 }

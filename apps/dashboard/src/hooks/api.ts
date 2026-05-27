@@ -541,6 +541,11 @@ export interface MembershipSummaryData {
   };
   referrals: { referralCode?: string; referralCount: number; totalReferralPoints: number; referredBy?: string };
   streak: { current: number; best: number; lastVisitWeek: string };
+  menuExploration: {
+    categoriesTried: string[];
+    categoryCount: number;
+    badges: { key: string; nameHe: string; nameEn: string; unlockedAt: string }[];
+  };
   optedOutCampaigns: boolean;
 }
 

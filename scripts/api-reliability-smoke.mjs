@@ -491,6 +491,17 @@ async function main() {
   });
   record("visits.create", { visitId: visit.visit.id });
 
+  const membershipSummaryAfterVisit = await request(`/api/v1/loyalty/${reservation.guestId}/summary`, { token });
+  const menuExploration = membershipSummaryAfterVisit.summary?.menuExploration;
+  const badgeKeys = (menuExploration?.badges ?? []).map((badge) => badge.key);
+  record("gamification.menu-exploration", {
+    categoryCount: menuExploration?.categoryCount ?? null,
+    badges: badgeKeys,
+  });
+  if (!badgeKeys.includes("menu_explorer")) {
+    throw new Error(`Visit items did not unlock menu exploration badge: badges=${badgeKeys.join(",") || "none"}`);
+  }
+
   const insights = await request(`/api/v1/visits/${reservation.guestId}/insights`, { token });
   record("visits.insights", {
     favoriteItems: insights.insights?.favoriteItems?.length ?? 0,

@@ -265,6 +265,7 @@ async function captureDiagnosticsHighlights(commandRecord) {
         status: gamification.status,
         challenges: gamification.challenges,
         referrals: gamification.referrals,
+        menuExploration: gamification.menuExploration,
         error: gamification.error,
       },
       engagement: {
@@ -346,8 +347,9 @@ async function writeReadme() {
       const gamification = adminDiagnostics.gamification ?? {};
       const challenges = gamification.challenges ?? {};
       const referrals = gamification.referrals ?? {};
+      const menuExploration = gamification.menuExploration ?? {};
       lines.push(
-        `- Gamification: ${gamification.status ?? "unknown"} activeChallenges=${challenges.active ?? "?"} smokeChallenges=${challenges.activeSmokeChallenges ?? "?"} stuckChallenges=${challenges.stuckCompletions ?? "?"} duplicateProgress=${challenges.duplicateProgressGroups ?? "?"} referralCodes=${referrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${referrals.referrerCreditMismatches ?? "?"}`,
+        `- Gamification: ${gamification.status ?? "unknown"} activeChallenges=${challenges.active ?? "?"} smokeChallenges=${challenges.activeSmokeChallenges ?? "?"} stuckChallenges=${challenges.stuckCompletions ?? "?"} duplicateProgress=${challenges.duplicateProgressGroups ?? "?"} referralCodes=${referrals.guestsWithReferralCode ?? "?"} referralCreditMismatches=${referrals.referrerCreditMismatches ?? "?"} menuBadgeGuests=${menuExploration.guestsWithBadges ?? "?"}`,
       );
       const engagement = adminDiagnostics.engagement ?? {};
       const engagementTotals = engagement.totals ?? {};

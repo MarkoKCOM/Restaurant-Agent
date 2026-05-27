@@ -7,6 +7,10 @@
   - restaurant `dashboardConfig.loyalty.offPeakMultipliers` accepts enabled time windows, optional day filters, and multiplier values
   - reservation completion multiplies visit-completion points by the matching off-peak window while preserving existing tier, stamp, host bonus, and idempotency behavior
   - API smoke temporarily configures an off-peak window around the actual created reservation time and verifies the visit-completion transaction receives doubled points
+- Menu exploration badges:
+  - visit logs now update `guest.preferences.menuExploration` from item categories and unlock exploration badges at category milestones
+  - membership summary and the guest detail membership panel expose menu badge progress
+  - diagnostics/debug-bundle summaries include menu badge adoption, and API smoke verifies the `menu_explorer` badge unlocks from visit items
 - WhatsApp-ready referral retrieval/share flow:
   - `GET /api/v1/loyalty/:guestId/referral-share` generates or returns a member referral code
   - response includes referral stats and Hebrew/English share copy

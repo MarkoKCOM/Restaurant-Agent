@@ -479,6 +479,9 @@ export const translations = {
       memberReferrals: "הפניות",
       memberStreak: "רצף ביקורים",
       memberStreakBest: "שיא",
+      memberMenuBadges: "תגי חקר תפריט",
+      memberMenuCategories: "קטגוריות שנוסו",
+      memberNoMenuBadges: "אין עדיין תגי תפריט",
       // Hospitality signals
       signalBirthday: "יום הולדת",
       signalCelebration: "חגיגה",
@@ -1184,6 +1187,9 @@ export const translations = {
       memberReferrals: "Referrals",
       memberStreak: "Visit streak",
       memberStreakBest: "Best",
+      memberMenuBadges: "Menu exploration badges",
+      memberMenuCategories: "categories tried",
+      memberNoMenuBadges: "No menu badges yet",
       // Hospitality signals
       signalBirthday: "Birthday",
       signalCelebration: "Celebration",

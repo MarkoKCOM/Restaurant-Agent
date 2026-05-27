@@ -83,7 +83,7 @@
 - [ ] 8.4 Implement social sharing templates — branded images for tier promotions, challenge completions, streak milestones
 - [ ] 8.5 Implement lucky spin — configurable prize pool with weighted probabilities, trigger every Nth visit, WhatsApp reward delivery
 - [x] 8.6 Implement group dining rewards — bonus "host" points for parties above threshold (default: 6+)
-- [ ] 8.7 Implement menu exploration badges — track categories tried, award badges for exploration milestones
+- [x] 8.7 Implement menu exploration badges — track categories tried, award badges for exploration milestones
 - [x] 8.8 Implement off-peak bonus multipliers — configurable time windows with 2x/3x point multipliers
 - [ ] 8.9 Implement birthday week challenge — auto-created 7 days before birthday, special reward + bonus points
 - [ ] 8.10 Implement opt-in leaderboard — monthly rankings, top 3 rewards, WhatsApp summary to participants

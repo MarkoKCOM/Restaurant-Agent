@@ -50,6 +50,110 @@ export interface GuestInsights {
   totalVisits: number;
 }
 
+export interface MenuExplorationBadge {
+  key: string;
+  nameHe: string;
+  nameEn: string;
+  unlockedAt: string;
+}
+
+export interface MenuExplorationSummary {
+  categoriesTried: string[];
+  categoryCount: number;
+  badges: MenuExplorationBadge[];
+}
+
+const MENU_EXPLORATION_BADGES = [
+  { key: "first_taste", threshold: 1, nameHe: "טעימה ראשונה", nameEn: "First taste" },
+  { key: "menu_explorer", threshold: 2, nameHe: "חוקר תפריט", nameEn: "Menu explorer" },
+  { key: "menu_regular", threshold: 4, nameHe: "מכיר את התפריט", nameEn: "Menu regular" },
+  { key: "menu_adventurer", threshold: 6, nameHe: "הרפתקן תפריט", nameEn: "Menu adventurer" },
+] as const;
+
+function normalizeCategory(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toLowerCase().replace(/\s+/g, "_").slice(0, 60);
+  return normalized.length > 0 ? normalized : null;
+}
+
+function parseGuestPreferences(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+export function getMenuExplorationFromPreferences(preferences: unknown): MenuExplorationSummary {
+  const parsed = parseGuestPreferences(preferences);
+  const rawExploration = parsed.menuExploration;
+  const exploration = rawExploration && typeof rawExploration === "object" && !Array.isArray(rawExploration)
+    ? rawExploration as Record<string, unknown>
+    : {};
+  const categoriesTried = Array.isArray(exploration.categoriesTried)
+    ? [...new Set(exploration.categoriesTried.map(normalizeCategory).filter((category): category is string => Boolean(category)))]
+    : [];
+  const badges = Array.isArray(exploration.badges)
+    ? exploration.badges.flatMap((badge) => {
+      if (!badge || typeof badge !== "object") return [];
+      const item = badge as Partial<MenuExplorationBadge>;
+      if (typeof item.key !== "string" || typeof item.nameHe !== "string" || typeof item.nameEn !== "string") {
+        return [];
+      }
+      return [{
+        key: item.key,
+        nameHe: item.nameHe,
+        nameEn: item.nameEn,
+        unlockedAt: typeof item.unlockedAt === "string" ? item.unlockedAt : new Date(0).toISOString(),
+      }];
+    })
+    : [];
+
+  return {
+    categoriesTried,
+    categoryCount: categoriesTried.length,
+    badges,
+  };
+}
+
+function applyMenuExplorationBadges(
+  preferences: unknown,
+  items: LogVisitInput["items"],
+): { preferences: Record<string, unknown>; exploration: MenuExplorationSummary; changed: boolean } {
+  const prefs = parseGuestPreferences(preferences);
+  const existing = getMenuExplorationFromPreferences(prefs);
+  const itemCategories = (items ?? [])
+    .map((item) => normalizeCategory(item.category))
+    .filter((category): category is string => Boolean(category));
+  const categoriesTried = [...new Set([...existing.categoriesTried, ...itemCategories])].sort();
+  const existingBadgesByKey = new Map(existing.badges.map((badge) => [badge.key, badge]));
+  const now = new Date().toISOString();
+  const badges = MENU_EXPLORATION_BADGES
+    .filter((badge) => categoriesTried.length >= badge.threshold)
+    .map((badge) => existingBadgesByKey.get(badge.key) ?? {
+      key: badge.key,
+      nameHe: badge.nameHe,
+      nameEn: badge.nameEn,
+      unlockedAt: now,
+    });
+  const exploration = {
+    categoriesTried,
+    categoryCount: categoriesTried.length,
+    badges,
+  };
+  const changed =
+    categoriesTried.length !== existing.categoriesTried.length
+    || badges.length !== existing.badges.length;
+
+  return {
+    preferences: {
+      ...prefs,
+      menuExploration: exploration,
+    },
+    exploration,
+    changed,
+  };
+}
+
 // ── Core Functions ────────────────────────────────────
 
 export async function logVisit(data: LogVisitInput) {
@@ -84,11 +188,15 @@ export async function logVisit(data: LogVisitInput) {
 
   if (guest) {
     const newVisitCount = guest.visitCount + 1;
+    const menuExploration = applyMenuExplorationBadges(guest.preferences, data.items);
     const updates: Record<string, unknown> = {
       visitCount: newVisitCount,
       lastVisitDate: data.date,
       updatedAt: new Date(),
     };
+    if (menuExploration.changed) {
+      updates.preferences = menuExploration.preferences;
+    }
     if (!guest.firstVisitDate) {
       updates.firstVisitDate = data.date;
     }

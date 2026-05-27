@@ -138,6 +138,7 @@ function summarizeSmoke(report) {
       || step.step === "engagement.anniversary-check"
       || step.step === "engagement.win-back-overdue"
       || step.step === "campaign.audience-preview"
+      || step.step === "campaign.creation-scheduling"
     )
   );
   if (operationalSteps.length > 0) {
@@ -220,6 +221,8 @@ function summarizeSmoke(report) {
         console.log(`- engagement.win-back-overdue: scheduled30=${step.scheduled30 ?? "?"} existing=${step.skippedExisting ?? "?"} policy=${step.skippedPolicy ?? "?"} status=${step.jobStatus ?? "?"}`);
       } else if (step.step === "campaign.audience-preview") {
         console.log(`- campaign.audience-preview: matched=${step.matchedCount ?? "?"} withOptOut=${step.matchedWithOptOutCount ?? "?"} excludedOptedOut=${step.excludedOptedOut ?? "?"} target=${step.hasTargetGuest === true ? "yes" : "no"} optedOutDefault=${step.includesOptedOutByDefault === true ? "yes" : "no"} optedOutRequested=${step.includesOptedOutWhenRequested === true ? "yes" : "no"}`);
+      } else if (step.step === "campaign.creation-scheduling") {
+        console.log(`- campaign.creation-scheduling: templates=${step.templateCount ?? "?"} winBack=${step.hasWinBackTemplate === true ? "yes" : "no"} quietWarning=${step.quietWarning === true ? "yes" : "no"} adjusted=${step.adjusted === true ? "yes" : "no"} status=${step.status ?? "?"} variables=${asArray(step.variables).join(",") || "none"}`);
       }
     }
   }

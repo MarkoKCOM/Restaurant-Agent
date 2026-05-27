@@ -1,7 +1,12 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
-import { previewCampaignAudience } from "../services/campaign.service.js";
+import {
+  createCampaign,
+  getCampaignTemplates,
+  previewCampaignAudience,
+  previewCampaignSchedule,
+} from "../services/campaign.service.js";
 
 const audienceFilterSchema = z.object({
   minVisits: z.coerce.number().int().min(0).optional(),
@@ -21,6 +26,28 @@ const audiencePreviewSchema = z.object({
   restaurantId: z.string().uuid(),
   filter: audienceFilterSchema.default({}),
   sampleLimit: z.coerce.number().int().min(0).max(50).optional(),
+});
+
+const schedulePreviewSchema = z.object({
+  restaurantId: z.string().uuid(),
+  scheduledAt: z.coerce.date().optional(),
+  allowQuietHoursAdjustment: z.boolean().optional(),
+});
+
+const createCampaignSchema = z.object({
+  restaurantId: z.string().uuid(),
+  name: z.string().min(1).max(255),
+  templateId: z.enum([
+    "we_miss_you",
+    "weekend_special",
+    "new_menu_item",
+    "birthday_month",
+    "loyalty_milestone",
+  ]).optional(),
+  templateText: z.string().min(1),
+  audienceFilter: audienceFilterSchema.default({}),
+  scheduledAt: z.coerce.date().optional(),
+  allowQuietHoursAdjustment: z.boolean().optional(),
 });
 
 function sendCampaignError(
@@ -48,10 +75,15 @@ function sendCampaignError(
     error: message,
     code,
     requestId: request.id,
+    ...context,
   });
 }
 
 export async function campaignRoutes(app: FastifyInstance) {
+  app.get("/templates", async () => ({
+    templates: getCampaignTemplates(),
+  }));
+
   app.post("/audience-preview", async (request, reply) => {
     const parsed = audiencePreviewSchema.parse(request.body ?? {});
     const err = enforceTenant(request.user!, parsed.restaurantId) ?? requireRestaurantAdmin(request.user!);
@@ -80,5 +112,78 @@ export async function campaignRoutes(app: FastifyInstance) {
     );
 
     return { preview };
+  });
+
+  app.post("/schedule-preview", async (request, reply) => {
+    const parsed = schedulePreviewSchema.parse(request.body ?? {});
+    const err = enforceTenant(request.user!, parsed.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return sendCampaignError(request, reply, 403, err, "CAMPAIGN_FORBIDDEN", {
+        restaurantId: parsed.restaurantId,
+      });
+    }
+
+    const schedule = await previewCampaignSchedule({
+      restaurantId: parsed.restaurantId,
+      scheduledAt: parsed.scheduledAt,
+      allowQuietHoursAdjustment: parsed.allowQuietHoursAdjustment,
+    });
+
+    return { schedule };
+  });
+
+  app.post("/", async (request, reply) => {
+    const parsed = createCampaignSchema.parse(request.body ?? {});
+    const err = enforceTenant(request.user!, parsed.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return sendCampaignError(request, reply, 403, err, "CAMPAIGN_FORBIDDEN", {
+        restaurantId: parsed.restaurantId,
+      });
+    }
+
+    try {
+      const result = await createCampaign({
+        restaurantId: parsed.restaurantId,
+        name: parsed.name,
+        templateId: parsed.templateId,
+        templateText: parsed.templateText,
+        audienceFilter: parsed.audienceFilter,
+        scheduledAt: parsed.scheduledAt,
+        allowQuietHoursAdjustment: parsed.allowQuietHoursAdjustment,
+      });
+
+      request.log.info(
+        {
+          restaurantId: parsed.restaurantId,
+          requestId: request.id,
+          campaignId: result.campaign.id,
+          status: result.campaign.status,
+          scheduledAt: result.campaign.scheduledAt,
+          templateId: parsed.templateId,
+          variables: result.variables,
+          scheduleWarnings: result.schedule.warnings.map((warning) => warning.code),
+        },
+        "Campaign created",
+      );
+
+      return reply.status(201).send(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Campaign creation failed";
+      const schedule = err instanceof Error && "schedule" in err
+        ? (err as Error & { schedule?: unknown }).schedule
+        : undefined;
+      if (message.includes("Unknown campaign personalization variables")) {
+        return sendCampaignError(request, reply, 400, message, "CAMPAIGN_TEMPLATE_VARIABLE_UNKNOWN", {
+          restaurantId: parsed.restaurantId,
+        });
+      }
+      if (message.includes("schedule requires adjustment")) {
+        return sendCampaignError(request, reply, 400, message, "CAMPAIGN_SCHEDULE_REQUIRES_ADJUSTMENT", {
+          restaurantId: parsed.restaurantId,
+          schedule,
+        });
+      }
+      throw err;
+    }
   });
 }

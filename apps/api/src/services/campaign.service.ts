@@ -1,6 +1,11 @@
 import { desc, eq } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { guests, visitLogs } from "../db/schema.js";
+import { campaigns, guests, visitLogs } from "../db/schema.js";
+import {
+  applyEngagementQuietHours,
+  getRestaurantEngagementQuietHours,
+  isDateInEngagementQuietHours,
+} from "./engagement.service.js";
 
 export interface CampaignAudienceFilter {
   minVisits?: number;
@@ -35,6 +40,103 @@ export interface CampaignAudiencePreview {
     optedOutCampaigns: boolean;
   }>;
 }
+
+export const CAMPAIGN_PERSONALIZATION_VARIABLES = [
+  "guest_name",
+  "last_visit_date",
+  "days_since_last_visit",
+  "points_balance",
+  "reward_teaser",
+] as const;
+
+export type CampaignPersonalizationVariable = typeof CAMPAIGN_PERSONALIZATION_VARIABLES[number];
+export type CampaignTemplateId =
+  | "we_miss_you"
+  | "weekend_special"
+  | "new_menu_item"
+  | "birthday_month"
+  | "loyalty_milestone";
+
+export interface CampaignTemplateDefinition {
+  id: CampaignTemplateId;
+  name: string;
+  category: "win_back" | "promotion" | "menu" | "birthday" | "loyalty";
+  description: string;
+  messageHe: string;
+  messageEn: string;
+  recommendedFilter: CampaignAudienceFilter;
+  variables: CampaignPersonalizationVariable[];
+}
+
+export interface CampaignSchedulePreview {
+  requestedScheduledAt: string | null;
+  effectiveScheduledAt: string | null;
+  status: "draft" | "scheduled";
+  quietHours: {
+    enabled: boolean;
+    start: string;
+    end: string;
+    timeZone: string;
+  };
+  warnings: Array<{
+    code: "CAMPAIGN_SCHEDULE_QUIET_HOURS" | "CAMPAIGN_SCHEDULE_PAST";
+    message: string;
+    suggestedScheduledAt?: string;
+  }>;
+}
+
+export const CAMPAIGN_TEMPLATES: CampaignTemplateDefinition[] = [
+  {
+    id: "we_miss_you",
+    name: "We miss you",
+    category: "win_back",
+    description: "Bring lapsed regulars back with a clear reason to return.",
+    messageHe: "היי {{guest_name}}, התגעגענו אליך. עברו {{days_since_last_visit}} ימים מהביקור האחרון - נשמח לראות אותך שוב עם {{reward_teaser}}.",
+    messageEn: "Hi {{guest_name}}, we miss you. It has been {{days_since_last_visit}} days since your last visit - come back for {{reward_teaser}}.",
+    recommendedFilter: { lapsedDays: 30, minVisits: 1 },
+    variables: ["guest_name", "days_since_last_visit", "reward_teaser"],
+  },
+  {
+    id: "weekend_special",
+    name: "Weekend special",
+    category: "promotion",
+    description: "Fill priority weekend slots with members who already know the restaurant.",
+    messageHe: "היי {{guest_name}}, יש לחברי המועדון סוף שבוע מיוחד: {{reward_teaser}}. להזמין לך מקום?",
+    messageEn: "Hi {{guest_name}}, members get a weekend special: {{reward_teaser}}. Want me to book you a table?",
+    recommendedFilter: { minVisits: 2, tiers: ["silver", "gold"] },
+    variables: ["guest_name", "reward_teaser"],
+  },
+  {
+    id: "new_menu_item",
+    name: "New menu item",
+    category: "menu",
+    description: "Invite engaged members to try something new.",
+    messageHe: "היי {{guest_name}}, הכנסנו מנה חדשה לתפריט וחשבנו שתאהב. לחברי המועדון יש {{reward_teaser}}.",
+    messageEn: "Hi {{guest_name}}, we added something new to the menu and thought of you. Members get {{reward_teaser}}.",
+    recommendedFilter: { minVisits: 1 },
+    variables: ["guest_name", "reward_teaser"],
+  },
+  {
+    id: "birthday_month",
+    name: "Birthday month offer",
+    category: "birthday",
+    description: "Give birthday-month members a personal reason to celebrate in-house.",
+    messageHe: "היי {{guest_name}}, חודש יום ההולדת שלך אצלנו במועדון כולל {{reward_teaser}}. לחגוג אצלנו?",
+    messageEn: "Hi {{guest_name}}, your birthday month club benefit is {{reward_teaser}}. Want to celebrate with us?",
+    recommendedFilter: { minVisits: 1 },
+    variables: ["guest_name", "reward_teaser"],
+  },
+  {
+    id: "loyalty_milestone",
+    name: "Loyalty milestone approaching",
+    category: "loyalty",
+    description: "Nudge members who are close to their next club benefit.",
+    messageHe: "היי {{guest_name}}, יש לך {{points_balance}} נקודות ואתה קרוב להטבה הבאה. הביקור הבא יכול לפתוח לך {{reward_teaser}}.",
+    messageEn: "Hi {{guest_name}}, you have {{points_balance}} points and you are close to your next benefit. Your next visit can unlock {{reward_teaser}}.",
+    recommendedFilter: { minVisits: 2 },
+    variables: ["guest_name", "points_balance", "reward_teaser"],
+  },
+];
 
 function dateDaysAgo(days: number): string {
   const date = new Date();
@@ -72,6 +174,140 @@ function appliedFilters(filter: CampaignAudienceFilter): string[] {
   if (filter.languages?.length) result.push(`languages:${filter.languages.join(",")}`);
   result.push(`includeOptedOut:${filter.includeOptedOut === true ? "yes" : "no"}`);
   return result;
+}
+
+function extractTemplateVariables(templateText: string): string[] {
+  return [...templateText.matchAll(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g)]
+    .map((match) => match[1]);
+}
+
+export function validateCampaignTemplateText(templateText: string): {
+  variables: string[];
+  unknownVariables: string[];
+} {
+  const variables = [...new Set(extractTemplateVariables(templateText))];
+  const allowed = new Set<string>(CAMPAIGN_PERSONALIZATION_VARIABLES);
+  return {
+    variables,
+    unknownVariables: variables.filter((variable) => !allowed.has(variable)),
+  };
+}
+
+export function getCampaignTemplates() {
+  return CAMPAIGN_TEMPLATES;
+}
+
+export async function previewCampaignSchedule(params: {
+  restaurantId: string;
+  scheduledAt?: Date | null;
+  allowQuietHoursAdjustment?: boolean;
+  now?: Date;
+}): Promise<CampaignSchedulePreview> {
+  const { timeZone, quietHours } = await getRestaurantEngagementQuietHours(params.restaurantId);
+  const warnings: CampaignSchedulePreview["warnings"] = [];
+  const now = params.now ?? new Date();
+
+  if (!params.scheduledAt) {
+    return {
+      requestedScheduledAt: null,
+      effectiveScheduledAt: null,
+      status: "draft",
+      quietHours: { ...quietHours, timeZone },
+      warnings,
+    };
+  }
+
+  let effectiveScheduledAt = params.scheduledAt;
+  if (params.scheduledAt.getTime() <= now.getTime()) {
+    warnings.push({
+      code: "CAMPAIGN_SCHEDULE_PAST",
+      message: "Scheduled time must be in the future.",
+    });
+  }
+
+  if (isDateInEngagementQuietHours(params.scheduledAt, timeZone, quietHours)) {
+    const suggested = applyEngagementQuietHours(params.scheduledAt, timeZone, quietHours);
+    warnings.push({
+      code: "CAMPAIGN_SCHEDULE_QUIET_HOURS",
+      message: "Scheduled time is inside quiet hours.",
+      suggestedScheduledAt: suggested.toISOString(),
+    });
+    if (params.allowQuietHoursAdjustment) {
+      effectiveScheduledAt = suggested;
+    }
+  }
+
+  return {
+    requestedScheduledAt: params.scheduledAt.toISOString(),
+    effectiveScheduledAt: effectiveScheduledAt.toISOString(),
+    status: "scheduled",
+    quietHours: { ...quietHours, timeZone },
+    warnings,
+  };
+}
+
+export async function createCampaign(params: {
+  restaurantId: string;
+  name: string;
+  templateText: string;
+  audienceFilter: CampaignAudienceFilter;
+  templateId?: CampaignTemplateId;
+  scheduledAt?: Date | null;
+  allowQuietHoursAdjustment?: boolean;
+}) {
+  const templateValidation = validateCampaignTemplateText(params.templateText);
+  if (templateValidation.unknownVariables.length > 0) {
+    throw new Error(`Unknown campaign personalization variables: ${templateValidation.unknownVariables.join(", ")}`);
+  }
+
+  const schedule = await previewCampaignSchedule({
+    restaurantId: params.restaurantId,
+    scheduledAt: params.scheduledAt,
+    allowQuietHoursAdjustment: params.allowQuietHoursAdjustment,
+  });
+
+  const hasBlockingScheduleWarning = schedule.warnings.some((warning) =>
+    warning.code === "CAMPAIGN_SCHEDULE_PAST"
+    || (warning.code === "CAMPAIGN_SCHEDULE_QUIET_HOURS" && !params.allowQuietHoursAdjustment)
+  );
+  if (hasBlockingScheduleWarning) {
+    const error = new Error("Campaign schedule requires adjustment");
+    (error as Error & { schedule?: CampaignSchedulePreview }).schedule = schedule;
+    throw error;
+  }
+
+  const [campaign] = await db
+    .insert(campaigns)
+    .values({
+      restaurantId: params.restaurantId,
+      name: params.name,
+      templateText: params.templateText,
+      audienceFilter: {
+        ...params.audienceFilter,
+        ...(params.templateId ? { templateId: params.templateId } : {}),
+        variables: templateValidation.variables,
+      },
+      status: schedule.status,
+      scheduledAt: schedule.effectiveScheduledAt ? new Date(schedule.effectiveScheduledAt) : null,
+      stats: {
+        delivery: {
+          sent: 0,
+          delivered: 0,
+          read: 0,
+          replied: 0,
+        },
+        schedule,
+      },
+    })
+    .returning();
+
+  if (!campaign) throw new Error("Failed to create campaign");
+
+  return {
+    campaign,
+    schedule,
+    variables: templateValidation.variables,
+  };
 }
 
 export async function previewCampaignAudience(params: {

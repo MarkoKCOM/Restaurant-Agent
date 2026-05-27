@@ -161,6 +161,49 @@ function jerusalemDateParts(date = new Date()) {
   return { year, month, day };
 }
 
+function localTimeInZone(date, timeZone) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  return {
+    year: parts.find((part) => part.type === "year")?.value,
+    month: parts.find((part) => part.type === "month")?.value,
+    day: parts.find((part) => part.type === "day")?.value,
+    hour: parts.find((part) => part.type === "hour")?.value,
+    minute: parts.find((part) => part.type === "minute")?.value,
+  };
+}
+
+function isoForJerusalemLocalTime(daysAhead, hhmm) {
+  const targetDate = new Date();
+  targetDate.setUTCDate(targetDate.getUTCDate() + daysAhead);
+  const target = jerusalemDateParts(targetDate);
+  const [targetHour, targetMinute] = hhmm.split(":");
+  const start = new Date(Date.UTC(Number(target.year), Number(target.month) - 1, Number(target.day) - 1, 0, 0, 0));
+
+  for (let minutes = 0; minutes <= 72 * 60; minutes += 5) {
+    const candidate = new Date(start.getTime() + minutes * 60 * 1000);
+    const local = localTimeInZone(candidate, "Asia/Jerusalem");
+    if (
+      local.year === target.year
+      && local.month === target.month
+      && local.day === target.day
+      && local.hour === targetHour
+      && local.minute === targetMinute
+    ) {
+      return candidate.toISOString();
+    }
+  }
+
+  throw new Error(`Could not calculate Asia/Jerusalem ${hhmm} for smoke date`);
+}
+
 function jerusalemMonthDay() {
   const { month, day } = jerusalemDateParts();
   return `${month}-${day}`;
@@ -1291,6 +1334,77 @@ async function main() {
   if (!campaignSampleIdsWithOptOut.includes(optedOutCampaignGuestId)) {
     throw new Error(`Campaign audience preview did not include opted-out guest when requested: ${JSON.stringify(campaignPreviewWithOptOut.preview ?? null)}`);
   }
+
+  const campaignTemplates = await request("/api/v1/campaigns/templates", { token });
+  const winBackTemplate = (campaignTemplates.templates ?? []).find((template) => template.id === "we_miss_you");
+  const quietCampaignScheduleAt = isoForJerusalemLocalTime(1, "22:30");
+  const quietSchedulePreview = await request("/api/v1/campaigns/schedule-preview", {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      scheduledAt: quietCampaignScheduleAt,
+    },
+  });
+  const quietWarning = (quietSchedulePreview.schedule?.warnings ?? []).find((warning) => warning.code === "CAMPAIGN_SCHEDULE_QUIET_HOURS");
+  if (!winBackTemplate || !quietWarning?.suggestedScheduledAt) {
+    throw new Error(`Campaign templates or quiet-hours schedule warning missing: ${JSON.stringify({ winBackTemplate, quietSchedulePreview })}`);
+  }
+  try {
+    await request("/api/v1/campaigns/", {
+      method: "POST",
+      token,
+      body: {
+        restaurantId,
+        name: `Smoke quiet campaign ${runId}`,
+        templateId: "we_miss_you",
+        templateText: winBackTemplate.messageHe,
+        audienceFilter: {
+          lapsedDays: 30,
+          tagsAll: [campaignTag],
+        },
+        scheduledAt: quietCampaignScheduleAt,
+      },
+    });
+    throw new Error("Campaign scheduled during quiet hours without adjustment was accepted");
+  } catch (error) {
+    markLastRequestHandled("campaign_quiet_hours_rejection");
+    if (!(error instanceof Error) || !error.message.includes("CAMPAIGN_SCHEDULE_REQUIRES_ADJUSTMENT")) {
+      throw error;
+    }
+  }
+  const scheduledCampaign = await request("/api/v1/campaigns/", {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      name: `Smoke adjusted campaign ${runId}`,
+      templateId: "we_miss_you",
+      templateText: winBackTemplate.messageHe,
+      audienceFilter: {
+        lapsedDays: 30,
+        tagsAll: [campaignTag],
+      },
+      scheduledAt: quietCampaignScheduleAt,
+      allowQuietHoursAdjustment: true,
+    },
+  });
+  record("campaign.creation-scheduling", {
+    templateCount: campaignTemplates.templates?.length ?? 0,
+    hasWinBackTemplate: Boolean(winBackTemplate),
+    quietWarning: Boolean(quietWarning),
+    adjusted: scheduledCampaign.schedule?.effectiveScheduledAt !== quietCampaignScheduleAt,
+    status: scheduledCampaign.campaign?.status ?? null,
+    variables: scheduledCampaign.variables ?? [],
+  });
+  if (
+    scheduledCampaign.campaign?.status !== "scheduled"
+    || scheduledCampaign.schedule?.effectiveScheduledAt === quietCampaignScheduleAt
+    || !(scheduledCampaign.variables ?? []).includes("guest_name")
+  ) {
+    throw new Error(`Campaign creation/scheduling did not enforce quiet-hours adjustment: ${JSON.stringify(scheduledCampaign)}`);
+  }
+
   await request(`/api/v1/engagement/win-back/check?restaurantId=${restaurantId}`, {
     method: "POST",
     token,

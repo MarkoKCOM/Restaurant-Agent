@@ -1606,6 +1606,31 @@ async function main() {
   ) {
     throw new Error(`Daily morning summary preview is incomplete: ${JSON.stringify(morningSummary)}`);
   }
+  const loggedMorningSummary = await request("/api/v1/analytics/daily-morning-summary/log", {
+    method: "POST",
+    token,
+    body: {
+      restaurantId,
+      date: reservationDate,
+    },
+  });
+  const outboundMessages = await request(`/api/v1/engagement/outbound-messages?restaurantId=${restaurantId}&messageType=daily_morning_summary&limit=5`, { token });
+  const loggedOutbound = (outboundMessages.messages ?? []).find((message) => message.id === loggedMorningSummary.outboundMessage?.id);
+  record("outbound.daily-morning-summary-log", {
+    outboundMessageId: loggedMorningSummary.outboundMessage?.id ?? null,
+    status: loggedMorningSummary.outboundMessage?.status ?? null,
+    messageType: loggedMorningSummary.outboundMessage?.messageType ?? null,
+    listed: Boolean(loggedOutbound),
+    recipientMasked: loggedMorningSummary.outboundMessage?.recipientMasked ?? null,
+  });
+  if (
+    !loggedMorningSummary.outboundMessage?.id
+    || loggedMorningSummary.outboundMessage.status !== "logged"
+    || loggedMorningSummary.outboundMessage.messageType !== "daily_morning_summary"
+    || !loggedOutbound
+  ) {
+    throw new Error(`Daily morning summary outbound log failed: ${JSON.stringify({ loggedMorningSummary, outboundMessages })}`);
+  }
 
   await request(`/api/v1/engagement/win-back/check?restaurantId=${restaurantId}`, {
     method: "POST",

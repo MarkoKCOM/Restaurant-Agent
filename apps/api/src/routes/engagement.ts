@@ -5,6 +5,7 @@ import {
   checkBirthdays,
   checkWinBack,
 } from "../services/engagement.service.js";
+import { listOutboundMessages } from "../services/outbound-message.service.js";
 import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
 
 function sendEngagementError(
@@ -39,6 +40,40 @@ function sendEngagementError(
 }
 
 export async function engagementRoutes(app: FastifyInstance) {
+  // GET /outbound-messages — inspect recently logged outbound WhatsApp messages
+  app.get("/outbound-messages", async (request, reply) => {
+    const { restaurantId, status, messageType, limit } = request.query as {
+      restaurantId?: string;
+      status?: string;
+      messageType?: string;
+      limit?: string;
+    };
+
+    if (!restaurantId) {
+      return sendEngagementError(
+        request,
+        reply,
+        400,
+        "restaurantId query parameter is required",
+        "RESTAURANT_ID_REQUIRED",
+      );
+    }
+
+    const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return sendEngagementError(request, reply, 403, err, "ENGAGEMENT_FORBIDDEN", { restaurantId });
+    }
+
+    const parsedLimit = limit ? Number(limit) : undefined;
+    const messages = await listOutboundMessages({
+      restaurantId,
+      status,
+      messageType,
+      limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined,
+    });
+    return { messages };
+  });
+
   // GET /jobs — list engagement jobs with optional filters
   app.get("/jobs", async (request, reply) => {
     const { restaurantId, guestId, status, messageCategory } = request.query as {

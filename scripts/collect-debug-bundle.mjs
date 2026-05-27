@@ -231,6 +231,9 @@ async function captureDiagnosticsHighlights(commandRecord) {
     const engagement = isObject(operational.engagement)
       ? operational.engagement
       : {};
+    const outboundMessages = isObject(operational.outboundMessages)
+      ? operational.outboundMessages
+      : {};
     const queues = Array.isArray(diagnostics.queues) ? diagnostics.queues : [];
 
     manifest.highlights.adminDiagnostics = {
@@ -280,6 +283,13 @@ async function captureDiagnosticsHighlights(commandRecord) {
         reviewSolicitation: engagement.reviewSolicitation,
         skippedByReason: engagement.skippedByReason,
         error: engagement.error,
+      },
+      outboundMessages: {
+        status: outboundMessages.status,
+        totals: outboundMessages.totals,
+        byType: outboundMessages.byType,
+        samples: outboundMessages.samples,
+        error: outboundMessages.error,
       },
       queues: queues.map((queue) => ({
         name: queue.name,
@@ -377,6 +387,12 @@ async function writeReadme() {
       const reviewSolicitation = engagement.reviewSolicitation ?? {};
       lines.push(
         `- Engagement: ${engagement.status ?? "unknown"} pending=${engagementTotals.pending ?? "?"} overdue=${engagementTotals.overduePending ?? "?"} failed=${engagementTotals.failed ?? "?"} skipped=${engagementTotals.skipped ?? "?"} winBackDue=${winBack.dueUnscheduledTotal ?? "?"} birthdayDue=${birthdays.dueUnscheduledToday ?? "?"} anniversaryDue=${anniversaries.dueUnscheduledToday ?? "?"} reviewWithoutPositive=${reviewSolicitation.pendingWithoutPositiveFeedback ?? "?"} negativeWithReview=${reviewSolicitation.negativeFeedbackWithPendingReview ?? "?"}`,
+      );
+      const outboundMessages = adminDiagnostics.outboundMessages ?? {};
+      const outboundTotals = outboundMessages.totals ?? {};
+      const outboundByType = outboundMessages.byType ?? {};
+      lines.push(
+        `- Outbound messages: ${outboundMessages.status ?? "unknown"} total=${outboundTotals.total ?? "?"} logged=${outboundTotals.logged ?? "?"} sent=${outboundTotals.sent ?? "?"} failed=${outboundTotals.failed ?? "?"} types=${Object.entries(outboundByType).map(([type, count]) => `${type}:${count}`).join(",") || "none"}`,
       );
       if (agentMembershipIntents) {
         lines.push(

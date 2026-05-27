@@ -9,6 +9,7 @@ import {
   getRetentionAnalytics,
 } from "../services/analytics.service.js";
 import { formatMorningSummaryMessage, getMorningSummary } from "../services/summary.service.js";
+import { logOutboundMessage } from "../services/outbound-message.service.js";
 
 const analyticsQuerySchema = z.object({
   restaurantId: z.string().uuid(),
@@ -30,6 +31,8 @@ const morningSummaryQuerySchema = z.object({
   restaurantId: z.string().uuid(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
+
+const morningSummaryLogSchema = morningSummaryQuerySchema;
 
 function sendAnalyticsError(
   request: FastifyRequest,
@@ -152,6 +155,45 @@ export async function analyticsRoutes(app: FastifyInstance) {
       "Daily morning summary preview generated",
     );
     return { summary, message };
+  });
+
+  app.post("/daily-morning-summary/log", async (request, reply) => {
+    const parsed = morningSummaryLogSchema.parse(request.body ?? {});
+    const accessError = enforceAnalyticsAccess(request, reply, parsed.restaurantId);
+    if (accessError) return accessError;
+
+    const summary = await getMorningSummary(parsed);
+    const message = formatMorningSummaryMessage(summary);
+    const outboundMessage = await logOutboundMessage({
+      restaurantId: parsed.restaurantId,
+      recipientMasked: summary.ownerRecipientMasked,
+      messageType: "daily_morning_summary",
+      messageCategory: "transactional",
+      subjectType: "restaurant",
+      subjectId: parsed.restaurantId,
+      text: message,
+      payload: {
+        source: "analytics_preview_log",
+        date: summary.summaryDate,
+        yesterdayDate: summary.yesterdayDate,
+        yesterdayCovers: summary.yesterday.totalCovers,
+        todayBookings: summary.today.totalReservations,
+        todayCovers: summary.today.totalCovers,
+        notableGuestCount: summary.notableGuests.length,
+        alertCount: summary.alerts.length,
+      },
+    });
+    request.log.info(
+      {
+        restaurantId: parsed.restaurantId,
+        requestId: request.id,
+        outboundMessageId: outboundMessage.id,
+        date: summary.summaryDate,
+        messageType: "daily_morning_summary",
+      },
+      "Daily morning summary outbound message logged",
+    );
+    return reply.status(201).send({ summary, message, outboundMessage });
   });
 
   app.get("/clv", async (request, reply) => {

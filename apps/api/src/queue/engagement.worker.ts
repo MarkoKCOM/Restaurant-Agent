@@ -7,6 +7,7 @@ import { db } from "../db/index.js";
 import { engagementJobs, guests, restaurants } from "../db/schema.js";
 import { checkAnniversaries, checkBirthdays, checkWinBack, shouldSendEngagementJob } from "../services/engagement.service.js";
 import { checkBirthdayWeekChallenges } from "../services/challenge.service.js";
+import { logOutboundMessage } from "../services/outbound-message.service.js";
 
 export interface EngagementJobData {
   jobId?: string;
@@ -17,6 +18,38 @@ export interface EngagementJobData {
 
 function maskPhone(phone: string): string {
   return phone.length <= 4 ? "****" : `${phone.slice(0, 3)}****${phone.slice(-2)}`;
+}
+
+function engagementMessagePreview(params: {
+  type: string;
+  guestName: string;
+  restaurantName: string;
+  pointsBalance: number;
+}): string {
+  switch (params.type) {
+    case "thank_you":
+      return `Hi ${params.guestName}, thank you for visiting ${params.restaurantName}. We hope to see you again soon.`;
+    case "review_request":
+      return `Hi ${params.guestName}, thanks for visiting ${params.restaurantName}. If you enjoyed it, would you leave us a review?`;
+    case "birthday":
+      return `Happy birthday ${params.guestName}! ${params.restaurantName} has a birthday treat waiting for you.`;
+    case "anniversary":
+      return `${params.guestName}, it has been a year since your first visit. ${params.restaurantName} would love to host you again.`;
+    case "win_back_30":
+    case "win_back_60":
+    case "win_back_90":
+      return `${params.guestName}, we miss you at ${params.restaurantName}. Your current club balance is ${params.pointsBalance} points.`;
+    case "lucky_spin_reward":
+      return `${params.guestName}, you won a surprise reward at ${params.restaurantName}.`;
+    case "challenge_completion":
+      return `${params.guestName}, you completed a club challenge at ${params.restaurantName}.`;
+    case "leaderboard_summary":
+      return `${params.guestName}, your leaderboard summary from ${params.restaurantName} is ready.`;
+    case "streak_broken":
+      return `${params.guestName}, your visit streak paused. Come back to ${params.restaurantName} to restart it.`;
+    default:
+      return `${params.restaurantName} has an update for ${params.guestName}.`;
+  }
 }
 
 async function processEngagement(job: Job<EngagementJobData>, logger: FastifyBaseLogger): Promise<void> {
@@ -138,11 +171,36 @@ async function processEngagement(job: Job<EngagementJobData>, logger: FastifyBas
     return;
   }
 
+  const messageText = engagementMessagePreview({
+    type,
+    guestName: guest.name,
+    restaurantName: restaurant.name,
+    pointsBalance: guest.pointsBalance,
+  });
+  const outbound = await logOutboundMessage({
+    restaurantId,
+    guestId,
+    recipient: guest.phone,
+    messageType: type,
+    messageCategory: engagementJob.messageCategory as "transactional" | "promotional",
+    subjectType: "engagement_job",
+    subjectId: jobId,
+    text: messageText,
+    payload: {
+      queue: "engagement",
+      bullJobId: job.id,
+      engagementJobId: jobId,
+      engagementType: type,
+      pointsBalance: guest.pointsBalance,
+    },
+  });
+
   // TODO: Replace with WhatsApp sender once provider integration is ready.
   logger.info(
     {
       queue: "engagement",
       bullJobId: job.id,
+      outboundMessageId: outbound.id,
       engagementJobId: jobId,
       restaurantId,
       restaurantName: restaurant.name,

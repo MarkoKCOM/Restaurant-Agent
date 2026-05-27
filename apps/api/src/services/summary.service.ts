@@ -35,6 +35,12 @@ function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null ? value as Record<string, unknown> : {};
 }
 
+function maskPhone(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const normalized = phone.replace(/\s+/g, "");
+  return normalized.length <= 4 ? "****" : `${normalized.slice(0, 3)}****${normalized.slice(-2)}`;
+}
+
 export interface DailySummary {
   date: string;
   totalReservations: number;
@@ -55,6 +61,7 @@ export interface MorningSummary {
   summaryDate: string;
   yesterdayDate: string;
   ownerWhatsappConfigured: boolean;
+  ownerRecipientMasked: string | null;
   yesterday: DailySummary;
   today: DailySummary & {
     pendingCount: number;
@@ -310,6 +317,7 @@ export async function getMorningSummary(params: {
     summaryDate,
     yesterdayDate,
     ownerWhatsappConfigured: Boolean(restaurant.ownerWhatsapp),
+    ownerRecipientMasked: maskPhone(restaurant.ownerWhatsapp ?? restaurant.ownerPhone),
     yesterday,
     today: {
       ...today,

@@ -381,3 +381,26 @@ export const membershipProcessingFailures = pgTable("membership_processing_failu
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const outboundMessages = pgTable("outbound_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  restaurantId: uuid("restaurant_id")
+    .notNull()
+    .references(() => restaurants.id),
+  guestId: uuid("guest_id").references(() => guests.id),
+  channel: varchar("channel", { length: 30 }).notNull().default("whatsapp"),
+  provider: varchar("provider", { length: 50 }).notNull().default("debug_log"),
+  recipientMasked: varchar("recipient_masked", { length: 40 }),
+  messageType: varchar("message_type", { length: 60 }).notNull(),
+  messageCategory: varchar("message_category", { length: 20 }).notNull().default("transactional"),
+  subjectType: varchar("subject_type", { length: 60 }),
+  subjectId: uuid("subject_id"),
+  status: varchar("status", { length: 30 }).notNull().default("logged"),
+  textPreview: text("text_preview").notNull(),
+  payload: jsonb("payload").$type<Record<string, unknown>>(),
+  errorCode: varchar("error_code", { length: 100 }),
+  errorMessage: text("error_message"),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});

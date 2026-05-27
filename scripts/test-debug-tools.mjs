@@ -127,6 +127,7 @@ const smokePath = await writeJson("smoke.json", {
     { step: "campaign.opt-out-keyword", optedOut: true, llmRounds: 0, deterministicAction: "campaign_opt_out", tool: "set_membership_messaging_opt_out", deliverySent: 0, deliverySkippedOptOut: 2 },
     { step: "analytics.growth-summary", reservationBookings: 12, reservationCovers: 34, reservationSlots: 5, cancellationRate: 0.1, noShowRate: 0.05, retentionUniqueGuests: 4, retentionWindows: [30, 60, 90], activeMembers: 9, pointsIssued: 120, tierBronze: 7, clvGuests: 9, clvRevenue: 4500, clvAverage: 500, clvTierCount: 3, clvTopGuests: 5, campaigns: 3, campaignSent: 2, hasCampaignRoi: true },
     { step: "analytics.daily-morning-summary", date: "2026-05-27", yesterdayCovers: 18, todayBookings: 7, todayCovers: 22, notableGuestCount: 3, alertCount: 1, hasMessage: true },
+    { step: "outbound.daily-morning-summary-log", outboundMessageId: "outbound-test-1", status: "logged", messageType: "daily_morning_summary", listed: true, recipientMasked: "050****12" },
   ],
   requests: [
     {
@@ -197,6 +198,7 @@ assertIncludes(smokeOutput, "campaign.delivery-events: delivered=1 read=1 replie
 assertIncludes(smokeOutput, "campaign.opt-out-keyword: optedOut=yes llmRounds=0 action=campaign_opt_out tool=set_membership_messaging_opt_out sent=0 skippedOptOut=2");
 assertIncludes(smokeOutput, "analytics.growth-summary: bookings=12 covers=34 slots=5 cancelRate=0.1 noShowRate=0.05 retentionGuests=4 windows=30,60,90 members=9 pointsIssued=120 bronze=7 clvGuests=9 clvRevenue=4500 clvAvg=500 clvTiers=3 clvTop=5 campaigns=3 sent=2 roi=yes");
 assertIncludes(smokeOutput, "analytics.daily-morning-summary: date=2026-05-27 yesterdayCovers=18 todayBookings=7 todayCovers=22 notable=3 alerts=1 message=yes");
+assertIncludes(smokeOutput, "outbound.daily-morning-summary-log: id=outbound-test-1 status=logged type=daily_morning_summary listed=yes recipient=050****12");
 assertIncludes(smokeOutput, "Unhandled HTTP failures: 1");
 assertIncludes(smokeOutput, "POST /api/v1/reservations -> 500 code=INTERNAL_ERROR requestId=smoke-test-2");
 assertIncludes(smokeOutput, 'pnpm debug:logs smoke-test-2 --since "2 hours ago"');
@@ -396,6 +398,20 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
           negativeFeedbackWithPendingReview: 1,
         },
       },
+      outboundMessages: {
+        status: "attention",
+        totals: {
+          total: 5,
+          logged: 4,
+          sent: 0,
+          failed: 1,
+          skipped: 0,
+        },
+        byType: {
+          daily_morning_summary: 2,
+          thank_you: 3,
+        },
+      },
       queues: [
         { name: "membership-events", status: "ok", failed: 0 },
       ],
@@ -421,6 +437,7 @@ assertIncludes(
   "Gamification: attention activeChallenges=2 smokeChallenges=1 birthdayWeekActive=1 birthdayWeekDue=1 stuckChallenges=1 duplicateProgress=1 referralCodes=7 referralCreditMismatches=1 menuBadgeGuests=5 achievementGuests=4 achievementMissing=1/1 invalidAchievements=1 leaderboardOptedIn=3 leaderboardRewardMissing=1 invalidLeaderboard=1 streakActive=3 staleStreaks=1 invalidStreaks=1 streakBonusMissing=1",
 );
 assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overdue=1 failed=1 skipped=3 winBackDue=2 birthdayDue=1 anniversaryDue=1 reviewWithoutPositive=1 negativeWithReview=1");
+assertIncludes(debugBundleManifestOutput, "Outbound messages: attention total=5 logged=4 sent=0 failed=1 types=daily_morning_summary:2,thank_you:3");
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");
 assertIncludes(debugBundleManifestOutput, "Queues: membership-events:ok/failed=0");
 assertIncludes(debugBundleManifestOutput, "Failed commands: 1");
@@ -673,6 +690,7 @@ for (const requiredReadmeContent of [
   "Membership processing:",
   "Gamification:",
   "Engagement:",
+  "Outbound messages:",
   "Agent membership intents:",
   "agent-membership-intents",
   "agent-membership-intents.json",
@@ -696,6 +714,7 @@ for (const requiredReadmeContent of [
   "manifest.highlights.adminDiagnostics",
   "gamification",
   "engagement",
+  "outboundMessages",
   "manifest.highlights.agentMembershipIntents",
   "membershipDebugRestaurantId",
   "membershipDebugRestaurantSlug",

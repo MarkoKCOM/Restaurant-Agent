@@ -7,6 +7,7 @@ import {
   getDailySummary,
   getMorningSummary,
 } from "../services/summary.service.js";
+import { logOutboundMessage } from "../services/outbound-message.service.js";
 
 export interface SummaryJobData {
   restaurantId: string;
@@ -19,12 +20,33 @@ async function processSummary(job: Job<SummaryJobData>, logger: FastifyBaseLogge
   if (type === "morning") {
     const summary = await getMorningSummary({ restaurantId });
     const message = formatMorningSummaryMessage(summary);
+    const outbound = await logOutboundMessage({
+      restaurantId,
+      recipientMasked: summary.ownerRecipientMasked,
+      messageType: "daily_morning_summary",
+      messageCategory: "transactional",
+      subjectType: "restaurant",
+      subjectId: restaurantId,
+      text: message,
+      payload: {
+        queue: "daily-summary",
+        bullJobId: job.id,
+        date: summary.summaryDate,
+        yesterdayDate: summary.yesterdayDate,
+        yesterdayCovers: summary.yesterday.totalCovers,
+        todayBookings: summary.today.totalReservations,
+        todayCovers: summary.today.totalCovers,
+        notableGuestCount: summary.notableGuests.length,
+        alertCount: summary.alerts.length,
+      },
+    });
 
     // TODO: Replace log delivery with the WhatsApp sender once Baileys integration is ready.
     logger.info(
       {
         queue: "daily-summary",
         jobId: job.id,
+        outboundMessageId: outbound.id,
         type,
         restaurantId,
         date: summary.summaryDate,
@@ -45,12 +67,34 @@ async function processSummary(job: Job<SummaryJobData>, logger: FastifyBaseLogge
   const today = new Date().toISOString().slice(0, 10);
 
   const summary = await getDailySummary(restaurantId, today);
+  const text = `Daily summary for ${today}: ${summary.totalCovers} covers, ${summary.completedCount} completed, ${summary.cancelledCount} cancellations, ${summary.noShowCount} no-shows.`;
+  const outbound = await logOutboundMessage({
+    restaurantId,
+    messageType: "daily_closing_summary",
+    messageCategory: "transactional",
+    subjectType: "restaurant",
+    subjectId: restaurantId,
+    text,
+    payload: {
+      queue: "daily-summary",
+      bullJobId: job.id,
+      date: summary.date,
+      totalReservations: summary.totalReservations,
+      totalCovers: summary.totalCovers,
+      completedCount: summary.completedCount,
+      cancelledCount: summary.cancelledCount,
+      noShowCount: summary.noShowCount,
+      occupancyPeak: summary.occupancyPeak,
+      topGuestCount: summary.topGuests.length,
+    },
+  });
 
   // TODO: Replace with WhatsApp sender once Baileys integration is ready
   logger.info(
     {
       queue: "daily-summary",
       jobId: job.id,
+      outboundMessageId: outbound.id,
       type,
       restaurantId,
       date: summary.date,

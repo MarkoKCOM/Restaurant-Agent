@@ -22,6 +22,7 @@ import {
   getRestaurantEngagementQuietHours,
   isDateInEngagementQuietHours,
 } from "./engagement.service.js";
+import { getOutboundMessageDiagnostics, type OutboundMessageDiagnostics } from "./outbound-message.service.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -61,6 +62,7 @@ export interface DiagnosticsReport {
     membershipProcessing: MembershipProcessingDiagnostic;
     gamification: GamificationDiagnostic;
     engagement: EngagementDiagnostic;
+    outboundMessages: OutboundMessageDiagnostics;
   };
 }
 
@@ -1930,14 +1932,26 @@ async function inspectDeployment(): Promise<DeploymentDiagnostic> {
   };
 }
 
+async function inspectOutboundMessages(): Promise<OutboundMessageDiagnostics> {
+  try {
+    return await getOutboundMessageDiagnostics();
+  } catch (error: unknown) {
+    return {
+      status: "error",
+      error: sanitizeError(error),
+    };
+  }
+}
+
 export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
-  const [database, redis, deployment, membershipProcessing, gamification, engagement, ...queues] = await Promise.all([
+  const [database, redis, deployment, membershipProcessing, gamification, engagement, outboundMessages, ...queues] = await Promise.all([
     timedCheck(pingDatabase),
     timedCheck(pingRedis),
     inspectDeployment(),
     inspectMembershipProcessing(),
     inspectGamification(),
     inspectEngagement(),
+    inspectOutboundMessages(),
     inspectQueue("reservation-reminders", reminderQueue),
     inspectQueue("daily-summary", summaryQueue),
     inspectQueue("engagement", engagementQueue),
@@ -1952,6 +1966,7 @@ export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
     && membershipProcessing.status !== "error"
     && gamification.status !== "error"
     && engagement.status !== "error"
+    && outboundMessages.status !== "error"
     && deployment.migrationDrift?.status !== "mismatch"
     ? "ok"
     : "degraded";
@@ -1977,6 +1992,7 @@ export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
       membershipProcessing,
       gamification,
       engagement,
+      outboundMessages,
     },
   };
 }

@@ -92,6 +92,13 @@
       "when": 1779897900000,
       "tag": "0012_challenge_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1779908400000,
+      "tag": "0013_outbound_messages",
+      "breakpoints": true
     }
   ]
 }

@@ -144,6 +144,7 @@ function summarizeSmoke(report) {
       || step.step === "campaign.opt-out-keyword"
       || step.step === "analytics.growth-summary"
       || step.step === "analytics.daily-morning-summary"
+      || step.step === "outbound.daily-morning-summary-log"
     )
   );
   if (operationalSteps.length > 0) {
@@ -238,6 +239,8 @@ function summarizeSmoke(report) {
         console.log(`- analytics.growth-summary: bookings=${step.reservationBookings ?? "?"} covers=${step.reservationCovers ?? "?"} slots=${step.reservationSlots ?? "?"} cancelRate=${step.cancellationRate ?? "?"} noShowRate=${step.noShowRate ?? "?"} retentionGuests=${step.retentionUniqueGuests ?? "?"} windows=${asArray(step.retentionWindows).join(",") || "none"} members=${step.activeMembers ?? "?"} pointsIssued=${step.pointsIssued ?? "?"} bronze=${step.tierBronze ?? "?"} clvGuests=${step.clvGuests ?? "?"} clvRevenue=${step.clvRevenue ?? "?"} clvAvg=${step.clvAverage ?? "?"} clvTiers=${step.clvTierCount ?? "?"} clvTop=${step.clvTopGuests ?? "?"} campaigns=${step.campaigns ?? "?"} sent=${step.campaignSent ?? "?"} roi=${step.hasCampaignRoi === true ? "yes" : "no"}`);
       } else if (step.step === "analytics.daily-morning-summary") {
         console.log(`- analytics.daily-morning-summary: date=${step.date ?? "?"} yesterdayCovers=${step.yesterdayCovers ?? "?"} todayBookings=${step.todayBookings ?? "?"} todayCovers=${step.todayCovers ?? "?"} notable=${step.notableGuestCount ?? "?"} alerts=${step.alertCount ?? "?"} message=${step.hasMessage === true ? "yes" : "no"}`);
+      } else if (step.step === "outbound.daily-morning-summary-log") {
+        console.log(`- outbound.daily-morning-summary-log: id=${step.outboundMessageId ?? "?"} status=${step.status ?? "?"} type=${step.messageType ?? "?"} listed=${step.listed === true ? "yes" : "no"} recipient=${step.recipientMasked ?? "?"}`);
       }
     }
   }
@@ -326,6 +329,9 @@ function summarizeDebugBundleManifest(report) {
   const engagementBirthdays = engagement.birthdays ?? {};
   const engagementAnniversaries = engagement.anniversaries ?? {};
   const engagementReviewSolicitation = engagement.reviewSolicitation ?? {};
+  const outboundMessages = adminDiagnostics.outboundMessages ?? {};
+  const outboundTotals = outboundMessages.totals ?? {};
+  const outboundByType = outboundMessages.byType ?? {};
   const agentMembershipIntents = highlights.agentMembershipIntents ?? {};
   const queues = asArray(adminDiagnostics.queues);
 
@@ -381,6 +387,12 @@ function summarizeDebugBundleManifest(report) {
     printLine(
       "Engagement",
       `${engagement.status} pending=${engagementTotals.pending ?? "?"} overdue=${engagementTotals.overduePending ?? "?"} failed=${engagementTotals.failed ?? "?"} skipped=${engagementTotals.skipped ?? "?"} winBackDue=${engagementWinBack.dueUnscheduledTotal ?? "?"} birthdayDue=${engagementBirthdays.dueUnscheduledToday ?? "?"} anniversaryDue=${engagementAnniversaries.dueUnscheduledToday ?? "?"} reviewWithoutPositive=${engagementReviewSolicitation.pendingWithoutPositiveFeedback ?? "?"} negativeWithReview=${engagementReviewSolicitation.negativeFeedbackWithPendingReview ?? "?"}`,
+    );
+  }
+  if (outboundMessages.status) {
+    printLine(
+      "Outbound messages",
+      `${outboundMessages.status} total=${outboundTotals.total ?? "?"} logged=${outboundTotals.logged ?? "?"} sent=${outboundTotals.sent ?? "?"} failed=${outboundTotals.failed ?? "?"} types=${Object.entries(outboundByType).map(([type, count]) => `${type}:${count}`).join(",") || "none"}`,
     );
   }
   if (agentMembershipIntents.status) {

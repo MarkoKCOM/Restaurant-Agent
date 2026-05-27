@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import { selfServeSignupTableBaseSchema, selfServeSignupTableSchema } from "@openseat/domain";
@@ -44,6 +44,37 @@ const updateTableSchema = selfServeSignupTableBaseSchema
     }
   });
 
+function sendTableError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  statusCode: number,
+  message: string,
+  code: string,
+  context: Record<string, unknown> = {},
+) {
+  const logPayload = {
+    ...context,
+    code,
+    requestId: request.id,
+    statusCode,
+    userId: request.user?.id,
+    restaurantId: request.user?.restaurantId,
+    role: request.user?.role,
+  };
+
+  if (statusCode >= 500) {
+    request.log.error(logPayload, "Table request failed");
+  } else {
+    request.log.warn(logPayload, "Table request rejected");
+  }
+
+  return reply.status(statusCode).send({
+    error: message,
+    code,
+    requestId: request.id,
+  });
+}
+
 export async function tableRoutes(app: FastifyInstance) {
   // GET / — list tables for restaurant
   app.get("/", async (request, reply) => {
@@ -54,13 +85,20 @@ export async function tableRoutes(app: FastifyInstance) {
 
     const roleErr = requireOperationalRole(request.user!);
     if (roleErr) {
-      return reply.status(403).send({ error: roleErr });
+      return sendTableError(request, reply, 403, roleErr, "TABLE_FORBIDDEN");
     }
 
     if (restaurantId) {
       const err = enforceTenant(request.user!, restaurantId);
       if (err) {
-        return reply.status(403).send({ error: err });
+        return sendTableError(
+          request,
+          reply,
+          403,
+          err,
+          "TABLE_FORBIDDEN",
+          { restaurantLookupId: restaurantId },
+        );
       }
     }
 
@@ -79,7 +117,14 @@ export async function tableRoutes(app: FastifyInstance) {
     const body = createTableSchema.parse(request.body);
     const err = enforceTenant(request.user!, body.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendTableError(
+        request,
+        reply,
+        403,
+        err,
+        "TABLE_FORBIDDEN",
+        { restaurantLookupId: body.restaurantId },
+      );
     }
 
     const table = await createTable({
@@ -105,19 +150,24 @@ export async function tableRoutes(app: FastifyInstance) {
       .limit(1);
 
     if (!tableRow) {
-      reply.code(404);
-      return { error: "Table not found" };
+      return sendTableError(request, reply, 404, "Table not found", "TABLE_NOT_FOUND", { tableId: id });
     }
 
     const err = enforceTenant(request.user!, tableRow.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendTableError(
+        request,
+        reply,
+        403,
+        err,
+        "TABLE_FORBIDDEN",
+        { tableId: id, restaurantLookupId: tableRow.restaurantId },
+      );
     }
 
     const updated = await updateTable(id, body);
     if (!updated) {
-      reply.code(404);
-      return { error: "Table not found" };
+      return sendTableError(request, reply, 404, "Table not found", "TABLE_NOT_FOUND", { tableId: id });
     }
 
     return { table: updated };
@@ -133,13 +183,19 @@ export async function tableRoutes(app: FastifyInstance) {
       .limit(1);
 
     if (!tableRow) {
-      reply.code(404);
-      return { error: "Table not found" };
+      return sendTableError(request, reply, 404, "Table not found", "TABLE_NOT_FOUND", { tableId: id });
     }
 
     const err = enforceTenant(request.user!, tableRow.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendTableError(
+        request,
+        reply,
+        403,
+        err,
+        "TABLE_FORBIDDEN",
+        { tableId: id, restaurantLookupId: tableRow.restaurantId },
+      );
     }
 
     await deactivateTable(id);

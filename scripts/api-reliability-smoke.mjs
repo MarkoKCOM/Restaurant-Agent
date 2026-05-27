@@ -607,7 +607,7 @@ async function main() {
     jobStatus: positiveFeedback.reviewRouting?.engagementJobStatus ?? null,
     delayHours: positiveFeedback.reviewRouting?.delayHours ?? null,
   });
-  if (positiveFeedback.reviewRouting?.route !== "public_review" || !positiveReviewJobId || positiveFeedback.reviewRouting?.engagementJobStatus !== "pending") {
+  if (positiveFeedback.reviewRouting?.route !== "public_review" || !positiveFeedback.reviewRouting?.reviewUrl || !positiveReviewJobId || positiveFeedback.reviewRouting?.engagementJobStatus !== "pending") {
     throw new Error(`Positive feedback did not route to a pending public review request: ${JSON.stringify(positiveFeedback.reviewRouting ?? {})}`);
   }
   cleanupTasks.push(async () => {

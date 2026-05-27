@@ -748,7 +748,10 @@ export async function scheduleReviewRequestForPositiveFeedback(params: {
 
   return {
     job,
-    reviewUrl: buildGoogleReviewUrl(restaurant),
+    reviewUrl: buildGoogleReviewUrl({
+      googlePlaceId: restaurant.googlePlaceId,
+      restaurantName: restaurant.name,
+    }),
     delayHours: delayMs / (60 * 60 * 1000),
   };
 }

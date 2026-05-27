@@ -144,6 +144,7 @@
 - [x] 13.11 Add bundle-run log isolation — debug bundles include a run-scoped service log slice so fresh smoke regressions are not mixed with older warnings
 - [x] 13.12 Add bundle-run API log issue summaries — debug artifacts surface fresh warning/error counts, codes, and samples without manual log greps, separating expected smoke warnings from unexpected runtime noise
 - [x] 13.13 Add guarded owner delivery repair command — operators can patch one known owner WhatsApp value and immediately re-check delivery readiness
+- [x] 13.14 Add optional bundle failure gate for unexpected API log noise — CI/debug runs can fail after writing artifacts when bundle-run logs contain unexpected warnings or errors
 
 ## 14. Branding & Landing Page
 

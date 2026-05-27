@@ -19,6 +19,11 @@ function readOption(name, fallback) {
   return process.env[`OPENSEAT_BUNDLE_${name.toUpperCase().replace(/-/g, "_")}`] ?? fallback;
 }
 
+function readBooleanOption(name, fallback = false) {
+  const value = readOption(name, fallback ? "true" : "false");
+  return ["1", "true", "yes", "on"].includes(String(value).toLowerCase());
+}
+
 function stamp() {
   return new Date().toISOString().replace(/[:.]/g, "-");
 }
@@ -251,6 +256,7 @@ const since = readOption("since", "30 minutes ago");
 const service = readOption("service", "openseat-api");
 const outDir = resolve(process.cwd(), readOption("out", `artifacts/debug-bundles/${stamp()}`));
 const bundleStartedAt = new Date().toISOString();
+const failOnApiLogIssues = readBooleanOption("fail-on-api-log-issues", false);
 const membershipDebugRestaurantId =
   process.env.OPENSEAT_RESTAURANT_ID ||
   process.env.OPENSEAT_BUNDLE_RESTAURANT_ID ||
@@ -277,6 +283,9 @@ const manifest = {
   logWindows: {
     contextSince: since,
     bundleRunSince: bundleStartedAt,
+  },
+  options: {
+    failOnApiLogIssues,
   },
   outDir,
   readiness: {},
@@ -896,6 +905,9 @@ async function writeReadme() {
         lines.push(
           `- Bundle-run API logs: ${apiLogIssues.status ?? "unknown"} unexpected=${apiLogIssues.unexpectedIssueEvents ?? "?"} expected=${apiLogIssues.expectedIssueEvents ?? "?"} issues=${apiLogIssues.issueEvents ?? "?"}/${apiLogIssues.totalEvents ?? "?"} levels=${Object.entries(apiLogIssues.byLevel ?? {}).map(([level, count]) => `${level}:${count}`).join(",") || "none"} codes=${Object.entries(apiLogIssues.byCode ?? {}).map(([code, count]) => `${code}:${count}`).join(",") || "none"}`,
         );
+        if (failOnApiLogIssues) {
+          lines.push(`- Bundle-run API log gate: ${apiLogIssues.unexpectedIssueEvents > 0 ? "failed" : "passed"}`);
+        }
         const unexpectedSamples = asArray(apiLogIssues.unexpectedSamples);
         if (unexpectedSamples.length > 0) {
           lines.push("- Bundle-run unexpected API log samples:");
@@ -966,6 +978,7 @@ async function writeReadme() {
     lines.push("- `api-smoke-summary.txt` for end-to-end API flow status and any failing request IDs.");
     lines.push("- `recent-api-logs.txt` for service-side context from the requested `--since` window.");
     lines.push("- `bundle-run-api-logs.txt` for service-side context from this bundle invocation only; check the bundle-run API log summary first for warning/error samples.");
+    lines.push("- Use `--fail-on-api-log-issues=true` to make unexpected bundle-run API warnings/errors fail the bundle command.");
   }
   if (skipped.length > 0) {
     lines.push(`- Skipped steps: ${skipped.map((command) => command.name).join(", ")}.`);
@@ -1258,11 +1271,18 @@ await captureApiLogIssueHighlights(bundleRunLogs.outputPath, "bundle-run-api-log
 
 await writeJson("manifest.json", manifest);
 const readmePath = await writeReadme();
+const unexpectedApiLogIssues = Number(manifest.highlights.apiLogIssues?.unexpectedIssueEvents ?? 0);
+const shouldFailForApiLogIssues = failOnApiLogIssues && unexpectedApiLogIssues > 0;
 
 console.log(JSON.stringify({
   outDir,
   manifest: resolve(outDir, "manifest.json"),
   readme: readmePath,
+  apiLogIssueGate: {
+    enabled: failOnApiLogIssues,
+    unexpectedIssueEvents: unexpectedApiLogIssues,
+    status: shouldFailForApiLogIssues ? "failed" : "passed",
+  },
   commands: manifest.commands.map((command) => ({
     name: command.name,
     status: command.status,
@@ -1270,3 +1290,8 @@ console.log(JSON.stringify({
     reason: command.reason,
   })),
 }, null, 2));
+
+if (shouldFailForApiLogIssues) {
+  console.error(`Unexpected bundle-run API log issues: ${unexpectedApiLogIssues}`);
+  process.exit(1);
+}

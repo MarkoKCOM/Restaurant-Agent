@@ -339,6 +339,9 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
     contextSince: "30 minutes ago",
     bundleRunSince: "2026-05-27T12:00:00.000Z",
   },
+  options: {
+    failOnApiLogIssues: true,
+  },
   outDir: "/tmp/openseat-debug-bundle",
   readiness: { status: "ready", attempts: 1 },
   commands: [
@@ -1353,6 +1356,9 @@ for (const requiredReadmeContent of [
   "restaurantSelectorFromDiagnostics",
   "admin/restaurants first result",
   "OPENSEAT_BUNDLE_READY_TIMEOUT_MS",
+  "fail-on-api-log-issues",
+  "failOnApiLogIssues",
+  "apiLogIssueGate",
   "Queues:",
   "Summary schedules:",
   "Engagement schedules:",

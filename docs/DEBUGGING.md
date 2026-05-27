@@ -76,6 +76,8 @@ The bundle is written to `artifacts/debug-bundles/<timestamp>/`. Set `OPENSEAT_T
 
 The bundle writes two service-log slices. `recent-api-logs.txt` uses the operator-requested `--since` window for broader context; `bundle-run-api-logs.txt` starts at the bundle invocation timestamp so fresh regressions are not confused with older warnings from the same 30-minute window. The bundle summary also extracts warning/error counts, codes, and samples from the run-scoped log. Expected negative-path smoke warnings, such as starter-package rejections and intentional no-table probes, are counted separately from unexpected runtime noise.
 
+For CI-style checks, add `--fail-on-api-log-issues=true` or set `OPENSEAT_BUNDLE_FAIL_ON_API_LOG_ISSUES=true`; the bundle still writes all artifacts, then exits non-zero if the run-scoped log contains unexpected warnings or errors.
+
 Bundle summaries separate command failures from operational attention. If all bundle commands pass but a diagnostics section reports `attention`, `pnpm debug:artifact` prints `Operational attention` and `Bundle command issues: none` instead of hiding the operational signal behind `Bundle issues: none`.
 
 When `JWT_SECRET` is available on the VPS, `pnpm debug:membership` and `pnpm debug:outbound` can synthesize a short-lived super-admin token. You still need a restaurant selector such as `OPENSEAT_RESTAURANT_ID` or `OPENSEAT_RESTAURANT_SLUG`. The scripts print `tokenSource=jwt_secret` or `tokenSource=provided` so support can see which auth path was used.

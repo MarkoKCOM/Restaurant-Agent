@@ -98,6 +98,7 @@
 - Debug bundles now collect both the requested context log window and a bundle-run-only API log slice, so a fresh smoke regression is not confused with older warnings still inside the broader journal window.
 - Debug bundle summaries now classify the bundle-run API log slice and print fresh warning/error counts, error codes, and samples, separating expected negative-path smoke warnings from unexpected runtime noise.
 - Owner delivery readiness now has a guarded single-restaurant repair mode that patches a known owner WhatsApp value through the API and immediately re-checks readiness.
+- Debug bundles can now fail after writing artifacts when `--fail-on-api-log-issues=true` finds unexpected warnings/errors in the bundle-run API log slice.
 
 ### Verified
 - `pnpm --filter @openseat/domain build`

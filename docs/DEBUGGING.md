@@ -226,7 +226,7 @@ On the VPS, this is usually enough because the script can use `JWT_SECRET` to cr
 OPENSEAT_RESTAURANT_ID=... pnpm debug:membership
 ```
 
-Use `OPENSEAT_RESTAURANT_SLUG=...` instead of `OPENSEAT_RESTAURANT_ID` when you know the dashboard slug but not the UUID. If `OPENSEAT_TOKEN` belongs to a restaurant admin/employee, the script can infer the restaurant ID from the token. This prints open processing failures by stage/status, recent engagement-job counts, skipped engagement reasons, request IDs for API reads, and ready-to-run retry commands for repairable membership processing failures.
+Use `OPENSEAT_RESTAURANT_SLUG=...` instead of `OPENSEAT_RESTAURANT_ID` when you know the dashboard slug but not the UUID. If `OPENSEAT_TOKEN` belongs to a restaurant admin/employee, the script can infer the restaurant ID from the token. This prints open processing failures by stage/status, recent engagement-job counts, overdue pending and failed engagement-job samples with trigger timestamps/age, skipped engagement reasons, request IDs for API reads, log trace commands, and ready-to-run retry commands for repairable membership processing failures.
 
 ```bash
 OPENSEAT_TOKEN=... pnpm debug:api -- \

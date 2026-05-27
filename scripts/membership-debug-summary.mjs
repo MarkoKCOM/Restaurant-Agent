@@ -51,6 +51,27 @@ function printCounts(title, counts) {
   }
 }
 
+function formatDate(value) {
+  if (!value) return "none";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toISOString();
+}
+
+function minutesPast(value, now = new Date()) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return Math.floor((now.getTime() - date.getTime()) / 60_000);
+}
+
+function engagementJobLine(job, now = new Date()) {
+  const ageMinutes = minutesPast(job.triggerAt, now);
+  const age = ageMinutes === null ? "" : ` ageMinutes=${ageMinutes}`;
+  const skipReason = job.skipReason ? ` skipReason=${job.skipReason}` : "";
+  const sentAt = job.sentAt ? ` sentAt=${formatDate(job.sentAt)}` : "";
+  return `- ${job.id} type=${job.type} status=${job.status} category=${job.messageCategory ?? "unknown"} guest=${job.guestId} triggerAt=${formatDate(job.triggerAt)}${age}${sentAt}${skipReason}`;
+}
+
 async function getJson(url, token, requestId) {
   let response;
   try {
@@ -234,10 +255,36 @@ printCounts("Engagement jobs by status:", countBy(jobs, "status"));
 printCounts("Engagement jobs by type:", countBy(jobs, "type"));
 console.log("");
 
+const now = new Date();
+const pendingOverdue = jobs
+  .filter((job) => job.status === "pending" && minutesPast(job.triggerAt, now) !== null && minutesPast(job.triggerAt, now) >= 15)
+  .sort((a, b) => new Date(a.triggerAt).getTime() - new Date(b.triggerAt).getTime());
+const failedJobs = jobs
+  .filter((job) => job.status === "failed")
+  .sort((a, b) => new Date(b.updatedAt ?? b.triggerAt).getTime() - new Date(a.updatedAt ?? a.triggerAt).getTime());
+
+console.log(`Overdue pending engagement jobs: ${pendingOverdue.length}`);
+if (pendingOverdue.length > 0) {
+  for (const job of pendingOverdue.slice(0, 10)) {
+    console.log(engagementJobLine(job, now));
+  }
+  console.log(`logs: pnpm debug:logs ${engagementResult.requestId} --since "2 hours ago"`);
+}
+console.log("");
+
+console.log(`Failed engagement jobs: ${failedJobs.length}`);
+if (failedJobs.length > 0) {
+  for (const job of failedJobs.slice(0, 10)) {
+    console.log(engagementJobLine(job, now));
+  }
+  console.log(`logs: pnpm debug:logs ${engagementResult.requestId} --since "2 hours ago"`);
+}
+console.log("");
+
 const skipped = jobs.filter((job) => job.status === "skipped" && job.skipReason);
 if (skipped.length > 0) {
   console.log("Recent skipped engagement reasons:");
   for (const job of skipped.slice(0, 10)) {
-    console.log(`- ${job.type} guest=${job.guestId} reason=${job.skipReason}`);
+    console.log(engagementJobLine(job, now));
   }
 }

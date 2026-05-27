@@ -849,6 +849,16 @@ for (const expectedDashboardSignupContent of [
   assertIncludes(dashboardSignup, expectedDashboardSignupContent);
 }
 
+const gamificationRouteEnvelope = await readFile("apps/api/src/routes/gamification.ts", "utf8");
+for (const expectedGamificationRouteContent of [
+  "gamificationOperationStatusCode",
+  "request.log.error(logPayload, \"Gamification operation failed\")",
+  "request.log.warn(logPayload, \"Gamification operation rejected\")",
+  "return reply.status(statusCode).send",
+]) {
+  assertIncludes(gamificationRouteEnvelope, expectedGamificationRouteContent);
+}
+
 const dashboardChatWidget = await readFile("apps/dashboard/src/components/ChatWidget.tsx", "utf8");
 for (const expectedDashboardChatContent of [
   'createRequestId("dashboard-chat")',

@@ -102,6 +102,7 @@
 - Debug bundles can now fail after writing artifacts when `--fail-on-api-log-issues=true` finds unexpected warnings/errors in the bundle-run API log slice.
 - Debug artifact summaries now print the last smoke steps and recent requests for failed API smoke reports, so assertion failures in gamification, loyalty, membership, and retention checks point at the exact product area and request IDs.
 - Loyalty dashboard retention actions now include a next-best-action recommendation for each queued member, covering recovery, win-back, opt-in, referral, and recognition follow-up.
+- Gamification route catches now classify service failures by status and log unexpected persistence/internal failures at error level instead of flattening every caught failure into a warning-level HTTP 400.
 
 ### Verified
 - `pnpm --filter @openseat/domain build`

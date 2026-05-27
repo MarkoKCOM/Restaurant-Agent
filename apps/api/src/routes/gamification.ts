@@ -63,24 +63,43 @@ function sendCaughtGamificationError(
   context: Record<string, unknown> = {},
 ) {
   const message = error instanceof Error ? error.message : "Gamification operation failed";
-  request.log.warn(
-    {
-      ...context,
-      err: error,
-      code,
-      requestId: request.id,
-      userId: request.user?.id,
-      restaurantId: request.user?.restaurantId,
-      role: request.user?.role,
-    },
-    "Gamification operation failed",
-  );
+  const statusCode = gamificationOperationStatusCode(message);
+  const logPayload = {
+    ...context,
+    err: error,
+    code,
+    requestId: request.id,
+    statusCode,
+    userId: request.user?.id,
+    restaurantId: request.user?.restaurantId,
+    role: request.user?.role,
+  };
 
-  return reply.status(400).send({
+  if (statusCode >= 500) {
+    request.log.error(logPayload, "Gamification operation failed");
+  } else {
+    request.log.warn(logPayload, "Gamification operation rejected");
+  }
+
+  return reply.status(statusCode).send({
     error: message,
     code,
     requestId: request.id,
   });
+}
+
+function gamificationOperationStatusCode(message: string): number {
+  if (message.includes("not found")) return 404;
+  if (message.includes("already")) return 409;
+  if (
+    message.includes("Invalid")
+    || message.includes("Cannot")
+    || message.includes("must")
+    || message.includes("does not belong")
+  ) {
+    return 400;
+  }
+  return 500;
 }
 
 async function enforceGamificationAccess(

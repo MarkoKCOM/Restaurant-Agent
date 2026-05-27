@@ -187,7 +187,7 @@ function isoForJerusalemLocalTime(daysAhead, hhmm) {
   const [targetHour, targetMinute] = hhmm.split(":");
   const start = new Date(Date.UTC(Number(target.year), Number(target.month) - 1, Number(target.day) - 1, 0, 0, 0));
 
-  for (let minutes = 0; minutes <= 72 * 60; minutes += 5) {
+  for (let minutes = 0; minutes <= 72 * 60; minutes += 1) {
     const candidate = new Date(start.getTime() + minutes * 60 * 1000);
     const local = localTimeInZone(candidate, "Asia/Jerusalem");
     if (

@@ -444,6 +444,9 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
           daily_morning_summary: 2,
           thank_you: 3,
         },
+        byErrorCode: {
+          OUTBOUND_RECIPIENT_MISSING: 1,
+        },
       },
       queues: [
         {
@@ -485,7 +488,7 @@ assertIncludes(
 );
 assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overdue=1 failed=1 skipped=3 winBackDue=2 birthdayDue=1 anniversaryDue=1 reviewWithoutPositive=1 negativeWithReview=1");
 assertIncludes(debugBundleManifestOutput, "Campaigns: attention total=6 draft=1 scheduled=2 sent=3 overdue=1 deliverySent=12 skipped=4 optedOut=2 weekLimit=1 monthLimit=1");
-assertIncludes(debugBundleManifestOutput, "Outbound messages: attention total=5 logged=4 sent=0 failed=1 types=daily_morning_summary:2,thank_you:3");
+assertIncludes(debugBundleManifestOutput, "Outbound messages: attention total=5 logged=4 sent=0 skipped=0 failed=1 types=daily_morning_summary:2,thank_you:3 errors=OUTBOUND_RECIPIENT_MISSING:1");
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");
 assertIncludes(debugBundleManifestOutput, "Queues: daily-summary:ok/failed=0/repeat=0, membership-events:ok/failed=0/repeat=?");
 assertIncludes(debugBundleManifestOutput, "Summary schedules: restaurants=9 morning expected=9 found=9 pattern=0 9 * * * status=ok closing expected=9 found=9 pattern=0 23 * * * status=ok timezones=Asia/Jerusalem:9");
@@ -762,6 +765,7 @@ for (const requiredOutboundDebugContent of [
 for (const requiredOutboundServiceContent of [
   "recordOutboundDelivery",
   "OUTBOUND_RECIPIENT_MISSING",
+  "byErrorCode",
   "deliveryMode",
   "deliverySkipped",
   "status: missingRequiredRecipient ? \"skipped\" : \"logged\"",

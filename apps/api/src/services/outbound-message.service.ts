@@ -47,6 +47,7 @@ export interface OutboundMessageDiagnostics {
     skipped: number;
   };
   byType?: Record<string, number>;
+  byErrorCode?: Record<string, number>;
   samples?: Array<{
     id: string;
     restaurantId: string;
@@ -143,7 +144,7 @@ export async function getOutboundMessageDiagnostics(params: {
 } = {}): Promise<OutboundMessageDiagnostics> {
   const since = params.since ?? new Date(Date.now() - 24 * 60 * 60 * 1000);
   const sampleLimit = Math.min(Math.max(params.sampleLimit ?? 5, 1), 20);
-  const [summaryRows, sampleRows] = await Promise.all([
+  const [summaryRows, errorRows, sampleRows] = await Promise.all([
     db
       .select({
         status: outboundMessages.status,
@@ -153,6 +154,14 @@ export async function getOutboundMessageDiagnostics(params: {
       .from(outboundMessages)
       .where(gte(outboundMessages.createdAt, since))
       .groupBy(outboundMessages.status, outboundMessages.messageType),
+    db
+      .select({
+        errorCode: outboundMessages.errorCode,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(outboundMessages)
+      .where(and(gte(outboundMessages.createdAt, since), sql`${outboundMessages.errorCode} is not null`))
+      .groupBy(outboundMessages.errorCode),
     db
       .select({
         id: outboundMessages.id,
@@ -185,6 +194,7 @@ export async function getOutboundMessageDiagnostics(params: {
     skipped: 0,
   };
   const byType: Record<string, number> = {};
+  const byErrorCode: Record<string, number> = {};
   for (const row of summaryRows) {
     const count = Number(row.count ?? 0);
     totals.total += count;
@@ -193,12 +203,17 @@ export async function getOutboundMessageDiagnostics(params: {
     }
     byType[row.messageType] = (byType[row.messageType] ?? 0) + count;
   }
+  for (const row of errorRows) {
+    if (!row.errorCode) continue;
+    byErrorCode[row.errorCode] = Number(row.count ?? 0);
+  }
 
   return {
-    status: totals.failed > 0 ? "attention" : "ok",
+    status: totals.failed > 0 || Object.keys(byErrorCode).length > 0 ? "attention" : "ok",
     since: since.toISOString(),
     totals,
     byType,
+    byErrorCode,
     samples: sampleRows.map((row) => ({
       ...row,
       createdAt: row.createdAt.toISOString(),

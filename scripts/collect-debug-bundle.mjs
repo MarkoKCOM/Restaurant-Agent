@@ -303,6 +303,7 @@ async function captureDiagnosticsHighlights(commandRecord) {
         status: outboundMessages.status,
         totals: outboundMessages.totals,
         byType: outboundMessages.byType,
+        byErrorCode: outboundMessages.byErrorCode,
         samples: outboundMessages.samples,
         error: outboundMessages.error,
       },
@@ -415,8 +416,9 @@ async function writeReadme() {
       const outboundMessages = adminDiagnostics.outboundMessages ?? {};
       const outboundTotals = outboundMessages.totals ?? {};
       const outboundByType = outboundMessages.byType ?? {};
+      const outboundByErrorCode = outboundMessages.byErrorCode ?? {};
       lines.push(
-        `- Outbound messages: ${outboundMessages.status ?? "unknown"} total=${outboundTotals.total ?? "?"} logged=${outboundTotals.logged ?? "?"} sent=${outboundTotals.sent ?? "?"} failed=${outboundTotals.failed ?? "?"} types=${Object.entries(outboundByType).map(([type, count]) => `${type}:${count}`).join(",") || "none"}`,
+        `- Outbound messages: ${outboundMessages.status ?? "unknown"} total=${outboundTotals.total ?? "?"} logged=${outboundTotals.logged ?? "?"} sent=${outboundTotals.sent ?? "?"} skipped=${outboundTotals.skipped ?? "?"} failed=${outboundTotals.failed ?? "?"} types=${Object.entries(outboundByType).map(([type, count]) => `${type}:${count}`).join(",") || "none"} errors=${Object.entries(outboundByErrorCode).map(([code, count]) => `${code}:${count}`).join(",") || "none"}`,
       );
       if (agentMembershipIntents) {
         lines.push(

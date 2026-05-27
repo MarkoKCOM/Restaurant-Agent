@@ -142,6 +142,25 @@ function sendLoyaltyError(
   return sendLoyaltyEnvelopeError(request, reply, 500, message, code, context);
 }
 
+function sendCaughtLoyaltyRouteError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  err: unknown,
+  fallbackCode: string,
+  context: Record<string, unknown> = {},
+) {
+  const message = err instanceof Error ? err.message : "Loyalty operation failed";
+  const code = loyaltyOperationErrorCode(message);
+  if (code !== "LOYALTY_OPERATION_FAILED") {
+    return sendLoyaltyError(request, reply, err, context);
+  }
+
+  return sendLoyaltyEnvelopeError(request, reply, 500, message, fallbackCode, {
+    ...context,
+    err,
+  });
+}
+
 async function enforceLoyaltyAccess(
   request: FastifyRequest,
   reply: FastifyReply,
@@ -187,8 +206,18 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const accessError = await enforceLoyaltyAccess(request, reply, query.restaurantId, "MEMBERSHIP_PROCESSING_FORBIDDEN");
     if (accessError) return reply;
 
-    const failures = await listMembershipProcessingFailures(query);
-    return { failures };
+    try {
+      const failures = await listMembershipProcessingFailures(query);
+      return { failures };
+    } catch (error: unknown) {
+      return sendCaughtLoyaltyRouteError(
+        request,
+        reply,
+        error,
+        "MEMBERSHIP_PROCESSING_LIST_FAILED",
+        { restaurantId: query.restaurantId, status: query.status, limit: query.limit },
+      );
+    }
   });
 
   // POST /processing-failures/:failureId/retry — retry one failed post-visit stage
@@ -254,8 +283,18 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
     if (accessError) return reply;
 
-    const referralShare = await getReferralShare(guestId);
-    return { referralShare };
+    try {
+      const referralShare = await getReferralShare(guestId);
+      return { referralShare };
+    } catch (error: unknown) {
+      return sendCaughtLoyaltyRouteError(
+        request,
+        reply,
+        error,
+        "LOYALTY_REFERRAL_SHARE_FAILED",
+        { guestId, restaurantId: guest.restaurantId },
+      );
+    }
   });
 
   // GET /:guestId/balance — points balance + tier + stamp progress
@@ -276,26 +315,36 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
     if (accessError) return reply;
 
-    const balance = await getPointsBalance(guestId);
-    if (!balance) {
-      return sendLoyaltyEnvelopeError(
+    try {
+      const balance = await getPointsBalance(guestId);
+      if (!balance) {
+        return sendLoyaltyEnvelopeError(
+          request,
+          reply,
+          404,
+          "Guest not found",
+          "LOYALTY_GUEST_NOT_FOUND",
+          { guestId },
+        );
+      }
+
+      const stampCard = await checkStampCard(guestId);
+
+      return {
+        guestId,
+        pointsBalance: balance.pointsBalance,
+        tier: balance.tier,
+        stampCard,
+      };
+    } catch (error: unknown) {
+      return sendCaughtLoyaltyRouteError(
         request,
         reply,
-        404,
-        "Guest not found",
-        "LOYALTY_GUEST_NOT_FOUND",
-        { guestId },
+        error,
+        "LOYALTY_BALANCE_FAILED",
+        { guestId, restaurantId: guest.restaurantId },
       );
     }
-
-    const stampCard = await checkStampCard(guestId);
-
-    return {
-      guestId,
-      pointsBalance: balance.pointsBalance,
-      tier: balance.tier,
-      stampCard,
-    };
   });
 
   // GET /:guestId/history — transaction history
@@ -317,15 +366,25 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
     if (accessError) return reply;
 
-    const parsedLimit = limit ? Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100) : 20;
-    const transactions = await getTransactionHistory(guestId, parsedLimit);
+    try {
+      const parsedLimit = limit ? Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100) : 20;
+      const transactions = await getTransactionHistory(guestId, parsedLimit);
 
-    return {
-      transactions: transactions.map((tx) => ({
-        ...tx,
-        description: tx.reason ?? tx.type,
-      })),
-    };
+      return {
+        transactions: transactions.map((tx) => ({
+          ...tx,
+          description: tx.reason ?? tx.type,
+        })),
+      };
+    } catch (error: unknown) {
+      return sendCaughtLoyaltyRouteError(
+        request,
+        reply,
+        error,
+        "LOYALTY_HISTORY_FAILED",
+        { guestId, restaurantId: guest.restaurantId, limit },
+      );
+    }
   });
 
   // GET /:guestId/summary — normalized WhatsApp/member summary
@@ -346,19 +405,29 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
     if (accessError) return reply;
 
-    const summary = await getMembershipSummary(guestId);
-    if (!summary) {
-      return sendLoyaltyEnvelopeError(
+    try {
+      const summary = await getMembershipSummary(guestId);
+      if (!summary) {
+        return sendLoyaltyEnvelopeError(
+          request,
+          reply,
+          404,
+          "Guest not found",
+          "LOYALTY_GUEST_NOT_FOUND",
+          { guestId },
+        );
+      }
+
+      return { summary };
+    } catch (error: unknown) {
+      return sendCaughtLoyaltyRouteError(
         request,
         reply,
-        404,
-        "Guest not found",
-        "LOYALTY_GUEST_NOT_FOUND",
-        { guestId },
+        error,
+        "MEMBERSHIP_SUMMARY_FAILED",
+        { guestId, restaurantId: guest.restaurantId },
       );
     }
-
-    return { summary };
   });
 
   // POST /:guestId/award — manual point award (owner action)
@@ -380,15 +449,25 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
     if (accessError) return reply;
 
-    const transaction = await awardPoints(
-      guestId,
-      guest.restaurantId,
-      body.points,
-      body.reason,
-    );
+    try {
+      const transaction = await awardPoints(
+        guestId,
+        guest.restaurantId,
+        body.points,
+        body.reason,
+      );
 
-    reply.code(201);
-    return { transaction };
+      reply.code(201);
+      return { transaction };
+    } catch (error: unknown) {
+      return sendCaughtLoyaltyRouteError(
+        request,
+        reply,
+        error,
+        "LOYALTY_AWARD_FAILED",
+        { guestId, restaurantId: guest.restaurantId, points: body.points, reason: body.reason },
+      );
+    }
   });
 
   // GET /rewards — list rewards for a restaurant
@@ -411,8 +490,18 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const accessError = await enforceLoyaltyAccess(request, reply, restaurantId, "LOYALTY_FORBIDDEN");
     if (accessError) return reply;
 
-    const rewardsList = await listRewards(restaurantId, includeInactive === "true");
-    return { rewards: rewardsList };
+    try {
+      const rewardsList = await listRewards(restaurantId, includeInactive === "true");
+      return { rewards: rewardsList };
+    } catch (error: unknown) {
+      return sendCaughtLoyaltyRouteError(
+        request,
+        reply,
+        error,
+        "LOYALTY_REWARDS_LIST_FAILED",
+        { restaurantId, includeInactive },
+      );
+    }
   });
 
   // PATCH /rewards/:rewardId — update reward fields (admin/super_admin)
@@ -435,19 +524,29 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const accessError = await enforceLoyaltyAccess(request, reply, restaurantId, "LOYALTY_FORBIDDEN", { rewardId });
     if (accessError) return reply;
 
-    const updated = await updateReward(rewardId, restaurantId, body);
-    if (!updated) {
-      return sendLoyaltyEnvelopeError(
+    try {
+      const updated = await updateReward(rewardId, restaurantId, body);
+      if (!updated) {
+        return sendLoyaltyEnvelopeError(
+          request,
+          reply,
+          404,
+          "Reward not found",
+          "LOYALTY_REWARD_NOT_FOUND",
+          { rewardId, restaurantId },
+        );
+      }
+
+      return { reward: updated };
+    } catch (error: unknown) {
+      return sendCaughtLoyaltyRouteError(
         request,
         reply,
-        404,
-        "Reward not found",
-        "LOYALTY_REWARD_NOT_FOUND",
+        error,
+        "LOYALTY_REWARD_UPDATE_FAILED",
         { rewardId, restaurantId },
       );
     }
-
-    return { reward: updated };
   });
 
   // POST /rewards — create a reward
@@ -456,19 +555,29 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const accessError = await enforceLoyaltyAccess(request, reply, parsed.restaurantId!, "LOYALTY_FORBIDDEN");
     if (accessError) return reply;
 
-    const reward = await createReward({
-      restaurantId: parsed.restaurantId!,
-      nameHe: parsed.nameHe!,
-      nameEn: parsed.nameEn,
-      description: parsed.description,
-      pointsCost: parsed.pointsCost!,
-      templateKey: parsed.templateKey,
-      recommendedMoments: parsed.recommendedMoments,
-      pitchHe: parsed.pitchHe,
-      pitchEn: parsed.pitchEn,
-    });
-    reply.code(201);
-    return { reward };
+    try {
+      const reward = await createReward({
+        restaurantId: parsed.restaurantId!,
+        nameHe: parsed.nameHe!,
+        nameEn: parsed.nameEn,
+        description: parsed.description,
+        pointsCost: parsed.pointsCost!,
+        templateKey: parsed.templateKey,
+        recommendedMoments: parsed.recommendedMoments,
+        pitchHe: parsed.pitchHe,
+        pitchEn: parsed.pitchEn,
+      });
+      reply.code(201);
+      return { reward };
+    } catch (error: unknown) {
+      return sendCaughtLoyaltyRouteError(
+        request,
+        reply,
+        error,
+        "LOYALTY_REWARD_CREATE_FAILED",
+        { restaurantId: parsed.restaurantId, pointsCost: parsed.pointsCost, templateKey: parsed.templateKey },
+      );
+    }
   });
 
   // POST /:guestId/rewards/:rewardId/claim — claim a reward for later redemption
@@ -551,14 +660,25 @@ export async function loyaltyRoutes(app: FastifyInstance) {
   // GET /claims/:claimCode/verify — staff-safe verification flow
   app.get("/claims/:claimCode/verify", async (request, reply) => {
     const { claimCode } = request.params as { claimCode: string };
-    const claim = await verifyClaimByCode(claimCode);
-    if (!claim) {
-      return sendLoyaltyEnvelopeError(
+    let claim: Awaited<ReturnType<typeof verifyClaimByCode>>;
+    try {
+      claim = await verifyClaimByCode(claimCode);
+      if (!claim) {
+        return sendLoyaltyEnvelopeError(
+          request,
+          reply,
+          404,
+          "Claim not found",
+          "LOYALTY_CLAIM_NOT_FOUND",
+          { claimCode },
+        );
+      }
+    } catch (error: unknown) {
+      return sendCaughtLoyaltyRouteError(
         request,
         reply,
-        404,
-        "Claim not found",
-        "LOYALTY_CLAIM_NOT_FOUND",
+        error,
+        "LOYALTY_CLAIM_VERIFY_FAILED",
         { claimCode },
       );
     }
@@ -635,11 +755,21 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     );
     if (accessError) return reply;
 
-    const updated = await updateGuestPreferences(guestId, {
-      optedOutCampaigns: body.optedOutCampaigns,
-    });
+    try {
+      const updated = await updateGuestPreferences(guestId, {
+        optedOutCampaigns: body.optedOutCampaigns,
+      });
 
-    return { guest: updated ? toDomainGuest(updated) : null };
+      return { guest: updated ? toDomainGuest(updated) : null };
+    } catch (error: unknown) {
+      return sendCaughtLoyaltyRouteError(
+        request,
+        reply,
+        error,
+        "LOYALTY_MESSAGING_PREFERENCES_FAILED",
+        { guestId, restaurantId: guest.restaurantId, optedOutCampaigns: body.optedOutCampaigns },
+      );
+    }
   });
 
   // GET /:guestId/stamp-card — stamp card status
@@ -660,18 +790,28 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const accessError = await enforceLoyaltyAccess(request, reply, guest.restaurantId, "LOYALTY_FORBIDDEN", { guestId });
     if (accessError) return reply;
 
-    const stampCard = await checkStampCard(guestId);
-    if (!stampCard) {
-      return sendLoyaltyEnvelopeError(
+    try {
+      const stampCard = await checkStampCard(guestId);
+      if (!stampCard) {
+        return sendLoyaltyEnvelopeError(
+          request,
+          reply,
+          404,
+          "Guest not found",
+          "LOYALTY_GUEST_NOT_FOUND",
+          { guestId },
+        );
+      }
+
+      return { stampCard };
+    } catch (error: unknown) {
+      return sendCaughtLoyaltyRouteError(
         request,
         reply,
-        404,
-        "Guest not found",
-        "LOYALTY_GUEST_NOT_FOUND",
-        { guestId },
+        error,
+        "LOYALTY_STAMP_CARD_FAILED",
+        { guestId, restaurantId: guest.restaurantId },
       );
     }
-
-    return { stampCard };
   });
 }

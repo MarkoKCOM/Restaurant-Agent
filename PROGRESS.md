@@ -108,6 +108,7 @@
 - Engagement list endpoints now wrap outbound-message and engagement-job read failures with stable error codes plus request IDs, so retention dashboard/debug reads can be traced directly in logs.
 - Visit and feedback routes now log persistence/read failures at error level with stable codes for visit history, insights, and feedback summaries, preserving request IDs on paths that feed loyalty/gamification state.
 - Agent message failures now classify LLM config, timeout, provider, and reset failures with stable codes while logging request IDs and safe sender/message metadata for faster agent triage.
+- Loyalty and membership read/update paths now return route-specific error-level codes with guest/restaurant context for processing failures, summaries, balances, history, referrals, reward lists, claim verification, preferences, and stamp cards.
 - Unexpected loyalty claim/reward failures now return error-level `LOYALTY_OPERATION_FAILED` responses instead of being flattened into client-style 400 errors.
 - Unexpected reservation availability/create/list/update/no-show/cancel failures now return reservation-specific error-level codes with restaurant/reservation context instead of falling through to generic handling.
 - Loyalty dashboard retention actions now include a next-best-action recommendation for each queued member, covering recovery, win-back, opt-in, referral, and recognition follow-up.

@@ -277,6 +277,7 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
           active: 2,
           activeSmokeChallenges: 1,
           stuckCompletions: 1,
+          duplicateProgressGroups: 1,
         },
         referrals: {
           guestsWithReferralCode: 7,
@@ -314,7 +315,7 @@ assertIncludes(debugBundleManifestOutput, "Membership processing: ok open=2 atte
 assertIncludes(debugBundleManifestOutput, "Membership repair summary: passed output=/tmp/openseat-debug-bundle/membership-debug-summary.txt");
 assertIncludes(
   debugBundleManifestOutput,
-  "Gamification: attention activeChallenges=2 smokeChallenges=1 stuckChallenges=1 referralCodes=7 referralCreditMismatches=1",
+  "Gamification: attention activeChallenges=2 smokeChallenges=1 stuckChallenges=1 duplicateProgress=1 referralCodes=7 referralCreditMismatches=1",
 );
 assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overdue=1 failed=1 skipped=3");
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");

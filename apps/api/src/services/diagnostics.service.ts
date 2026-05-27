@@ -161,6 +161,7 @@ export interface GamificationDiagnostic {
     inProgress: number;
     completed: number;
     stuckCompletions: number;
+    duplicateProgressGroups: number;
     stuckSamples: Array<{
       id: string;
       restaurantId: string;
@@ -169,6 +170,11 @@ export interface GamificationDiagnostic {
       currentValue: number;
       targetValue: number;
       status: string;
+    }>;
+    duplicateProgressSamples: Array<{
+      guestId: string;
+      challengeId: string;
+      rowCount: number;
     }>;
   };
   referrals?: {
@@ -412,6 +418,7 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
       challengeRows,
       progressRows,
       stuckChallengeRows,
+      duplicateProgressRows,
       referralRows,
       welcomeBonusRows,
       referrerMismatchRows,
@@ -466,6 +473,23 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
         target_value: number;
         status: string;
         stuck_count: number;
+      }>>,
+      db.execute(sql`
+        select
+          guest_id,
+          challenge_id,
+          count(*)::int as row_count,
+          count(*) over()::int as duplicate_group_count
+        from ${challengeProgress}
+        group by guest_id, challenge_id
+        having count(*) > 1
+        order by row_count desc, guest_id asc, challenge_id asc
+        limit 5
+      `) as Promise<Array<{
+        guest_id: string;
+        challenge_id: string;
+        row_count: number;
+        duplicate_group_count: number;
       }>>,
       db.execute(sql`
         select
@@ -524,12 +548,13 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
     const referralSummary = referralRows[0];
     const welcomeBonusSummary = welcomeBonusRows[0];
     const stuckCompletions = Number(stuckChallengeRows[0]?.stuck_count ?? 0);
+    const duplicateProgressGroups = Number(duplicateProgressRows[0]?.duplicate_group_count ?? 0);
     const activeSmokeChallenges = Number(challengeSummary?.active_smoke_challenges ?? 0);
     const referredGuestsWithoutWelcomeBonus = Number(welcomeBonusSummary?.referred_without_welcome_bonus ?? 0);
     const referrerCreditMismatches = Number(referrerMismatchRows[0]?.mismatch_count ?? 0);
 
     return {
-      status: activeSmokeChallenges > 0 || stuckCompletions > 0 || referredGuestsWithoutWelcomeBonus > 0 || referrerCreditMismatches > 0
+      status: activeSmokeChallenges > 0 || stuckCompletions > 0 || duplicateProgressGroups > 0 || referredGuestsWithoutWelcomeBonus > 0 || referrerCreditMismatches > 0
         ? "attention"
         : "ok",
       challenges: {
@@ -540,6 +565,7 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
         inProgress: Number(progressSummary?.in_progress ?? 0),
         completed: Number(progressSummary?.completed ?? 0),
         stuckCompletions,
+        duplicateProgressGroups,
         stuckSamples: stuckChallengeRows.map((row) => ({
           id: row.id,
           restaurantId: row.restaurant_id,
@@ -548,6 +574,11 @@ async function inspectGamification(): Promise<GamificationDiagnostic> {
           currentValue: Number(row.current_value),
           targetValue: Number(row.target_value),
           status: row.status,
+        })),
+        duplicateProgressSamples: duplicateProgressRows.map((row) => ({
+          guestId: row.guest_id,
+          challengeId: row.challenge_id,
+          rowCount: Number(row.row_count),
         })),
       },
       referrals: {

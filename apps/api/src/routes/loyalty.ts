@@ -105,26 +105,40 @@ function sendLoyaltyEnvelopeError(
   });
 }
 
-function sendLoyaltyError(reply: { code: (status: number) => unknown }, err: unknown) {
+function loyaltyOperationErrorCode(message: string): string {
+  if (message.includes("Insufficient points")) return "LOYALTY_INSUFFICIENT_POINTS";
+  if (message.includes("Reward not found")) return "LOYALTY_REWARD_NOT_FOUND";
+  if (message.includes("Claim not found")) return "LOYALTY_CLAIM_NOT_FOUND";
+  if (message.includes("Guest not found")) return "LOYALTY_GUEST_NOT_FOUND";
+  if (message.includes("not belong") || message.includes("does not belong")) {
+    return "LOYALTY_TENANT_MISMATCH";
+  }
+  if (message.includes("already")) return "LOYALTY_CLAIM_NOT_ACTIVE";
+  return "LOYALTY_OPERATION_FAILED";
+}
+
+function sendLoyaltyError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  err: unknown,
+  context: Record<string, unknown> = {},
+) {
   const message = err instanceof Error ? err.message : "Loyalty operation failed";
+  const code = loyaltyOperationErrorCode(message);
   if (message.includes("Insufficient points")) {
-    reply.code(400);
-    return { error: message };
+    return sendLoyaltyEnvelopeError(request, reply, 400, message, code, context);
   }
   if (
     message.includes("not found")
     || message.includes("not belong")
     || message.includes("does not belong")
   ) {
-    reply.code(404);
-    return { error: message };
+    return sendLoyaltyEnvelopeError(request, reply, 404, message, code, context);
   }
   if (message.includes("already")) {
-    reply.code(409);
-    return { error: message };
+    return sendLoyaltyEnvelopeError(request, reply, 409, message, code, context);
   }
-  reply.code(400);
-  return { error: message };
+  return sendLoyaltyEnvelopeError(request, reply, 400, message, code, context);
 }
 
 export async function loyaltyRoutes(app: FastifyInstance) {
@@ -200,13 +214,26 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const { guestId } = request.params as { guestId: string };
     const guest = await getGuestById(guestId);
     if (!guest) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        404,
+        "Guest not found",
+        "LOYALTY_GUEST_NOT_FOUND",
+        { guestId },
+      );
     }
 
     const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        403,
+        err,
+        "LOYALTY_FORBIDDEN",
+        { guestId, restaurantId: guest.restaurantId },
+      );
     }
 
     const referralShare = await getReferralShare(guestId);
@@ -218,19 +245,38 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const { guestId } = request.params as { guestId: string };
     const guest = await getGuestById(guestId);
     if (!guest) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        404,
+        "Guest not found",
+        "LOYALTY_GUEST_NOT_FOUND",
+        { guestId },
+      );
     }
 
     const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        403,
+        err,
+        "LOYALTY_FORBIDDEN",
+        { guestId, restaurantId: guest.restaurantId },
+      );
     }
 
     const balance = await getPointsBalance(guestId);
     if (!balance) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        404,
+        "Guest not found",
+        "LOYALTY_GUEST_NOT_FOUND",
+        { guestId },
+      );
     }
 
     const stampCard = await checkStampCard(guestId);
@@ -249,13 +295,26 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const { limit } = request.query as { limit?: string };
     const guest = await getGuestById(guestId);
     if (!guest) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        404,
+        "Guest not found",
+        "LOYALTY_GUEST_NOT_FOUND",
+        { guestId },
+      );
     }
 
     const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        403,
+        err,
+        "LOYALTY_FORBIDDEN",
+        { guestId, restaurantId: guest.restaurantId },
+      );
     }
 
     const parsedLimit = limit ? Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100) : 20;
@@ -274,19 +333,38 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const { guestId } = request.params as { guestId: string };
     const guest = await getGuestById(guestId);
     if (!guest) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        404,
+        "Guest not found",
+        "LOYALTY_GUEST_NOT_FOUND",
+        { guestId },
+      );
     }
 
     const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        403,
+        err,
+        "LOYALTY_FORBIDDEN",
+        { guestId, restaurantId: guest.restaurantId },
+      );
     }
 
     const summary = await getMembershipSummary(guestId);
     if (!summary) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        404,
+        "Guest not found",
+        "LOYALTY_GUEST_NOT_FOUND",
+        { guestId },
+      );
     }
 
     return { summary };
@@ -298,13 +376,26 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const body = awardPointsSchema.parse(request.body);
     const guest = await getGuestById(guestId);
     if (!guest) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        404,
+        "Guest not found",
+        "LOYALTY_GUEST_NOT_FOUND",
+        { guestId },
+      );
     }
 
     const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        403,
+        err,
+        "LOYALTY_FORBIDDEN",
+        { guestId, restaurantId: guest.restaurantId },
+      );
     }
 
     const transaction = await awardPoints(
@@ -326,13 +417,25 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     };
 
     if (!restaurantId) {
-      reply.code(400);
-      return { error: "restaurantId query parameter is required" };
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        400,
+        "restaurantId query parameter is required",
+        "RESTAURANT_ID_REQUIRED",
+      );
     }
 
     const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        403,
+        err,
+        "LOYALTY_FORBIDDEN",
+        { restaurantId },
+      );
     }
 
     const rewardsList = await listRewards(restaurantId, includeInactive === "true");
@@ -345,18 +448,39 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const body = updateRewardSchema.parse(request.body ?? {});
 
     const adminErr = requireRestaurantAdmin(request.user!);
-    if (adminErr) return reply.status(403).send({ error: adminErr });
+    if (adminErr) {
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        403,
+        adminErr,
+        "LOYALTY_FORBIDDEN",
+        { rewardId },
+      );
+    }
 
     const restaurantId = request.user!.restaurantId;
     if (!restaurantId) {
-      reply.code(400);
-      return { error: "Restaurant context required" };
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        400,
+        "Restaurant context required",
+        "RESTAURANT_ID_REQUIRED",
+        { rewardId },
+      );
     }
 
     const updated = await updateReward(rewardId, restaurantId, body);
     if (!updated) {
-      reply.code(404);
-      return { error: "Reward not found" };
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        404,
+        "Reward not found",
+        "LOYALTY_REWARD_NOT_FOUND",
+        { rewardId, restaurantId },
+      );
     }
 
     return { reward: updated };
@@ -367,7 +491,14 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const parsed = createRewardSchema.parse(request.body);
     const err = enforceTenant(request.user!, parsed.restaurantId!) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        403,
+        err,
+        "LOYALTY_FORBIDDEN",
+        { restaurantId: parsed.restaurantId },
+      );
     }
 
     const reward = await createReward({
@@ -391,13 +522,26 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const body = claimRewardSchema.parse(request.body ?? {});
     const guest = await getGuestById(guestId);
     if (!guest) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        404,
+        "Guest not found",
+        "LOYALTY_GUEST_NOT_FOUND",
+        { guestId, rewardId },
+      );
     }
 
     const err = enforceTenant(request.user!, guest.restaurantId) ?? requireOperationalRole(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        403,
+        err,
+        "LOYALTY_FORBIDDEN",
+        { guestId, rewardId, restaurantId: guest.restaurantId },
+      );
     }
 
     try {
@@ -405,7 +549,7 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       reply.code(201);
       return { claim };
     } catch (err) {
-      return sendLoyaltyError(reply, err);
+      return sendLoyaltyError(request, reply, err, { guestId, rewardId, restaurantId: guest.restaurantId });
     }
   });
 
@@ -415,13 +559,26 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const body = claimRewardSchema.parse(request.body ?? {});
     const guest = await getGuestById(guestId);
     if (!guest) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        404,
+        "Guest not found",
+        "LOYALTY_GUEST_NOT_FOUND",
+        { guestId, rewardId },
+      );
     }
 
     const err = enforceTenant(request.user!, guest.restaurantId) ?? requireOperationalRole(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        403,
+        err,
+        "LOYALTY_FORBIDDEN",
+        { guestId, rewardId, restaurantId: guest.restaurantId },
+      );
     }
 
     try {
@@ -436,7 +593,7 @@ export async function loyaltyRoutes(app: FastifyInstance) {
         },
       };
     } catch (err) {
-      return sendLoyaltyError(reply, err);
+      return sendLoyaltyError(request, reply, err, { guestId, rewardId, restaurantId: guest.restaurantId });
     }
   });
 
@@ -445,13 +602,26 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const { claimCode } = request.params as { claimCode: string };
     const claim = await verifyClaimByCode(claimCode);
     if (!claim) {
-      reply.code(404);
-      return { error: "Claim not found" };
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        404,
+        "Claim not found",
+        "LOYALTY_CLAIM_NOT_FOUND",
+        { claimCode },
+      );
     }
 
     const err = enforceTenant(request.user!, claim.restaurantId) ?? requireOperationalRole(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        403,
+        err,
+        "LOYALTY_FORBIDDEN",
+        { claimCode, claimId: claim.id, restaurantId: claim.restaurantId },
+      );
     }
 
     return { claim };
@@ -462,20 +632,33 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const { claimId } = request.params as { claimId: string };
     const claim = await getClaimById(claimId);
     if (!claim) {
-      reply.code(404);
-      return { error: "Claim not found" };
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        404,
+        "Claim not found",
+        "LOYALTY_CLAIM_NOT_FOUND",
+        { claimId },
+      );
     }
 
     const err = enforceTenant(request.user!, claim.restaurantId) ?? requireOperationalRole(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        403,
+        err,
+        "LOYALTY_FORBIDDEN",
+        { claimId, restaurantId: claim.restaurantId },
+      );
     }
 
     try {
       const redeemedClaim = await redeemClaim(claimId, request.user!.id);
       return { claim: redeemedClaim };
     } catch (err) {
-      return sendLoyaltyError(reply, err);
+      return sendLoyaltyError(request, reply, err, { claimId, restaurantId: claim.restaurantId });
     }
   });
 
@@ -485,13 +668,26 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const body = messagingPreferencesSchema.parse(request.body ?? {});
     const guest = await getGuestById(guestId);
     if (!guest) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        404,
+        "Guest not found",
+        "LOYALTY_GUEST_NOT_FOUND",
+        { guestId },
+      );
     }
 
     const err = enforceTenant(request.user!, guest.restaurantId) ?? requireOperationalRole(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        403,
+        err,
+        "LOYALTY_FORBIDDEN",
+        { guestId, restaurantId: guest.restaurantId },
+      );
     }
 
     const updated = await updateGuestPreferences(guestId, {
@@ -506,19 +702,38 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const { guestId } = request.params as { guestId: string };
     const guest = await getGuestById(guestId);
     if (!guest) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        404,
+        "Guest not found",
+        "LOYALTY_GUEST_NOT_FOUND",
+        { guestId },
+      );
     }
 
     const err = enforceTenant(request.user!, guest.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        403,
+        err,
+        "LOYALTY_FORBIDDEN",
+        { guestId, restaurantId: guest.restaurantId },
+      );
     }
 
     const stampCard = await checkStampCard(guestId);
     if (!stampCard) {
-      reply.code(404);
-      return { error: "Guest not found" };
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        404,
+        "Guest not found",
+        "LOYALTY_GUEST_NOT_FOUND",
+        { guestId },
+      );
     }
 
     return { stampCard };

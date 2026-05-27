@@ -18,6 +18,19 @@ function requestIdFor(name) {
   return `debug-membership-${name}-${Date.now()}`;
 }
 
+function decodeTokenRestaurantId(token) {
+  const [, payload] = token.split(".");
+  if (!payload) return "";
+
+  try {
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = JSON.parse(Buffer.from(normalized, "base64").toString("utf8"));
+    return typeof decoded.restaurantId === "string" ? decoded.restaurantId : "";
+  } catch {
+    return "";
+  }
+}
+
 function countBy(items, key) {
   return items.reduce((counts, item) => {
     const value = item?.[key] ?? "unknown";
@@ -89,6 +102,7 @@ async function resolveRestaurantId(params) {
       restaurantSlug: "",
       restaurantName: "",
       requestId: "",
+      source: params.restaurantIdSource,
     };
   }
 
@@ -121,6 +135,7 @@ async function resolveRestaurantId(params) {
     restaurantSlug: match.slug ?? params.restaurantSlug,
     restaurantName: match.name ?? "",
     requestId: result.requestId,
+    source: "slug",
   };
 }
 
@@ -128,22 +143,25 @@ const apiUrl = (readOption("api-url", process.env.OPENSEAT_API_URL ?? "http://12
 const token = readOption("token", process.env.OPENSEAT_TOKEN ?? "");
 const explicitRestaurantId = readOption("restaurant-id", process.env.OPENSEAT_RESTAURANT_ID ?? "");
 const restaurantSlug = readOption("restaurant-slug", process.env.OPENSEAT_RESTAURANT_SLUG ?? "");
+const tokenRestaurantId = decodeTokenRestaurantId(token);
 const failureStatus = readOption("failure-status", "open");
 const failureLimit = readOption("failure-limit", "20");
 const engagementStatus = readOption("engagement-status", "");
 const messageCategory = readOption("message-category", "");
 
-if (!token || (!explicitRestaurantId && !restaurantSlug)) {
+if (!token || (!explicitRestaurantId && !restaurantSlug && !tokenRestaurantId)) {
   console.error("Missing OPENSEAT_TOKEN and a restaurant selector.");
   console.error("Usage: OPENSEAT_TOKEN=... OPENSEAT_RESTAURANT_ID=... pnpm debug:membership");
   console.error("   or: OPENSEAT_TOKEN=... OPENSEAT_RESTAURANT_SLUG=... pnpm debug:membership");
+  console.error("Restaurant admin tokens can also infer the selector from their JWT restaurantId.");
   process.exit(1);
 }
 
 const restaurant = await resolveRestaurantId({
   apiUrl,
   token,
-  restaurantId: explicitRestaurantId,
+  restaurantId: explicitRestaurantId || (restaurantSlug ? "" : tokenRestaurantId),
+  restaurantIdSource: explicitRestaurantId ? "env" : "token",
   restaurantSlug,
 });
 const restaurantId = restaurant.restaurantId;
@@ -181,6 +199,7 @@ const jobs = Array.isArray(engagementResult.body?.jobs) ? engagementResult.body.
 
 console.log("Membership Debug Summary");
 console.log(`restaurantId=${restaurantId}`);
+if (restaurant.source) console.log(`restaurantIdSource=${restaurant.source}`);
 if (restaurant.restaurantSlug) console.log(`restaurantSlug=${restaurant.restaurantSlug}`);
 if (restaurant.restaurantName) console.log(`restaurantName=${restaurant.restaurantName}`);
 if (restaurant.requestId) console.log(`restaurantLookupRequestId=${restaurant.requestId}`);

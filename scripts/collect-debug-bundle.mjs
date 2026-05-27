@@ -55,6 +55,19 @@ function createSignedSuperAdminToken() {
   return `${header}.${payload}.${signature}`;
 }
 
+function decodeTokenRestaurantId(token) {
+  const [, payload] = token.split(".");
+  if (!payload) return "";
+
+  try {
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = JSON.parse(Buffer.from(normalized, "base64").toString("utf8"));
+    return typeof decoded.restaurantId === "string" ? decoded.restaurantId : "";
+  } catch {
+    return "";
+  }
+}
+
 const apiUrl = (process.env.OPENSEAT_API_URL || "http://127.0.0.1:3001").replace(/\/$/, "");
 const since = readOption("since", "30 minutes ago");
 const service = readOption("service", "openseat-api");
@@ -450,12 +463,15 @@ if (diagnosticsToken.token) {
   diagnosticsCommand.tokenSource = diagnosticsToken.source;
   await captureDiagnosticsHighlights(diagnosticsCommand);
 
-  if (membershipDebugRestaurantId || membershipDebugRestaurantSlug) {
+  const tokenRestaurantId = decodeTokenRestaurantId(diagnosticsToken.token);
+  const resolvedMembershipDebugRestaurantId = membershipDebugRestaurantId || tokenRestaurantId;
+
+  if (resolvedMembershipDebugRestaurantId || membershipDebugRestaurantSlug) {
     const membershipCommand = await runStep("membership-debug-summary", "node", ["scripts/membership-debug-summary.mjs"], {
       env: {
         OPENSEAT_API_URL: apiUrl,
         OPENSEAT_TOKEN: diagnosticsToken.token,
-        OPENSEAT_RESTAURANT_ID: membershipDebugRestaurantId,
+        OPENSEAT_RESTAURANT_ID: resolvedMembershipDebugRestaurantId,
         OPENSEAT_RESTAURANT_SLUG: membershipDebugRestaurantSlug,
       },
     });
@@ -464,7 +480,7 @@ if (diagnosticsToken.token) {
     manifest.commands.push({
       name: "membership-debug-summary",
       status: "skipped",
-      reason: "OPENSEAT_RESTAURANT_ID, OPENSEAT_BUNDLE_RESTAURANT_ID, OPENSEAT_RESTAURANT_SLUG, or OPENSEAT_BUNDLE_RESTAURANT_SLUG is not set",
+      reason: "OPENSEAT_RESTAURANT_ID, OPENSEAT_BUNDLE_RESTAURANT_ID, OPENSEAT_RESTAURANT_SLUG, OPENSEAT_BUNDLE_RESTAURANT_SLUG, or a restaurant-scoped OPENSEAT_TOKEN is not set",
     });
   }
 } else {

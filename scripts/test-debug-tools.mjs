@@ -148,6 +148,7 @@ const missingMembershipDebugEnv = await expectCommandFailure("node", [
 });
 assertIncludes(missingMembershipDebugEnv.stderr, "Missing OPENSEAT_TOKEN and a restaurant selector");
 assertIncludes(missingMembershipDebugEnv.stderr, "pnpm debug:membership");
+assertIncludes(missingMembershipDebugEnv.stderr, "Restaurant admin tokens can also infer");
 
 const agentIntentPath = await writeJson("agent-intents.json", {
   type: "agent-membership-intent",
@@ -500,6 +501,8 @@ for (const requiredMembershipDebugContent of [
   "failuresRequestId=",
   "engagementRequestId=",
   "restaurantLookupRequestId=",
+  "restaurantIdSource=",
+  "decodeTokenRestaurantId",
   "OPENSEAT_RESTAURANT_SLUG",
   "pnpm debug:logs",
   "/api/v1/admin/restaurants",
@@ -551,6 +554,8 @@ for (const requiredReadmeContent of [
   "membership-debug-summary.txt",
   "OPENSEAT_BUNDLE_RESTAURANT_ID",
   "OPENSEAT_BUNDLE_RESTAURANT_SLUG",
+  "restaurant-scoped OPENSEAT_TOKEN",
+  "decodeTokenRestaurantId",
   "waitForApiReady",
   "OPENSEAT_BUNDLE_READY_TIMEOUT_MS",
   "Queues:",

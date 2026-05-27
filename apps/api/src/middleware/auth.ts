@@ -59,6 +59,26 @@ function isPublicRoute(method: string, url: string): boolean {
   return false;
 }
 
+function sendAuthMiddlewareError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  message: string,
+  code: string,
+) {
+  request.log.warn({
+    code,
+    requestId: request.id,
+    method: request.method,
+    url: request.url,
+  }, "Authentication request rejected");
+
+  return reply.status(401).send({
+    error: message,
+    code,
+    requestId: request.id,
+  });
+}
+
 async function authMiddlewarePlugin(app: FastifyInstance) {
   app.decorateRequest("user", undefined);
   app.addHook("onRequest", async (request: FastifyRequest, reply: FastifyReply) => {
@@ -68,7 +88,12 @@ async function authMiddlewarePlugin(app: FastifyInstance) {
 
     const authHeader = request.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return reply.status(401).send({ error: "Unauthorized" });
+      return sendAuthMiddlewareError(
+        request,
+        reply,
+        "Unauthorized",
+        "AUTH_TOKEN_MISSING",
+      );
     }
 
     const token = authHeader.slice(7);
@@ -93,7 +118,12 @@ async function authMiddlewarePlugin(app: FastifyInstance) {
         role,
       };
     } catch {
-      return reply.status(401).send({ error: "Unauthorized" });
+      return sendAuthMiddlewareError(
+        request,
+        reply,
+        "Unauthorized",
+        "AUTH_TOKEN_INVALID",
+      );
     }
   });
 }

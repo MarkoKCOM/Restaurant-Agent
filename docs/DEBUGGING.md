@@ -70,6 +70,12 @@ Set `OPENSEAT_E2E_ARTIFACT_PATH` to write the artifact somewhere specific, such 
 OPENSEAT_E2E_ARTIFACT_PATH=/tmp/openseat-e2e.json pnpm --filter @openseat/e2e test
 ```
 
+The push-time API Smoke workflow also uploads an `api-reliability-smoke` artifact. It includes every smoke request with method, path, HTTP status, elapsed milliseconds, generated request ID, returned request ID, and any stable error code. For local smoke runs, set:
+
+```bash
+OPENSEAT_SMOKE_ARTIFACT_PATH=/tmp/openseat-smoke.json node scripts/api-reliability-smoke.mjs
+```
+
 Use `pnpm debug:api` to inspect one endpoint quickly. It sends an `x-request-id`, then prints the response status, elapsed time, returned request ID, content type, and body. Optional environment variables:
 
 - `METHOD=POST`

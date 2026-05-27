@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import process from "node:process";
 
 const baseUrl = (
@@ -25,14 +27,19 @@ if (!adminPassword) {
 }
 
 async function request(path, { method = "GET", token, body } = {}) {
+  const requestId = `${runId}-${++requestSeq}`;
+  const startedAt = Date.now();
   const res = await fetch(`${baseUrl}${path}`, {
     method,
     headers: {
       ...(body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      "x-request-id": requestId,
     },
     body: body ? JSON.stringify(body) : undefined,
   });
+  const elapsedMs = Date.now() - startedAt;
+  const responseRequestId = res.headers.get("x-request-id");
 
   const text = await res.text();
   let data;
@@ -42,8 +49,19 @@ async function request(path, { method = "GET", token, body } = {}) {
     data = text;
   }
 
+  report.requests.push({
+    method,
+    path,
+    status: res.status,
+    ok: res.ok,
+    elapsedMs,
+    requestId,
+    responseRequestId,
+    code: typeof data === "object" && data !== null ? data.code : undefined,
+  });
+
   if (!res.ok) {
-    throw new Error(`${method} ${path} -> ${res.status} ${res.statusText}: ${typeof data === "string" ? data : JSON.stringify(data)}`);
+    throw new Error(`${method} ${path} -> ${res.status} ${res.statusText} requestId=${requestId}: ${typeof data === "string" ? data : JSON.stringify(data)}`);
   }
 
   return data;
@@ -59,11 +77,43 @@ const runId = `smoke-${Date.now()}`;
 let reservationDate = plusDays(10);
 const visitDate = plusDays(0);
 
-const report = { baseUrl, runId, steps: [] };
+const report = {
+  baseUrl,
+  runId,
+  startedAt: new Date().toISOString(),
+  finishedAt: null,
+  status: "running",
+  steps: [],
+  requests: [],
+};
+let requestSeq = 0;
+
 function record(step, details) {
   report.steps.push({ step, ...details });
 }
 
+function markLastRequestHandled(reason) {
+  const lastRequest = report.requests.at(-1);
+  if (lastRequest && !lastRequest.ok) {
+    lastRequest.handled = true;
+    lastRequest.handledReason = reason;
+  }
+}
+
+async function writeReport() {
+  report.finishedAt = new Date().toISOString();
+
+  const artifactPath = process.env.OPENSEAT_SMOKE_ARTIFACT_PATH;
+  if (!artifactPath) return null;
+
+  const resolvedPath = resolve(process.cwd(), artifactPath);
+  await mkdir(dirname(resolvedPath), { recursive: true });
+  await writeFile(resolvedPath, `${JSON.stringify(report, null, 2)}\n`);
+
+  return resolvedPath;
+}
+
+async function main() {
 const login = await request("/api/v1/auth/login", {
   method: "POST",
   body: { email: adminEmail, password: adminPassword },
@@ -104,6 +154,7 @@ async function createReservationUsingAvailableSlot(body) {
         },
       });
     } catch (error) {
+      markLastRequestHandled("slot_retry");
       lastError = error;
     }
   }
@@ -185,4 +236,28 @@ record("guests.full-profile.after-visit", {
   dietaryProfileCount: fullProfileAfterVisit.profile?.dietaryProfile?.length ?? 0,
 });
 
+report.status = "passed";
+}
+
+let failure;
+
+try {
+  await main();
+} catch (error) {
+  failure = error;
+  report.status = "failed";
+  report.error = error instanceof Error
+    ? { name: error.name, message: error.message, stack: error.stack }
+    : { message: String(error) };
+} finally {
+  const artifactPath = await writeReport();
+  if (artifactPath) {
+    console.error(`Smoke artifact: ${artifactPath}`);
+  }
+}
+
 console.log(JSON.stringify(report, null, 2));
+
+if (failure) {
+  throw failure;
+}

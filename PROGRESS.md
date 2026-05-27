@@ -1,5 +1,42 @@
 # Progress Log
 
+## 2026-05-27 (Debugging infrastructure pass)
+
+### Added
+- Request ID propagation for API requests:
+  - API accepts trusted `x-request-id` values or generates a UUID per request
+  - every API response now exposes `x-request-id`
+  - CORS exposes `x-request-id` so dashboard/browser code can read it
+- Central Fastify error handler:
+  - normalizes unhandled API errors into `{ error, code, requestId }`
+  - returns Zod validation details for validation failures
+  - logs method, URL, user, role, restaurant, request ID, and error code
+- Dashboard `ApiError` helper:
+  - preserves HTTP status, method, URL, code, request ID, and validation details
+  - logs detailed API failures to the browser console in development
+  - replaces generic `API error: <status>` failures across dashboard hooks/auth flows
+- `pnpm debug:api` probe script for quickly checking endpoint status, elapsed time, request ID, content type, and body.
+- `docs/DEBUGGING.md` with request-ID triage steps, log lookup commands, and debugging commands.
+
+### Changed
+- API startup, worker, cron scheduling, and shutdown messages now use structured Fastify logs.
+- Added validated `LOG_LEVEL` env var and documented it in `.env.example`.
+- README now links to the debugging guide.
+
+### Verified
+- `pnpm --filter @openseat/domain build`
+- `pnpm --filter @openseat/api type-check`
+- `pnpm --filter @openseat/dashboard type-check`
+- `pnpm --filter @openseat/api build`
+- `pnpm --filter @openseat/dashboard build`
+- `pnpm debug:api -- http://localhost:3001/api/v1/health`
+- `git diff --check`
+
+### Notes
+- A temporary API start using root `.env` reached startup but failed when scheduling recurring jobs because local Postgres rejected the configured `openseat` credentials. Build/type verification is clean; runtime restart/deploy should use the production service environment.
+
+---
+
 ## 2026-04-26 (Telegram HQ E2E testing prep)
 
 ### Added

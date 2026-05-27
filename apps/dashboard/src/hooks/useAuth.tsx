@@ -13,6 +13,7 @@ import {
   type DashboardRole,
   type SelfServeSignupInput,
 } from "@openseat/domain";
+import { apiErrorFromResponse, logApiError } from "../lib/apiError";
 
 const TOKEN_KEY = "openseat_token";
 const ROLE_KEY = "openseat_role";
@@ -196,7 +197,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res.status === 401) {
         throw new Error("INVALID_CREDENTIALS");
       }
-      throw new Error(`API error: ${res.status}`);
+      const error = await apiErrorFromResponse(res, "POST");
+      logApiError(error);
+      throw error;
     }
 
     const data = await res.json() as AuthApiResponse;
@@ -211,8 +214,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (!res.ok) {
-      const apiError = await res.json().catch(() => null) as { error?: string } | null;
-      throw new Error(apiError?.error ?? `API error: ${res.status}`);
+      const error = await apiErrorFromResponse(res, "POST");
+      logApiError(error);
+      throw error;
     }
 
     const data = await res.json() as AuthApiResponse;

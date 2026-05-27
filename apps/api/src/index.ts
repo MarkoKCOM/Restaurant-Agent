@@ -1,5 +1,8 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import type { IncomingMessage } from "node:http";
+import { randomUUID } from "node:crypto";
+import { ZodError } from "zod";
 import { env } from "./env.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { authRoutes } from "./routes/auth.js";
@@ -24,9 +27,70 @@ import { db } from "./db/index.js";
 import { restaurants } from "./db/schema.js";
 import { eq } from "drizzle-orm";
 
-const app = Fastify({ logger: true });
+function getRequestId(req: IncomingMessage): string {
+  const incoming = req.headers["x-request-id"];
+  const value = Array.isArray(incoming) ? incoming[0] : incoming;
 
-await app.register(cors, { origin: true });
+  if (value && /^[A-Za-z0-9._:-]{8,128}$/.test(value)) {
+    return value;
+  }
+
+  return randomUUID();
+}
+
+const app = Fastify({
+  logger: { level: env.LOG_LEVEL },
+  genReqId: getRequestId,
+});
+
+await app.register(cors, {
+  origin: true,
+  exposedHeaders: ["x-request-id"],
+});
+
+app.addHook("onSend", async (request, reply, payload) => {
+  reply.header("x-request-id", request.id);
+  return payload;
+});
+
+app.setErrorHandler((error, request, reply) => {
+  const err = error as {
+    statusCode?: number;
+    code?: string;
+    message?: string;
+  };
+  const isValidationError = error instanceof ZodError;
+  const statusCode = isValidationError ? 400 : (err.statusCode ?? 500);
+  const isServerError = statusCode >= 500;
+  const code = isValidationError
+    ? "VALIDATION_ERROR"
+    : (err.code ?? (isServerError ? "INTERNAL_ERROR" : "REQUEST_ERROR"));
+  const message = err.message ?? "Unknown error";
+
+  const logPayload = {
+    err: error,
+    code,
+    requestId: request.id,
+    method: request.method,
+    url: request.url,
+    userId: request.user?.id,
+    restaurantId: request.user?.restaurantId,
+    role: request.user?.role,
+  };
+
+  if (isServerError) {
+    request.log.error(logPayload, "Unhandled API error");
+  } else {
+    request.log.warn(logPayload, "Request rejected");
+  }
+
+  return reply.status(statusCode).send({
+    error: isServerError ? "Internal server error" : message,
+    code,
+    requestId: request.id,
+    ...(isValidationError ? { details: error.flatten() } : {}),
+  });
+});
 
 // Auth middleware (runs before all routes)
 await app.register(authMiddleware);
@@ -53,13 +117,16 @@ await app.register(adminRoutes, { prefix: "/api/v1/admin" });
 
 try {
   await app.listen({ port: env.API_PORT, host: env.API_HOST });
-  console.log(`OpenSeat API running on http://${env.API_HOST}:${env.API_PORT}`);
+  app.log.info(
+    { host: env.API_HOST, port: env.API_PORT, logLevel: env.LOG_LEVEL },
+    "OpenSeat API running",
+  );
 
   // Start BullMQ workers
   const reminderWorker = createReminderWorker();
   const summaryWorker = createSummaryWorker();
   const engagementWorker = createEngagementWorker();
-  console.log("BullMQ workers started: reminder, summary, engagement");
+  app.log.info("BullMQ workers started: reminder, summary, engagement");
 
   // Schedule recurring jobs for all active restaurants
   const allRestaurants = await db.select().from(restaurants);
@@ -89,12 +156,15 @@ try {
       },
     );
 
-    console.log(`Scheduled cron jobs for ${restaurant.name} (${restaurant.id})`);
+    app.log.info(
+      { restaurantId: restaurant.id, restaurantName: restaurant.name },
+      "Scheduled recurring jobs for restaurant",
+    );
   }
 
   // Graceful shutdown
   const shutdown = async (signal: string) => {
-    console.log(`Received ${signal}, shutting down gracefully...`);
+    app.log.info({ signal }, "Shutting down gracefully");
     await reminderWorker.close();
     await summaryWorker.close();
     await engagementWorker.close();

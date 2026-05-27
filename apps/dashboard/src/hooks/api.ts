@@ -6,6 +6,7 @@ import type {
   DashboardSnapshot,
   Table,
 } from "@openseat/domain";
+import { apiErrorFromResponse, logApiError } from "../lib/apiError";
 
 const API = "/api/v1";
 
@@ -39,7 +40,11 @@ function handle401() {
 async function fetchJSON<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers: authHeaders() });
   if (res.status === 401) { handle401(); throw new Error("Unauthorized"); }
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  if (!res.ok) {
+    const error = await apiErrorFromResponse(res);
+    logApiError(error);
+    throw error;
+  }
   return res.json();
 }
 
@@ -52,12 +57,10 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
   return res;
 }
 
-async function getErrorMessage(res: Response): Promise<string> {
-  const payload = await res.json().catch(() => null) as
-    | { error?: string; message?: string }
-    | null;
-
-  return payload?.error ?? payload?.message ?? `API error: ${res.status}`;
+async function throwApiError(res: Response, method = "REQUEST"): Promise<never> {
+  const error = await apiErrorFromResponse(res, method);
+  logApiError(error);
+  throw error;
 }
 
 // --- Restaurant ---
@@ -104,7 +107,7 @@ export function useUpdateRestaurant() {
         method: "PATCH",
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      if (!res.ok) await throwApiError(res, "PATCH");
       return res.json();
     },
     onSuccess: (_data, { id }) => {
@@ -166,7 +169,7 @@ export function useUpdateReservation() {
         method: "PATCH",
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(await getErrorMessage(res));
+      if (!res.ok) await throwApiError(res, "PATCH");
       return res.json();
     },
     onSuccess: () => {
@@ -207,7 +210,7 @@ export function useMarkNoShow() {
       const res = await fetchWithAuth(`${API}/reservations/${id}/no-show`, {
         method: "POST",
       });
-      if (!res.ok) throw new Error(await getErrorMessage(res));
+      if (!res.ok) await throwApiError(res, "POST");
       return res.json();
     },
     onSuccess: () => {
@@ -226,7 +229,7 @@ export function useCancelReservation() {
       const res = await fetchWithAuth(`${API}/reservations/${id}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error(await getErrorMessage(res));
+      if (!res.ok) await throwApiError(res, "DELETE");
       return res.json();
     },
     onSuccess: () => {
@@ -255,7 +258,7 @@ export function useCreateReservation() {
         method: "POST",
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(await getErrorMessage(res));
+      if (!res.ok) await throwApiError(res, "POST");
       return res.json();
     },
     onSuccess: () => {
@@ -282,7 +285,7 @@ export function useCreateWalkIn() {
         method: "POST",
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(await getErrorMessage(res));
+      if (!res.ok) await throwApiError(res, "POST");
       return res.json();
     },
     onSuccess: () => {
@@ -344,7 +347,7 @@ export function useCreateTable() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      if (!res.ok) await throwApiError(res, "POST");
       return res.json();
     },
     onSuccess: (_data, variables) => {
@@ -368,7 +371,7 @@ export function useUpdateTable() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      if (!res.ok) await throwApiError(res, "PATCH");
       return res.json();
     },
     onSuccess: () => {
@@ -384,7 +387,7 @@ export function useDeleteTable() {
       const res = await fetchWithAuth(`${API}/tables/${id}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      if (!res.ok) await throwApiError(res, "DELETE");
       return res.json();
     },
     onSuccess: () => {
@@ -403,7 +406,7 @@ export function useUpdateGuest() {
         method: "PATCH",
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      if (!res.ok) await throwApiError(res, "PATCH");
       return res.json();
     },
     onSuccess: (_data, { id }) => {
@@ -430,7 +433,7 @@ export function useUpdateGuestPreferences() {
         method: "PUT",
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      if (!res.ok) await throwApiError(res, "PUT");
       return res.json();
     },
     onSuccess: (_data, { id }) => {
@@ -537,7 +540,7 @@ export function useCreateReward() {
         method: "POST",
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(await getErrorMessage(res));
+      if (!res.ok) await throwApiError(res, "POST");
       return res.json();
     },
     onSuccess: () => {
@@ -570,7 +573,7 @@ export function useUpdateReward() {
         method: "PATCH",
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(await getErrorMessage(res));
+      if (!res.ok) await throwApiError(res, "PATCH");
       return res.json();
     },
     onSuccess: () => {
@@ -592,7 +595,7 @@ export function useVerifyClaimCode() {
   return useMutation({
     mutationFn: async (code: string) => {
       const res = await fetchWithAuth(`${API}/loyalty/claims/${encodeURIComponent(code)}/verify`);
-      if (!res.ok) throw new Error(await getErrorMessage(res));
+      if (!res.ok) await throwApiError(res, "GET");
       return res.json() as Promise<{ claim: RewardClaimVerified }>;
     },
   });
@@ -605,7 +608,7 @@ export function useRedeemClaim() {
       const res = await fetchWithAuth(`${API}/loyalty/claims/${claimId}/redeem`, {
         method: "POST",
       });
-      if (!res.ok) throw new Error(await getErrorMessage(res));
+      if (!res.ok) await throwApiError(res, "POST");
       return res.json() as Promise<{ claim: RewardClaimVerified }>;
     },
     onSuccess: (data) => {
@@ -732,8 +735,7 @@ export function useAddToWaitlist() {
         body: JSON.stringify(data),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: `API error: ${res.status}` }));
-        throw new Error(err.error ?? err.message ?? `API error: ${res.status}`);
+        await throwApiError(res, "POST");
       }
       return res.json();
     },
@@ -750,7 +752,7 @@ export function useOfferSlot() {
       const res = await fetchWithAuth(`${API}/waitlist/${id}/offer`, {
         method: "POST",
       });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      if (!res.ok) await throwApiError(res, "POST");
       return res.json();
     },
     onSuccess: () => {
@@ -766,7 +768,7 @@ export function useAcceptOffer() {
       const res = await fetchWithAuth(`${API}/waitlist/${id}/accept`, {
         method: "POST",
       });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      if (!res.ok) await throwApiError(res, "POST");
       return res.json();
     },
     onSuccess: () => {
@@ -784,7 +786,7 @@ export function useCancelWaitlist() {
       const res = await fetchWithAuth(`${API}/waitlist/${id}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      if (!res.ok) await throwApiError(res, "DELETE");
       return res.json();
     },
     onSuccess: () => {
@@ -802,7 +804,7 @@ export function useResetReservations() {
       const res = await fetchWithAuth(`${API}/restaurants/${restaurantId}/reset-reservations`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      if (!res.ok) await throwApiError(res, "DELETE");
       return res.json();
     },
     onSuccess: () => {

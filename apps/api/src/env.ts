@@ -16,6 +16,7 @@ const envSchema = z.object({
   API_HOST: z.string().default("0.0.0.0"),
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   // AI / Agent
   OPENROUTER_API_KEY: z.string().optional(),
   AGENT_MODEL: z.string().default("google/gemini-2.5-flash"),

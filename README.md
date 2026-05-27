@@ -8,6 +8,7 @@ AI-powered restaurant management platform - reservations, guest CRM, loyalty, ga
 - **[ROADMAP.md](ROADMAP.md)** - Phase timeline and current status
 - **[PROGRESS.md](PROGRESS.md)** - Development log
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - Tech stack and data flow
+- **[docs/DEBUGGING.md](docs/DEBUGGING.md)** - Request IDs, logs, and triage commands
 
 ## Live
 

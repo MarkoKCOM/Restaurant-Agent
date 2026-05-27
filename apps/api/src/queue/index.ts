@@ -34,3 +34,8 @@ export const engagementQueue = new Queue("engagement", {
   connection: redisConnection,
   defaultJobOptions,
 });
+
+export const campaignQueue = new Queue("campaign-delivery", {
+  connection: redisConnection,
+  defaultJobOptions,
+});

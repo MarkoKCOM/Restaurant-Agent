@@ -1405,6 +1405,53 @@ async function main() {
     throw new Error(`Campaign creation/scheduling did not enforce quiet-hours adjustment: ${JSON.stringify(scheduledCampaign)}`);
   }
 
+  async function createAndDeliverCampaign(name) {
+    const campaign = await request("/api/v1/campaigns/", {
+      method: "POST",
+      token,
+      body: {
+        restaurantId,
+        name,
+        templateId: "we_miss_you",
+        templateText: winBackTemplate.messageHe,
+        audienceFilter: {
+          lapsedDays: 30,
+          tagsAll: [campaignTag],
+        },
+      },
+    });
+    return request(`/api/v1/campaigns/${campaign.campaign.id}/deliver`, {
+      method: "POST",
+      token,
+      body: { restaurantId },
+    });
+  }
+
+  const firstCampaignDelivery = await createAndDeliverCampaign(`Smoke delivery one ${runId}`);
+  const secondCampaignDelivery = await createAndDeliverCampaign(`Smoke delivery two ${runId}`);
+  const thirdCampaignDelivery = await createAndDeliverCampaign(`Smoke delivery rate limit ${runId}`);
+  const firstSentRecipients = (firstCampaignDelivery.recipients ?? []).filter((recipient) => recipient.status === "sent");
+  const thirdWeekLimitedRecipients = (thirdCampaignDelivery.recipients ?? []).filter((recipient) => recipient.reason === "campaign_weekly_limit_reached");
+  record("campaign.delivery", {
+    firstSent: firstCampaignDelivery.delivery?.sent ?? null,
+    firstSkippedOptOut: firstCampaignDelivery.delivery?.skippedOptedOut ?? null,
+    secondSent: secondCampaignDelivery.delivery?.sent ?? null,
+    thirdSent: thirdCampaignDelivery.delivery?.sent ?? null,
+    thirdSkippedWeek: thirdCampaignDelivery.delivery?.skippedRateLimitedWeek ?? null,
+    hasMessagePreview: typeof firstSentRecipients[0]?.messagePreview === "string" && firstSentRecipients[0].messagePreview.includes("Smoke Campaign Segment"),
+    rateLimitedTarget: thirdWeekLimitedRecipients.some((recipient) => recipient.guestId === campaignGuestId),
+  });
+  if (
+    firstCampaignDelivery.delivery?.sent !== 1
+    || firstCampaignDelivery.delivery?.skippedOptedOut !== 1
+    || secondCampaignDelivery.delivery?.sent !== 1
+    || thirdCampaignDelivery.delivery?.sent !== 0
+    || thirdCampaignDelivery.delivery?.skippedRateLimitedWeek !== 1
+    || !thirdWeekLimitedRecipients.some((recipient) => recipient.guestId === campaignGuestId)
+  ) {
+    throw new Error(`Campaign delivery/rate-limit behavior failed: ${JSON.stringify({ firstCampaignDelivery, secondCampaignDelivery, thirdCampaignDelivery })}`);
+  }
+
   await request(`/api/v1/engagement/win-back/check?restaurantId=${restaurantId}`, {
     method: "POST",
     token,

@@ -122,6 +122,7 @@ const smokePath = await writeJson("smoke.json", {
     { step: "engagement.win-back-overdue", scheduled30: 1, skippedExisting: 0, skippedPolicy: 0, jobStatus: "pending" },
     { step: "campaign.audience-preview", matchedCount: 1, matchedWithOptOutCount: 2, excludedOptedOut: 1, hasTargetGuest: true, includesOptedOutByDefault: false, includesOptedOutWhenRequested: true },
     { step: "campaign.creation-scheduling", templateCount: 5, hasWinBackTemplate: true, quietWarning: true, adjusted: true, status: "scheduled", variables: ["guest_name", "days_since_last_visit", "reward_teaser"] },
+    { step: "campaign.delivery", firstSent: 1, firstSkippedOptOut: 1, secondSent: 1, thirdSent: 0, thirdSkippedWeek: 1, hasMessagePreview: true, rateLimitedTarget: true },
   ],
   requests: [
     {
@@ -187,6 +188,7 @@ assertIncludes(smokeOutput, "engagement.anniversary-check: due=1 scheduled=1 exi
 assertIncludes(smokeOutput, "engagement.win-back-overdue: scheduled30=1 existing=0 policy=0 status=pending");
 assertIncludes(smokeOutput, "campaign.audience-preview: matched=1 withOptOut=2 excludedOptedOut=1 target=yes optedOutDefault=no optedOutRequested=yes");
 assertIncludes(smokeOutput, "campaign.creation-scheduling: templates=5 winBack=yes quietWarning=yes adjusted=yes status=scheduled variables=guest_name,days_since_last_visit,reward_teaser");
+assertIncludes(smokeOutput, "campaign.delivery: firstSent=1 firstOptOut=1 secondSent=1 thirdSent=0 thirdWeekLimit=1 preview=yes rateLimitedTarget=yes");
 assertIncludes(smokeOutput, "Unhandled HTTP failures: 1");
 assertIncludes(smokeOutput, "POST /api/v1/reservations -> 500 code=INTERNAL_ERROR requestId=smoke-test-2");
 assertIncludes(smokeOutput, 'pnpm debug:logs smoke-test-2 --since "2 hours ago"');

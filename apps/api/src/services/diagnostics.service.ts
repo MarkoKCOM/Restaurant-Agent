@@ -7,7 +7,7 @@ import type { Queue } from "bullmq";
 import { sql } from "drizzle-orm";
 import { env } from "../env.js";
 import { db, pingDatabase } from "../db/index.js";
-import { engagementQueue, reminderQueue, summaryQueue } from "../queue/index.js";
+import { campaignQueue, engagementQueue, reminderQueue, summaryQueue } from "../queue/index.js";
 import {
   challengeProgress,
   challenges,
@@ -1928,6 +1928,7 @@ export async function getDiagnosticsReport(): Promise<DiagnosticsReport> {
     inspectQueue("reservation-reminders", reminderQueue),
     inspectQueue("daily-summary", summaryQueue),
     inspectQueue("engagement", engagementQueue),
+    inspectQueue("campaign-delivery", campaignQueue),
   ]);
   const checks = { database, redis };
   const status = Object.values(checks).every((check) => check.status === "ok")

@@ -22,6 +22,7 @@ import { adminRoutes } from "./routes/admin.js";
 import { createReminderWorker } from "./queue/reminder.worker.js";
 import { createSummaryWorker } from "./queue/summary.worker.js";
 import { createEngagementWorker } from "./queue/engagement.worker.js";
+import { createCampaignWorker } from "./queue/campaign.worker.js";
 import { summaryQueue, engagementQueue } from "./queue/index.js";
 import { db } from "./db/index.js";
 import { restaurants } from "./db/schema.js";
@@ -144,7 +145,8 @@ try {
   const reminderWorker = createReminderWorker(app.log);
   const summaryWorker = createSummaryWorker(app.log);
   const engagementWorker = createEngagementWorker(app.log);
-  app.log.info("BullMQ workers started: reminder, summary, engagement");
+  const campaignWorker = createCampaignWorker(app.log);
+  app.log.info("BullMQ workers started: reminder, summary, engagement, campaign");
 
   // Schedule recurring jobs for all active restaurants
   const allRestaurants = await db.select().from(restaurants);
@@ -222,6 +224,7 @@ try {
     await reminderWorker.close();
     await summaryWorker.close();
     await engagementWorker.close();
+    await campaignWorker.close();
     await app.close();
     process.exit(0);
   };

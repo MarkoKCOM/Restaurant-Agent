@@ -102,9 +102,9 @@
 
 - [x] 10.1 Implement audience segmentation builder — filter guests by visit frequency, recency, tier, tags, spend
 - [x] 10.2 Implement campaign creation and scheduling — template text with personalization vars, schedule with quiet hours enforcement
-- [ ] 10.3 Implement campaign delivery engine — BullMQ job to send WhatsApp template messages in batches
+- [x] 10.3 Implement campaign delivery engine — BullMQ job to send WhatsApp template messages in batches
 - [ ] 10.4 Implement campaign stats tracking — sent, delivered, read, replied counts
-- [ ] 10.5 Implement campaign rate limiting — max 2/week, 4/month per guest
+- [x] 10.5 Implement campaign rate limiting — max 2/week, 4/month per guest
 - [ ] 10.6 Implement opt-out handling — "STOP" keyword detection, immediate removal from campaigns
 - [x] 10.7 Create pre-built campaign templates — "We miss you", "Weekend special", "New menu", "Birthday month", "Loyalty milestone"
 

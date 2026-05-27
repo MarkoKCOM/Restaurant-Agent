@@ -139,6 +139,7 @@ function summarizeSmoke(report) {
       || step.step === "engagement.win-back-overdue"
       || step.step === "campaign.audience-preview"
       || step.step === "campaign.creation-scheduling"
+      || step.step === "campaign.delivery"
     )
   );
   if (operationalSteps.length > 0) {
@@ -223,6 +224,8 @@ function summarizeSmoke(report) {
         console.log(`- campaign.audience-preview: matched=${step.matchedCount ?? "?"} withOptOut=${step.matchedWithOptOutCount ?? "?"} excludedOptedOut=${step.excludedOptedOut ?? "?"} target=${step.hasTargetGuest === true ? "yes" : "no"} optedOutDefault=${step.includesOptedOutByDefault === true ? "yes" : "no"} optedOutRequested=${step.includesOptedOutWhenRequested === true ? "yes" : "no"}`);
       } else if (step.step === "campaign.creation-scheduling") {
         console.log(`- campaign.creation-scheduling: templates=${step.templateCount ?? "?"} winBack=${step.hasWinBackTemplate === true ? "yes" : "no"} quietWarning=${step.quietWarning === true ? "yes" : "no"} adjusted=${step.adjusted === true ? "yes" : "no"} status=${step.status ?? "?"} variables=${asArray(step.variables).join(",") || "none"}`);
+      } else if (step.step === "campaign.delivery") {
+        console.log(`- campaign.delivery: firstSent=${step.firstSent ?? "?"} firstOptOut=${step.firstSkippedOptOut ?? "?"} secondSent=${step.secondSent ?? "?"} thirdSent=${step.thirdSent ?? "?"} thirdWeekLimit=${step.thirdSkippedWeek ?? "?"} preview=${step.hasMessagePreview === true ? "yes" : "no"} rateLimitedTarget=${step.rateLimitedTarget === true ? "yes" : "no"}`);
       }
     }
   }

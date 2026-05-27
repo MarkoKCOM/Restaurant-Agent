@@ -1,6 +1,7 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { campaigns, guests, visitLogs } from "../db/schema.js";
+import { campaignQueue } from "../queue/index.js";
 import {
   applyEngagementQuietHours,
   getRestaurantEngagementQuietHours,
@@ -40,6 +41,50 @@ export interface CampaignAudiencePreview {
     optedOutCampaigns: boolean;
   }>;
 }
+
+interface CampaignAudienceGuest {
+  guestId: string;
+  name: string;
+  tier: "bronze" | "silver" | "gold" | null;
+  visitCount: number;
+  lastVisitDate: string | null;
+  daysSinceLastVisit: number | null;
+  totalSpend: number;
+  tags: string[];
+  optedOutCampaigns: boolean;
+  pointsBalance: number;
+}
+
+interface CampaignDeliveryRecipient {
+  guestId: string;
+  status: "sent" | "skipped";
+  reason?: "guest_opted_out_campaigns" | "campaign_weekly_limit_reached" | "campaign_monthly_limit_reached";
+  sentAt?: string;
+  skippedAt?: string;
+  messagePreview?: string;
+}
+
+interface CampaignStats {
+  delivery?: {
+    sent?: number;
+    delivered?: number;
+    read?: number;
+    replied?: number;
+    skipped?: number;
+    skippedOptedOut?: number;
+    skippedRateLimitedWeek?: number;
+    skippedRateLimitedMonth?: number;
+    lastDeliveredAt?: string;
+  };
+  deliveryRecipients?: CampaignDeliveryRecipient[];
+  schedule?: unknown;
+  [key: string]: unknown;
+}
+
+const CAMPAIGN_WEEKLY_LIMIT = 2;
+const CAMPAIGN_MONTHLY_LIMIT = 4;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const CAMPAIGN_PERSONALIZATION_VARIABLES = [
   "guest_name",
@@ -176,6 +221,125 @@ function appliedFilters(filter: CampaignAudienceFilter): string[] {
   return result;
 }
 
+function asCampaignStats(value: unknown): CampaignStats {
+  return typeof value === "object" && value !== null ? value as CampaignStats : {};
+}
+
+function stripAudienceMetadata(filter: unknown): CampaignAudienceFilter {
+  if (typeof filter !== "object" || filter === null) return {};
+  const raw = filter as CampaignAudienceFilter & {
+    templateId?: unknown;
+    variables?: unknown;
+  };
+  const {
+    templateId: _templateId,
+    variables: _variables,
+    ...audienceFilter
+  } = raw;
+  return audienceFilter;
+}
+
+function renderCampaignMessage(templateText: string, guest: CampaignAudienceGuest): string {
+  const replacements: Record<CampaignPersonalizationVariable, string> = {
+    guest_name: guest.name,
+    last_visit_date: guest.lastVisitDate ?? "",
+    days_since_last_visit: guest.daysSinceLastVisit === null ? "" : String(guest.daysSinceLastVisit),
+    points_balance: String(guest.pointsBalance),
+    reward_teaser: "a member benefit",
+  };
+
+  return templateText.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_match, key: string) =>
+    Object.prototype.hasOwnProperty.call(replacements, key) ? replacements[key as CampaignPersonalizationVariable] : "",
+  );
+}
+
+function countPriorCampaignSends(params: {
+  campaigns: Array<{ stats: unknown }>;
+  guestId: string;
+  since: Date;
+  before: Date;
+}): number {
+  return params.campaigns.reduce((count, campaign) => {
+    const stats = asCampaignStats(campaign.stats);
+    const recipients = stats.deliveryRecipients ?? [];
+    return count + recipients.filter((recipient) => {
+      if (recipient.guestId !== params.guestId || recipient.status !== "sent" || !recipient.sentAt) return false;
+      const sentAt = new Date(recipient.sentAt);
+      return sentAt >= params.since && sentAt <= params.before;
+    }).length;
+  }, 0);
+}
+
+async function selectCampaignAudience(params: {
+  restaurantId: string;
+  filter: CampaignAudienceFilter;
+}): Promise<{
+  totalGuests: number;
+  excludedOptedOut: number;
+  matched: CampaignAudienceGuest[];
+}> {
+  const [guestRows, visitRows] = await Promise.all([
+    db
+      .select()
+      .from(guests)
+      .where(eq(guests.restaurantId, params.restaurantId))
+      .orderBy(desc(guests.lastVisitDate), desc(guests.createdAt)),
+    db
+      .select({
+        guestId: visitLogs.guestId,
+        totalSpend: visitLogs.totalSpend,
+      })
+      .from(visitLogs)
+      .where(eq(visitLogs.restaurantId, params.restaurantId)),
+  ]);
+
+  const spendByGuest = new Map<string, number>();
+  for (const row of visitRows) {
+    spendByGuest.set(row.guestId, (spendByGuest.get(row.guestId) ?? 0) + (row.totalSpend ?? 0));
+  }
+
+  const cutoffDate = params.filter.lapsedDays !== undefined ? dateDaysAgo(params.filter.lapsedDays) : null;
+  let excludedOptedOut = 0;
+
+  const matched = guestRows.filter((guest) => {
+    const tags = guest.tags ?? [];
+    const totalSpend = spendByGuest.get(guest.id) ?? 0;
+
+    if (guest.optedOutCampaigns && params.filter.includeOptedOut !== true) {
+      excludedOptedOut++;
+      return false;
+    }
+    if (params.filter.minVisits !== undefined && guest.visitCount < params.filter.minVisits) return false;
+    if (params.filter.maxVisits !== undefined && guest.visitCount > params.filter.maxVisits) return false;
+    if (cutoffDate && (!guest.lastVisitDate || guest.lastVisitDate > cutoffDate)) return false;
+    if (params.filter.tiers?.length && (!guest.tier || !params.filter.tiers.includes(guest.tier))) return false;
+    if (params.filter.tagsAny?.length && !hasAnyTag(tags, params.filter.tagsAny)) return false;
+    if (params.filter.tagsAll?.length && !hasAllTags(tags, params.filter.tagsAll)) return false;
+    if (params.filter.minTotalSpend !== undefined && totalSpend < params.filter.minTotalSpend) return false;
+    if (params.filter.maxTotalSpend !== undefined && totalSpend > params.filter.maxTotalSpend) return false;
+    if (params.filter.sources?.length && !params.filter.sources.includes(guest.source)) return false;
+    if (params.filter.languages?.length && !params.filter.languages.includes(guest.language)) return false;
+    return true;
+  }).map((guest) => ({
+    guestId: guest.id,
+    name: guest.name,
+    tier: guest.tier,
+    visitCount: guest.visitCount,
+    lastVisitDate: guest.lastVisitDate,
+    daysSinceLastVisit: daysSince(guest.lastVisitDate),
+    totalSpend: spendByGuest.get(guest.id) ?? 0,
+    tags: guest.tags ?? [],
+    optedOutCampaigns: guest.optedOutCampaigns,
+    pointsBalance: guest.pointsBalance,
+  }));
+
+  return {
+    totalGuests: guestRows.length,
+    excludedOptedOut,
+    matched,
+  };
+}
+
 function extractTemplateVariables(templateText: string): string[] {
   return [...templateText.matchAll(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g)]
     .map((match) => match[1]);
@@ -303,6 +467,15 @@ export async function createCampaign(params: {
 
   if (!campaign) throw new Error("Failed to create campaign");
 
+  if (schedule.effectiveScheduledAt) {
+    const delay = new Date(schedule.effectiveScheduledAt).getTime() - Date.now();
+    await campaignQueue.add(
+      "campaign-delivery",
+      { campaignId: campaign.id, restaurantId: params.restaurantId },
+      { delay: Math.max(0, delay), jobId: `campaign-delivery-${campaign.id}` },
+    );
+  }
+
   return {
     campaign,
     schedule,
@@ -315,69 +488,159 @@ export async function previewCampaignAudience(params: {
   filter: CampaignAudienceFilter;
   sampleLimit?: number;
 }): Promise<CampaignAudiencePreview> {
-  const [guestRows, visitRows] = await Promise.all([
-    db
-      .select()
-      .from(guests)
-      .where(eq(guests.restaurantId, params.restaurantId))
-      .orderBy(desc(guests.lastVisitDate), desc(guests.createdAt)),
-    db
-      .select({
-        guestId: visitLogs.guestId,
-        totalSpend: visitLogs.totalSpend,
-      })
-      .from(visitLogs)
-      .where(eq(visitLogs.restaurantId, params.restaurantId)),
-  ]);
+  const audience = await selectCampaignAudience(params);
 
-  const spendByGuest = new Map<string, number>();
-  for (const row of visitRows) {
-    spendByGuest.set(row.guestId, (spendByGuest.get(row.guestId) ?? 0) + (row.totalSpend ?? 0));
-  }
-
-  const cutoffDate = params.filter.lapsedDays !== undefined ? dateDaysAgo(params.filter.lapsedDays) : null;
-  let excludedOptedOut = 0;
-
-  const matched = guestRows.filter((guest) => {
-    const tags = guest.tags ?? [];
-    const totalSpend = spendByGuest.get(guest.id) ?? 0;
-
-    if (guest.optedOutCampaigns && params.filter.includeOptedOut !== true) {
-      excludedOptedOut++;
-      return false;
-    }
-    if (params.filter.minVisits !== undefined && guest.visitCount < params.filter.minVisits) return false;
-    if (params.filter.maxVisits !== undefined && guest.visitCount > params.filter.maxVisits) return false;
-    if (cutoffDate && (!guest.lastVisitDate || guest.lastVisitDate > cutoffDate)) return false;
-    if (params.filter.tiers?.length && (!guest.tier || !params.filter.tiers.includes(guest.tier))) return false;
-    if (params.filter.tagsAny?.length && !hasAnyTag(tags, params.filter.tagsAny)) return false;
-    if (params.filter.tagsAll?.length && !hasAllTags(tags, params.filter.tagsAll)) return false;
-    if (params.filter.minTotalSpend !== undefined && totalSpend < params.filter.minTotalSpend) return false;
-    if (params.filter.maxTotalSpend !== undefined && totalSpend > params.filter.maxTotalSpend) return false;
-    if (params.filter.sources?.length && !params.filter.sources.includes(guest.source)) return false;
-    if (params.filter.languages?.length && !params.filter.languages.includes(guest.language)) return false;
-    return true;
-  });
-
-  const sample = matched.slice(0, params.sampleLimit ?? 10).map((guest) => ({
-    guestId: guest.id,
+  const sample = audience.matched.slice(0, params.sampleLimit ?? 10).map((guest) => ({
+    guestId: guest.guestId,
     name: guest.name,
     tier: guest.tier,
     visitCount: guest.visitCount,
     lastVisitDate: guest.lastVisitDate,
-    daysSinceLastVisit: daysSince(guest.lastVisitDate),
-    totalSpend: spendByGuest.get(guest.id) ?? 0,
-    tags: guest.tags ?? [],
+    daysSinceLastVisit: guest.daysSinceLastVisit,
+    totalSpend: guest.totalSpend,
+    tags: guest.tags,
     optedOutCampaigns: guest.optedOutCampaigns,
   }));
 
   return {
     restaurantId: params.restaurantId,
     generatedAt: new Date().toISOString(),
-    totalGuests: guestRows.length,
-    matchedCount: matched.length,
-    excludedOptedOut,
+    totalGuests: audience.totalGuests,
+    matchedCount: audience.matched.length,
+    excludedOptedOut: audience.excludedOptedOut,
     filtersApplied: appliedFilters(params.filter),
     sample,
+  };
+}
+
+export async function deliverCampaign(params: {
+  campaignId: string;
+  restaurantId: string;
+  now?: Date;
+}) {
+  const now = params.now ?? new Date();
+  const [campaign] = await db
+    .select()
+    .from(campaigns)
+    .where(and(eq(campaigns.id, params.campaignId), eq(campaigns.restaurantId, params.restaurantId)))
+    .limit(1);
+
+  if (!campaign) throw new Error("Campaign not found");
+  if (!["draft", "scheduled"].includes(campaign.status)) {
+    throw new Error(`Campaign cannot be delivered from status ${campaign.status}`);
+  }
+
+  const audienceFilter = stripAudienceMetadata(campaign.audienceFilter);
+  const audience = await selectCampaignAudience({
+    restaurantId: params.restaurantId,
+    filter: {
+      ...audienceFilter,
+      includeOptedOut: true,
+    },
+  });
+  const priorCampaigns = await db
+    .select({ stats: campaigns.stats })
+    .from(campaigns)
+    .where(and(eq(campaigns.restaurantId, params.restaurantId), ne(campaigns.id, params.campaignId)));
+
+  const recipients: CampaignDeliveryRecipient[] = [];
+  let sent = 0;
+  let skippedOptedOut = 0;
+  let skippedRateLimitedWeek = 0;
+  let skippedRateLimitedMonth = 0;
+
+  for (const guest of audience.matched) {
+    if (guest.optedOutCampaigns) {
+      skippedOptedOut++;
+      recipients.push({
+        guestId: guest.guestId,
+        status: "skipped",
+        reason: "guest_opted_out_campaigns",
+        skippedAt: now.toISOString(),
+      });
+      continue;
+    }
+
+    const weeklyCount = countPriorCampaignSends({
+      campaigns: priorCampaigns,
+      guestId: guest.guestId,
+      since: new Date(now.getTime() - WEEK_MS),
+      before: now,
+    });
+    if (weeklyCount >= CAMPAIGN_WEEKLY_LIMIT) {
+      skippedRateLimitedWeek++;
+      recipients.push({
+        guestId: guest.guestId,
+        status: "skipped",
+        reason: "campaign_weekly_limit_reached",
+        skippedAt: now.toISOString(),
+      });
+      continue;
+    }
+
+    const monthlyCount = countPriorCampaignSends({
+      campaigns: priorCampaigns,
+      guestId: guest.guestId,
+      since: new Date(now.getTime() - MONTH_MS),
+      before: now,
+    });
+    if (monthlyCount >= CAMPAIGN_MONTHLY_LIMIT) {
+      skippedRateLimitedMonth++;
+      recipients.push({
+        guestId: guest.guestId,
+        status: "skipped",
+        reason: "campaign_monthly_limit_reached",
+        skippedAt: now.toISOString(),
+      });
+      continue;
+    }
+
+    sent++;
+    recipients.push({
+      guestId: guest.guestId,
+      status: "sent",
+      sentAt: now.toISOString(),
+      messagePreview: renderCampaignMessage(campaign.templateText, guest).slice(0, 240),
+    });
+  }
+
+  const existingStats = asCampaignStats(campaign.stats);
+  const delivery = {
+    sent,
+    delivered: existingStats.delivery?.delivered ?? 0,
+    read: existingStats.delivery?.read ?? 0,
+    replied: existingStats.delivery?.replied ?? 0,
+    skipped: skippedOptedOut + skippedRateLimitedWeek + skippedRateLimitedMonth,
+    skippedOptedOut,
+    skippedRateLimitedWeek,
+    skippedRateLimitedMonth,
+    lastDeliveredAt: now.toISOString(),
+  };
+
+  const [updatedCampaign] = await db
+    .update(campaigns)
+    .set({
+      status: "sent",
+      sentAt: now,
+      stats: {
+        ...existingStats,
+        delivery,
+        deliveryRecipients: recipients,
+        audience: {
+          totalGuests: audience.totalGuests,
+          matchedCount: audience.matched.length,
+          filtersApplied: appliedFilters(audienceFilter),
+        },
+      },
+    })
+    .where(eq(campaigns.id, params.campaignId))
+    .returning();
+
+  if (!updatedCampaign) throw new Error("Failed to update campaign delivery stats");
+
+  return {
+    campaign: updatedCampaign,
+    delivery,
+    recipients,
   };
 }

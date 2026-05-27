@@ -3,6 +3,7 @@ import { z } from "zod";
 import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
 import {
   createCampaign,
+  deliverCampaign,
   getCampaignTemplates,
   previewCampaignAudience,
   previewCampaignSchedule,
@@ -48,6 +49,14 @@ const createCampaignSchema = z.object({
   audienceFilter: audienceFilterSchema.default({}),
   scheduledAt: z.coerce.date().optional(),
   allowQuietHoursAdjustment: z.boolean().optional(),
+});
+
+const campaignParamsSchema = z.object({
+  campaignId: z.string().uuid(),
+});
+
+const deliverySchema = z.object({
+  restaurantId: z.string().uuid(),
 });
 
 function sendCampaignError(
@@ -181,6 +190,56 @@ export async function campaignRoutes(app: FastifyInstance) {
         return sendCampaignError(request, reply, 400, message, "CAMPAIGN_SCHEDULE_REQUIRES_ADJUSTMENT", {
           restaurantId: parsed.restaurantId,
           schedule,
+        });
+      }
+      throw err;
+    }
+  });
+
+  app.post("/:campaignId/deliver", async (request, reply) => {
+    const params = campaignParamsSchema.parse(request.params ?? {});
+    const parsed = deliverySchema.parse(request.body ?? {});
+    const err = enforceTenant(request.user!, parsed.restaurantId) ?? requireRestaurantAdmin(request.user!);
+    if (err) {
+      return sendCampaignError(request, reply, 403, err, "CAMPAIGN_FORBIDDEN", {
+        restaurantId: parsed.restaurantId,
+        campaignId: params.campaignId,
+      });
+    }
+
+    try {
+      const result = await deliverCampaign({
+        campaignId: params.campaignId,
+        restaurantId: parsed.restaurantId,
+      });
+
+      request.log.info(
+        {
+          restaurantId: parsed.restaurantId,
+          requestId: request.id,
+          campaignId: params.campaignId,
+          sent: result.delivery.sent,
+          skipped: result.delivery.skipped,
+          skippedOptedOut: result.delivery.skippedOptedOut,
+          skippedRateLimitedWeek: result.delivery.skippedRateLimitedWeek,
+          skippedRateLimitedMonth: result.delivery.skippedRateLimitedMonth,
+        },
+        "Campaign delivery triggered",
+      );
+
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Campaign delivery failed";
+      if (message.includes("not found")) {
+        return sendCampaignError(request, reply, 404, message, "CAMPAIGN_NOT_FOUND", {
+          restaurantId: parsed.restaurantId,
+          campaignId: params.campaignId,
+        });
+      }
+      if (message.includes("cannot be delivered")) {
+        return sendCampaignError(request, reply, 409, message, "CAMPAIGN_DELIVERY_STATUS_INVALID", {
+          restaurantId: parsed.restaurantId,
+          campaignId: params.campaignId,
         });
       }
       throw err;

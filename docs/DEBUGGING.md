@@ -237,7 +237,7 @@ OPENSEAT_RESTAURANT_ID=... pnpm debug:outbound -- --message-type daily_morning_s
 OPENSEAT_RESTAURANT_ID=... pnpm debug:outbound -- --status skipped --message-type daily_morning_summary --limit 5
 ```
 
-The script prints counts by status, message type, provider, and error code, then recent rows with IDs, masked recipients, subject IDs, previews, and any `errorCode`/`errorMessage`. `/api/v1/admin/diagnostics` and debug bundle summaries also include outbound skipped counts and error-code totals. For example, a missing owner WhatsApp number appears as `status=skipped` with `OUTBOUND_RECIPIENT_MISSING`; the morning owner summary only treats `ownerWhatsapp` as deliverable, not a generic owner phone fallback.
+The script prints counts by status, message type, provider, and error code, then recent rows with IDs, masked recipients, subject IDs, previews, and any `errorCode`/`errorMessage`. `/api/v1/admin/diagnostics` and debug bundle summaries also include outbound skipped counts, error-code totals, `ownerWhatsappMissing`, and sample restaurant IDs/slugs that need owner WhatsApp setup. For example, a missing owner WhatsApp number appears as `status=skipped` with `OUTBOUND_RECIPIENT_MISSING`; the morning owner summary only treats `ownerWhatsapp` as deliverable, not a generic owner phone fallback.
 
 Use this before reading logs when debugging retention automations such as birthday, anniversary, win-back, challenge-completion, leaderboard, reservation-reminder, or daily owner-summary delivery.
 

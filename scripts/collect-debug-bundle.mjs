@@ -124,6 +124,9 @@ function buildAttentionSamples({ membershipProcessing, gamification, engagement,
     isObject(row) && (row.errorCode || row.status === "failed" || row.status === "skipped"));
   pushAttentionSamples(samples, "outbound", outboundAttentionSamples, (row) =>
     `message=${formatAttentionValue(row.id)} restaurant=${formatAttentionValue(row.restaurantId)} guest=${formatAttentionValue(row.guestId, "none")} type=${formatAttentionValue(row.messageType)} status=${formatAttentionValue(row.status)} error=${formatAttentionValue(row.errorCode, "none")}`);
+  const deliveryReadiness = isObject(outboundMessages.deliveryReadiness) ? outboundMessages.deliveryReadiness : {};
+  pushAttentionSamples(samples, "outbound.owner-whatsapp-missing", deliveryReadiness.ownerWhatsappMissingSamples, (row) =>
+    `restaurant=${formatAttentionValue(row.restaurantId)} slug=${formatAttentionValue(row.slug)} name=${formatAttentionValue(row.name)} ownerPhone=${formatAttentionValue(row.ownerPhoneMasked, "none")} whatsappNumber=${formatAttentionValue(row.whatsappNumberMasked, "none")}`);
 
   return samples.slice(0, limit);
 }
@@ -414,6 +417,7 @@ async function captureDiagnosticsHighlights(commandRecord) {
         totals: outboundMessages.totals,
         byType: outboundMessages.byType,
         byErrorCode: outboundMessages.byErrorCode,
+        deliveryReadiness: outboundMessages.deliveryReadiness,
         samples: outboundMessages.samples,
         error: outboundMessages.error,
       },
@@ -534,8 +538,9 @@ async function writeReadme() {
       const outboundTotals = outboundMessages.totals ?? {};
       const outboundByType = outboundMessages.byType ?? {};
       const outboundByErrorCode = outboundMessages.byErrorCode ?? {};
+      const outboundDeliveryReadiness = outboundMessages.deliveryReadiness ?? {};
       lines.push(
-        `- Outbound messages: ${outboundMessages.status ?? "unknown"} total=${outboundTotals.total ?? "?"} logged=${outboundTotals.logged ?? "?"} sent=${outboundTotals.sent ?? "?"} skipped=${outboundTotals.skipped ?? "?"} failed=${outboundTotals.failed ?? "?"} types=${Object.entries(outboundByType).map(([type, count]) => `${type}:${count}`).join(",") || "none"} errors=${Object.entries(outboundByErrorCode).map(([code, count]) => `${code}:${count}`).join(",") || "none"}`,
+        `- Outbound messages: ${outboundMessages.status ?? "unknown"} total=${outboundTotals.total ?? "?"} logged=${outboundTotals.logged ?? "?"} sent=${outboundTotals.sent ?? "?"} skipped=${outboundTotals.skipped ?? "?"} failed=${outboundTotals.failed ?? "?"} ownerWhatsappMissing=${outboundDeliveryReadiness.ownerWhatsappMissing ?? "?"} types=${Object.entries(outboundByType).map(([type, count]) => `${type}:${count}`).join(",") || "none"} errors=${Object.entries(outboundByErrorCode).map(([code, count]) => `${code}:${count}`).join(",") || "none"}`,
       );
       if (agentMembershipIntents) {
         lines.push(

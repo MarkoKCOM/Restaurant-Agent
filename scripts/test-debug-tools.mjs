@@ -483,6 +483,18 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
         byErrorCode: {
           OUTBOUND_RECIPIENT_MISSING: 1,
         },
+        deliveryReadiness: {
+          ownerWhatsappMissing: 2,
+          ownerWhatsappMissingSamples: [
+            {
+              restaurantId: "restaurant-1",
+              slug: "bff",
+              name: "BFF",
+              ownerPhoneMasked: "050****12",
+              whatsappNumberMasked: "052****34",
+            },
+          ],
+        },
         samples: [
           {
             id: "outbound-1",
@@ -516,6 +528,7 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
         "gamification.stuck-challenge progress=progress-1 guest=guest-2 challenge=challenge-1 value=5/3",
         "campaign.overdue campaign=campaign-1 restaurant=restaurant-1 scheduledAt=2026-05-27T09:00:00.000Z name=May win-back",
         "outbound message=outbound-1 restaurant=restaurant-1 guest=none type=daily_morning_summary status=skipped error=OUTBOUND_RECIPIENT_MISSING",
+        "outbound.owner-whatsapp-missing restaurant=restaurant-1 slug=bff name=BFF ownerPhone=050****12 whatsappNumber=052****34",
       ],
     },
     agentMembershipIntents: {
@@ -541,7 +554,7 @@ assertIncludes(
 );
 assertIncludes(debugBundleManifestOutput, "Engagement: attention pending=4 overdue=1 failed=1 skipped=3 winBackDue=2 birthdayDue=1 anniversaryDue=1 reviewWithoutPositive=1 negativeWithReview=1");
 assertIncludes(debugBundleManifestOutput, "Campaigns: attention total=6 draft=1 scheduled=2 sent=3 overdue=1 deliverySent=12 skipped=4 optedOut=2 weekLimit=1 monthLimit=1");
-assertIncludes(debugBundleManifestOutput, "Outbound messages: attention total=5 logged=4 sent=0 skipped=0 failed=1 types=daily_morning_summary:2,thank_you:3 errors=OUTBOUND_RECIPIENT_MISSING:1");
+assertIncludes(debugBundleManifestOutput, "Outbound messages: attention total=5 logged=4 sent=0 skipped=0 failed=1 ownerWhatsappMissing=2 types=daily_morning_summary:2,thank_you:3 errors=OUTBOUND_RECIPIENT_MISSING:1");
 assertIncludes(debugBundleManifestOutput, "Agent membership intents: passed 4/4");
 assertIncludes(debugBundleManifestOutput, "Queues: daily-summary:ok/failed=0/repeat=0, membership-events:ok/failed=0/repeat=?");
 assertIncludes(debugBundleManifestOutput, "Summary schedules: restaurants=9 morning expected=9 found=9 pattern=0 9 * * * status=ok closing expected=9 found=9 pattern=0 23 * * * status=ok timezones=Asia/Jerusalem:9");
@@ -551,6 +564,7 @@ assertIncludes(debugBundleManifestOutput, "- membership id=mpf-1 stage=loyalty g
 assertIncludes(debugBundleManifestOutput, "- gamification.stuck-challenge progress=progress-1 guest=guest-2 challenge=challenge-1 value=5/3");
 assertIncludes(debugBundleManifestOutput, "- campaign.overdue campaign=campaign-1 restaurant=restaurant-1 scheduledAt=2026-05-27T09:00:00.000Z name=May win-back");
 assertIncludes(debugBundleManifestOutput, "- outbound message=outbound-1 restaurant=restaurant-1 guest=none type=daily_morning_summary status=skipped error=OUTBOUND_RECIPIENT_MISSING");
+assertIncludes(debugBundleManifestOutput, "- outbound.owner-whatsapp-missing restaurant=restaurant-1 slug=bff name=BFF ownerPhone=050****12 whatsappNumber=052****34");
 assertIncludes(debugBundleManifestOutput, "Failed commands: 1");
 assertIncludes(debugBundleManifestOutput, "- api-smoke: exitCode=1 output=/tmp/openseat-debug-bundle/api-smoke.txt");
 assertIncludes(debugBundleManifestOutput, "Skipped commands: 1");
@@ -829,6 +843,9 @@ for (const requiredOutboundServiceContent of [
   "recordOutboundDelivery",
   "OUTBOUND_RECIPIENT_MISSING",
   "byErrorCode",
+  "deliveryReadiness",
+  "ownerWhatsappMissing",
+  "ownerWhatsappMissingSamples",
   "deliveryMode",
   "deliverySkipped",
   "status: missingRequiredRecipient ? \"skipped\" : \"logged\"",
@@ -938,6 +955,8 @@ for (const requiredReadmeContent of [
   "Gamification:",
   "Engagement:",
   "Outbound messages:",
+  "ownerWhatsappMissing=",
+  "deliveryReadiness",
   "Agent membership intents:",
   "agent-membership-intents",
   "agent-membership-intents.json",

@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { outboundMessages } from "../db/schema.js";
+import { outboundMessages, restaurants } from "../db/schema.js";
 
 const MAX_PREVIEW_LENGTH = 1200;
 
@@ -48,6 +48,16 @@ export interface OutboundMessageDiagnostics {
   };
   byType?: Record<string, number>;
   byErrorCode?: Record<string, number>;
+  deliveryReadiness?: {
+    ownerWhatsappMissing: number;
+    ownerWhatsappMissingSamples: Array<{
+      restaurantId: string;
+      slug: string;
+      name: string;
+      ownerPhoneMasked: string | null;
+      whatsappNumberMasked: string | null;
+    }>;
+  };
   samples?: Array<{
     id: string;
     restaurantId: string;
@@ -144,7 +154,7 @@ export async function getOutboundMessageDiagnostics(params: {
 } = {}): Promise<OutboundMessageDiagnostics> {
   const since = params.since ?? new Date(Date.now() - 24 * 60 * 60 * 1000);
   const sampleLimit = Math.min(Math.max(params.sampleLimit ?? 5, 1), 20);
-  const [summaryRows, errorRows, sampleRows] = await Promise.all([
+  const [summaryRows, errorRows, sampleRows, ownerWhatsappMissingRows] = await Promise.all([
     db
       .select({
         status: outboundMessages.status,
@@ -187,6 +197,19 @@ export async function getOutboundMessageDiagnostics(params: {
         desc(outboundMessages.createdAt),
       )
       .limit(sampleLimit),
+    db
+      .select({
+        restaurantId: restaurants.id,
+        slug: restaurants.slug,
+        name: restaurants.name,
+        ownerPhone: restaurants.ownerPhone,
+        whatsappNumber: restaurants.whatsappNumber,
+        missingCount: sql<number>`count(*) over()::int`,
+      })
+      .from(restaurants)
+      .where(sql`${restaurants.ownerWhatsapp} is null or trim(${restaurants.ownerWhatsapp}) = ''`)
+      .orderBy(restaurants.name)
+      .limit(sampleLimit),
   ]);
 
   const totals = {
@@ -210,13 +233,24 @@ export async function getOutboundMessageDiagnostics(params: {
     if (!row.errorCode) continue;
     byErrorCode[row.errorCode] = Number(row.count ?? 0);
   }
+  const ownerWhatsappMissing = Number(ownerWhatsappMissingRows[0]?.missingCount ?? 0);
 
   return {
-    status: totals.failed > 0 || Object.keys(byErrorCode).length > 0 ? "attention" : "ok",
+    status: totals.failed > 0 || Object.keys(byErrorCode).length > 0 || ownerWhatsappMissing > 0 ? "attention" : "ok",
     since: since.toISOString(),
     totals,
     byType,
     byErrorCode,
+    deliveryReadiness: {
+      ownerWhatsappMissing,
+      ownerWhatsappMissingSamples: ownerWhatsappMissingRows.map((row) => ({
+        restaurantId: row.restaurantId,
+        slug: row.slug,
+        name: row.name,
+        ownerPhoneMasked: maskRecipient(row.ownerPhone),
+        whatsappNumberMasked: maskRecipient(row.whatsappNumber),
+      })),
+    },
     samples: sampleRows.map((row) => ({
       ...row,
       createdAt: row.createdAt.toISOString(),

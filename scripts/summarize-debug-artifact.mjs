@@ -419,6 +419,7 @@ async function summarizeDebugBundleManifest(report) {
   const outboundTotals = outboundMessages.totals ?? {};
   const outboundByType = outboundMessages.byType ?? {};
   const outboundByErrorCode = outboundMessages.byErrorCode ?? {};
+  const outboundDeliveryReadiness = outboundMessages.deliveryReadiness ?? {};
   const agentMembershipIntents = highlights.agentMembershipIntents ?? {};
   const queues = asArray(adminDiagnostics.queues);
   const summaryScheduleHealth = formatSummaryScheduleHealthFromDiagnostics(queues)
@@ -488,7 +489,7 @@ async function summarizeDebugBundleManifest(report) {
   if (outboundMessages.status) {
     printLine(
       "Outbound messages",
-      `${outboundMessages.status} total=${outboundTotals.total ?? "?"} logged=${outboundTotals.logged ?? "?"} sent=${outboundTotals.sent ?? "?"} skipped=${outboundTotals.skipped ?? "?"} failed=${outboundTotals.failed ?? "?"} types=${Object.entries(outboundByType).map(([type, count]) => `${type}:${count}`).join(",") || "none"} errors=${Object.entries(outboundByErrorCode).map(([code, count]) => `${code}:${count}`).join(",") || "none"}`,
+      `${outboundMessages.status} total=${outboundTotals.total ?? "?"} logged=${outboundTotals.logged ?? "?"} sent=${outboundTotals.sent ?? "?"} skipped=${outboundTotals.skipped ?? "?"} failed=${outboundTotals.failed ?? "?"} ownerWhatsappMissing=${outboundDeliveryReadiness.ownerWhatsappMissing ?? "?"} types=${Object.entries(outboundByType).map(([type, count]) => `${type}:${count}`).join(",") || "none"} errors=${Object.entries(outboundByErrorCode).map(([code, count]) => `${code}:${count}`).join(",") || "none"}`,
     );
   }
   if (agentMembershipIntents.status) {

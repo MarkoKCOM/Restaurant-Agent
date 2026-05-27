@@ -994,6 +994,7 @@ const queueDebugSummary = await readFile("apps/api/scripts/queue-debug-summary.m
 const diagnosticsService = await readFile("apps/api/src/services/diagnostics.service.ts", "utf8");
 const adminRoutes = await readFile("apps/api/src/routes/admin.ts", "utf8");
 const restaurantRoutes = await readFile("apps/api/src/routes/restaurants.ts", "utf8");
+const authRoutes = await readFile("apps/api/src/routes/auth.ts", "utf8");
 const authMiddleware = await readFile("apps/api/src/middleware/auth.ts", "utf8");
 const campaignRoutes = await readFile("apps/api/src/routes/campaigns.ts", "utf8");
 const analyticsRoutes = await readFile("apps/api/src/routes/analytics.ts", "utf8");
@@ -1477,6 +1478,18 @@ for (const requiredAdminRouteContent of [
   "request.log.error(logPayload, \"Admin request failed\")",
 ]) {
   assertIncludes(adminRoutes, requiredAdminRouteContent);
+}
+
+for (const requiredAuthRouteContent of [
+  "AUTH_LOGIN_LOOKUP_FAILED",
+  "AUTH_PASSWORD_VERIFY_FAILED",
+  "AUTH_LOGIN_RESPONSE_FAILED",
+  "AUTH_SIGNUP_LOOKUP_FAILED",
+  "AUTH_PASSWORD_HASH_FAILED",
+  "AUTH_SIGNUP_FAILED",
+  "request.log.error(logPayload, \"Auth request failed\")",
+]) {
+  assertIncludes(authRoutes, requiredAuthRouteContent);
 }
 
 for (const requiredGamificationPackageContent of [

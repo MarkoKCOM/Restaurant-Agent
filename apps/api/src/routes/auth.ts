@@ -208,11 +208,23 @@ export async function authRoutes(app: FastifyInstance) {
     const email = normalizeEmail(parsedBody.data.email);
     const { password } = parsedBody.data;
 
-    const [user] = await db
-      .select()
-      .from(adminUsers)
-      .where(eq(adminUsers.email, email))
-      .limit(1);
+    let user: typeof adminUsers.$inferSelect | undefined;
+    try {
+      [user] = await db
+        .select()
+        .from(adminUsers)
+        .where(eq(adminUsers.email, email))
+        .limit(1);
+    } catch (error: unknown) {
+      return sendAuthError(
+        request,
+        reply,
+        500,
+        "Unable to log in",
+        "AUTH_LOGIN_LOOKUP_FAILED",
+        { err: error, email },
+      );
+    }
 
     if (!user) {
       return sendAuthError(request, reply, 401, "Invalid email or password", "AUTH_INVALID_CREDENTIALS", {
@@ -220,7 +232,19 @@ export async function authRoutes(app: FastifyInstance) {
       });
     }
 
-    const valid = await bcrypt.compare(password, user.passwordHash);
+    let valid: boolean;
+    try {
+      valid = await bcrypt.compare(password, user.passwordHash);
+    } catch (error: unknown) {
+      return sendAuthError(
+        request,
+        reply,
+        500,
+        "Unable to log in",
+        "AUTH_PASSWORD_VERIFY_FAILED",
+        { err: error, userId: user.id },
+      );
+    }
     if (!valid) {
       return sendAuthError(request, reply, 401, "Invalid email or password", "AUTH_INVALID_CREDENTIALS", {
         userId: user.id,
@@ -259,17 +283,41 @@ export async function authRoutes(app: FastifyInstance) {
     const { owner, restaurant, tables: initialTables } = parsedBody.data;
     const email = normalizeEmail(owner.email);
 
-    const [existingUser] = await db
-      .select({ id: adminUsers.id })
-      .from(adminUsers)
-      .where(eq(adminUsers.email, email))
-      .limit(1);
+    let existingUser: { id: string } | undefined;
+    try {
+      [existingUser] = await db
+        .select({ id: adminUsers.id })
+        .from(adminUsers)
+        .where(eq(adminUsers.email, email))
+        .limit(1);
+    } catch (error: unknown) {
+      return sendAuthError(
+        request,
+        reply,
+        500,
+        "Unable to complete signup",
+        "AUTH_SIGNUP_LOOKUP_FAILED",
+        { err: error, restaurantName: restaurant.name },
+      );
+    }
 
     if (existingUser) {
       return sendAuthError(request, reply, 409, "An account with this email already exists", "AUTH_EMAIL_EXISTS");
     }
 
-    const passwordHash = await bcrypt.hash(owner.password, 10);
+    let passwordHash: string;
+    try {
+      passwordHash = await bcrypt.hash(owner.password, 10);
+    } catch (error: unknown) {
+      return sendAuthError(
+        request,
+        reply,
+        500,
+        "Unable to complete signup",
+        "AUTH_PASSWORD_HASH_FAILED",
+        { err: error, restaurantName: restaurant.name },
+      );
+    }
 
     try {
       const { createdUser, createdRestaurant } = await db.transaction(async (tx) => {

@@ -1070,6 +1070,7 @@ for (const requiredBirthdayWeekSmokeContent of [
   "targetGuestId: birthdayWeekCheck.result?.targetGuestId",
   "createdChallengeSamples: birthdayWeekCheck.result?.createdChallengeSamples",
   "skippedExistingSamples: birthdayWeekCheck.result?.skippedExistingSamples",
+  "body: { preferences: { birthday: jerusalemMonthDayPlusDays(30) } }",
   "const cleanupBirthday = jerusalemMonthDayPlusDays(30)",
   "body: { preferences: { birthday: cleanupBirthday } }",
 ]) {

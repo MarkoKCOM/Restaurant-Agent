@@ -1066,6 +1066,11 @@ async function main() {
   if (!birthdayJob || !["pending", "sent", "skipped"].includes(birthdayJob.status)) {
     throw new Error(`Birthday check did not create a birthday engagement job: ${JSON.stringify(birthdayCheck.result ?? {})}`);
   }
+  await request(`/api/v1/guests/${birthdayGuestId}`, {
+    method: "PATCH",
+    token,
+    body: { preferences: { birthday: jerusalemMonthDayPlusDays(30) } },
+  });
 
   const birthdayChallengeGuest = await request("/api/v1/guests", {
     method: "POST",

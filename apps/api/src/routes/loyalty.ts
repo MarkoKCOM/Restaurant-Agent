@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import {
   awardPoints,
@@ -72,6 +72,39 @@ const processingFailuresQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 
+function sendLoyaltyEnvelopeError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  statusCode: number,
+  message: string,
+  code: string,
+  context: Record<string, unknown> = {},
+  extra: Record<string, unknown> = {},
+) {
+  const logPayload = {
+    ...context,
+    code,
+    requestId: request.id,
+    statusCode,
+    userId: request.user?.id,
+    restaurantId: request.user?.restaurantId,
+    role: request.user?.role,
+  };
+
+  if (statusCode >= 500) {
+    request.log.error(logPayload, "Loyalty request failed");
+  } else {
+    request.log.warn(logPayload, "Loyalty request rejected");
+  }
+
+  return reply.status(statusCode).send({
+    error: message,
+    code,
+    requestId: request.id,
+    ...extra,
+  });
+}
+
 function sendLoyaltyError(reply: { code: (status: number) => unknown }, err: unknown) {
   const message = err instanceof Error ? err.message : "Loyalty operation failed";
   if (message.includes("Insufficient points")) {
@@ -100,7 +133,14 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const query = processingFailuresQuerySchema.parse(request.query);
     const err = enforceTenant(request.user!, query.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        403,
+        err,
+        "MEMBERSHIP_PROCESSING_FORBIDDEN",
+        { restaurantId: query.restaurantId },
+      );
     }
 
     const failures = await listMembershipProcessingFailures(query);
@@ -113,7 +153,14 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     const body = z.object({ restaurantId: z.string().uuid() }).parse(request.body);
     const err = enforceTenant(request.user!, body.restaurantId) ?? requireRestaurantAdmin(request.user!);
     if (err) {
-      return reply.status(403).send({ error: err });
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        403,
+        err,
+        "MEMBERSHIP_PROCESSING_FORBIDDEN",
+        { failureId, restaurantId: body.restaurantId },
+      );
     }
 
     try {
@@ -123,20 +170,28 @@ export async function loyaltyRoutes(app: FastifyInstance) {
       });
 
       if (!failure) {
-        return reply.status(404).send({ error: "Membership processing failure not found" });
+        return sendLoyaltyEnvelopeError(
+          request,
+          reply,
+          404,
+          "Membership processing failure not found",
+          "MEMBERSHIP_PROCESSING_FAILURE_NOT_FOUND",
+          { failureId, restaurantId: body.restaurantId },
+        );
       }
 
       return { failure };
     } catch (error: unknown) {
       const failure = (error as { failure?: unknown }).failure;
-      request.log.warn(
-        { error, failureId, restaurantId: body.restaurantId },
-        "Membership processing retry failed",
+      return sendLoyaltyEnvelopeError(
+        request,
+        reply,
+        409,
+        error instanceof Error ? error.message : "Membership processing retry failed",
+        "MEMBERSHIP_PROCESSING_RETRY_FAILED",
+        { err: error, failureId, restaurantId: body.restaurantId },
+        { failure },
       );
-      return reply.status(409).send({
-        error: error instanceof Error ? error.message : "Membership processing retry failed",
-        failure,
-      });
     }
   });
 

@@ -467,6 +467,10 @@ async function summarizeDebugBundleManifest(report) {
   printLine("API URL", report.apiUrl);
   printLine("Service", report.service);
   printLine("Since", report.since);
+  if (report.logWindows && typeof report.logWindows === "object") {
+    printLine("Context logs since", report.logWindows.contextSince);
+    printLine("Bundle-run logs since", report.logWindows.bundleRunSince);
+  }
   printLine("Output dir", report.outDir);
   if (report.readiness) {
     printLine("Readiness", `${report.readiness.status ?? "unknown"} after ${report.readiness.attempts ?? "?"} attempt(s)`);

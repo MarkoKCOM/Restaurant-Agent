@@ -141,6 +141,7 @@
 - [ ] 13.8 Validate name/brand — check domain availability for "OpenSeat" or chosen name, secure domain
 - [x] 13.9 Add operational diagnostics for Growth retention schedules — daily summaries, win-back, birthdays, anniversaries, birthday-week challenges
 - [x] 13.10 Add precise outbound delivery diagnostics — distinguish current owner-delivery blockers from historical errors and owner WhatsApp config cleanup
+- [x] 13.11 Add bundle-run log isolation — debug bundles include a run-scoped service log slice so fresh smoke regressions are not mixed with older warnings
 
 ## 14. Branding & Landing Page
 

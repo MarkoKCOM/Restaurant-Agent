@@ -135,6 +135,7 @@ const apiUrl = (process.env.OPENSEAT_API_URL || "http://127.0.0.1:3001").replace
 const since = readOption("since", "30 minutes ago");
 const service = readOption("service", "openseat-api");
 const outDir = resolve(process.cwd(), readOption("out", `artifacts/debug-bundles/${stamp()}`));
+const bundleStartedAt = new Date().toISOString();
 const membershipDebugRestaurantId =
   process.env.OPENSEAT_RESTAURANT_ID ||
   process.env.OPENSEAT_BUNDLE_RESTAURANT_ID ||
@@ -154,10 +155,14 @@ const outboundDebugRestaurantSlug =
   process.env.OPENSEAT_BUNDLE_RESTAURANT_SLUG ||
   "";
 const manifest = {
-  createdAt: new Date().toISOString(),
+  createdAt: bundleStartedAt,
   apiUrl,
   service,
   since,
+  logWindows: {
+    contextSince: since,
+    bundleRunSince: bundleStartedAt,
+  },
   outDir,
   readiness: {},
   commands: [],
@@ -649,6 +654,7 @@ async function writeReadme() {
     `Created: ${manifest.createdAt}`,
     `API URL: ${apiUrl}`,
     `Service logs: ${service} since ${since}`,
+    `Bundle-run logs: ${service} since ${bundleStartedAt}`,
     `Readiness: ${manifest.readiness.status ?? "unknown"} after ${manifest.readiness.attempts ?? "?"} attempt(s)`,
     "",
     "## Status",
@@ -823,7 +829,8 @@ async function writeReadme() {
     lines.push("- `owner-delivery-readiness.txt` for restaurants missing owner WhatsApp delivery settings.");
     lines.push("- `package-enforcement-smoke.txt` for starter-vs-Growth package guard probes.");
     lines.push("- `api-smoke-summary.txt` for end-to-end API flow status and any failing request IDs.");
-    lines.push("- `recent-api-logs.txt` for service-side context around this bundle run.");
+    lines.push("- `recent-api-logs.txt` for service-side context from the requested `--since` window.");
+    lines.push("- `bundle-run-api-logs.txt` for service-side context from this bundle invocation only.");
   }
   if (skipped.length > 0) {
     lines.push(`- Skipped steps: ${skipped.map((command) => command.name).join(", ")}.`);
@@ -1098,6 +1105,16 @@ await runStep("recent-api-logs", "journalctl", [
   service,
   "--since",
   since,
+  "--no-pager",
+  "-o",
+  "short-iso",
+]);
+
+await runStep("bundle-run-api-logs", "journalctl", [
+  "-u",
+  service,
+  "--since",
+  bundleStartedAt,
   "--no-pager",
   "-o",
   "short-iso",

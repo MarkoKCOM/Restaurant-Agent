@@ -335,6 +335,10 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
   apiUrl: "http://localhost:3001",
   service: "openseat-api",
   since: "30 minutes ago",
+  logWindows: {
+    contextSince: "30 minutes ago",
+    bundleRunSince: "2026-05-27T12:00:00.000Z",
+  },
   outDir: "/tmp/openseat-debug-bundle",
   readiness: { status: "ready", attempts: 1 },
   commands: [
@@ -612,6 +616,8 @@ const debugBundleManifestPath = await writeJson("manifest.json", {
 
 const debugBundleManifestOutput = await summarize(debugBundleManifestPath);
 assertIncludes(debugBundleManifestOutput, "Type: debug-bundle");
+assertIncludes(debugBundleManifestOutput, "Context logs since: 30 minutes ago");
+assertIncludes(debugBundleManifestOutput, "Bundle-run logs since: 2026-05-27T12:00:00.000Z");
 assertIncludes(debugBundleManifestOutput, "Readiness: ready after 1 attempt(s)");
 assertIncludes(debugBundleManifestOutput, "Commands: 3/5 passed");
 assertIncludes(debugBundleManifestOutput, "Admin diagnostics: degraded");
@@ -1314,8 +1320,11 @@ for (const requiredReadmeContent of [
   "admin-diagnostics.txt",
   "api-smoke-summary.txt",
   "recent-api-logs.txt",
+  "bundle-run-api-logs.txt",
   "manifest.json",
   "README.md",
+  "logWindows",
+  "bundleRunSince",
   "highlights: {}",
   "manifest.highlights.adminDiagnostics",
   "gamification",

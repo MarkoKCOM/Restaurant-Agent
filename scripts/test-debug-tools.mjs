@@ -893,12 +893,15 @@ for (const expectedDashboardSignupContent of [
 
 const dashboardReservationsPage = await readFile("apps/dashboard/src/pages/ReservationsPage.tsx", "utf8");
 const dashboardWaitlistPage = await readFile("apps/dashboard/src/pages/WaitlistPage.tsx", "utf8");
+const loyaltyRewardsManager = await readFile("apps/dashboard/src/components/LoyaltyRewardsManager.tsx", "utf8");
 for (const expectedDashboardActionErrorContent of [
   "formatApiErrorMessage(error, t.res.toastWalkInError)",
   "formatApiErrorMessage(error, t.res.toastCreateError)",
   "formatApiErrorMessage(error, t.waitlist.addError)",
+  "error: rewardsError",
+  "formatApiErrorMessage(rewardsError, t.loyalty.dataLoadRewardsError)",
 ]) {
-  assertIncludes(`${dashboardReservationsPage}\n${dashboardWaitlistPage}`, expectedDashboardActionErrorContent);
+  assertIncludes(`${dashboardReservationsPage}\n${dashboardWaitlistPage}\n${loyaltyRewardsManager}`, expectedDashboardActionErrorContent);
 }
 assertNotIncludes(dashboardReservationsPage, "setError(err.message || t.res");
 assertNotIncludes(dashboardWaitlistPage, "setError(err.message || t.waitlist");

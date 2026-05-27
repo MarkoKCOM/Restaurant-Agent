@@ -27,7 +27,7 @@ export function LoyaltyRewardsManager({
   const { t, lang } = useLang();
   const { showToast } = useToast();
   const { canDo } = useAuth();
-  const { data: rewardsData, isLoading } = useRewards(restaurant?.id, true);
+  const { data: rewardsData, isLoading, error: rewardsError } = useRewards(restaurant?.id, true);
   const createRewardMutation = useCreateReward();
   const updateRewardMutation = useUpdateReward();
 
@@ -206,6 +206,13 @@ export function LoyaltyRewardsManager({
         <p className="text-sm text-gray-500">{t.settings.loading}</p>
       ) : (
         <div className="space-y-5">
+          {rewardsError ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+              <p className="font-semibold text-red-900">{t.loyalty.dataLoadErrorTitle}</p>
+              <p className="mt-1">{formatApiErrorMessage(rewardsError, t.loyalty.dataLoadRewardsError)}</p>
+            </div>
+          ) : null}
+
           <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
             <div className="mb-4">
               <h4 className="text-sm font-semibold text-gray-900">{t.loyalty.templatesTitle}</h4>
@@ -264,10 +271,12 @@ export function LoyaltyRewardsManager({
             </div>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-2">
-            <RewardList title={t.loyalty.activeRewards} items={activeRewards} />
-            <RewardList title={t.loyalty.inactiveRewards} items={inactiveRewards} />
-          </div>
+          {!rewardsError ? (
+            <div className="grid gap-4 xl:grid-cols-2">
+              <RewardList title={t.loyalty.activeRewards} items={activeRewards} />
+              <RewardList title={t.loyalty.inactiveRewards} items={inactiveRewards} />
+            </div>
+          ) : null}
 
           {canDo("loyalty.reward.manage") ? (
             <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">

@@ -87,6 +87,7 @@
 - Booking-widget availability and reservation failures now include HTTP status, stable API code, and request ID in visible errors, and log a browser-console debug payload with the matching `pnpm debug:logs` command.
 - `pnpm debug:api` probe script for quickly checking endpoint status, elapsed time, request ID, content type, and body.
 - `docs/DEBUGGING.md` with request-ID triage steps, log lookup commands, and debugging commands.
+- Settings reward management now surfaces reward-catalog load failures with the same formatted HTTP/code/request-ID details as the loyalty dashboard instead of looking like an empty reward list.
 
 ### Changed
 - API startup, worker, cron scheduling, and shutdown messages now use structured Fastify logs.

@@ -147,6 +147,7 @@
 - [x] 13.14 Add optional bundle failure gate for unexpected API log noise — CI/debug runs can fail after writing artifacts when bundle-run logs contain unexpected warnings or errors
 - [x] 13.15 Add gamification route preflight error envelopes — guest/challenge lookup and active-challenge listing failures keep gamification-specific codes, request IDs, and member/challenge context
 - [x] 13.16 Add loyalty route preflight error envelopes — guest/claim lookup failures keep loyalty-specific codes, request IDs, and member/reward context
+- [x] 13.17 Surface settings reward-catalog load errors — Settings reward management shows formatted HTTP/code/request-ID details instead of an empty-looking reward catalog
 
 ## 14. Branding & Landing Page
 

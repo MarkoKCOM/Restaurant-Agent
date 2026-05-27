@@ -110,6 +110,8 @@ export async function getLeaderboard(
   limit = 10,
 ): Promise<LeaderboardSummary> {
   const { start, end } = periodBounds(period);
+  const startIso = start.toISOString();
+  const endIso = end.toISOString();
   const rows = await db.execute(sql`
     with opted_in as (
       select
@@ -131,8 +133,8 @@ export async function getLeaderboard(
       from opted_in oi
       left join ${loyaltyTransactions} lt on lt.guest_id = oi.id
         and lt.restaurant_id = ${restaurantId}
-        and lt.created_at >= ${start}
-        and lt.created_at < ${end}
+        and lt.created_at >= ${startIso}
+        and lt.created_at < ${endIso}
       group by oi.id, oi.name, oi.tier, oi.visit_count
     )
     select

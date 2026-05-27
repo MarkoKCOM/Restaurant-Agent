@@ -115,7 +115,7 @@
 - [x] 11.3 Implement CLV calculation — per guest and per segment/tier
 - [x] 11.4 Implement campaign ROI tracking — attributed reservations and estimated revenue per campaign
 - [x] 11.5 Implement loyalty program analytics — active members, points issued/redeemed, tier distribution
-- [ ] 11.6 Build React analytics dashboard page with charts (reservation heatmap, retention trend, tier distribution)
+- [x] 11.6 Build React analytics dashboard page with charts (reservation heatmap, retention trend, tier distribution)
 - [ ] 11.7 Implement WhatsApp daily morning summary (09:00) — yesterday's stats, today's bookings, notable guests
 
 ## 12. Multi-Restaurant & Billing

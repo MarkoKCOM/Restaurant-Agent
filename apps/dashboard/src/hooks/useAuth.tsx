@@ -69,6 +69,7 @@ const DASHBOARD_PAGE_KEYS: DashboardPageKey[] = [
   "reservations",
   "waitlist",
   "loyalty",
+  "analytics",
   "guests",
   "settings",
   "help",

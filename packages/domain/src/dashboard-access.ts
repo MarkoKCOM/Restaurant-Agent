@@ -8,6 +8,7 @@ export type DashboardPageKey =
   | "reservations"
   | "waitlist"
   | "loyalty"
+  | "analytics"
   | "guests"
   | "settings"
   | "help";
@@ -24,6 +25,7 @@ export const DEFAULT_VISIBLE_PAGES: DashboardPageKey[] = [
   "reservations",
   "waitlist",
   "loyalty",
+  "analytics",
   "guests",
   "settings",
   "help",
@@ -77,7 +79,7 @@ export function isFeatureEnabled(
 
 export const DASHBOARD_ACCESS_BY_ROLE: Record<DashboardRole, DashboardAccess> = {
   admin: {
-    pages: ["today", "reservations", "waitlist", "loyalty", "guests", "settings", "help"],
+    pages: ["today", "reservations", "waitlist", "loyalty", "analytics", "guests", "settings", "help"],
     actions: [
       "reservation.manage",
       "walkin.create",
@@ -95,7 +97,7 @@ export const DASHBOARD_ACCESS_BY_ROLE: Record<DashboardRole, DashboardAccess> = 
     actions: ["reservation.manage", "walkin.create", "waitlist.manage", "loyalty.verify", "loyalty.redeem"],
   },
   super_admin: {
-    pages: ["restaurants", "today", "reservations", "waitlist", "loyalty", "guests", "settings", "help"],
+    pages: ["restaurants", "today", "reservations", "waitlist", "loyalty", "analytics", "guests", "settings", "help"],
     actions: [
       "reservation.manage",
       "walkin.create",

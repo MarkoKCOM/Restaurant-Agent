@@ -164,6 +164,138 @@ export function useDashboard(restaurantId: string | undefined) {
   });
 }
 
+// --- Analytics ---
+
+export interface ReservationAnalytics {
+  period: { from: string; to: string };
+  capacity: { activeTables: number; activeSeats: number };
+  current: {
+    bookings: number;
+    activeBookings: number;
+    completedBookings: number;
+    covers: number;
+    completedCovers: number;
+    cancellations: number;
+    noShows: number;
+    cancellationRate: number;
+    noShowRate: number;
+    occupancyBySlot: Array<{ slot: string; reservations: number; covers: number; occupancyRate: number }>;
+    peakSlot: { slot: string; reservations: number; covers: number; occupancyRate: number } | null;
+  };
+}
+
+export interface RetentionAnalytics {
+  current: {
+    totalVisits: number;
+    uniqueGuests: number;
+    newGuests: number;
+    returningGuests: number;
+    returningGuestRatio: number;
+    averageVisitsPerGuest: number;
+    visitFrequencyDistribution: Record<string, number>;
+  };
+  retentionWindows: Array<{ days: number; cohortSize: number; retained: number; rate: number }>;
+}
+
+export interface LoyaltyAnalytics {
+  activeMembers: number;
+  totalMembers: number;
+  pointsIssued: number;
+  pointsRedeemed: number;
+  redemptionRate: number;
+  tierDistribution: Record<"bronze" | "silver" | "gold", number>;
+}
+
+export interface ClvAnalytics {
+  totals: {
+    guests: number;
+    guestsWithRevenue: number;
+    lifetimeRevenue: number;
+    periodRevenue: number;
+    averageLifetimeValue: number;
+    averageRevenueCustomerValue: number;
+    averageSpendPerVisit: number;
+  };
+  byTier: Array<{
+    tier: "bronze" | "silver" | "gold";
+    guests: number;
+    lifetimeRevenue: number;
+    averageLifetimeValue: number;
+    averageSpendPerVisit: number;
+  }>;
+  topGuests: Array<{
+    guestId: string;
+    name: string;
+    tier: string;
+    lifetimeRevenue: number;
+    periodRevenue: number;
+    lifetimeVisits: number;
+    averageSpendPerVisit: number;
+  }>;
+}
+
+export interface CampaignRoiAnalytics {
+  totals: {
+    campaigns: number;
+    sent: number;
+    delivered: number;
+    read: number;
+    replied: number;
+    attributedReservations: number;
+    attributedRevenue: number;
+    estimatedCost: number;
+    roi: number | null;
+  };
+}
+
+function analyticsQuery(params: { restaurantId?: string; from?: string; to?: string; extra?: Record<string, string> }) {
+  const searchParams = new URLSearchParams();
+  if (params.restaurantId) searchParams.set("restaurantId", params.restaurantId);
+  if (params.from) searchParams.set("from", params.from);
+  if (params.to) searchParams.set("to", params.to);
+  for (const [key, value] of Object.entries(params.extra ?? {})) {
+    searchParams.set(key, value);
+  }
+  return searchParams.toString();
+}
+
+export function useAnalyticsSummary(params: {
+  restaurantId?: string;
+  from?: string;
+  to?: string;
+}) {
+  const query = analyticsQuery(params);
+  const enabled = !!params.restaurantId;
+
+  return {
+    reservations: useQuery<{ reservations: ReservationAnalytics }>({
+      queryKey: ["analytics", "reservations", params.restaurantId, params.from, params.to],
+      queryFn: () => fetchJSON(`${API}/analytics/reservations?${query}`),
+      enabled,
+    }),
+    retention: useQuery<{ retention: RetentionAnalytics }>({
+      queryKey: ["analytics", "retention", params.restaurantId, params.from, params.to],
+      queryFn: () => fetchJSON(`${API}/analytics/retention?${query}`),
+      enabled,
+    }),
+    loyalty: useQuery<{ loyalty: LoyaltyAnalytics }>({
+      queryKey: ["analytics", "loyalty", params.restaurantId, params.from, params.to],
+      queryFn: () => fetchJSON(`${API}/analytics/loyalty?${query}`),
+      enabled,
+    }),
+    clv: useQuery<{ clv: ClvAnalytics }>({
+      queryKey: ["analytics", "clv", params.restaurantId, params.from, params.to],
+      queryFn: () => fetchJSON(`${API}/analytics/clv?${analyticsQuery({ ...params, extra: { topLimit: "5" } })}`),
+      enabled,
+    }),
+    campaignRoi: useQuery<{ campaignRoi: CampaignRoiAnalytics }>({
+      queryKey: ["analytics", "campaign-roi", params.restaurantId, params.from, params.to],
+      queryFn: () => fetchJSON(`${API}/analytics/campaign-roi?${query}`),
+      enabled,
+    }),
+  };
+}
+
 // --- Reservations ---
 
 export function useReservations(params: {

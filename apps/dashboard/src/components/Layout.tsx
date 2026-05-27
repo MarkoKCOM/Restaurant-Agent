@@ -65,6 +65,7 @@ export function Layout() {
     { to: "/reservations", key: "reservations", label: t.nav.reservations, icon: "📋", count: pendingCount },
     { to: "/waitlist", key: "waitlist", label: t.nav.waitlist, icon: "⏳", count: waitingCount },
     { to: "/loyalty", key: "loyalty", label: t.nav.loyalty, icon: "🎁", count: 0 },
+    { to: "/analytics", key: "analytics", label: t.nav.analytics, icon: "📈", count: 0 },
     { to: "/guests", key: "guests", label: t.nav.guests, icon: "👤", count: guestCount },
     { to: "/settings", key: "settings", label: t.nav.settings, icon: "⚙️", count: 0 },
     { to: "/help", key: "help", label: t.nav.help, icon: "❓", count: 0 },
@@ -75,7 +76,7 @@ export function Layout() {
       return isSuperAdmin && canAccess("restaurants");
     }
 
-    const page = item.key as "today" | "reservations" | "waitlist" | "loyalty" | "guests" | "settings" | "help";
+    const page = item.key as "today" | "reservations" | "waitlist" | "loyalty" | "analytics" | "guests" | "settings" | "help";
     if (!role) return canAccess(page);
     if (!isPageVisible(page, dashboardAccess, usePlatformTheme ? undefined : config, role)) {
       return false;

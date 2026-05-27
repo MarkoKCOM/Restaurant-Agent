@@ -33,7 +33,7 @@ type HoursState = Record<string, HoursEntry>;
 
 const EMPTY_TABLE_FORM = { name: "", minSeats: 2, maxSeats: 4, zone: "" };
 
-const ALL_PAGES = ["today", "reservations", "waitlist", "guests", "settings", "help"];
+const ALL_PAGES = ["today", "reservations", "waitlist", "loyalty", "analytics", "guests", "settings", "help"];
 const FEATURE_KEYS = ["waitlist", "loyalty", "guestNotes", "occupancyHeatmap", "tableMap"] as const;
 
 function DashboardCustomization({ restaurant, updateMutation }: { restaurant: any; updateMutation: any }) {
@@ -121,6 +121,8 @@ function DashboardCustomization({ restaurant, updateMutation }: { restaurant: an
     today: t.nav.today,
     reservations: t.nav.reservations,
     waitlist: t.nav.waitlist,
+    loyalty: t.nav.loyalty,
+    analytics: t.nav.analytics,
     guests: t.nav.guests,
     settings: t.nav.settings,
     help: t.nav.help,

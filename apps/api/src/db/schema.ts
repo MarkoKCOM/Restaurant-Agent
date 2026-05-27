@@ -10,6 +10,7 @@ import {
   time,
   jsonb,
   pgEnum,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 // ── Enums ──────────────────────────────────────────────
@@ -321,7 +322,12 @@ export const challengeProgress = pgTable("challenge_progress", {
   currentValue: integer("current_value").notNull().default(0),
   status: varchar("status", { length: 20 }).notNull().default("in_progress"),
   completedAt: timestamp("completed_at"),
-});
+}, (table) => ({
+  guestChallengeUnique: uniqueIndex("challenge_progress_guest_challenge_unique").on(
+    table.guestId,
+    table.challengeId,
+  ),
+}));
 
 // ── Reward Claims ──────────────────────────────────────
 

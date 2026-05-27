@@ -1,3 +1,4 @@
+import type { FastifyBaseLogger } from "fastify";
 import { and, eq, desc, gte, lte, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { visitLogs, guests } from "../db/schema.js";
@@ -11,6 +12,10 @@ export interface SubmitFeedbackInput {
   rating: number;
   feedback?: string;
   channel: "whatsapp" | "web" | "sms";
+}
+
+export interface SubmitFeedbackOptions {
+  logger?: FastifyBaseLogger;
 }
 
 export interface FeedbackSummary {
@@ -27,7 +32,7 @@ export interface FeedbackSummary {
 
 // ── Core Functions ────────────────────────────────────
 
-export async function submitFeedback(data: SubmitFeedbackInput) {
+export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitFeedbackOptions = {}) {
   // Check if a visit log already exists for this reservation
   let existingVisit = null;
   if (data.reservationId) {
@@ -101,15 +106,29 @@ export async function submitFeedback(data: SubmitFeedbackInput) {
 
     if (data.rating >= 4) {
       tagSet.add("happy");
-      // Log: schedule Google Review prompt
-      console.log(
-        `[feedback] Guest ${data.guestId} rated ${data.rating}/5 — schedule Google Review prompt`,
+      options.logger?.info(
+        {
+          restaurantId: data.restaurantId,
+          guestId: data.guestId,
+          reservationId: data.reservationId,
+          rating: data.rating,
+          sentiment,
+          channel: data.channel,
+        },
+        "Feedback should trigger review prompt",
       );
     } else if (data.rating <= 2) {
       tagSet.add("at_risk");
-      // Log: alert owner
-      console.log(
-        `[feedback] Guest ${data.guestId} rated ${data.rating}/5 — ALERT OWNER: low rating`,
+      options.logger?.warn(
+        {
+          restaurantId: data.restaurantId,
+          guestId: data.guestId,
+          reservationId: data.reservationId,
+          rating: data.rating,
+          sentiment,
+          channel: data.channel,
+        },
+        "Feedback should alert owner",
       );
     } else {
       tagSet.add("neutral_feedback");

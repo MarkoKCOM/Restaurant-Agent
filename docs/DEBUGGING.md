@@ -166,3 +166,13 @@ METHOD=POST \
 BODY='{"message":"אפשר קוד חבר מביא חבר?"}' \
 pnpm debug:api -- http://localhost:3001/api/v1/agent/debug/membership-intent
 ```
+
+## Feedback And Visit Auto-Tagging
+
+Visit logging and guest feedback can update guest tags asynchronously after the main operation succeeds. If a visit or feedback request succeeds but tags look wrong, search the API logs by request ID, guest ID, visit ID, or reservation ID:
+
+```bash
+journalctl -u openseat-api --since "30 minutes ago" | rg 'Auto-tag after|Feedback should'
+```
+
+Feedback logs include structured `restaurantId`, `guestId`, optional `reservationId`, rating, sentiment, and channel fields.

@@ -90,8 +90,16 @@ export async function visitRoutes(app: FastifyInstance) {
     });
 
     // Auto-tag guest after visit
-    await autoTagGuest(parsed.guestId!).catch((err) => {
-      console.warn("Auto-tag after visit failed:", err);
+    await autoTagGuest(parsed.guestId!).catch((error: unknown) => {
+      request.log.warn(
+        {
+          err: error,
+          restaurantId: parsed.restaurantId,
+          guestId: parsed.guestId,
+          visitId: visit.id,
+        },
+        "Auto-tag after visit failed",
+      );
     });
 
     reply.code(201);
@@ -147,11 +155,22 @@ export async function feedbackRoutes(app: FastifyInstance) {
       rating: parsed.rating!,
       feedback: parsed.feedback,
       channel: parsed.channel!,
+    }, {
+      logger: request.log,
     });
 
     // Auto-tag guest after feedback
-    await autoTagGuest(parsed.guestId!).catch((err) => {
-      console.warn("Auto-tag after feedback failed:", err);
+    await autoTagGuest(parsed.guestId!).catch((error: unknown) => {
+      request.log.warn(
+        {
+          err: error,
+          restaurantId: parsed.restaurantId,
+          guestId: parsed.guestId,
+          reservationId: parsed.reservationId,
+          visitId: result?.id,
+        },
+        "Auto-tag after feedback failed",
+      );
     });
 
     reply.code(201);

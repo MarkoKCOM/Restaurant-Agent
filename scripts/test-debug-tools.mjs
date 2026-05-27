@@ -60,6 +60,7 @@ const smokeOutput = await summarize(smokePath);
 assertIncludes(smokeOutput, "Type: api-smoke");
 assertIncludes(smokeOutput, "Unhandled HTTP failures: 1");
 assertIncludes(smokeOutput, "POST /api/v1/reservations -> 500 code=INTERNAL_ERROR requestId=smoke-test-2");
+assertIncludes(smokeOutput, 'pnpm debug:logs smoke-test-2 --since "2 hours ago"');
 
 const skippedSmokePath = await writeJson("smoke-skipped.json", {
   status: "skipped",

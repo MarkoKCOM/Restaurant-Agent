@@ -19,6 +19,16 @@ function printLine(label, value) {
   }
 }
 
+function printLogTraceCommands(requestIds) {
+  const uniqueRequestIds = [...new Set(requestIds.filter(Boolean))];
+  if (uniqueRequestIds.length === 0) return;
+
+  console.log("Trace logs:");
+  for (const requestId of uniqueRequestIds) {
+    console.log(`- pnpm debug:logs ${requestId} --since "2 hours ago"`);
+  }
+}
+
 function summarizeE2e(report) {
   const results = asArray(report.results);
   const failed = results.filter((result) => !result.pass);
@@ -82,6 +92,10 @@ function summarizeSmoke(report) {
     const code = request.code ? ` code=${request.code}` : "";
     const requestId = request.requestId ? ` requestId=${request.requestId}` : "";
     console.log(`- ${request.method} ${request.path} -> ${request.status}${code}${requestId}${handled}`);
+  }
+
+  if (unhandledFailedRequests.length > 0) {
+    printLogTraceCommands(unhandledFailedRequests.map((request) => request.requestId));
   }
 }
 

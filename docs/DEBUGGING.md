@@ -4,7 +4,7 @@ This guide covers the first place to look when an API or dashboard flow fails.
 
 ## Request IDs
 
-Every API response includes an `x-request-id` header. Unhandled API errors also include the same ID in the JSON body:
+Every API response includes an `x-request-id` header. API errors include the same ID in the JSON body:
 
 ```json
 {
@@ -63,7 +63,20 @@ Use `pnpm debug:api` to inspect one endpoint quickly. It sends an `x-request-id`
 - `METHOD=POST`
 - `BODY='{"restaurantId":"..."}'`
 - `OPENSEAT_TOKEN=...`
+- `OPENSEAT_RESTAURANT_ID=...` to send `X-Restaurant-Id` for super-admin tenant context
 - `REQUEST_ID=debug-manual-1`
+- `EXPECT_STATUS=404`
+- `EXPECT_CODE=ROUTE_NOT_FOUND`
+- `EXPECT_REQUEST_ID=debug-manual-1`
+
+When `EXPECT_STATUS` is set, non-2xx responses do not fail the probe just because they are errors. The probe fails only when the observed status, error `code`, or request ID does not match the expectation. This is useful for proving a debugging envelope without manually reading logs:
+
+```bash
+REQUEST_ID=debug-route-not-found \
+EXPECT_STATUS=404 \
+EXPECT_CODE=ROUTE_NOT_FOUND \
+pnpm debug:api -- http://localhost:3001/api/v1/debug/not-found
+```
 
 ## Dependency Diagnostics
 

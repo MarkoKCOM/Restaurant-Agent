@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
+import { env } from "../env.js";
 
 const SYSTEM_PROMPT = `You are OpenSeat's help assistant, embedded in the restaurant dashboard. You help restaurant owners and staff understand how to use the OpenSeat platform.
 
@@ -24,20 +25,28 @@ const chatMessageSchema = z.object({
   ).min(1).max(50),
 });
 
-const CHAT_MODEL = process.env.CHAT_MODEL || "openrouter/free";
 const CHAT_TIMEOUT_MS = 30_000;
 
 export const chatRoutes: FastifyPluginAsync = async (app) => {
   app.post("/", async (request, reply) => {
     const { messages } = chatMessageSchema.parse(request.body);
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const apiKey = env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      return reply.status(503).send({ error: "Chat not configured. OPENROUTER_API_KEY is missing." });
+      request.log.warn(
+        { requestId: request.id, model: env.CHAT_MODEL },
+        "Dashboard chat not configured",
+      );
+      return reply.status(503).send({
+        error: "Chat not configured. OPENROUTER_API_KEY is missing.",
+        code: "CHAT_NOT_CONFIGURED",
+        requestId: request.id,
+      });
     }
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
+    const startedAt = Date.now();
 
     try {
       const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -47,7 +56,7 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: CHAT_MODEL,
+          model: env.CHAT_MODEL,
           max_tokens: 1024,
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
@@ -58,19 +67,67 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
       });
 
       if (!res.ok) {
-        console.warn("Chat AI service error:", res.status);
-        return reply.status(502).send({ error: "AI service error" });
+        const providerBody = await res.text();
+        request.log.warn(
+          {
+            requestId: request.id,
+            providerStatus: res.status,
+            model: env.CHAT_MODEL,
+            elapsedMs: Date.now() - startedAt,
+            providerBodyPreview: providerBody.slice(0, 300),
+          },
+          "Dashboard chat AI service error",
+        );
+        return reply.status(502).send({
+          error: "AI service error",
+          code: "CHAT_PROVIDER_ERROR",
+          requestId: request.id,
+        });
       }
 
       const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
       const text = data.choices?.[0]?.message?.content ?? "Sorry, I couldn't generate a response.";
+      request.log.info(
+        {
+          requestId: request.id,
+          model: env.CHAT_MODEL,
+          elapsedMs: Date.now() - startedAt,
+          inputMessages: messages.length,
+        },
+        "Dashboard chat response generated",
+      );
       return reply.send({ message: text });
     } catch (err: unknown) {
       if (err instanceof Error && err.name === "AbortError") {
-        return reply.status(504).send({ error: "AI service timeout" });
+        request.log.warn(
+          {
+            err,
+            requestId: request.id,
+            model: env.CHAT_MODEL,
+            elapsedMs: Date.now() - startedAt,
+          },
+          "Dashboard chat AI service timeout",
+        );
+        return reply.status(504).send({
+          error: "AI service timeout",
+          code: "CHAT_PROVIDER_TIMEOUT",
+          requestId: request.id,
+        });
       }
-      console.error("Chat route error:", err);
-      return reply.status(500).send({ error: "Internal error" });
+      request.log.error(
+        {
+          err,
+          requestId: request.id,
+          model: env.CHAT_MODEL,
+          elapsedMs: Date.now() - startedAt,
+        },
+        "Dashboard chat route error",
+      );
+      return reply.status(500).send({
+        error: "Internal error",
+        code: "CHAT_INTERNAL_ERROR",
+        requestId: request.id,
+      });
     } finally {
       clearTimeout(timeout);
     }

@@ -167,6 +167,25 @@ BODY='{"message":"אפשר קוד חבר מביא חבר?"}' \
 pnpm debug:api -- http://localhost:3001/api/v1/agent/debug/membership-intent
 ```
 
+## Dashboard Chat Diagnostics
+
+Dashboard chat provider failures return a stable code and request ID:
+
+- `CHAT_NOT_CONFIGURED`
+- `CHAT_PROVIDER_ERROR`
+- `CHAT_PROVIDER_TIMEOUT`
+- `CHAT_INTERNAL_ERROR`
+
+The API logs include `requestId`, selected chat model, elapsed milliseconds, and provider status/body preview when applicable:
+
+```bash
+OPENSEAT_TOKEN=... \
+REQUEST_ID=debug-chat-1 \
+METHOD=POST \
+BODY='{"messages":[{"role":"user","content":"How do rewards work?"}]}' \
+pnpm debug:api -- http://localhost:3001/api/v1/chat
+```
+
 ## Feedback And Visit Auto-Tagging
 
 Visit logging and guest feedback can update guest tags asynchronously after the main operation succeeds. If a visit or feedback request succeeds but tags look wrong, search the API logs by request ID, guest ID, visit ID, or reservation ID:

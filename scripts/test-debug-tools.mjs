@@ -1002,6 +1002,7 @@ const engagementRoutes = await readFile("apps/api/src/routes/engagement.ts", "ut
 const visitsRoutes = await readFile("apps/api/src/routes/visits.ts", "utf8");
 const reservationRoutes = await readFile("apps/api/src/routes/reservations.ts", "utf8");
 const guestRoutes = await readFile("apps/api/src/routes/guests.ts", "utf8");
+const waitlistRoutes = await readFile("apps/api/src/routes/waitlist.ts", "utf8");
 const engagementService = await readFile("apps/api/src/services/engagement.service.ts", "utf8");
 const challengeService = await readFile("apps/api/src/services/challenge.service.ts", "utf8");
 const loyaltyRoutes = await readFile("apps/api/src/routes/loyalty.ts", "utf8");
@@ -1424,6 +1425,20 @@ for (const requiredGuestRouteContent of [
   "request.log.error(logPayload, \"Guest request failed\")",
 ]) {
   assertIncludes(guestRoutes, requiredGuestRouteContent);
+}
+
+for (const requiredWaitlistRouteContent of [
+  "sendCaughtWaitlistError",
+  "lookupWaitlistRestaurantId",
+  "WAITLIST_ADD_FAILED",
+  "WAITLIST_LIST_FAILED",
+  "WAITLIST_LOOKUP_FAILED",
+  "WAITLIST_OFFER_FAILED",
+  "WAITLIST_ACCEPT_FAILED",
+  "WAITLIST_CANCEL_FAILED",
+  "request.log.error(logPayload, \"Waitlist request failed\")",
+]) {
+  assertIncludes(waitlistRoutes, requiredWaitlistRouteContent);
 }
 
 for (const requiredGamificationPackageContent of [

@@ -54,6 +54,38 @@ function sendWaitlistError(
   });
 }
 
+function sendCaughtWaitlistError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  error: unknown,
+  code: string,
+  context: Record<string, unknown> = {},
+) {
+  const message = error instanceof Error ? error.message : "Waitlist operation failed";
+  return sendWaitlistError(request, reply, 500, message, code, {
+    ...context,
+    err: error,
+  });
+}
+
+async function lookupWaitlistRestaurantId(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  waitlistId: string,
+  failureCode: string,
+): Promise<string | null | FastifyReply> {
+  try {
+    const [waitlistRow] = await db
+      .select({ restaurantId: waitlist.restaurantId })
+      .from(waitlist)
+      .where(eq(waitlist.id, waitlistId))
+      .limit(1);
+    return waitlistRow?.restaurantId ?? null;
+  } catch (error: unknown) {
+    return sendCaughtWaitlistError(request, reply, error, failureCode, { waitlistId });
+  }
+}
+
 export async function waitlistRoutes(app: FastifyInstance) {
   // POST / — add to waitlist
   app.post("/", async (request, reply) => {
@@ -74,17 +106,27 @@ export async function waitlistRoutes(app: FastifyInstance) {
       }
     }
 
-    const entry = await addToWaitlist({
-      restaurantId: parsed.restaurantId!,
-      guestName: parsed.guestName!,
-      guestPhone: parsed.guestPhone!,
-      date: parsed.date!,
-      preferredTimeStart: parsed.preferredTimeStart!,
-      preferredTimeEnd: parsed.preferredTimeEnd!,
-      partySize: parsed.partySize!,
-    });
-    reply.code(201);
-    return { waitlistEntry: entry };
+    try {
+      const entry = await addToWaitlist({
+        restaurantId: parsed.restaurantId!,
+        guestName: parsed.guestName!,
+        guestPhone: parsed.guestPhone!,
+        date: parsed.date!,
+        preferredTimeStart: parsed.preferredTimeStart!,
+        preferredTimeEnd: parsed.preferredTimeEnd!,
+        partySize: parsed.partySize!,
+      });
+      reply.code(201);
+      return { waitlistEntry: entry };
+    } catch (error: unknown) {
+      return sendCaughtWaitlistError(request, reply, error, "WAITLIST_ADD_FAILED", {
+        restaurantLookupId: parsed.restaurantId,
+        date: parsed.date,
+        preferredTimeStart: parsed.preferredTimeStart,
+        preferredTimeEnd: parsed.preferredTimeEnd,
+        partySize: parsed.partySize,
+      });
+    }
   });
 
   // GET / — list waitlist entries
@@ -113,22 +155,31 @@ export async function waitlistRoutes(app: FastifyInstance) {
       return { waitlist: [] };
     }
 
-    await expireStaleOffers();
-
-    const entries = await listWaitlist(scopedRestaurantId, date);
-    return { waitlist: entries };
+    try {
+      await expireStaleOffers();
+      const entries = await listWaitlist(scopedRestaurantId, date);
+      return { waitlist: entries };
+    } catch (error: unknown) {
+      return sendCaughtWaitlistError(request, reply, error, "WAITLIST_LIST_FAILED", {
+        restaurantLookupId: restaurantId,
+        scopedRestaurantId,
+        date,
+      });
+    }
   });
 
   // POST /:id/offer — offer a slot to a waitlist entry
   app.post("/:id/offer", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const [waitlistRow] = await db
-      .select({ restaurantId: waitlist.restaurantId })
-      .from(waitlist)
-      .where(eq(waitlist.id, id))
-      .limit(1);
+    const restaurantId = await lookupWaitlistRestaurantId(
+      request,
+      reply,
+      id,
+      "WAITLIST_LOOKUP_FAILED",
+    );
+    if (typeof restaurantId !== "string" && restaurantId !== null) return restaurantId;
 
-    if (!waitlistRow) {
+    if (!restaurantId) {
       return sendWaitlistError(
         request,
         reply,
@@ -139,7 +190,7 @@ export async function waitlistRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, waitlistRow.restaurantId);
+    const err = enforceTenant(request.user!, restaurantId);
     if (err) {
       return sendWaitlistError(
         request,
@@ -147,34 +198,43 @@ export async function waitlistRoutes(app: FastifyInstance) {
         403,
         err,
         "WAITLIST_FORBIDDEN",
-        { waitlistId: id, restaurantLookupId: waitlistRow.restaurantId },
+        { waitlistId: id, restaurantLookupId: restaurantId },
       );
     }
 
-    const entry = await offerSlot(id);
-    if (!entry) {
-      return sendWaitlistError(
-        request,
-        reply,
-        404,
-        "Waitlist entry not found",
-        "WAITLIST_ENTRY_NOT_FOUND",
-        { waitlistId: id, restaurantLookupId: waitlistRow.restaurantId },
-      );
+    try {
+      const entry = await offerSlot(id);
+      if (!entry) {
+        return sendWaitlistError(
+          request,
+          reply,
+          404,
+          "Waitlist entry not found",
+          "WAITLIST_ENTRY_NOT_FOUND",
+          { waitlistId: id, restaurantLookupId: restaurantId },
+        );
+      }
+      return { waitlistEntry: entry };
+    } catch (error: unknown) {
+      return sendCaughtWaitlistError(request, reply, error, "WAITLIST_OFFER_FAILED", {
+        waitlistId: id,
+        restaurantLookupId: restaurantId,
+      });
     }
-    return { waitlistEntry: entry };
   });
 
   // POST /:id/accept — accept offer and create reservation
   app.post("/:id/accept", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const [waitlistRow] = await db
-      .select({ restaurantId: waitlist.restaurantId })
-      .from(waitlist)
-      .where(eq(waitlist.id, id))
-      .limit(1);
+    const restaurantId = await lookupWaitlistRestaurantId(
+      request,
+      reply,
+      id,
+      "WAITLIST_LOOKUP_FAILED",
+    );
+    if (typeof restaurantId !== "string" && restaurantId !== null) return restaurantId;
 
-    if (!waitlistRow) {
+    if (!restaurantId) {
       return sendWaitlistError(
         request,
         reply,
@@ -187,7 +247,7 @@ export async function waitlistRoutes(app: FastifyInstance) {
 
     const user = request.user;
     if (user) {
-      const err = enforceTenant(user, waitlistRow.restaurantId);
+      const err = enforceTenant(user, restaurantId);
       if (err) {
         return sendWaitlistError(
           request,
@@ -195,38 +255,47 @@ export async function waitlistRoutes(app: FastifyInstance) {
           403,
           err,
           "WAITLIST_FORBIDDEN",
-          { waitlistId: id, restaurantLookupId: waitlistRow.restaurantId },
+          { waitlistId: id, restaurantLookupId: restaurantId },
         );
       }
     }
 
-    const result = await acceptOffer(id);
-    if (!result) {
-      return sendWaitlistError(
-        request,
-        reply,
-        404,
-        "Waitlist entry not found or not in offered state",
-        "WAITLIST_OFFER_NOT_FOUND",
-        { waitlistId: id, restaurantLookupId: waitlistRow.restaurantId },
-      );
+    try {
+      const result = await acceptOffer(id);
+      if (!result) {
+        return sendWaitlistError(
+          request,
+          reply,
+          404,
+          "Waitlist entry not found or not in offered state",
+          "WAITLIST_OFFER_NOT_FOUND",
+          { waitlistId: id, restaurantLookupId: restaurantId },
+        );
+      }
+      return {
+        waitlistEntry: result.waitlistEntry,
+        reservationId: result.reservationId,
+      };
+    } catch (error: unknown) {
+      return sendCaughtWaitlistError(request, reply, error, "WAITLIST_ACCEPT_FAILED", {
+        waitlistId: id,
+        restaurantLookupId: restaurantId,
+      });
     }
-    return {
-      waitlistEntry: result.waitlistEntry,
-      reservationId: result.reservationId,
-    };
   });
 
   // DELETE /:id — cancel waitlist entry
   app.delete("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const [waitlistRow] = await db
-      .select({ restaurantId: waitlist.restaurantId })
-      .from(waitlist)
-      .where(eq(waitlist.id, id))
-      .limit(1);
+    const restaurantId = await lookupWaitlistRestaurantId(
+      request,
+      reply,
+      id,
+      "WAITLIST_LOOKUP_FAILED",
+    );
+    if (typeof restaurantId !== "string" && restaurantId !== null) return restaurantId;
 
-    if (!waitlistRow) {
+    if (!restaurantId) {
       return sendWaitlistError(
         request,
         reply,
@@ -237,7 +306,7 @@ export async function waitlistRoutes(app: FastifyInstance) {
       );
     }
 
-    const err = enforceTenant(request.user!, waitlistRow.restaurantId);
+    const err = enforceTenant(request.user!, restaurantId);
     if (err) {
       return sendWaitlistError(
         request,
@@ -245,21 +314,28 @@ export async function waitlistRoutes(app: FastifyInstance) {
         403,
         err,
         "WAITLIST_FORBIDDEN",
-        { waitlistId: id, restaurantLookupId: waitlistRow.restaurantId },
+        { waitlistId: id, restaurantLookupId: restaurantId },
       );
     }
 
-    const entry = await cancelWaitlistEntry(id);
-    if (!entry) {
-      return sendWaitlistError(
-        request,
-        reply,
-        404,
-        "Waitlist entry not found",
-        "WAITLIST_ENTRY_NOT_FOUND",
-        { waitlistId: id, restaurantLookupId: waitlistRow.restaurantId },
-      );
+    try {
+      const entry = await cancelWaitlistEntry(id);
+      if (!entry) {
+        return sendWaitlistError(
+          request,
+          reply,
+          404,
+          "Waitlist entry not found",
+          "WAITLIST_ENTRY_NOT_FOUND",
+          { waitlistId: id, restaurantLookupId: restaurantId },
+        );
+      }
+      return { waitlistEntry: entry };
+    } catch (error: unknown) {
+      return sendCaughtWaitlistError(request, reply, error, "WAITLIST_CANCEL_FAILED", {
+        waitlistId: id,
+        restaurantLookupId: restaurantId,
+      });
     }
-    return { waitlistEntry: entry };
   });
 }

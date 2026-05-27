@@ -70,12 +70,13 @@ async function enforceAnalyticsAccess(
 ) {
   const err = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
   if (err) {
-    return sendAnalyticsError(request, reply, 403, err, "ANALYTICS_FORBIDDEN", { restaurantId });
+    sendAnalyticsError(request, reply, 403, err, "ANALYTICS_FORBIDDEN", { restaurantId });
+    return true;
   }
 
   const packageAccess = await requireGrowthPackage(restaurantId);
   if (!packageAccess.ok) {
-    return sendAnalyticsError(
+    sendAnalyticsError(
       request,
       reply,
       packageAccess.code === "RESTAURANT_NOT_FOUND" ? 404 : 403,
@@ -87,9 +88,10 @@ async function enforceAnalyticsAccess(
         requiredPackage: "growth",
       },
     );
+    return true;
   }
 
-  return null;
+  return false;
 }
 
 export async function analyticsRoutes(app: FastifyInstance) {

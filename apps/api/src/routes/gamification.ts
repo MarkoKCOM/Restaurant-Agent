@@ -91,15 +91,16 @@ async function enforceGamificationAccess(
 ) {
   const accessError = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
   if (accessError) {
-    return sendGamificationError(request, reply, 403, accessError, "GAMIFICATION_FORBIDDEN", {
+    sendGamificationError(request, reply, 403, accessError, "GAMIFICATION_FORBIDDEN", {
       ...context,
       restaurantId,
     });
+    return true;
   }
 
   const packageAccess = await requireGrowthPackage(restaurantId);
   if (!packageAccess.ok) {
-    return sendGamificationError(
+    sendGamificationError(
       request,
       reply,
       packageAccess.code === "RESTAURANT_NOT_FOUND" ? 404 : 403,
@@ -108,9 +109,10 @@ async function enforceGamificationAccess(
       { ...context, restaurantId, restaurantPackage: packageAccess.restaurantPackage, requiredPackage: "growth" },
       { restaurantId, restaurantPackage: packageAccess.restaurantPackage, requiredPackage: "growth" },
     );
+    return true;
   }
 
-  return null;
+  return false;
 }
 
 export async function gamificationRoutes(app: FastifyInstance) {

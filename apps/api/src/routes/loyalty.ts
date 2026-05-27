@@ -152,7 +152,7 @@ async function enforceLoyaltyAccess(
 ) {
   const accessError = enforceTenant(request.user!, restaurantId) ?? roleGuard(request.user!);
   if (accessError) {
-    return sendLoyaltyEnvelopeError(
+    sendLoyaltyEnvelopeError(
       request,
       reply,
       403,
@@ -160,11 +160,12 @@ async function enforceLoyaltyAccess(
       code,
       { ...context, restaurantId },
     );
+    return true;
   }
 
   const packageAccess = await requireGrowthPackage(restaurantId);
   if (!packageAccess.ok) {
-    return sendLoyaltyEnvelopeError(
+    sendLoyaltyEnvelopeError(
       request,
       reply,
       packageAccess.code === "RESTAURANT_NOT_FOUND" ? 404 : 403,
@@ -173,9 +174,10 @@ async function enforceLoyaltyAccess(
       { ...context, restaurantId, restaurantPackage: packageAccess.restaurantPackage, requiredPackage: "growth" },
       { restaurantId, restaurantPackage: packageAccess.restaurantPackage, requiredPackage: "growth" },
     );
+    return true;
   }
 
-  return null;
+  return false;
 }
 
 export async function loyaltyRoutes(app: FastifyInstance) {

@@ -103,15 +103,16 @@ async function enforceCampaignAccess(
 ) {
   const accessError = enforceTenant(request.user!, restaurantId) ?? requireRestaurantAdmin(request.user!);
   if (accessError) {
-    return sendCampaignError(request, reply, 403, accessError, "CAMPAIGN_FORBIDDEN", {
+    sendCampaignError(request, reply, 403, accessError, "CAMPAIGN_FORBIDDEN", {
       restaurantId,
       ...context,
     });
+    return true;
   }
 
   const packageAccess = await requireGrowthPackage(restaurantId);
   if (!packageAccess.ok) {
-    return sendCampaignError(
+    sendCampaignError(
       request,
       reply,
       packageAccess.code === "RESTAURANT_NOT_FOUND" ? 404 : 403,
@@ -124,9 +125,10 @@ async function enforceCampaignAccess(
         ...context,
       },
     );
+    return true;
   }
 
-  return null;
+  return false;
 }
 
 export async function campaignRoutes(app: FastifyInstance) {

@@ -1145,6 +1145,8 @@ for (const requiredCampaignPackageContent of [
   "packageAccess.code === \"RESTAURANT_NOT_FOUND\" ? 404 : 403",
   "PACKAGE_GROWTH_REQUIRED",
   "if (accessError) return reply;",
+  "return true;",
+  "return false;",
 ]) {
   assertIncludes(campaignRoutes, requiredCampaignPackageContent);
 }
@@ -1158,6 +1160,8 @@ for (const requiredAnalyticsPackageContent of [
   "PACKAGE_GROWTH_REQUIRED",
   "await enforceAnalyticsAccess",
   "if (accessError) return reply;",
+  "return true;",
+  "return false;",
 ]) {
   assertIncludes(analyticsRoutes, requiredAnalyticsPackageContent);
 }
@@ -1171,6 +1175,8 @@ for (const requiredEngagementPackageContent of [
   "PACKAGE_GROWTH_REQUIRED",
   "await enforceEngagementAccess",
   "if (accessError) return reply;",
+  "return true;",
+  "return false;",
   "limit?: string",
   "limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined",
 ]) {
@@ -1193,6 +1199,8 @@ for (const requiredLoyaltyPackageContent of [
   "PACKAGE_GROWTH_REQUIRED",
   "await enforceLoyaltyAccess",
   "if (accessError) return reply;",
+  "return true;",
+  "return false;",
 ]) {
   assertIncludes(loyaltyRoutes, requiredLoyaltyPackageContent);
 }
@@ -1206,6 +1214,8 @@ for (const requiredGamificationPackageContent of [
   "PACKAGE_GROWTH_REQUIRED",
   "await enforceGamificationAccess",
   "if (accessError) return reply;",
+  "return true;",
+  "return false;",
 ]) {
   assertIncludes(gamificationRoutes, requiredGamificationPackageContent);
 }

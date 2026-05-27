@@ -66,6 +66,14 @@ pnpm debug:api -- http://localhost:3001/api/v1/health
 
 Vercel production deploys are path-filtered. Changes limited to debugging scripts, E2E tooling, or docs should still run CI/API Smoke, but should not spend Vercel deployment quota. Frontend app, package, lockfile, workspace, Turbo, or deploy-workflow changes still trigger the deploy workflow.
 
+Collect a timestamped debug bundle with health probe output, optional admin diagnostics, optional smoke output, summary files, and recent API logs:
+
+```bash
+pnpm debug:bundle --since "30 minutes ago"
+```
+
+The bundle is written to `artifacts/debug-bundles/<timestamp>/`. Set `OPENSEAT_TOKEN` to include `/api/v1/admin/diagnostics`, and set the normal smoke credentials to include the API smoke run. Use `--out /tmp/openseat-debug` to choose a specific folder.
+
 After pulling changes that touch `packages/domain`, rebuild it before checking apps that import `@openseat/domain`.
 
 The main E2E runner writes a JSON artifact for every CLI run. By default it lands under `apps/e2e/artifacts/<runId>.json` and includes the API URL, timings, pass/fail counts, and per-test details:

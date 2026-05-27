@@ -1200,6 +1200,32 @@ for (const requiredQueueDebugContent of [
   assertIncludes(queueDebugSummary, requiredQueueDebugContent);
 }
 
+const queueWorkerFiles = [
+  "apps/api/src/queue/logging.ts",
+  "apps/api/src/queue/reminder.worker.ts",
+  "apps/api/src/queue/summary.worker.ts",
+  "apps/api/src/queue/engagement.worker.ts",
+  "apps/api/src/queue/campaign.worker.ts",
+];
+const queueWorkerContent = await Promise.all(queueWorkerFiles.map((path) => readFile(path, "utf8")));
+const queueWorkerCombined = queueWorkerContent.join("\n");
+for (const requiredQueueWorkerContent of [
+  "buildWorkerJobLogContext",
+  "attemptsMade",
+  "attemptsConfigured",
+  "processedOn",
+  "finishedOn",
+  "QUEUE_RESERVATION_REMINDER_JOB_FAILED",
+  "QUEUE_DAILY_SUMMARY_JOB_FAILED",
+  "QUEUE_ENGAGEMENT_PAYLOAD_INVALID",
+  "QUEUE_ENGAGEMENT_ROW_MISSING",
+  "QUEUE_ENGAGEMENT_SUBJECT_MISSING",
+  "QUEUE_ENGAGEMENT_JOB_FAILED",
+  "QUEUE_CAMPAIGN_DELIVERY_JOB_FAILED",
+]) {
+  assertIncludes(queueWorkerCombined, requiredQueueWorkerContent);
+}
+
 for (const requiredDiagnosticsContent of [
   "scheduleHealth",
   "REPEATABLE_JOB_INSPECT_LIMIT",

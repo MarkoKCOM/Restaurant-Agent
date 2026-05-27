@@ -3,6 +3,7 @@ import type { Job } from "bullmq";
 import type { FastifyBaseLogger } from "fastify";
 import { eq } from "drizzle-orm";
 import { redisConnection } from "./index.js";
+import { buildWorkerJobLogContext } from "./logging.js";
 import { db } from "../db/index.js";
 import { engagementJobs, guests, restaurants } from "../db/schema.js";
 import { checkAnniversaries, checkBirthdays, checkWinBack, shouldSendEngagementJob } from "../services/engagement.service.js";
@@ -110,7 +111,15 @@ async function processEngagement(job: Job<EngagementJobData>, logger: FastifyBas
 
   if (!jobId || !guestId) {
     logger.error(
-      { queue: "engagement", bullJobId: job.id, restaurantId, engagementType: type, hasJobId: Boolean(jobId), hasGuestId: Boolean(guestId) },
+      {
+        code: "QUEUE_ENGAGEMENT_PAYLOAD_INVALID",
+        queue: "engagement",
+        ...buildWorkerJobLogContext(job),
+        restaurantId,
+        engagementType: type,
+        hasJobId: Boolean(jobId),
+        hasGuestId: Boolean(guestId),
+      },
       "Engagement job missing jobId or guestId",
     );
     return;
@@ -124,7 +133,15 @@ async function processEngagement(job: Job<EngagementJobData>, logger: FastifyBas
 
   if (!engagementJob) {
     logger.error(
-      { queue: "engagement", bullJobId: job.id, engagementJobId: jobId, restaurantId, guestId, engagementType: type },
+      {
+        code: "QUEUE_ENGAGEMENT_ROW_MISSING",
+        queue: "engagement",
+        ...buildWorkerJobLogContext(job),
+        engagementJobId: jobId,
+        restaurantId,
+        guestId,
+        engagementType: type,
+      },
       "Engagement job DB row not found",
     );
     return;
@@ -161,7 +178,17 @@ async function processEngagement(job: Job<EngagementJobData>, logger: FastifyBas
 
   if (!guest || !restaurant) {
     logger.error(
-      { queue: "engagement", bullJobId: job.id, engagementJobId: jobId, restaurantId, guestId, engagementType: type, guestFound: Boolean(guest), restaurantFound: Boolean(restaurant) },
+      {
+        code: "QUEUE_ENGAGEMENT_SUBJECT_MISSING",
+        queue: "engagement",
+        ...buildWorkerJobLogContext(job),
+        engagementJobId: jobId,
+        restaurantId,
+        guestId,
+        engagementType: type,
+        guestFound: Boolean(guest),
+        restaurantFound: Boolean(restaurant),
+      },
       "Engagement job guest or restaurant not found",
     );
     await db
@@ -248,7 +275,15 @@ export function createEngagementWorker(logger: FastifyBaseLogger): Worker<Engage
 
   worker.on("failed", (job, err) => {
     logger.error(
-      { err, queue: "engagement", bullJobId: job?.id, engagementJobId: job?.data.jobId, restaurantId: job?.data.restaurantId, engagementType: job?.data.type },
+      {
+        err,
+        code: "QUEUE_ENGAGEMENT_JOB_FAILED",
+        queue: "engagement",
+        ...buildWorkerJobLogContext(job),
+        engagementJobId: job?.data.jobId,
+        restaurantId: job?.data.restaurantId,
+        engagementType: job?.data.type,
+      },
       "Engagement job failed",
     );
     // Mark as failed in DB

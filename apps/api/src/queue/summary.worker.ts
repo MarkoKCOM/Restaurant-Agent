@@ -2,6 +2,7 @@ import { Worker } from "bullmq";
 import type { Job } from "bullmq";
 import type { FastifyBaseLogger } from "fastify";
 import { redisConnection } from "./index.js";
+import { buildWorkerJobLogContext } from "./logging.js";
 import {
   formatMorningSummaryMessage,
   getDailySummary,
@@ -138,7 +139,14 @@ export function createSummaryWorker(logger: FastifyBaseLogger): Worker<SummaryJo
 
   worker.on("failed", (job, err) => {
     logger.error(
-      { err, queue: "daily-summary", jobId: job?.id, restaurantId: job?.data.restaurantId, type: job?.data.type ?? "closing" },
+      {
+        err,
+        code: "QUEUE_DAILY_SUMMARY_JOB_FAILED",
+        queue: "daily-summary",
+        ...buildWorkerJobLogContext(job),
+        restaurantId: job?.data.restaurantId,
+        type: job?.data.type ?? "closing",
+      },
       "Summary job failed",
     );
   });

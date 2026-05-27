@@ -2,6 +2,7 @@ import { Worker } from "bullmq";
 import type { Job } from "bullmq";
 import type { FastifyBaseLogger } from "fastify";
 import { redisConnection } from "./index.js";
+import { buildWorkerJobLogContext } from "./logging.js";
 import { deliverCampaign } from "../services/campaign.service.js";
 
 export interface CampaignDeliveryJobData {
@@ -50,7 +51,14 @@ export function createCampaignWorker(logger: FastifyBaseLogger): Worker<Campaign
 
   worker.on("failed", (job, err) => {
     logger.error(
-      { err, queue: "campaign-delivery", bullJobId: job?.id, campaignId: job?.data.campaignId, restaurantId: job?.data.restaurantId },
+      {
+        err,
+        code: "QUEUE_CAMPAIGN_DELIVERY_JOB_FAILED",
+        queue: "campaign-delivery",
+        ...buildWorkerJobLogContext(job),
+        campaignId: job?.data.campaignId,
+        restaurantId: job?.data.restaurantId,
+      },
       "Campaign delivery job failed",
     );
   });

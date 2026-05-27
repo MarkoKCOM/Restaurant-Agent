@@ -2,6 +2,7 @@ import { Worker } from "bullmq";
 import type { Job } from "bullmq";
 import type { FastifyBaseLogger } from "fastify";
 import { redisConnection } from "./index.js";
+import { buildWorkerJobLogContext } from "./logging.js";
 import { recordOutboundDelivery } from "../services/outbound-message.service.js";
 
 export interface ReminderJobData {
@@ -79,10 +80,12 @@ export function createReminderWorker(logger: FastifyBaseLogger): Worker<Reminder
     logger.error(
       {
         err,
+        code: "QUEUE_RESERVATION_REMINDER_JOB_FAILED",
         queue: "reservation-reminders",
-        jobId: job?.id,
+        ...buildWorkerJobLogContext(job),
         reservationId: job?.data.reservationId,
         restaurantId: job?.data.restaurantId,
+        guestId: job?.data.guestId,
       },
       "Reminder job failed",
     );

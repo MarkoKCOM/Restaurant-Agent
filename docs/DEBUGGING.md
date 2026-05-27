@@ -218,10 +218,10 @@ On the VPS, `JWT_SECRET` is enough for this command to synthesize a short-lived 
 
 Queue diagnostics are especially useful for failures that happen after an API request returns, such as delayed reminders, daily owner summaries, thank-you messages, review requests, win-back jobs, or membership engagement automation.
 
-Queue workers log structured fields through the API logger, including `queue`, job IDs, `restaurantId`, and relevant entity IDs. Guest phone numbers are masked in worker logs. Search by queue name or entity ID when investigating background behavior:
+Queue workers log structured fields through the API logger, including `queue`, job IDs, `restaurantId`, retry counts, job timing fields, and relevant entity IDs. Guest phone numbers are masked in worker logs. Failed worker paths include stable codes such as `QUEUE_RESERVATION_REMINDER_JOB_FAILED`, `QUEUE_DAILY_SUMMARY_JOB_FAILED`, `QUEUE_ENGAGEMENT_JOB_FAILED`, `QUEUE_CAMPAIGN_DELIVERY_JOB_FAILED`, `QUEUE_ENGAGEMENT_PAYLOAD_INVALID`, `QUEUE_ENGAGEMENT_ROW_MISSING`, or `QUEUE_ENGAGEMENT_SUBJECT_MISSING`. Search by queue name, code, or entity ID when investigating background behavior:
 
 ```bash
-journalctl -u openseat-api --since "30 minutes ago" | rg '"queue":"engagement"|reservation-reminders|daily-summary'
+journalctl -u openseat-api --since "30 minutes ago" | rg '"queue":"engagement"|QUEUE_ENGAGEMENT_JOB_FAILED|reservation-reminders|daily-summary'
 ```
 
 ## Membership Processing Failures

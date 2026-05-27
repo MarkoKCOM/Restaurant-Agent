@@ -204,6 +204,26 @@ async function main() {
     visits: loyalty.stampCard?.visits,
   });
 
+  const membershipFailures = await request(`/api/v1/loyalty/processing-failures?restaurantId=${restaurantId}&status=open&limit=20`, { token });
+  const relatedMembershipFailures = (membershipFailures.failures ?? []).filter((failure) =>
+    failure.guestId === reservation.guestId || failure.reservationId === reservation.id,
+  );
+  record("membership.processing-failures", {
+    openCount: membershipFailures.failures?.length ?? 0,
+    relatedOpenCount: relatedMembershipFailures.length,
+    relatedStages: relatedMembershipFailures.map((failure) => failure.stage),
+  });
+  if (relatedMembershipFailures.length > 0) {
+    throw new Error(`Reservation completion left open membership processing failures: ${relatedMembershipFailures.map((failure) => `${failure.stage}:${failure.id}`).join(", ")}`);
+  }
+
+  const engagementJobs = await request(`/api/v1/engagement/jobs?restaurantId=${restaurantId}&guestId=${reservation.guestId}`, { token });
+  record("engagement.jobs", {
+    jobCount: engagementJobs.jobs?.length ?? 0,
+    statuses: [...new Set((engagementJobs.jobs ?? []).map((job) => job.status))],
+    types: [...new Set((engagementJobs.jobs ?? []).map((job) => job.type))],
+  });
+
   const tableStatus = await request(`/api/v1/restaurants/${restaurantId}/table-status`, { token });
   record("restaurants.table-status", { tableCount: tableStatus.length });
 

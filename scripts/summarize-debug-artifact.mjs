@@ -97,6 +97,24 @@ function summarizeSmoke(report) {
   printLine("Unhandled HTTP failures", unhandledFailedRequests.length);
   printLine("Handled HTTP failures", handledFailedRequests.length);
 
+  const operationalSteps = asArray(report.steps).filter((step) =>
+    typeof step.step === "string"
+    && (
+      step.step === "membership.processing-failures"
+      || step.step === "engagement.jobs"
+    )
+  );
+  if (operationalSteps.length > 0) {
+    console.log("Operational smoke:");
+    for (const step of operationalSteps) {
+      if (step.step === "membership.processing-failures") {
+        console.log(`- membership.processing-failures: open=${step.openCount ?? "?"} related=${step.relatedOpenCount ?? "?"}`);
+      } else if (step.step === "engagement.jobs") {
+        console.log(`- engagement.jobs: count=${step.jobCount ?? "?"} statuses=${asArray(step.statuses).join(",") || "none"} types=${asArray(step.types).join(",") || "none"}`);
+      }
+    }
+  }
+
   if (report.status === "skipped") {
     printLine("Reason", report.reason);
     return;

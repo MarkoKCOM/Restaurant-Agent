@@ -82,7 +82,11 @@ const smokePath = await writeJson("smoke.json", {
   status: "failed",
   runId: "smoke-test",
   baseUrl: "http://localhost:3001",
-  steps: [{ step: "login" }],
+  steps: [
+    { step: "login" },
+    { step: "membership.processing-failures", openCount: 2, relatedOpenCount: 0 },
+    { step: "engagement.jobs", jobCount: 2, statuses: ["pending"], types: ["thank_you", "review_request"] },
+  ],
   requests: [
     {
       method: "GET",
@@ -108,6 +112,9 @@ const smokePath = await writeJson("smoke.json", {
 
 const smokeOutput = await summarize(smokePath);
 assertIncludes(smokeOutput, "Type: api-smoke");
+assertIncludes(smokeOutput, "Operational smoke:");
+assertIncludes(smokeOutput, "membership.processing-failures: open=2 related=0");
+assertIncludes(smokeOutput, "engagement.jobs: count=2 statuses=pending types=thank_you,review_request");
 assertIncludes(smokeOutput, "Unhandled HTTP failures: 1");
 assertIncludes(smokeOutput, "POST /api/v1/reservations -> 500 code=INTERNAL_ERROR requestId=smoke-test-2");
 assertIncludes(smokeOutput, 'pnpm debug:logs smoke-test-2 --since "2 hours ago"');

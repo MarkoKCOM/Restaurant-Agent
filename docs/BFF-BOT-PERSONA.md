@@ -57,6 +57,7 @@ Bad:
 - Max 2 proactive loyalty messages per week per guest.
 - Transactional messages do not count toward that cap.
 - If a guest opted out, do not push non-transactional club messages.
+- When a proactive message is skipped, check the engagement job `skipReason` before guessing why.
 - If the guest is cold or busy, back off fast.
 
 ## BFF reward templates

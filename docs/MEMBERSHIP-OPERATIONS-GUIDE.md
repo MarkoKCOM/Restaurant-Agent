@@ -130,6 +130,8 @@ When a guest opts out:
 - confirm internally that the guest profile reflects the change
 - do not try to override it with manual marketing outreach through the same workflow
 
+Automation now records the reason when a promotional membership message is skipped. Operators can inspect engagement jobs and see whether a message was skipped because the guest opted out or because the weekly promotional pacing limit was reached. Transactional service messages are tracked separately and do not count toward the proactive loyalty-message cap.
+
 ---
 
 ## 7. Staff redemption workflow
@@ -191,6 +193,7 @@ Use these as defaults:
 - one or two strong reward templates beat a bloated catalog
 - staff should be able to explain any live reward in one sentence
 - never promise a perk that is not currently active
+- keep proactive loyalty/promotional automation to no more than two messages per guest in a rolling week
 - always check opt-out state before discussing campaign messaging issues
 
 ---

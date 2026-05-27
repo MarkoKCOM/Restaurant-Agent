@@ -362,6 +362,37 @@ export async function runAllTests(): Promise<{ results: TestResult[]; summary: s
     return `optedOut=${guest.optedOutCampaigns} summaryOptedOut=${updatedSummary.optedOutCampaigns}`;
   }));
 
+  results.push(await runTest("Opt-out skips promotional engagement", async () => {
+    if (!guestId) throw new Error("No guest");
+
+    for (let i = 0; i < 2; i++) {
+      const data = await createReservationUsingAvailableSlot({
+        guestName: `E2E ${runId}`,
+        guestPhone,
+        notes: `${runId}-optout-${i}`,
+        source: "web",
+      });
+      const reservation = (data as any).reservation;
+      await api.updateReservation(reservation.id, { status: "completed" });
+    }
+
+    const data = await api.listEngagementJobs(RESTAURANT_ID, {
+      guestId,
+      status: "skipped",
+      messageCategory: "promotional",
+    });
+    const skippedJobs = (data as any).jobs as Array<{ type?: string; skipReason?: string }>;
+    const reviewSkip = skippedJobs.find((job) => job.type === "review_request");
+    if (!reviewSkip) {
+      throw new Error(`Expected skipped review_request, got ${JSON.stringify(skippedJobs)}`);
+    }
+    if (reviewSkip.skipReason !== "guest_opted_out_promotional") {
+      throw new Error(`Expected opt-out skip reason, got ${reviewSkip.skipReason}`);
+    }
+
+    return `type=${reviewSkip.type} reason=${reviewSkip.skipReason}`;
+  }));
+
   results.push(await runTest("Restore Messaging Preferences", async () => {
     if (!guestId) throw new Error("No guest");
     const data = await api.updateMessagingPreferences(guestId, false);

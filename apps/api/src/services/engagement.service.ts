@@ -1,10 +1,208 @@
-import { and, eq, sql, lte, isNull } from "drizzle-orm";
+import { and, eq, gte, inArray, lt, sql, ne } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { engagementJobs, guests, restaurants } from "../db/schema.js";
 import { engagementQueue } from "../queue/index.js";
 import type { InferSelectModel } from "drizzle-orm";
 
 export type EngagementJobRow = InferSelectModel<typeof engagementJobs>;
+export type EngagementMessageCategory = "transactional" | "promotional";
+export type EngagementJobType =
+  | "thank_you"
+  | "review_request"
+  | "birthday"
+  | "win_back_30"
+  | "win_back_60"
+  | "win_back_90";
+
+export const PROMOTIONAL_ENGAGEMENT_TYPES = [
+  "review_request",
+  "birthday",
+  "win_back_30",
+  "win_back_60",
+  "win_back_90",
+] as const;
+
+const PROMOTIONAL_WEEKLY_LIMIT = 2;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function getEngagementMessageCategory(type: string): EngagementMessageCategory {
+  return PROMOTIONAL_ENGAGEMENT_TYPES.includes(type as typeof PROMOTIONAL_ENGAGEMENT_TYPES[number])
+    ? "promotional"
+    : "transactional";
+}
+
+async function findPendingEngagementJob(params: {
+  guestId: string;
+  restaurantId: string;
+  type: string;
+}): Promise<EngagementJobRow | undefined> {
+  const [existingJob] = await db
+    .select()
+    .from(engagementJobs)
+    .where(
+      and(
+        eq(engagementJobs.guestId, params.guestId),
+        eq(engagementJobs.restaurantId, params.restaurantId),
+        eq(engagementJobs.type, params.type),
+        eq(engagementJobs.status, "pending"),
+      ),
+    )
+    .limit(1);
+
+  return existingJob;
+}
+
+async function getGuestOptOutState(guestId: string): Promise<boolean | null> {
+  const [guest] = await db
+    .select({ optedOutCampaigns: guests.optedOutCampaigns })
+    .from(guests)
+    .where(eq(guests.id, guestId))
+    .limit(1);
+
+  return guest?.optedOutCampaigns ?? null;
+}
+
+async function countPromotionalJobsInWindow(params: {
+  guestId: string;
+  restaurantId: string;
+  windowStart: Date;
+  windowEnd: Date;
+  excludeJobId?: string;
+}): Promise<number> {
+  const conditions = [
+    eq(engagementJobs.guestId, params.guestId),
+    eq(engagementJobs.restaurantId, params.restaurantId),
+    eq(engagementJobs.messageCategory, "promotional"),
+    inArray(engagementJobs.status, ["pending", "sent"]),
+    gte(engagementJobs.triggerAt, params.windowStart),
+    lt(engagementJobs.triggerAt, params.windowEnd),
+  ];
+
+  if (params.excludeJobId) {
+    conditions.push(ne(engagementJobs.id, params.excludeJobId));
+  }
+
+  const [result] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(engagementJobs)
+    .where(and(...conditions));
+
+  return result?.count ?? 0;
+}
+
+async function evaluatePromotionalEligibility(params: {
+  guestId: string;
+  restaurantId: string;
+  triggerAt: Date;
+  excludeJobId?: string;
+}): Promise<{ allowed: true } | { allowed: false; reason: string }> {
+  const optedOutCampaigns = await getGuestOptOutState(params.guestId);
+  if (optedOutCampaigns === null) {
+    return { allowed: false, reason: "guest_not_found" };
+  }
+  if (optedOutCampaigns) {
+    return { allowed: false, reason: "guest_opted_out_promotional" };
+  }
+
+  const sentOrPendingCount = await countPromotionalJobsInWindow({
+    guestId: params.guestId,
+    restaurantId: params.restaurantId,
+    windowStart: new Date(params.triggerAt.getTime() - WEEK_MS),
+    windowEnd: new Date(params.triggerAt.getTime() + WEEK_MS),
+    excludeJobId: params.excludeJobId,
+  });
+
+  if (sentOrPendingCount >= PROMOTIONAL_WEEKLY_LIMIT) {
+    return { allowed: false, reason: "promotional_weekly_limit_reached" };
+  }
+
+  return { allowed: true };
+}
+
+async function createSkippedEngagementJob(params: {
+  guestId: string;
+  restaurantId: string;
+  type: EngagementJobType;
+  triggerAt: Date;
+  skipReason: string;
+}): Promise<EngagementJobRow> {
+  const [job] = await db
+    .insert(engagementJobs)
+    .values({
+      restaurantId: params.restaurantId,
+      guestId: params.guestId,
+      type: params.type,
+      messageCategory: getEngagementMessageCategory(params.type),
+      triggerAt: params.triggerAt,
+      status: "skipped",
+      skipReason: params.skipReason,
+    })
+    .returning();
+
+  if (!job) throw new Error("Failed to create skipped engagement job");
+  return job;
+}
+
+async function scheduleEngagementJob(params: {
+  guestId: string;
+  restaurantId: string;
+  type: EngagementJobType;
+  triggerAt: Date;
+}): Promise<EngagementJobRow> {
+  const existingJob = await findPendingEngagementJob(params);
+  if (existingJob) return existingJob;
+
+  const messageCategory = getEngagementMessageCategory(params.type);
+  if (messageCategory === "promotional") {
+    const eligibility = await evaluatePromotionalEligibility(params);
+    if (!eligibility.allowed) {
+      return createSkippedEngagementJob({
+        ...params,
+        skipReason: eligibility.reason,
+      });
+    }
+  }
+
+  const [job] = await db
+    .insert(engagementJobs)
+    .values({
+      restaurantId: params.restaurantId,
+      guestId: params.guestId,
+      type: params.type,
+      messageCategory,
+      triggerAt: params.triggerAt,
+      status: "pending",
+    })
+    .returning();
+
+  if (!job) throw new Error("Failed to create engagement job");
+
+  const delay = params.triggerAt.getTime() - Date.now();
+  await engagementQueue.add(
+    "engagement",
+    { jobId: job.id, type: params.type, guestId: params.guestId, restaurantId: params.restaurantId },
+    { delay: Math.max(0, delay), jobId: `engagement-${job.id}` },
+  );
+
+  return job;
+}
+
+export async function shouldSendEngagementJob(job: EngagementJobRow): Promise<{ allowed: true } | { allowed: false; reason: string }> {
+  if (job.status !== "pending") {
+    return { allowed: false, reason: `job_status_${job.status}` };
+  }
+
+  if (job.messageCategory !== "promotional") {
+    return { allowed: true };
+  }
+
+  return evaluatePromotionalEligibility({
+    guestId: job.guestId,
+    restaurantId: job.restaurantId,
+    triggerAt: new Date(),
+    excludeJobId: job.id,
+  });
+}
 
 /**
  * Schedule a thank-you message 2 hours after reservation completion.
@@ -14,44 +212,8 @@ export async function scheduleThankYou(
   restaurantId: string,
   _reservationId: string,
 ): Promise<EngagementJobRow> {
-  const [existingJob] = await db
-    .select()
-    .from(engagementJobs)
-    .where(
-      and(
-        eq(engagementJobs.guestId, guestId),
-        eq(engagementJobs.restaurantId, restaurantId),
-        eq(engagementJobs.type, "thank_you"),
-        eq(engagementJobs.status, "pending"),
-      ),
-    )
-    .limit(1);
-
-  if (existingJob) return existingJob;
-
   const triggerAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
-
-  const [job] = await db
-    .insert(engagementJobs)
-    .values({
-      restaurantId,
-      guestId,
-      type: "thank_you",
-      triggerAt,
-      status: "pending",
-    })
-    .returning();
-
-  if (!job) throw new Error("Failed to create engagement job");
-
-  const delay = triggerAt.getTime() - Date.now();
-  await engagementQueue.add(
-    "engagement",
-    { jobId: job.id, type: "thank_you", guestId, restaurantId },
-    { delay, jobId: `engagement-${job.id}` },
-  );
-
-  return job;
+  return scheduleEngagementJob({ guestId, restaurantId, type: "thank_you", triggerAt });
 }
 
 /**
@@ -91,27 +253,7 @@ export async function scheduleBirthdayGreeting(
     triggerAt = new Date(`${currentYear + 1}-${month}-${day}T10:00:00+03:00`);
   }
 
-  const [job] = await db
-    .insert(engagementJobs)
-    .values({
-      restaurantId,
-      guestId,
-      type: "birthday",
-      triggerAt,
-      status: "pending",
-    })
-    .returning();
-
-  if (!job) throw new Error("Failed to create birthday engagement job");
-
-  const delay = triggerAt.getTime() - Date.now();
-  await engagementQueue.add(
-    "engagement",
-    { jobId: job.id, type: "birthday", guestId, restaurantId },
-    { delay, jobId: `engagement-${job.id}` },
-  );
-
-  return job;
+  return scheduleEngagementJob({ guestId, restaurantId, type: "birthday", triggerAt });
 }
 
 /**
@@ -131,44 +273,8 @@ export async function scheduleReviewRequest(
 
   if (!guest || guest.visitCount < 3) return null;
 
-  const [existingJob] = await db
-    .select()
-    .from(engagementJobs)
-    .where(
-      and(
-        eq(engagementJobs.guestId, guestId),
-        eq(engagementJobs.restaurantId, restaurantId),
-        eq(engagementJobs.type, "review_request"),
-        eq(engagementJobs.status, "pending"),
-      ),
-    )
-    .limit(1);
-
-  if (existingJob) return existingJob;
-
   const triggerAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-  const [job] = await db
-    .insert(engagementJobs)
-    .values({
-      restaurantId,
-      guestId,
-      type: "review_request",
-      triggerAt,
-      status: "pending",
-    })
-    .returning();
-
-  if (!job) throw new Error("Failed to create review request engagement job");
-
-  const delay = triggerAt.getTime() - Date.now();
-  await engagementQueue.add(
-    "engagement",
-    { jobId: job.id, type: "review_request", guestId, restaurantId },
-    { delay, jobId: `engagement-${job.id}` },
-  );
-
-  return job;
+  return scheduleEngagementJob({ guestId, restaurantId, type: "review_request", triggerAt });
 }
 
 interface WinBackResult {
@@ -213,47 +319,20 @@ export async function checkWinBack(restaurantId: string): Promise<WinBackResult>
         and(
           eq(guests.restaurantId, restaurantId),
           eq(guests.lastVisitDate, tier.dateStr),
-          eq(guests.optedOutCampaigns, false),
         ),
       );
 
     for (const guest of matchedGuests) {
-      // Check if we already have a pending win-back job for this guest
-      const [existingJob] = await db
-        .select()
-        .from(engagementJobs)
-        .where(
-          and(
-            eq(engagementJobs.guestId, guest.id),
-            eq(engagementJobs.restaurantId, restaurantId),
-            eq(engagementJobs.type, tier.type),
-            eq(engagementJobs.status, "pending"),
-          ),
-        )
-        .limit(1);
-
-      if (existingJob) continue;
-
       // Schedule for now (process immediately)
       const triggerAt = new Date();
+      const job = await scheduleEngagementJob({
+        restaurantId,
+        guestId: guest.id,
+        type: tier.type,
+        triggerAt,
+      });
 
-      const [job] = await db
-        .insert(engagementJobs)
-        .values({
-          restaurantId,
-          guestId: guest.id,
-          type: tier.type,
-          triggerAt,
-          status: "pending",
-        })
-        .returning();
-
-      if (job) {
-        await engagementQueue.add(
-          "engagement",
-          { jobId: job.id, type: tier.type, guestId: guest.id, restaurantId },
-          { jobId: `engagement-${job.id}` },
-        );
+      if (job.status === "pending") {
         result[tier.key]++;
       }
     }
@@ -269,6 +348,7 @@ export async function listEngagementJobs(params: {
   restaurantId: string;
   guestId?: string;
   status?: string;
+  messageCategory?: EngagementMessageCategory;
 }): Promise<EngagementJobRow[]> {
   const conditions = [eq(engagementJobs.restaurantId, params.restaurantId)];
 
@@ -277,6 +357,9 @@ export async function listEngagementJobs(params: {
   }
   if (params.status) {
     conditions.push(eq(engagementJobs.status, params.status));
+  }
+  if (params.messageCategory) {
+    conditions.push(eq(engagementJobs.messageCategory, params.messageCategory));
   }
 
   return db

@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { redisConnection } from "./index.js";
 import { db } from "../db/index.js";
 import { engagementJobs, guests, restaurants } from "../db/schema.js";
-import { checkWinBack } from "../services/engagement.service.js";
+import { checkWinBack, shouldSendEngagementJob } from "../services/engagement.service.js";
 
 export interface EngagementJobData {
   jobId?: string;
@@ -29,6 +29,30 @@ async function processEngagement(job: Job<EngagementJobData>): Promise<void> {
     return;
   }
 
+  const [engagementJob] = await db
+    .select()
+    .from(engagementJobs)
+    .where(eq(engagementJobs.id, jobId))
+    .limit(1);
+
+  if (!engagementJob) {
+    console.error(`Engagement job ${jobId}: DB row not found`);
+    return;
+  }
+
+  const sendDecision = await shouldSendEngagementJob(engagementJob);
+  if (!sendDecision.allowed) {
+    console.log(`SKIP engagement job ${jobId} (${type}): ${sendDecision.reason}`);
+    await db
+      .update(engagementJobs)
+      .set({
+        status: "skipped",
+        skipReason: sendDecision.reason,
+      })
+      .where(eq(engagementJobs.id, jobId));
+    return;
+  }
+
   // Fetch guest and restaurant info
   const [guest] = await db
     .select()
@@ -46,7 +70,7 @@ async function processEngagement(job: Job<EngagementJobData>): Promise<void> {
     console.error(`Engagement job ${jobId}: guest or restaurant not found`);
     await db
       .update(engagementJobs)
-      .set({ status: "failed" })
+      .set({ status: "failed", skipReason: "guest_or_restaurant_not_found" })
       .where(eq(engagementJobs.id, jobId));
     return;
   }

@@ -482,9 +482,16 @@ export async function getStreak(guestId: string) {
   return request(`/api/v1/gamification/${guestId}/streak`, { token });
 }
 
-export async function listEngagementJobs(restaurantId: string) {
+export async function listEngagementJobs(
+  restaurantId: string,
+  filters: { guestId?: string; status?: string; messageCategory?: "transactional" | "promotional" } = {},
+) {
   const token = await getToken();
-  return request(`/api/v1/engagement/jobs?restaurantId=${restaurantId}`, { token });
+  const params = new URLSearchParams({ restaurantId });
+  if (filters.guestId) params.set("guestId", filters.guestId);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.messageCategory) params.set("messageCategory", filters.messageCategory);
+  return request(`/api/v1/engagement/jobs?${params.toString()}`, { token });
 }
 
 export async function triggerWinBack(restaurantId: string) {

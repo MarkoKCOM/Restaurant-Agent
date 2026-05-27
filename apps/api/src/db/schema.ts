@@ -248,8 +248,10 @@ export const engagementJobs = pgTable("engagement_jobs", {
     .notNull()
     .references(() => guests.id),
   type: varchar("type", { length: 30 }).notNull(),
+  messageCategory: varchar("message_category", { length: 20 }).notNull().default("transactional"),
   triggerAt: timestamp("trigger_at").notNull(),
   status: varchar("status", { length: 20 }).notNull().default("pending"),
+  skipReason: text("skip_reason"),
   responseSentiment: varchar("response_sentiment", { length: 10 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   sentAt: timestamp("sent_at"),

@@ -26,7 +26,7 @@
 ## 5. WhatsApp journeys and automation
 - [x] 5.1 Define guest WhatsApp flows for balance, tier, rewards, referrals, and club questions
 - [x] 5.2 Reframe automated loyalty/retention messages as membership-club interactions
-- [ ] 5.3 Enforce pacing, opt-out handling, and transactional-vs-promotional separation
+- [x] 5.3 Enforce pacing, opt-out handling, and transactional-vs-promotional separation
 - [x] 5.4 Ensure Hebrew-first copy quality with English fallback
 
 ## 6. Verification

@@ -11,6 +11,10 @@
   - guest profiles can save structured signals like birthday, celebration, VIP, regular, owner friend, and house-comp
   - guest profiles can save a staff-facing hospitality note
   - Today and Reservations views surface saved hospitality signals on future arrivals
+- Membership messaging policy enforcement:
+  - engagement jobs now distinguish transactional vs promotional messages
+  - promotional jobs respect guest opt-out state and a two-per-week pacing limit
+  - skipped promotional jobs store a machine-readable `skipReason` for debugging
 - Protected super-admin dependency diagnostics at `GET /api/v1/admin/diagnostics`:
   - database ping status and latency
   - Redis ping status and latency

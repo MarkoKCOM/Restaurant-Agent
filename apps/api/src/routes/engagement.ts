@@ -8,10 +8,11 @@ import { enforceTenant, requireRestaurantAdmin } from "../middleware/auth.js";
 export async function engagementRoutes(app: FastifyInstance) {
   // GET /jobs — list engagement jobs with optional filters
   app.get("/jobs", async (request, reply) => {
-    const { restaurantId, guestId, status } = request.query as {
+    const { restaurantId, guestId, status, messageCategory } = request.query as {
       restaurantId?: string;
       guestId?: string;
       status?: string;
+      messageCategory?: "transactional" | "promotional";
     };
 
     if (!restaurantId) {
@@ -24,7 +25,7 @@ export async function engagementRoutes(app: FastifyInstance) {
       return reply.status(403).send({ error: err });
     }
 
-    const jobs = await listEngagementJobs({ restaurantId, guestId, status });
+    const jobs = await listEngagementJobs({ restaurantId, guestId, status, messageCategory });
     return { jobs };
   });
 

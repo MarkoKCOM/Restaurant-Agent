@@ -36,3 +36,7 @@ jobs:
       # Turbo handles ordering, parallelism, and caching.
       - name: Build, type-check, and lint all packages
         run: pnpm turbo build type-check lint
+
+      - name: Run unit tests
+        # e2e is excluded: its `test` script is a live-API integration runner (see e2e.yml).
+        run: pnpm turbo test --filter=!@openseat/e2e

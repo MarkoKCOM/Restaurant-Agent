@@ -6,6 +6,7 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "type-check": "turbo type-check",
+    "test": "turbo test --filter=!@openseat/e2e",
     "debug:api": "node scripts/api-debug-probe.mjs",
     "debug:artifact": "node scripts/summarize-debug-artifact.mjs",
     "debug:bundle": "node scripts/collect-debug-bundle.mjs",

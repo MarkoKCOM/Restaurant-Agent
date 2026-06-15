@@ -173,7 +173,7 @@ Shared database with `restaurant_id` FK on every table. Auth middleware enforces
 
 | Component | Host | Details |
 |-----------|------|---------|
-| API | VPS (204.168.227.45) | Port 3001, systemd `openseat-api`, behind Nginx |
+| API | VPS (204.168.227.45) | Port 3001, systemd `openseat-api`, behind Nginx. **Not deployed on Vercel** (persistent Fastify server + local PostgreSQL); Vercel apps proxy `/api/*` to this host. |
 | Dashboard | Vercel | SPA, API proxied to VPS |
 | Booking Widget | Vercel | Static IIFE bundle |
 | Marketing Site | Vercel | SPA |

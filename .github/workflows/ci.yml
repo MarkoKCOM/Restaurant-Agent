@@ -28,20 +28,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build domain package
-        run: pnpm --filter @openseat/domain build
-
       - name: Test debugging tools
         run: pnpm test:debug-tools
 
-      - name: Type-check API
-        run: pnpm --filter @openseat/api type-check
-
-      - name: Build dashboard app
-        run: pnpm --filter @openseat/dashboard build
-
-      - name: Build booking widget
-        run: pnpm --filter @openseat/booking-widget build
-
-      - name: Build marketing site
-        run: pnpm --filter @openseat/marketing build
+      # Single Turbo invocation: builds (domain first via ^build),
+      # type-checks, and lints EVERY package/app — not just the API.
+      # Turbo handles ordering, parallelism, and caching.
+      - name: Build, type-check, and lint all packages
+        run: pnpm turbo build type-check lint

@@ -1,5 +1,20 @@
 # Progress Log
 
+## 2026-06-15 (Architecture review + safe infra wins)
+
+### Architecture review
+- Ran the `improve-codebase-architecture` skill (Matt Pocock) across the whole repo with four parallel readers (API services + DB, API HTTP layer + workers, `@openseat/domain` + boundaries, build/CI/deploy).
+- Produced a 15-candidate deepening report at `/tmp/architecture-review-20260615.html`. Top recommendation: a **data-access seam (repositories)** — kills 86 hand-written `eq(…restaurantId)` filters, and is the prerequisite for unit-testable services, transactions (#2), and centralized scoping (#5).
+- Other strong candidates: transactions (only 1 `db.transaction` in the whole API), visit-completion orchestrator, one `ApiError` + central classifier (replaces 8× per-route error helpers), access-control hooks (5× duplicated gates), single source of truth for shared types (`MembershipSummary` defined 3×; widget shadows domain types).
+
+### Shipped (3 safe-win PRs off main)
+- **PR #23** `chore(infra): remove dead Vercel API project config` (#11) — API runs on the VPS, not Vercel; removed `apps/api/vercel.json` (the failing PR check) + documented VPS-only in ARCHITECTURE.md. Follow-up: unlink the `restaurant-agent-api` Vercel project.
+- **PR #24** `ci: run build/type-check/lint for all packages via Turbo` (#12) — CI previously only type-checked the API; now `turbo build type-check lint` covers every workspace.
+- **PR #25** `test: add Vitest foundation with first domain tests` (#14) — first-ever unit tests (21) on `@openseat/domain` (dashboard-access + Zod schemas); `test` turbo task wired into CI; e2e excluded.
+
+### Next
+- Decide whether to proceed with the data-access seam (#1) via the skill's design loop, then it unblocks deeper service tests.
+
 ## 2026-05-27 (Debugging infrastructure pass)
 
 ### Added

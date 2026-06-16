@@ -39,10 +39,10 @@
 - [ ] 3.8 Decide + handle non-tenant lookups (`restaurants` by slug, `adminUsers` by email) per the design's open question
 - [ ] 3.9 Confirm worker/cron entry points route through services/repositories, not direct `db`
 
-## 4. Prove transaction composability (unblocks #2) — BEHAVIOR-CHANGING, awaits direction
+## 4. Prove transaction composability (unblocks #2) — PR open, awaits review
 
-- [ ] 4.1 Pick one multi-write service flow (e.g. visit completion touching guests + visit logs + loyalty) and wrap it in `db.transaction`, threading `tx` through repository calls. The executor seam (`Executor` param on every repo method) already supports this; only the service call sites change. Behavior-changing → open as a PR for review, do not auto-merge.
-- [ ] 4.2 Add a test/smoke assertion that the multi-write flow commits atomically (and rolls back on failure)
+- [x] 4.1 Wrapped `awardPoints`/`deductPoints` (loyalty ledger insert + guest balance update) in `db.transaction`, threading `trx` through the repo calls. Chosen over the visit-completion saga, which is intentionally non-atomic (per-stage failure recording) and must NOT be wrapped. PR open for review (strictly-safer behavior: identical happy path, clean rollback on failure).
+- [x] 4.2 Added a unit test asserting both writes receive the same `tx` executor and the operation runs inside one `db.transaction`.
 
 ## 5. Guardrails + close-out
 

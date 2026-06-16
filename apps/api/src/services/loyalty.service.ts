@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { db } from "../db/index.js";
 import { scheduleLuckySpinReward } from "./engagement.service.js";
 import { guestRepository } from "../repositories/guest.repository.js";
 import { reservationRepository } from "../repositories/reservation.repository.js";
@@ -252,18 +253,22 @@ export async function awardPoints(
   reason: string,
   reservationId?: string,
 ): Promise<LoyaltyTransactionRow> {
-  const tx = await loyaltyTransactionRepository.insert({
-    restaurantId,
-    guestId,
-    type: "earn",
-    points,
-    reason,
-    reservationId: reservationId ?? null,
+  // Ledger entry + balance update must commit together — otherwise a crash
+  // between them leaves an orphan transaction or an unbalanced guest.
+  return db.transaction(async (trx) => {
+    const tx = await loyaltyTransactionRepository.insert({
+      restaurantId,
+      guestId,
+      type: "earn",
+      points,
+      reason,
+      reservationId: reservationId ?? null,
+    }, trx);
+
+    await guestRepository.adjustPoints(guestId, points, trx);
+
+    return tx;
   });
-
-  await guestRepository.adjustPoints(guestId, points);
-
-  return tx;
 }
 
 export async function deductPoints(
@@ -281,18 +286,21 @@ export async function deductPoints(
     );
   }
 
-  const tx = await loyaltyTransactionRepository.insert({
-    restaurantId,
-    guestId,
-    type: "redeem",
-    points: -points,
-    reason,
-    reservationId: reservationId ?? null,
+  // Ledger entry + balance debit commit atomically.
+  return db.transaction(async (trx) => {
+    const tx = await loyaltyTransactionRepository.insert({
+      restaurantId,
+      guestId,
+      type: "redeem",
+      points: -points,
+      reason,
+      reservationId: reservationId ?? null,
+    }, trx);
+
+    await guestRepository.adjustPoints(guestId, -points, trx);
+
+    return tx;
   });
-
-  await guestRepository.adjustPoints(guestId, -points);
-
-  return tx;
 }
 
 export async function getPointsBalance(

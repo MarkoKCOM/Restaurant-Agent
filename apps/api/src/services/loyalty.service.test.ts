@@ -3,6 +3,7 @@ import { guestRepository } from "../repositories/guest.repository.js";
 import { loyaltyTransactionRepository } from "../repositories/loyalty-transaction.repository.js";
 import { rewardRepository } from "../repositories/reward.repository.js";
 import { reservationRepository } from "../repositories/reservation.repository.js";
+import { db } from "../db/index.js";
 import type { LoyaltyTransactionRow } from "../repositories/loyalty-transaction.repository.js";
 import type { GuestRow } from "../repositories/guest.repository.js";
 import {
@@ -36,10 +37,16 @@ vi.mock("../repositories/reward.repository.js", () => ({
 vi.mock("../repositories/reservation.repository.js", () => ({
   reservationRepository: { findVisitCompletionContext: vi.fn() },
 }));
+// db.transaction runs its callback with a sentinel tx so we can assert the
+// executor is threaded into both repository writes.
+vi.mock("../db/index.js", () => ({
+  db: { transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb("TX")) },
+}));
 
 const guestRepo = vi.mocked(guestRepository);
 const txRepo = vi.mocked(loyaltyTransactionRepository);
 const reservationRepo = vi.mocked(reservationRepository);
+const dbMock = vi.mocked(db);
 
 function makeTx(overrides: Partial<LoyaltyTransactionRow> = {}): LoyaltyTransactionRow {
   return {
@@ -98,10 +105,20 @@ describe("loyalty.service", () => {
 
       await awardPoints("g1", "r1", 25, "promo");
 
+      // Both writes receive the same transaction executor ("TX").
       expect(txRepo.insert).toHaveBeenCalledWith(
         expect.objectContaining({ type: "earn", points: 25, reason: "promo" }),
+        "TX",
       );
-      expect(guestRepo.adjustPoints).toHaveBeenCalledWith("g1", 25);
+      expect(guestRepo.adjustPoints).toHaveBeenCalledWith("g1", 25, "TX");
+    });
+
+    it("performs the ledger insert and balance update inside one transaction", async () => {
+      txRepo.insert.mockResolvedValue(makeTx());
+
+      await awardPoints("g1", "r1", 10, "promo");
+
+      expect(dbMock.transaction).toHaveBeenCalledOnce();
     });
   });
 
@@ -122,8 +139,9 @@ describe("loyalty.service", () => {
 
       expect(txRepo.insert).toHaveBeenCalledWith(
         expect.objectContaining({ type: "redeem", points: -30 }),
+        "TX",
       );
-      expect(guestRepo.adjustPoints).toHaveBeenCalledWith("g1", -30);
+      expect(guestRepo.adjustPoints).toHaveBeenCalledWith("g1", -30, "TX");
     });
   });
 

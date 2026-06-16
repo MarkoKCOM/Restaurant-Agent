@@ -99,6 +99,27 @@ export const loyaltyTransactionRepository = {
     return row ?? null;
   },
 
+  /** The most recent lucky-spin award for a guest at a restaurant, if any. */
+  async findLatestLuckySpin(
+    guestId: string,
+    restaurantId: string,
+    executor: Executor = db,
+  ): Promise<LoyaltyTransactionRow | null> {
+    const [row] = await executor
+      .select()
+      .from(loyaltyTransactions)
+      .where(
+        and(
+          eq(loyaltyTransactions.guestId, guestId),
+          eq(loyaltyTransactions.restaurantId, restaurantId),
+          sql`${loyaltyTransactions.reason} like 'lucky_spin:%'`,
+        ),
+      )
+      .orderBy(desc(loyaltyTransactions.createdAt))
+      .limit(1);
+    return row ?? null;
+  },
+
   /** Idempotency: an existing lucky-spin award (reason prefixed `lucky_spin:`) for this reservation. */
   async findLuckySpinForVisit(
     guestId: string,

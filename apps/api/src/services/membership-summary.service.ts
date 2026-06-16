@@ -1,6 +1,7 @@
-import { and, desc, eq, sql } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { guests, loyaltyTransactions, restaurants, rewards } from "../db/schema.js";
+import { guestRepository } from "../repositories/guest.repository.js";
+import { rewardRepository } from "../repositories/reward.repository.js";
+import { restaurantRepository } from "../repositories/restaurant.repository.js";
+import { loyaltyTransactionRepository } from "../repositories/loyalty-transaction.repository.js";
 import { checkStampCard, getConfiguredLuckySpin } from "./loyalty.service.js";
 import { getReferralStats } from "./referral.service.js";
 import { getStreak } from "./challenge.service.js";
@@ -112,48 +113,24 @@ export interface MembershipSummary {
 export async function getMembershipSummary(
   guestId: string,
 ): Promise<MembershipSummary | null> {
-  const [guest] = await db
-    .select()
-    .from(guests)
-    .where(eq(guests.id, guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(guestId);
 
   if (!guest) return null;
 
-  const [stampCard, allClaims, referralStats, streak, rewardRows, leaderboardRank, shareTemplateSet, luckySpinRows, restaurantRows] = await Promise.all([
+  const [stampCard, allClaims, referralStats, streak, rewardRows, leaderboardRank, shareTemplateSet, latestLuckySpin, restaurant] = await Promise.all([
     checkStampCard(guestId),
     getGuestClaims(guestId),
     getReferralStats(guestId),
     getStreak(guestId),
-    db
-      .select()
-      .from(rewards)
-      .where(and(eq(rewards.restaurantId, guest.restaurantId), eq(rewards.isActive, true))),
+    rewardRepository.listByRestaurant(guest.restaurantId),
     getGuestLeaderboardRank(guestId, guest.restaurantId),
     getGuestShareTemplates(guestId),
-    db
-      .select({
-        reason: loyaltyTransactions.reason,
-        points: loyaltyTransactions.points,
-        createdAt: loyaltyTransactions.createdAt,
-        reservationId: loyaltyTransactions.reservationId,
-      })
-      .from(loyaltyTransactions)
-      .where(and(
-        eq(loyaltyTransactions.guestId, guestId),
-        eq(loyaltyTransactions.restaurantId, guest.restaurantId),
-        sql`${loyaltyTransactions.reason} like 'lucky_spin:%'`,
-      ))
-      .orderBy(desc(loyaltyTransactions.createdAt))
-      .limit(1),
-    db
-      .select({ dashboardConfig: restaurants.dashboardConfig })
-      .from(restaurants)
-      .where(eq(restaurants.id, guest.restaurantId))
-      .limit(1),
+    loyaltyTransactionRepository.findLatestLuckySpin(guestId, guest.restaurantId),
+    restaurantRepository.findById(guest.restaurantId),
   ]);
+  const luckySpinRows = latestLuckySpin ? [latestLuckySpin] : [];
   const leaderboardPreference = getLeaderboardPreference(guest.preferences);
-  const luckySpinConfig = getConfiguredLuckySpin(restaurantRows[0]?.dashboardConfig);
+  const luckySpinConfig = getConfiguredLuckySpin(restaurant?.dashboardConfig);
   const nextEligibleVisit = luckySpinConfig.enabled
     ? Math.ceil((guest.visitCount + 1) / luckySpinConfig.triggerEvery) * luckySpinConfig.triggerEvery
     : null;

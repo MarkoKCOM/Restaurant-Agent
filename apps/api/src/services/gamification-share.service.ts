@@ -1,6 +1,5 @@
-import { eq } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { guests, restaurants } from "../db/schema.js";
+import { guestRepository } from "../repositories/guest.repository.js";
+import { restaurantRepository, type RestaurantRow } from "../repositories/restaurant.repository.js";
 import { getAchievementsFromPreferences } from "./achievement.service.js";
 import { getStreak } from "./challenge.service.js";
 import { currentLeaderboardPeriod, getGuestLeaderboardRank } from "./leaderboard.service.js";
@@ -77,7 +76,7 @@ function stringField(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
-function getBranding(restaurant: typeof restaurants.$inferSelect): ShareTemplateSet["branding"] {
+function getBranding(restaurant: RestaurantRow): ShareTemplateSet["branding"] {
   const dashboardConfig = dashboardConfigObject(restaurant.dashboardConfig);
   const widgetConfig = dashboardConfigObject(restaurant.widgetConfig);
   const palette = nestedObject(dashboardConfig.palette);
@@ -145,19 +144,10 @@ export async function getGuestShareTemplates(
   guestId: string,
   options: ShareTemplateOptions = {},
 ): Promise<ShareTemplateSet | null> {
-  const [row] = await db
-    .select({
-      guest: guests,
-      restaurant: restaurants,
-    })
-    .from(guests)
-    .innerJoin(restaurants, eq(restaurants.id, guests.restaurantId))
-    .where(eq(guests.id, guestId))
-    .limit(1);
-
-  if (!row) return null;
-
-  const { guest, restaurant } = row;
+  const guest = await guestRepository.findById(guestId);
+  if (!guest) return null;
+  const restaurant = await restaurantRepository.findById(guest.restaurantId);
+  if (!restaurant) return null;
   const branding = getBranding(restaurant);
   const preferences = nestedObject(guest.preferences);
   const achievements = getAchievementsFromPreferences(guest.preferences);

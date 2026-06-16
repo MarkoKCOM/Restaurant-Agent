@@ -1,17 +1,12 @@
-import { eq, sql } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { guests, loyaltyTransactions } from "../db/schema.js";
 import { awardPoints } from "./loyalty.service.js";
+import { guestRepository } from "../repositories/guest.repository.js";
+import { loyaltyTransactionRepository } from "../repositories/loyalty-transaction.repository.js";
 
 /**
  * Generate a unique 8-character alphanumeric referral code for a guest.
  */
 export async function generateReferralCode(guestId: string): Promise<string> {
-  const [guest] = await db
-    .select()
-    .from(guests)
-    .where(eq(guests.id, guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(guestId);
 
   if (!guest) {
     throw new Error("Guest not found");
@@ -34,11 +29,7 @@ export async function generateReferralCode(guestId: string): Promise<string> {
     }
 
     // Check uniqueness
-    const [existing] = await db
-      .select({ id: guests.id })
-      .from(guests)
-      .where(eq(guests.referralCode, code))
-      .limit(1);
+    const existing = await guestRepository.findByReferralCode(code);
 
     if (!existing) break;
     attempts++;
@@ -49,10 +40,7 @@ export async function generateReferralCode(guestId: string): Promise<string> {
   }
 
   // Save to guest
-  await db
-    .update(guests)
-    .set({ referralCode: code, updatedAt: new Date() })
-    .where(eq(guests.id, guestId));
+  await guestRepository.updateById(guestId, { referralCode: code, updatedAt: new Date() });
 
   return code;
 }
@@ -66,11 +54,7 @@ export async function applyReferral(
   referralCode: string,
 ): Promise<{ referrerId: string; referrerName: string }> {
   // Find referrer by code
-  const [referrer] = await db
-    .select()
-    .from(guests)
-    .where(eq(guests.referralCode, referralCode))
-    .limit(1);
+  const referrer = await guestRepository.findByReferralCode(referralCode);
 
   if (!referrer) {
     throw new Error("Invalid referral code");
@@ -82,11 +66,7 @@ export async function applyReferral(
   }
 
   // Check new guest exists and hasn't already been referred
-  const [newGuest] = await db
-    .select()
-    .from(guests)
-    .where(eq(guests.id, newGuestId))
-    .limit(1);
+  const newGuest = await guestRepository.findById(newGuestId);
 
   if (!newGuest) {
     throw new Error("Guest not found");
@@ -101,10 +81,7 @@ export async function applyReferral(
   }
 
   // Set referredBy on new guest
-  await db
-    .update(guests)
-    .set({ referredBy: referrer.id, updatedAt: new Date() })
-    .where(eq(guests.id, newGuestId));
+  await guestRepository.updateById(newGuestId, { referredBy: referrer.id, updatedAt: new Date() });
 
   // Award referrer 50 points
   await awardPoints(referrer.id, referrer.restaurantId, 50, "referral_bonus");
@@ -122,20 +99,15 @@ export async function getReferralStats(
   guestId: string,
 ): Promise<{ referralCount: number; totalPointsEarned: number }> {
   // Count guests referred by this guest
-  const referred = await db
-    .select({ id: guests.id })
-    .from(guests)
-    .where(eq(guests.referredBy, guestId));
+  const referred = await guestRepository.findByReferredBy(guestId);
 
   const referralCount = referred.length;
 
   // Sum points earned from referral bonuses
-  const transactions = await db
-    .select({ points: loyaltyTransactions.points })
-    .from(loyaltyTransactions)
-    .where(
-      sql`${loyaltyTransactions.guestId} = ${guestId} AND ${loyaltyTransactions.reason} = 'referral_bonus'`,
-    );
+  const transactions = await loyaltyTransactionRepository.listByGuestAndReason(
+    guestId,
+    "referral_bonus",
+  );
 
   const totalPointsEarned = transactions.reduce((sum, t) => sum + t.points, 0);
 
@@ -159,11 +131,7 @@ export interface ReferralShare {
 }
 
 export async function getReferralShare(guestId: string): Promise<ReferralShare> {
-  const [guest] = await db
-    .select()
-    .from(guests)
-    .where(eq(guests.id, guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(guestId);
 
   if (!guest) {
     throw new Error("Guest not found");

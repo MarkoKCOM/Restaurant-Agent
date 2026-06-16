@@ -1,18 +1,15 @@
 import { createHash } from "node:crypto";
-import { and, eq, desc, sql } from "drizzle-orm";
-import { db } from "../db/index.js";
-import {
-  guests,
-  loyaltyTransactions,
-  reservations,
-  restaurants,
-  rewards,
-} from "../db/schema.js";
-import type { InferSelectModel } from "drizzle-orm";
 import { scheduleLuckySpinReward } from "./engagement.service.js";
+import { guestRepository } from "../repositories/guest.repository.js";
+import { reservationRepository } from "../repositories/reservation.repository.js";
+import {
+  loyaltyTransactionRepository,
+  type LoyaltyTransactionRow,
+} from "../repositories/loyalty-transaction.repository.js";
+import { rewardRepository, type RewardRow } from "../repositories/reward.repository.js";
 
-export type LoyaltyTransactionRow = InferSelectModel<typeof loyaltyTransactions>;
-export type RewardRow = InferSelectModel<typeof rewards>;
+export type { LoyaltyTransactionRow } from "../repositories/loyalty-transaction.repository.js";
+export type { RewardRow } from "../repositories/reward.repository.js";
 
 // ── Tier config ────────────────────────────────────────
 
@@ -196,22 +193,11 @@ async function awardLuckySpinForVisit(params: {
     return { eligible: false, alreadyAwarded: false, prize: null, transactionId: null, engagementJobId: null };
   }
 
-  const [existingSpin] = await db
-    .select({
-      id: loyaltyTransactions.id,
-      reason: loyaltyTransactions.reason,
-      points: loyaltyTransactions.points,
-    })
-    .from(loyaltyTransactions)
-    .where(
-      and(
-        eq(loyaltyTransactions.guestId, params.guestId),
-        eq(loyaltyTransactions.restaurantId, params.restaurantId),
-        eq(loyaltyTransactions.reservationId, params.reservationId),
-        sql`${loyaltyTransactions.reason} like 'lucky_spin:%'`,
-      ),
-    )
-    .limit(1);
+  const existingSpin = await loyaltyTransactionRepository.findLuckySpinForVisit(
+    params.guestId,
+    params.restaurantId,
+    params.reservationId,
+  );
 
   if (existingSpin) {
     const existingPrizeKey = existingSpin.reason?.replace(/^lucky_spin:/, "") ?? "unknown";
@@ -266,27 +252,18 @@ export async function awardPoints(
   reason: string,
   reservationId?: string,
 ): Promise<LoyaltyTransactionRow> {
-  const [tx] = await db
-    .insert(loyaltyTransactions)
-    .values({
-      restaurantId,
-      guestId,
-      type: "earn",
-      points,
-      reason,
-      reservationId: reservationId ?? null,
-    })
-    .returning();
+  const tx = await loyaltyTransactionRepository.insert({
+    restaurantId,
+    guestId,
+    type: "earn",
+    points,
+    reason,
+    reservationId: reservationId ?? null,
+  });
 
-  await db
-    .update(guests)
-    .set({
-      pointsBalance: sql`${guests.pointsBalance} + ${points}`,
-      updatedAt: new Date(),
-    })
-    .where(eq(guests.id, guestId));
+  await guestRepository.adjustPoints(guestId, points);
 
-  return tx!;
+  return tx;
 }
 
 export async function deductPoints(
@@ -296,11 +273,7 @@ export async function deductPoints(
   reason: string,
   reservationId?: string,
 ): Promise<LoyaltyTransactionRow> {
-  const [guest] = await db
-    .select({ pointsBalance: guests.pointsBalance })
-    .from(guests)
-    .where(eq(guests.id, guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(guestId);
 
   if (!guest || guest.pointsBalance < points) {
     throw new Error(
@@ -308,40 +281,24 @@ export async function deductPoints(
     );
   }
 
-  const [tx] = await db
-    .insert(loyaltyTransactions)
-    .values({
-      restaurantId,
-      guestId,
-      type: "redeem",
-      points: -points,
-      reason,
-      reservationId: reservationId ?? null,
-    })
-    .returning();
+  const tx = await loyaltyTransactionRepository.insert({
+    restaurantId,
+    guestId,
+    type: "redeem",
+    points: -points,
+    reason,
+    reservationId: reservationId ?? null,
+  });
 
-  await db
-    .update(guests)
-    .set({
-      pointsBalance: sql`${guests.pointsBalance} - ${points}`,
-      updatedAt: new Date(),
-    })
-    .where(eq(guests.id, guestId));
+  await guestRepository.adjustPoints(guestId, -points);
 
-  return tx!;
+  return tx;
 }
 
 export async function getPointsBalance(
   guestId: string,
 ): Promise<{ pointsBalance: number; tier: Tier } | null> {
-  const [guest] = await db
-    .select({
-      pointsBalance: guests.pointsBalance,
-      tier: guests.tier,
-    })
-    .from(guests)
-    .where(eq(guests.id, guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(guestId);
 
   if (!guest) return null;
 
@@ -355,12 +312,7 @@ export async function getTransactionHistory(
   guestId: string,
   limit = 20,
 ): Promise<LoyaltyTransactionRow[]> {
-  return db
-    .select()
-    .from(loyaltyTransactions)
-    .where(eq(loyaltyTransactions.guestId, guestId))
-    .orderBy(desc(loyaltyTransactions.createdAt))
-    .limit(limit);
+  return loyaltyTransactionRepository.findByGuest(guestId, { limit });
 }
 
 // ── Stamps ─────────────────────────────────────────────
@@ -375,11 +327,7 @@ export interface StampCardStatus {
 export async function checkStampCard(
   guestId: string,
 ): Promise<StampCardStatus | null> {
-  const [guest] = await db
-    .select({ visitCount: guests.visitCount })
-    .from(guests)
-    .where(eq(guests.id, guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(guestId);
 
   if (!guest) return null;
 
@@ -401,11 +349,7 @@ export interface TierEvaluation {
 }
 
 export async function evaluateTier(guestId: string): Promise<TierEvaluation | null> {
-  const [guest] = await db
-    .select({ visitCount: guests.visitCount, tier: guests.tier })
-    .from(guests)
-    .where(eq(guests.id, guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(guestId);
 
   if (!guest) return null;
 
@@ -421,10 +365,7 @@ export async function evaluateTier(guestId: string): Promise<TierEvaluation | nu
   const changed = oldTier !== newTier;
 
   if (changed) {
-    await db
-      .update(guests)
-      .set({ tier: newTier, updatedAt: new Date() })
-      .where(eq(guests.id, guestId));
+    await guestRepository.updateById(guestId, { tier: newTier, updatedAt: new Date() });
   }
 
   return { oldTier, newTier, changed };
@@ -436,15 +377,7 @@ export async function listRewards(
   restaurantId: string,
   includeInactive = false,
 ): Promise<RewardRow[]> {
-  return db
-    .select()
-    .from(rewards)
-    .where(
-      includeInactive
-        ? eq(rewards.restaurantId, restaurantId)
-        : and(eq(rewards.restaurantId, restaurantId), eq(rewards.isActive, true)),
-    )
-    .orderBy(rewards.pointsCost);
+  return rewardRepository.listByRestaurant(restaurantId, includeInactive);
 }
 
 export async function updateReward(
@@ -462,31 +395,21 @@ export async function updateReward(
     isActive?: boolean;
   },
 ): Promise<RewardRow | null> {
-  const [existing] = await db
-    .select()
-    .from(rewards)
-    .where(and(eq(rewards.id, rewardId), eq(rewards.restaurantId, restaurantId)))
-    .limit(1);
+  const existing = await rewardRepository.findByIdInRestaurant(rewardId, restaurantId);
 
   if (!existing) return null;
 
-  const [updated] = await db
-    .update(rewards)
-    .set({
-      ...(data.nameHe !== undefined ? { nameHe: data.nameHe } : {}),
-      ...(data.nameEn !== undefined ? { nameEn: data.nameEn } : {}),
-      ...(data.description !== undefined ? { description: data.description } : {}),
-      ...(data.pointsCost !== undefined ? { pointsCost: data.pointsCost } : {}),
-      ...(data.templateKey !== undefined ? { templateKey: data.templateKey } : {}),
-      ...(data.recommendedMoments !== undefined ? { recommendedMoments: data.recommendedMoments } : {}),
-      ...(data.pitchHe !== undefined ? { pitchHe: data.pitchHe } : {}),
-      ...(data.pitchEn !== undefined ? { pitchEn: data.pitchEn } : {}),
-      ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
-    })
-    .where(and(eq(rewards.id, rewardId), eq(rewards.restaurantId, restaurantId)))
-    .returning();
-
-  return updated ?? null;
+  return rewardRepository.updateInRestaurant(rewardId, restaurantId, {
+    ...(data.nameHe !== undefined ? { nameHe: data.nameHe } : {}),
+    ...(data.nameEn !== undefined ? { nameEn: data.nameEn } : {}),
+    ...(data.description !== undefined ? { description: data.description } : {}),
+    ...(data.pointsCost !== undefined ? { pointsCost: data.pointsCost } : {}),
+    ...(data.templateKey !== undefined ? { templateKey: data.templateKey } : {}),
+    ...(data.recommendedMoments !== undefined ? { recommendedMoments: data.recommendedMoments } : {}),
+    ...(data.pitchHe !== undefined ? { pitchHe: data.pitchHe } : {}),
+    ...(data.pitchEn !== undefined ? { pitchEn: data.pitchEn } : {}),
+    ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+  });
 }
 
 export async function createReward(data: {
@@ -500,22 +423,17 @@ export async function createReward(data: {
   pitchHe?: string | null;
   pitchEn?: string | null;
 }): Promise<RewardRow> {
-  const [row] = await db
-    .insert(rewards)
-    .values({
-      restaurantId: data.restaurantId,
-      nameHe: data.nameHe,
-      nameEn: data.nameEn ?? null,
-      description: data.description ?? null,
-      pointsCost: data.pointsCost,
-      templateKey: data.templateKey ?? null,
-      recommendedMoments: data.recommendedMoments ?? null,
-      pitchHe: data.pitchHe ?? null,
-      pitchEn: data.pitchEn ?? null,
-    })
-    .returning();
-
-  return row!;
+  return rewardRepository.insert({
+    restaurantId: data.restaurantId,
+    nameHe: data.nameHe,
+    nameEn: data.nameEn ?? null,
+    description: data.description ?? null,
+    pointsCost: data.pointsCost,
+    templateKey: data.templateKey ?? null,
+    recommendedMoments: data.recommendedMoments ?? null,
+    pitchHe: data.pitchHe ?? null,
+    pitchEn: data.pitchEn ?? null,
+  });
 }
 
 function generateRedemptionCode(): string {
@@ -540,11 +458,7 @@ export async function redeemReward(
   restaurantId: string,
   rewardId: string,
 ): Promise<RedemptionResult> {
-  const [reward] = await db
-    .select()
-    .from(rewards)
-    .where(and(eq(rewards.id, rewardId), eq(rewards.isActive, true)))
-    .limit(1);
+  const reward = await rewardRepository.findActiveById(rewardId);
 
   if (!reward) {
     throw new Error("Reward not found or inactive");
@@ -562,11 +476,7 @@ export async function redeemReward(
     `redeem_reward:${reward.nameHe}`,
   );
 
-  const [guest] = await db
-    .select({ pointsBalance: guests.pointsBalance })
-    .from(guests)
-    .where(eq(guests.id, guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(guestId);
 
   return {
     transactionId: tx.id,
@@ -591,33 +501,17 @@ export async function onVisitCompleted(
   tierChange: TierEvaluation | null;
 }> {
   // Guest visitCount was already incremented before this call
-  const [guest] = await db
-    .select({ tier: guests.tier, visitCount: guests.visitCount })
-    .from(guests)
-    .where(eq(guests.id, guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(guestId);
 
   if (!guest) {
     throw new Error("Guest not found");
   }
 
-  const [reservation] = await db
-    .select({
-      date: reservations.date,
-      timeStart: reservations.timeStart,
-      partySize: reservations.partySize,
-      dashboardConfig: restaurants.dashboardConfig,
-    })
-    .from(reservations)
-    .innerJoin(restaurants, eq(reservations.restaurantId, restaurants.id))
-    .where(
-      and(
-        eq(reservations.id, reservationId),
-        eq(reservations.restaurantId, restaurantId),
-        eq(reservations.guestId, guestId),
-      ),
-    )
-    .limit(1);
+  const reservation = await reservationRepository.findVisitCompletionContext(
+    reservationId,
+    restaurantId,
+    guestId,
+  );
 
   const tier = (guest.tier ?? "bronze") as Tier;
   const tierMultiplier = getTierMultiplier(tier);
@@ -631,19 +525,12 @@ export async function onVisitCompleted(
   const pointsForVisit = Math.round(POINTS_PER_VISIT * tierMultiplier * offPeakMultiplier);
 
   // Award visit points
-  const [existingVisitCompletion] = await db
-    .select({ id: loyaltyTransactions.id })
-    .from(loyaltyTransactions)
-    .where(
-      and(
-        eq(loyaltyTransactions.guestId, guestId),
-        eq(loyaltyTransactions.restaurantId, restaurantId),
-        eq(loyaltyTransactions.reservationId, reservationId),
-        eq(loyaltyTransactions.type, "earn"),
-        eq(loyaltyTransactions.reason, "visit_completion"),
-      ),
-    )
-    .limit(1);
+  const existingVisitCompletion = await loyaltyTransactionRepository.findEarnByReason(
+    guestId,
+    restaurantId,
+    reservationId,
+    "visit_completion",
+  );
 
   if (!existingVisitCompletion) {
     await awardPoints(guestId, restaurantId, pointsForVisit, "visit_completion", reservationId);
@@ -653,19 +540,12 @@ export async function onVisitCompleted(
   let stampBonus = false;
   let hostGroupBonus = false;
   if (guest.visitCount % STAMP_CARD_SIZE === 0 && guest.visitCount > 0) {
-    const [existingStampBonus] = await db
-      .select({ id: loyaltyTransactions.id })
-      .from(loyaltyTransactions)
-      .where(
-        and(
-          eq(loyaltyTransactions.guestId, guestId),
-          eq(loyaltyTransactions.restaurantId, restaurantId),
-          eq(loyaltyTransactions.reservationId, reservationId),
-          eq(loyaltyTransactions.type, "earn"),
-          eq(loyaltyTransactions.reason, "stamp_card_bonus"),
-        ),
-      )
-      .limit(1);
+    const existingStampBonus = await loyaltyTransactionRepository.findEarnByReason(
+      guestId,
+      restaurantId,
+      reservationId,
+      "stamp_card_bonus",
+    );
 
     if (!existingStampBonus) {
       await awardPoints(guestId, restaurantId, STAMP_BONUS_POINTS, "stamp_card_bonus", reservationId);
@@ -674,19 +554,12 @@ export async function onVisitCompleted(
   }
 
   if (reservation && reservation.partySize >= HOST_GROUP_MIN_PARTY_SIZE) {
-    const [existingHostGroupBonus] = await db
-      .select({ id: loyaltyTransactions.id })
-      .from(loyaltyTransactions)
-      .where(
-        and(
-          eq(loyaltyTransactions.guestId, guestId),
-          eq(loyaltyTransactions.restaurantId, restaurantId),
-          eq(loyaltyTransactions.reservationId, reservationId),
-          eq(loyaltyTransactions.type, "earn"),
-          eq(loyaltyTransactions.reason, "host_group_bonus"),
-        ),
-      )
-      .limit(1);
+    const existingHostGroupBonus = await loyaltyTransactionRepository.findEarnByReason(
+      guestId,
+      restaurantId,
+      reservationId,
+      "host_group_bonus",
+    );
 
     if (!existingHostGroupBonus) {
       await awardPoints(

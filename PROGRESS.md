@@ -10,6 +10,31 @@
   - **SEO/GEO (round 1):** the site is a client-rendered SPA (JS-less crawlers/AI saw an empty body). Added a `<noscript>` content fallback, an Organization entity, enriched SoftwareApplication schema (`featureList`/`image`/`offerCount`), "What is OpenSeat?"/"How much does it cost?" FAQ entries, and explicit robots.txt allows for GPTBot/PerplexityBot/ClaudeBot/Google-Extended/etc.
   - **SEO/GEO (round 2 — prerendering):** added build-time static prerendering (SSG). `entry-server.tsx` renders the app via `renderToString`; build runs `vite build` + `vite build --ssr` + `scripts/prerender.mjs`, which injects the rendered HTML into `dist/index.html`'s `#root`. `main.tsx` hydrates when markup is present, else client-renders (dev). Made the app hydration-safe (read `?lang` in an effect; compute the demo `today` date client-side). The full Hebrew (canonical) page is now in the raw HTML; English `<noscript>` + English schema cover English AI queries. Added WebSite, WebPage (datePublished/dateModified), HowTo (4-step loop), and Product (₪299/₪499/₪799) schema. Verified zero hydration console errors via Playwright; Vercel runs the app build script directly so the prerender runs on deploy.
 
+## 2026-06-16 (Data-access seam — repository layer, Phase 3 complete)
+
+Implemented the **data-access seam** from the `data-access-seam` OpenSpec change: a repository layer between API services and Drizzle that centralizes tenant scoping, makes services unit-testable, and is the prerequisite for transactions (#2) and centralized scoping (#5).
+
+### Shipped (one PR per service / cluster, all merged, CI green)
+- **Seam + reference**: `repositories/types.ts` (`Executor = DB | DbTransaction`), `table` (#29)
+- **Core flow**: `guest` (#30), `reservation` (#31), `waitlist` (#33)
+- **Loyalty/visit**: `visit` (#34), `loyalty` (#35) — idempotency/points filters preserved 1:1
+- **Gamification**: `achievement`+`reward-claims` (#36), `challenge` (#37), `referral`+`gamification-share`+`leaderboard` (#40)
+- **Automation/messaging**: `campaign` (#38), `engagement` (#39), `feedback`+`outbound-message` (#41)
+- **Membership/reporting**: `membership-summary`+`membership-processing` (#42), `summary`+`analytics` (#43)
+
+### Impact
+- **20 services** migrated behind **~18 repositories**; services no longer import the `db` singleton.
+- Inline `eq(table.restaurantId, …)` tenant filters: **86 → ~0 in migrated services** (centralized in repositories).
+- First-ever **API unit tests** (~76) — services tested with mocked repositories, no PostgreSQL. Vitest wired into `@openseat/api`.
+- Repository conventions documented in `CONVENTIONS.md` §6a.
+
+### Deliberately not migrated (low seam value)
+- `diagnostics.service.ts` (2294 lines, ~30 raw `db.execute(sql)` health probes — infrastructure diagnostics, no tenant-scoped writes), `agent-tools.ts`, and the dead `agent.service.ts`. These legitimately keep `db` access.
+
+### Next (await direction — behavior-changing / opinionated)
+- **#2 Transactions** (OpenSpec group 4): wrap a multi-write flow (e.g. visit completion) in `db.transaction`, threading `tx` through repos. The executor seam already supports this. **Behavior-changing — review before merge.**
+- **Centralized scoping (#5)** and the **CI guard** forbidding `import db` in services (group 5.2): must exempt diagnostics/agent-tools.
+
 ## 2026-06-16 (Marketing brand bundle applied)
 
 ### Shipped

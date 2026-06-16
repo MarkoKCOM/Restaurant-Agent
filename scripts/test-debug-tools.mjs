@@ -1076,6 +1076,8 @@ const gamificationRoutes = await readFile("apps/api/src/routes/gamification.ts",
 const apiReliabilitySmoke = await readFile("scripts/api-reliability-smoke.mjs", "utf8");
 const outboundMessageService = await readFile("apps/api/src/services/outbound-message.service.ts", "utf8");
 const summaryService = await readFile("apps/api/src/services/summary.service.ts", "utf8");
+const engagementJobRepository = await readFile("apps/api/src/repositories/engagement-job.repository.ts", "utf8");
+const outboundMessageRepository = await readFile("apps/api/src/repositories/outbound-message.repository.ts", "utf8");
 const debugTokenHelpers = await readFile("scripts/lib/debug-token.mjs", "utf8");
 const debugErrorHelpers = await readFile("scripts/lib/debug-errors.mjs", "utf8");
 const rootPackageJson = await readFile("package.json", "utf8");
@@ -1201,9 +1203,14 @@ for (const requiredOutboundServiceContent of [
   "deliveryMode",
   "deliverySkipped",
   "status: missingRequiredRecipient ? \"skipped\" : \"logged\"",
-  "case when ${outboundMessages.errorCode} is not null or ${outboundMessages.status} in ('failed', 'skipped') then 0 else 1 end",
 ]) {
   assertIncludes(outboundMessageService, requiredOutboundServiceContent);
+}
+
+for (const requiredOutboundRepositoryContent of [
+  "case when ${outboundMessages.errorCode} is not null or ${outboundMessages.status} in ('failed', 'skipped') then 0 else 1 end",
+]) {
+  assertIncludes(outboundMessageRepository, requiredOutboundRepositoryContent);
 }
 
 for (const requiredSummaryServiceContent of [
@@ -1304,7 +1311,7 @@ for (const requiredBirthdayWeekDebugContent of [
   "targetGuestId",
   "createdChallengeSamples",
   "skippedExistingSamples",
-  "eq(guests.id, options.guestId)",
+  "guestRepository.findById(options.guestId)",
   "result.createdChallengeSamples.push({ guestId: guest.id, challengeId: created.id })",
   "result.skippedExistingSamples.push({ guestId: guest.id, challengeId: existing.id })",
 ]) {
@@ -1452,7 +1459,7 @@ assertNotIncludes(engagementRoutes, "if (accessError) return accessError;");
 
 for (const requiredEngagementServiceContent of [
   "limit?: number",
-  "query.limit(Math.min(Math.max(params.limit, 1), 200))",
+  "engagementJobRepository.list(params)",
   "ENGAGEMENT_JOB_SCHEDULE",
   "ENGAGEMENT_JOB_QUEUE_ENQUEUE_FAILED",
   "queue_enqueue_failed",
@@ -1464,6 +1471,12 @@ for (const requiredEngagementServiceContent of [
   "reservationId",
 ]) {
   assertIncludes(engagementService, requiredEngagementServiceContent);
+}
+
+for (const requiredEngagementJobRepositoryContent of [
+  "query.limit(Math.min(Math.max(params.limit, 1), 200))",
+]) {
+  assertIncludes(engagementJobRepository, requiredEngagementJobRepositoryContent);
 }
 
 for (const requiredDashboardDebugContent of [

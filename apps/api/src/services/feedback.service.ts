@@ -1,7 +1,6 @@
 import type { FastifyBaseLogger } from "fastify";
-import { and, eq, desc, gte, lte, sql } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { visitLogs, guests } from "../db/schema.js";
+import { visitRepository, type VisitLogRow } from "../repositories/visit.repository.js";
+import { guestRepository } from "../repositories/guest.repository.js";
 import { env } from "../env.js";
 import {
   routeNegativeFeedbackForRecovery,
@@ -49,7 +48,7 @@ export interface ReviewRoutingResult {
 }
 
 export interface SubmitFeedbackResult {
-  visit: typeof visitLogs.$inferSelect;
+  visit: VisitLogRow;
   reviewRouting: ReviewRoutingResult;
 }
 
@@ -296,17 +295,7 @@ export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitF
   // Check if a visit log already exists for this reservation
   let existingVisit = null;
   if (data.reservationId) {
-    const [found] = await db
-      .select()
-      .from(visitLogs)
-      .where(
-        and(
-          eq(visitLogs.guestId, data.guestId),
-          eq(visitLogs.reservationId, data.reservationId),
-        ),
-      )
-      .limit(1);
-    existingVisit = found ?? null;
+    existingVisit = await visitRepository.findByGuestReservation(data.guestId, data.reservationId);
   }
 
   const sentimentAnalysis = await analyzeFeedbackSentiment({
@@ -319,42 +308,29 @@ export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitF
   let visit;
   if (existingVisit) {
     // Update existing visit log
-    const [updated] = await db
-      .update(visitLogs)
-      .set({
-        rating: data.rating,
-        feedback: data.feedback ?? existingVisit.feedback,
-        sentiment,
-        channel: data.channel,
-      })
-      .where(eq(visitLogs.id, existingVisit.id))
-      .returning();
-    visit = updated;
+    visit = await visitRepository.updateById(existingVisit.id, {
+      rating: data.rating,
+      feedback: data.feedback ?? existingVisit.feedback,
+      sentiment,
+      channel: data.channel,
+    });
   } else {
     // Create new visit log with just feedback
     const today = new Date().toISOString().split("T")[0]!;
-    const [created] = await db
-      .insert(visitLogs)
-      .values({
-        restaurantId: data.restaurantId,
-        guestId: data.guestId,
-        reservationId: data.reservationId ?? null,
-        date: today,
-        rating: data.rating,
-        feedback: data.feedback ?? null,
-        sentiment,
-        channel: data.channel,
-      })
-      .returning();
-    visit = created;
+    visit = await visitRepository.insert({
+      restaurantId: data.restaurantId,
+      guestId: data.guestId,
+      reservationId: data.reservationId ?? null,
+      date: today,
+      rating: data.rating,
+      feedback: data.feedback ?? null,
+      sentiment,
+      channel: data.channel,
+    });
   }
 
   // Auto-tag guest based on analyzed sentiment
-  const [guest] = await db
-    .select()
-    .from(guests)
-    .where(eq(guests.id, data.guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(data.guestId);
 
   if (guest) {
     const currentTags = (guest.tags as string[] | null) ?? [];
@@ -404,10 +380,7 @@ export async function submitFeedback(data: SubmitFeedbackInput, options: SubmitF
       tagSet.add("neutral_feedback");
     }
 
-    await db
-      .update(guests)
-      .set({ tags: Array.from(tagSet), updatedAt: new Date() })
-      .where(eq(guests.id, data.guestId));
+    await guestRepository.updateById(data.guestId, { tags: Array.from(tagSet), updatedAt: new Date() });
   }
 
   let reviewRouting: ReviewRoutingResult;
@@ -491,17 +464,12 @@ export async function getFeedbackSummary(
   restaurantId: string,
   dateRange?: { from?: string; to?: string },
 ): Promise<FeedbackSummary> {
-  // Build conditions
-  const conditions = [eq(visitLogs.restaurantId, restaurantId)];
-  if (dateRange?.from) conditions.push(gte(visitLogs.date, dateRange.from));
-  if (dateRange?.to) conditions.push(lte(visitLogs.date, dateRange.to));
-
   // Get all visits with feedback/rating for this restaurant
-  const visits = await db
-    .select()
-    .from(visitLogs)
-    .where(and(...conditions))
-    .orderBy(desc(visitLogs.date));
+  const visits = await visitRepository.listByRestaurantInDateRange(
+    restaurantId,
+    dateRange?.from,
+    dateRange?.to,
+  );
 
   const withRating = visits.filter((v) => v.rating != null);
   const averageRating =
@@ -540,18 +508,7 @@ export async function getFeedbackSummary(
 }
 
 export async function getGuestSentimentHistory(guestId: string) {
-  const visits = await db
-    .select({
-      date: visitLogs.date,
-      rating: visitLogs.rating,
-      feedback: visitLogs.feedback,
-      sentiment: visitLogs.sentiment,
-    })
-    .from(visitLogs)
-    .where(
-      and(eq(visitLogs.guestId, guestId), sql`${visitLogs.rating} IS NOT NULL`),
-    )
-    .orderBy(desc(visitLogs.date));
+  const visits = await visitRepository.listRatedByGuest(guestId);
 
   return visits;
 }

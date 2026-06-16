@@ -1,17 +1,11 @@
-import { and, eq, sql } from "drizzle-orm";
-import type { InferSelectModel } from "drizzle-orm";
-import { db } from "../db/index.js";
-import {
-  challenges,
-  challengeProgress,
-  guests,
-  loyaltyTransactions,
-} from "../db/schema.js";
 import { awardPoints } from "./loyalty.service.js";
 import { scheduleChallengeCompletion, scheduleStreakBrokenRecovery } from "./engagement.service.js";
+import { challengeRepository } from "../repositories/challenge.repository.js";
+import { guestRepository } from "../repositories/guest.repository.js";
+import { loyaltyTransactionRepository } from "../repositories/loyalty-transaction.repository.js";
 
-export type ChallengeRow = InferSelectModel<typeof challenges>;
-export type ChallengeProgressRow = InferSelectModel<typeof challengeProgress>;
+export type { ChallengeRow, ChallengeProgressRow } from "../repositories/challenge.repository.js";
+import type { ChallengeRow, ChallengeProgressRow } from "../repositories/challenge.repository.js";
 
 // ── Streak helpers ────────────────────────────────────────
 
@@ -78,27 +72,18 @@ export interface CreateChallengeInput {
 export async function createChallenge(
   data: CreateChallengeInput,
 ): Promise<ChallengeRow> {
-  const [created] = await db
-    .insert(challenges)
-    .values({
-      restaurantId: data.restaurantId,
-      name: data.name,
-      description: data.description ?? null,
-      type: data.type,
-      targetValue: data.target,
-      rewardPoints: data.reward,
-      startDate: data.startDate ?? null,
-      endDate: data.endDate ?? null,
-      metadata: data.metadata ?? null,
-      isActive: true,
-    })
-    .returning();
-
-  if (!created) {
-    throw new Error("Failed to create challenge");
-  }
-
-  return created;
+  return challengeRepository.insert({
+    restaurantId: data.restaurantId,
+    name: data.name,
+    description: data.description ?? null,
+    type: data.type,
+    targetValue: data.target,
+    rewardPoints: data.reward,
+    startDate: data.startDate ?? null,
+    endDate: data.endDate ?? null,
+    metadata: data.metadata ?? null,
+    isActive: true,
+  });
 }
 
 export async function listActiveChallenges(
@@ -106,28 +91,11 @@ export async function listActiveChallenges(
 ): Promise<ChallengeRow[]> {
   const today = formatJerusalemDate(new Date());
 
-  return db
-    .select()
-    .from(challenges)
-    .where(
-      and(
-        eq(challenges.restaurantId, restaurantId),
-        eq(challenges.isActive, true),
-        // Date bounds are optional. When present, the challenge is active only inside the launch window.
-        sql`(${challenges.startDate} IS NULL OR ${challenges.startDate} <= ${today})`,
-        sql`(${challenges.endDate} IS NULL OR ${challenges.endDate} >= ${today})`,
-      ),
-    );
+  return challengeRepository.listActive(restaurantId, today);
 }
 
 export async function getChallengeById(challengeId: string): Promise<ChallengeRow | null> {
-  const [challenge] = await db
-    .select()
-    .from(challenges)
-    .where(eq(challenges.id, challengeId))
-    .limit(1);
-
-  return challenge ?? null;
+  return challengeRepository.findById(challengeId);
 }
 
 export async function updateChallenge(
@@ -145,50 +113,29 @@ export async function updateChallenge(
     isActive?: boolean;
   },
 ): Promise<ChallengeRow | null> {
-  const [existing] = await db
-    .select()
-    .from(challenges)
-    .where(and(eq(challenges.id, challengeId), eq(challenges.restaurantId, restaurantId)))
-    .limit(1);
+  const existing = await challengeRepository.findByIdInRestaurant(challengeId, restaurantId);
 
   if (!existing) return null;
   if (Object.keys(data).length === 0) return existing;
 
-  const [updated] = await db
-    .update(challenges)
-    .set({
-      ...(data.name !== undefined ? { name: data.name } : {}),
-      ...(data.description !== undefined ? { description: data.description } : {}),
-      ...(data.type !== undefined ? { type: data.type } : {}),
-      ...(data.target !== undefined ? { targetValue: data.target } : {}),
-      ...(data.reward !== undefined ? { rewardPoints: data.reward } : {}),
-      ...(data.startDate !== undefined ? { startDate: data.startDate } : {}),
-      ...(data.endDate !== undefined ? { endDate: data.endDate } : {}),
-      ...(data.metadata !== undefined ? { metadata: data.metadata } : {}),
-      ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
-    })
-    .where(and(eq(challenges.id, challengeId), eq(challenges.restaurantId, restaurantId)))
-    .returning();
-
-  return updated ?? null;
+  return challengeRepository.updateInRestaurant(challengeId, restaurantId, {
+    ...(data.name !== undefined ? { name: data.name } : {}),
+    ...(data.description !== undefined ? { description: data.description } : {}),
+    ...(data.type !== undefined ? { type: data.type } : {}),
+    ...(data.target !== undefined ? { targetValue: data.target } : {}),
+    ...(data.reward !== undefined ? { rewardPoints: data.reward } : {}),
+    ...(data.startDate !== undefined ? { startDate: data.startDate } : {}),
+    ...(data.endDate !== undefined ? { endDate: data.endDate } : {}),
+    ...(data.metadata !== undefined ? { metadata: data.metadata } : {}),
+    ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+  });
 }
 
 export async function getGuestChallengeProgress(
   guestId: string,
   challengeId: string,
 ): Promise<ChallengeProgressRow | null> {
-  const [row] = await db
-    .select()
-    .from(challengeProgress)
-    .where(
-      and(
-        eq(challengeProgress.guestId, guestId),
-        eq(challengeProgress.challengeId, challengeId),
-      ),
-    )
-    .limit(1);
-
-  return row ?? null;
+  return challengeRepository.findProgress(guestId, challengeId);
 }
 
 export async function incrementChallengeProgress(
@@ -202,11 +149,7 @@ export async function incrementChallengeProgress(
   completionJobId: string | null;
 }> {
   // Get the challenge
-  const [challenge] = await db
-    .select()
-    .from(challenges)
-    .where(eq(challenges.id, challengeId))
-    .limit(1);
+  const challenge = await challengeRepository.findById(challengeId);
 
   if (!challenge) {
     throw new Error("Challenge not found");
@@ -216,17 +159,12 @@ export async function incrementChallengeProgress(
   let progress = await getGuestChallengeProgress(guestId, challengeId);
 
   if (!progress) {
-    const [created] = await db
-      .insert(challengeProgress)
-      .values({
-        challengeId,
-        guestId,
-        currentValue: 0,
-        status: "in_progress",
-      })
-      .returning();
-
-    progress = created!;
+    progress = await challengeRepository.insertProgress({
+      challengeId,
+      guestId,
+      currentValue: 0,
+      status: "in_progress",
+    });
   }
 
   // Already completed
@@ -244,25 +182,17 @@ export async function incrementChallengeProgress(
   const newValue = progress.currentValue + 1;
   const completed = newValue >= challenge.targetValue;
 
-  const [updated] = await db
-    .update(challengeProgress)
-    .set({
-      currentValue: newValue,
-      status: completed ? "completed" : "in_progress",
-      completedAt: completed ? new Date() : null,
-    })
-    .where(eq(challengeProgress.id, progress.id))
-    .returning();
+  await challengeRepository.updateProgressById(progress.id, {
+    currentValue: newValue,
+    status: completed ? "completed" : "in_progress",
+    completedAt: completed ? new Date() : null,
+  });
 
   // Award points on completion
   let completionJobId: string | null = null;
   if (completed) {
     // Get guest to find restaurantId
-    const [guest] = await db
-      .select()
-      .from(guests)
-      .where(eq(guests.id, guestId))
-      .limit(1);
+    const guest = await guestRepository.findById(guestId);
 
     if (guest) {
       await awardPoints(
@@ -311,18 +241,11 @@ export async function autoProgressVisitCountChallenges(
   restaurantId: string,
 ): Promise<Array<{ challengeId: string; completed: boolean; progress: number; target: number }>> {
   const today = formatJerusalemDate(new Date());
-  const activeChallenges = await db
-    .select({ id: challenges.id, type: challenges.type, metadata: challenges.metadata })
-    .from(challenges)
-    .where(
-      and(
-        eq(challenges.restaurantId, restaurantId),
-        eq(challenges.isActive, true),
-        sql`${challenges.type} in ('visit_count', 'birthday_week')`,
-        sql`(${challenges.startDate} IS NULL OR ${challenges.startDate} <= ${today})`,
-        sql`(${challenges.endDate} IS NULL OR ${challenges.endDate} >= ${today})`,
-      ),
-    );
+  const activeChallenges = await challengeRepository.listActiveByTypes(
+    restaurantId,
+    today,
+    ["visit_count", "birthday_week"],
+  );
 
   const results: Array<{ challengeId: string; completed: boolean; progress: number; target: number }> = [];
 
@@ -417,21 +340,11 @@ async function findBirthdayWeekChallenge(params: {
   guestId: string;
   occurrenceYear: number;
 }): Promise<ChallengeRow | null> {
-  const [existing] = await db
-    .select()
-    .from(challenges)
-    .where(
-      and(
-        eq(challenges.restaurantId, params.restaurantId),
-        eq(challenges.type, "birthday_week"),
-        sql`${challenges.metadata} ->> 'source' = 'birthday_week'`,
-        sql`${challenges.metadata} ->> 'guestId' = ${params.guestId}`,
-        sql`(${challenges.metadata} ->> 'occurrenceYear')::int = ${params.occurrenceYear}`,
-      ),
-    )
-    .limit(1);
-
-  return existing ?? null;
+  return challengeRepository.findBirthdayWeek(
+    params.restaurantId,
+    params.guestId,
+    params.occurrenceYear,
+  );
 }
 
 export async function checkBirthdayWeekChallenges(
@@ -448,14 +361,13 @@ export async function checkBirthdayWeekChallenges(
     skippedExistingSamples: [],
   };
 
-  const restaurantGuests = await db
-    .select()
-    .from(guests)
-    .where(
-      options.guestId
-        ? and(eq(guests.restaurantId, restaurantId), eq(guests.id, options.guestId))
-        : eq(guests.restaurantId, restaurantId),
-    );
+  let restaurantGuests;
+  if (options.guestId) {
+    const targetGuest = await guestRepository.findById(options.guestId);
+    restaurantGuests = targetGuest && targetGuest.restaurantId === restaurantId ? [targetGuest] : [];
+  } else {
+    restaurantGuests = await guestRepository.listByRestaurant(restaurantId);
+  }
 
   for (const guest of restaurantGuests) {
     const prefs = parsePreferences(guest.preferences);
@@ -522,11 +434,7 @@ export async function updateStreak(
   restaurantId: string,
   options: StreakUpdateOptions = {},
 ): Promise<StreakUpdateResult> {
-  const [guest] = await db
-    .select()
-    .from(guests)
-    .where(eq(guests.id, guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(guestId);
 
   if (!guest) {
     throw new Error("Guest not found");
@@ -580,13 +488,10 @@ export async function updateStreak(
   const prefs = parsePreferences(guest.preferences);
   prefs.streak = newStreak;
 
-  await db
-    .update(guests)
-    .set({
-      preferences: prefs,
-      updatedAt: new Date(),
-    })
-    .where(eq(guests.id, guestId));
+  await guestRepository.updateById(guestId, {
+    preferences: prefs,
+    updatedAt: new Date(),
+  });
 
   const milestoneReached = STREAK_MILESTONES.includes(newCurrent) ? newCurrent : null;
   const bonusPointsAwarded = await maybeAwardStreakMilestoneBonus({
@@ -614,19 +519,12 @@ async function getVisitCompletionPoints(params: {
   restaurantId: string;
   reservationId: string;
 }): Promise<number | null> {
-  const [transaction] = await db
-    .select({ points: loyaltyTransactions.points })
-    .from(loyaltyTransactions)
-    .where(
-      and(
-        eq(loyaltyTransactions.guestId, params.guestId),
-        eq(loyaltyTransactions.restaurantId, params.restaurantId),
-        eq(loyaltyTransactions.reservationId, params.reservationId),
-        eq(loyaltyTransactions.type, "earn"),
-        eq(loyaltyTransactions.reason, "visit_completion"),
-      ),
-    )
-    .limit(1);
+  const transaction = await loyaltyTransactionRepository.findEarnByReason(
+    params.guestId,
+    params.restaurantId,
+    params.reservationId,
+    "visit_completion",
+  );
 
   return transaction?.points ?? null;
 }
@@ -641,18 +539,11 @@ async function maybeAwardStreakMilestoneBonus(params: {
   if (!STREAK_MILESTONES.includes(params.milestone)) return 0;
 
   const reason = `streak_milestone:${params.milestone}`;
-  const duplicateConditions = [
-    eq(loyaltyTransactions.guestId, params.guestId),
-    eq(loyaltyTransactions.restaurantId, params.restaurantId),
-    eq(loyaltyTransactions.type, "earn"),
-    eq(loyaltyTransactions.reason, reason),
-  ];
-
-  const [existingBonus] = await db
-    .select({ points: loyaltyTransactions.points })
-    .from(loyaltyTransactions)
-    .where(and(...duplicateConditions))
-    .limit(1);
+  const existingBonus = await loyaltyTransactionRepository.findEarnByReasonForGuest(
+    params.guestId,
+    params.restaurantId,
+    reason,
+  );
 
   if (existingBonus) return 0;
 
@@ -683,11 +574,7 @@ async function maybeAwardStreakMilestoneBonus(params: {
 export async function getStreak(
   guestId: string,
 ): Promise<StreakData> {
-  const [guest] = await db
-    .select({ preferences: guests.preferences })
-    .from(guests)
-    .where(eq(guests.id, guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(guestId);
 
   if (!guest) {
     throw new Error("Guest not found");

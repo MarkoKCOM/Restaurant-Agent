@@ -14,7 +14,15 @@ const createTableSchema = selfServeSignupTableBaseSchema.extend({
   restaurantId: z.string().uuid(),
   combinableWith: z.array(z.string().uuid()).optional(),
 }).superRefine((table, ctx) => {
-  const result = selfServeSignupTableSchema.safeParse(table);
+  // Validate only the seat fields against the shared (strict) table schema.
+  // Passing the full object would trip its `.strict()` mode on restaurantId /
+  // combinableWith and reject otherwise-valid create requests.
+  const result = selfServeSignupTableSchema.safeParse({
+    name: table.name,
+    minSeats: table.minSeats,
+    maxSeats: table.maxSeats,
+    zone: table.zone,
+  });
   if (!result.success) {
     for (const issue of result.error.issues) {
       ctx.addIssue(issue);

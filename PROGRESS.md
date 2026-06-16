@@ -1,5 +1,13 @@
 # Progress Log
 
+## 2026-06-16 (Marketing: configurable origin + auto freshness)
+
+### Shipped
+- **PR (origin env)** `feat(marketing): configurable SITE_ORIGIN + build-time freshness` — domain-swap groundwork after the GEO work merged (#32, #44).
+  - `scripts/prerender.mjs` now rewrites every hard-coded `marketing-site-nine-chi.vercel.app` (canonical, og, hreflang, schema, sitemap, robots) to `process.env.SITE_ORIGIN` (defaults to the current vercel URL). **Moving to a real domain = set `SITE_ORIGIN` on the Vercel project + redeploy, no code change.** Verified with `SITE_ORIGIN=https://openseat.co`: zero leftover vercel.app refs.
+  - `WebPage.dateModified` and sitemap `<lastmod>` are stamped to the build date automatically (freshness signal never goes stale).
+- **Human to-do (handed off):** register/point the real domain → set `SITE_ORIGIN`; submit sitemap to Google Search Console + Bing Webmaster; optional GEO citation monitoring once on the branded domain.
+
 ## 2026-06-16 (Marketing per-language prerendering + GEO strategy audit)
 
 ### Shipped

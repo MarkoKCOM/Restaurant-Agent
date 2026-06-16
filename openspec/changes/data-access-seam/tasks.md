@@ -15,7 +15,7 @@
 
 ## 3. Migrate remaining tenant-scoped services (one PR each)
 
-- [ ] 3.1 Migrate `guest.service.ts` → `guest.repository.ts` (+ mocked-repo unit test)
+- [x] 3.1 Migrate `guest.service.ts` → `guest.repository.ts` (+ mocked-repo unit test); seeded `challenge.repository.ts` for the profile read; added a Vitest env-setup so unit tests stay DB-free
 - [ ] 3.2 Migrate `reservation.service.ts` → `reservation.repository.ts` (includes availability reads; + unit test)
 - [ ] 3.3 Migrate `waitlist.service.ts` → `waitlist.repository.ts`
 - [ ] 3.4 Migrate the visit/loyalty cluster: `visit.service.ts`, `loyalty.service.ts` → `visit.repository.ts`, `loyalty.repository.ts` (+ membership-summary/membership-processing reads)

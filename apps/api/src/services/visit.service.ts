@@ -1,7 +1,7 @@
-import { and, eq, desc, sql, gte, lte } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { visitLogs, guests, reservations } from "../db/schema.js";
 import { applyVisitAchievements } from "./achievement.service.js";
+import { visitRepository } from "../repositories/visit.repository.js";
+import { guestRepository, type GuestUpdate } from "../repositories/guest.repository.js";
+import { reservationRepository } from "../repositories/reservation.repository.js";
 
 // ── Types ─────────────────────────────────────────────
 
@@ -158,34 +158,27 @@ function applyMenuExplorationBadges(
 // ── Core Functions ────────────────────────────────────
 
 export async function logVisit(data: LogVisitInput) {
-  const [visit] = await db
-    .insert(visitLogs)
-    .values({
-      restaurantId: data.restaurantId,
-      guestId: data.guestId,
-      reservationId: data.reservationId ?? null,
-      date: data.date,
-      partySize: data.partySize ?? null,
-      items: data.items ?? null,
-      totalSpend: data.totalSpend ?? null,
-      feedback: data.feedback ?? null,
-      rating: data.rating ?? null,
-      sentiment: data.sentiment ?? null,
-      staffNotes: data.staffNotes ?? null,
-      occasion: data.occasion ?? null,
-      dietaryNotes: data.dietaryNotes ?? null,
-      channel: data.channel ?? null,
-    })
-    .returning();
+  const visit = await visitRepository.insert({
+    restaurantId: data.restaurantId,
+    guestId: data.guestId,
+    reservationId: data.reservationId ?? null,
+    date: data.date,
+    partySize: data.partySize ?? null,
+    items: data.items ?? null,
+    totalSpend: data.totalSpend ?? null,
+    feedback: data.feedback ?? null,
+    rating: data.rating ?? null,
+    sentiment: data.sentiment ?? null,
+    staffNotes: data.staffNotes ?? null,
+    occasion: data.occasion ?? null,
+    dietaryNotes: data.dietaryNotes ?? null,
+    channel: data.channel ?? null,
+  });
 
   if (!visit) throw new Error("Failed to create visit log");
 
   // Update guest visit count and last visit date
-  const [guest] = await db
-    .select()
-    .from(guests)
-    .where(eq(guests.id, data.guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(data.guestId);
 
   if (guest) {
     const newVisitCount = guest.visitCount + 1;
@@ -194,7 +187,7 @@ export async function logVisit(data: LogVisitInput) {
       visitCount: newVisitCount,
       items: data.items ?? [],
     });
-    const updates: Record<string, unknown> = {
+    const updates: GuestUpdate = {
       visitCount: newVisitCount,
       lastVisitDate: data.date,
       updatedAt: new Date(),
@@ -205,34 +198,21 @@ export async function logVisit(data: LogVisitInput) {
     if (!guest.firstVisitDate) {
       updates.firstVisitDate = data.date;
     }
-    await db.update(guests).set(updates).where(eq(guests.id, data.guestId));
+    await guestRepository.updateById(data.guestId, updates);
   }
 
   return visit;
 }
 
 export async function getVisitHistory(guestId: string, limit = 20) {
-  return db
-    .select()
-    .from(visitLogs)
-    .where(eq(visitLogs.guestId, guestId))
-    .orderBy(desc(visitLogs.date))
-    .limit(limit);
+  return visitRepository.findByGuest(guestId, { limit });
 }
 
 export async function getGuestInsights(guestId: string): Promise<GuestInsights> {
-  const visits = await db
-    .select()
-    .from(visitLogs)
-    .where(eq(visitLogs.guestId, guestId))
-    .orderBy(desc(visitLogs.date));
+  const visits = await visitRepository.findByGuest(guestId);
 
   // Also pull reservation data for time/day preferences
-  const guestReservations = await db
-    .select()
-    .from(reservations)
-    .where(eq(reservations.guestId, guestId))
-    .orderBy(desc(reservations.date));
+  const guestReservations = await reservationRepository.findByGuest(guestId);
 
   const totalSpend = visits.reduce((sum, v) => sum + (v.totalSpend ?? 0), 0);
   const totalVisits = visits.length;
@@ -355,16 +335,9 @@ export async function getGuestInsights(guestId: string): Promise<GuestInsights> 
 }
 
 export async function getGuestDietaryProfile(guestId: string) {
-  const [guest] = await db
-    .select()
-    .from(guests)
-    .where(eq(guests.id, guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(guestId);
 
-  const visits = await db
-    .select()
-    .from(visitLogs)
-    .where(eq(visitLogs.guestId, guestId));
+  const visits = await visitRepository.findByGuest(guestId);
 
   // Merge from visits
   const merged: {
@@ -414,11 +387,7 @@ export async function updateGuestPreferencesFromVisits(guestId: string) {
   const preferences: Record<string, unknown> = {};
 
   // Merge existing preferences
-  const [guest] = await db
-    .select()
-    .from(guests)
-    .where(eq(guests.id, guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(guestId);
 
   if (guest?.preferences) {
     Object.assign(preferences, guest.preferences as Record<string, unknown>);
@@ -444,10 +413,7 @@ export async function updateGuestPreferencesFromVisits(guestId: string) {
     preferences.partyPreference = insights.partyPreference;
   }
 
-  await db
-    .update(guests)
-    .set({ preferences, updatedAt: new Date() })
-    .where(eq(guests.id, guestId));
+  await guestRepository.updateById(guestId, { preferences, updatedAt: new Date() });
 
   return preferences;
 }

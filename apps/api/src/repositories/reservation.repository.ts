@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel, SQL } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { reservations } from "../db/schema.js";
@@ -50,6 +50,15 @@ export const reservationRepository = {
       .from(reservations)
       .where(where)
       .orderBy(reservations.date, reservations.timeStart);
+  },
+
+  /** By global guest UUID: a guest's reservations, newest-first. */
+  findByGuest(guestId: string, executor: Executor = db): Promise<ReservationRow[]> {
+    return executor
+      .select()
+      .from(reservations)
+      .where(eq(reservations.guestId, guestId))
+      .orderBy(desc(reservations.date));
   },
 
   /** By global reservation UUID. */

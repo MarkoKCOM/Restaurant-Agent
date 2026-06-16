@@ -11,7 +11,7 @@
 - [x] 2.2 Switch `apps/api/src/services/table.service.ts` to use `tableRepository`; delete the now-dead inline `eq(tables.restaurantId, ...)` filters and the direct `db` import
 - [x] 2.3 Add a Vitest unit test for `table.service.ts` using a mocked `tableRepository` (no DB connection) — wired Vitest into the API package (config + `test` script + build excludes `*.test.ts`)
 - [x] 2.4 Confirm unit tests + CI-equivalent checks pass; no route response shape changed (smoke runs against the live/old service, so deferred to post-deploy — refactor is behavior-preserving)
-- [ ] 2.5 Open PR for the reference migration; review and lock the pattern before fanning out
+- [x] 2.5 Open PR for the reference migration (#29); review and lock the pattern before fanning out
 
 ## 3. Migrate remaining tenant-scoped services (one PR each)
 

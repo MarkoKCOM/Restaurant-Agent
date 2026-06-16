@@ -1,14 +1,10 @@
-import { and, eq, gte, lte } from "drizzle-orm";
-import { db } from "../db/index.js";
-import {
-  campaigns,
-  guests,
-  loyaltyTransactions,
-  reservations,
-  rewardClaims,
-  tables,
-  visitLogs,
-} from "../db/schema.js";
+import { reservationRepository } from "../repositories/reservation.repository.js";
+import { tableRepository } from "../repositories/table.repository.js";
+import { guestRepository } from "../repositories/guest.repository.js";
+import { visitRepository } from "../repositories/visit.repository.js";
+import { loyaltyTransactionRepository } from "../repositories/loyalty-transaction.repository.js";
+import { rewardClaimRepository } from "../repositories/reward-claim.repository.js";
+import { campaignRepository } from "../repositories/campaign.repository.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_LOOKBACK_DAYS = 90;
@@ -143,8 +139,8 @@ export async function getReservationAnalytics(params: {
   const period = resolveAnalyticsPeriod(params);
   const previous = previousPeriod(period);
   const [reservationRows, tableRows] = await Promise.all([
-    db.select().from(reservations).where(eq(reservations.restaurantId, params.restaurantId)),
-    db.select().from(tables).where(eq(tables.restaurantId, params.restaurantId)),
+    reservationRepository.list({ restaurantId: params.restaurantId }),
+    tableRepository.findByRestaurant(params.restaurantId, { includeInactive: true }),
   ]);
   const activeSeatCapacity = tableRows
     .filter((table) => table.isActive)
@@ -221,8 +217,8 @@ export async function getRetentionAnalytics(params: {
   const period = resolveAnalyticsPeriod(params);
   const previous = previousPeriod(period);
   const [guestRows, visitRows] = await Promise.all([
-    db.select().from(guests).where(eq(guests.restaurantId, params.restaurantId)),
-    db.select().from(visitLogs).where(eq(visitLogs.restaurantId, params.restaurantId)),
+    guestRepository.listByRestaurant(params.restaurantId),
+    visitRepository.findByRestaurant(params.restaurantId),
   ]);
 
   function summarize(targetPeriod: AnalyticsPeriod) {
@@ -310,27 +306,9 @@ export async function getLoyaltyAnalytics(params: {
   const fromDate = dateKeyToUtc(period.from);
   const toDate = new Date(`${period.to}T23:59:59.999Z`);
   const [guestRows, transactionRows, claimRows] = await Promise.all([
-    db.select().from(guests).where(eq(guests.restaurantId, params.restaurantId)),
-    db
-      .select()
-      .from(loyaltyTransactions)
-      .where(
-        and(
-          eq(loyaltyTransactions.restaurantId, params.restaurantId),
-          gte(loyaltyTransactions.createdAt, fromDate),
-          lte(loyaltyTransactions.createdAt, toDate),
-        ),
-      ),
-    db
-      .select()
-      .from(rewardClaims)
-      .where(
-        and(
-          eq(rewardClaims.restaurantId, params.restaurantId),
-          gte(rewardClaims.claimedAt, fromDate),
-          lte(rewardClaims.claimedAt, toDate),
-        ),
-      ),
+    guestRepository.listByRestaurant(params.restaurantId),
+    loyaltyTransactionRepository.listByRestaurantInRange(params.restaurantId, fromDate, toDate),
+    rewardClaimRepository.listByRestaurantInRange(params.restaurantId, fromDate, toDate),
   ]);
 
   const pointsIssued = sum(transactionRows.filter((tx) => tx.points > 0).map((tx) => tx.points));
@@ -367,8 +345,8 @@ export async function getClvAnalytics(params: {
   const period = resolveAnalyticsPeriod(params);
   const topLimit = Math.max(1, Math.min(params.topLimit ?? 10, 50));
   const [guestRows, visitRows] = await Promise.all([
-    db.select().from(guests).where(eq(guests.restaurantId, params.restaurantId)),
-    db.select().from(visitLogs).where(eq(visitLogs.restaurantId, params.restaurantId)),
+    guestRepository.listByRestaurant(params.restaurantId),
+    visitRepository.findByRestaurant(params.restaurantId),
   ]);
 
   const visitsByGuest = new Map<string, typeof visitRows>();
@@ -466,18 +444,10 @@ export async function getCampaignRoiAnalytics(params: {
   const costPerMessage = Math.max(0, params.costPerMessage ?? DEFAULT_CAMPAIGN_COST_PER_MESSAGE);
   const fromDate = dateKeyToUtc(period.from);
   const toDate = new Date(`${period.to}T23:59:59.999Z`);
-  const campaignWhere = params.campaignId
-    ? and(eq(campaigns.restaurantId, params.restaurantId), eq(campaigns.id, params.campaignId))
-    : and(
-      eq(campaigns.restaurantId, params.restaurantId),
-      gte(campaigns.createdAt, fromDate),
-      lte(campaigns.createdAt, toDate),
-    );
-
   const [campaignRows, reservationRows, visitRows] = await Promise.all([
-    db.select().from(campaigns).where(campaignWhere),
-    db.select().from(reservations).where(eq(reservations.restaurantId, params.restaurantId)),
-    db.select().from(visitLogs).where(eq(visitLogs.restaurantId, params.restaurantId)),
+    campaignRepository.listForAnalytics(params.restaurantId, { campaignId: params.campaignId, from: fromDate, to: toDate }),
+    reservationRepository.list({ restaurantId: params.restaurantId }),
+    visitRepository.findByRestaurant(params.restaurantId),
   ]);
   const spendByReservation = new Map<string, number>();
   for (const visit of visitRows) {

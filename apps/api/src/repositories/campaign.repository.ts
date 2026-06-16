@@ -1,4 +1,4 @@
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, gte, lte, ne } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { campaigns } from "../db/schema.js";
@@ -46,6 +46,25 @@ export const campaignRepository = {
       .select()
       .from(campaigns)
       .where(and(eq(campaigns.restaurantId, restaurantId), ne(campaigns.id, excludeId)));
+  },
+
+  /**
+   * Tenant-scoped analytics selection: a specific campaign by id, or all of a
+   * restaurant's campaigns created within a date range.
+   */
+  listForAnalytics(
+    restaurantId: string,
+    opts: { campaignId?: string; from: Date; to: Date },
+    executor: Executor = db,
+  ): Promise<CampaignRow[]> {
+    const where = opts.campaignId
+      ? and(eq(campaigns.restaurantId, restaurantId), eq(campaigns.id, opts.campaignId))
+      : and(
+          eq(campaigns.restaurantId, restaurantId),
+          gte(campaigns.createdAt, opts.from),
+          lte(campaigns.createdAt, opts.to),
+        );
+    return executor.select().from(campaigns).where(where);
   },
 
   /** By global campaign UUID. Returns the updated row, or null when none matched. */

@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { loyaltyTransactions } from "../db/schema.js";
@@ -36,6 +36,25 @@ export const loyaltyTransactionRepository = {
       .where(eq(loyaltyTransactions.guestId, guestId))
       .orderBy(desc(loyaltyTransactions.createdAt));
     return options.limit != null ? base.limit(options.limit) : base;
+  },
+
+  /** Tenant-scoped: transactions created within a date range (analytics). */
+  listByRestaurantInRange(
+    restaurantId: string,
+    from: Date,
+    to: Date,
+    executor: Executor = db,
+  ): Promise<LoyaltyTransactionRow[]> {
+    return executor
+      .select()
+      .from(loyaltyTransactions)
+      .where(
+        and(
+          eq(loyaltyTransactions.restaurantId, restaurantId),
+          gte(loyaltyTransactions.createdAt, from),
+          lte(loyaltyTransactions.createdAt, to),
+        ),
+      );
   },
 
   /** All transactions for a guest with a specific reason (e.g. referral_bonus totals). */

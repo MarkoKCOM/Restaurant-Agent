@@ -27,7 +27,9 @@
   - [x] `engagement.service.ts` → `engagement-job.repository.ts` (+ guest lapsed-window + visit positive-feedback finders; 4 tests; debug-tools source assertion relocated)
   - [x] `campaign.service.ts` → `campaign.repository.ts` (3 tests)
   - [x] `challenge.service.ts` → extended `challenge.repository.ts` (challenges + challengeProgress; +`loyaltyTransactionRepository.findEarnByReasonForGuest`; 5 tests)
-- [ ] 3.6 Migrate referral/leaderboard/gamification-share/feedback/outbound-message services
+- [~] 3.6 Migrate referral/leaderboard/gamification-share/feedback/outbound-message services
+  - [x] `referral.service.ts` + `gamification-share.service.ts` + `leaderboard.service.ts` (+ guest referral/lapsed finders, `loyaltyTransactionRepository.listByGuestAndReason`, `leaderboard.repository.ts` raw-SQL; 8 tests)
+  - [ ] `feedback.service.ts`, `outbound-message.service.ts`
 - [ ] 3.7 Migrate read-only/reporting services: `analytics.service.ts`, `summary.service.ts`, `diagnostics.service.ts`, `membership-intent-debug.service.ts`
 - [ ] 3.8 Decide + handle non-tenant lookups (`restaurants` by slug, `adminUsers` by email) per the design's open question
 - [ ] 3.9 Confirm worker/cron entry points route through services/repositories, not direct `db`

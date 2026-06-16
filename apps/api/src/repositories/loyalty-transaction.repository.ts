@@ -38,6 +38,18 @@ export const loyaltyTransactionRepository = {
     return options.limit != null ? base.limit(options.limit) : base;
   },
 
+  /** All transactions for a guest with a specific reason (e.g. referral_bonus totals). */
+  listByGuestAndReason(
+    guestId: string,
+    reason: string,
+    executor: Executor = db,
+  ): Promise<LoyaltyTransactionRow[]> {
+    return executor
+      .select()
+      .from(loyaltyTransactions)
+      .where(and(eq(loyaltyTransactions.guestId, guestId), eq(loyaltyTransactions.reason, reason)));
+  },
+
   /** Idempotency: an existing "earn" transaction for this reservation with a specific reason. */
   async findEarnByReason(
     guestId: string,

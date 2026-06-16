@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+    <defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#FBF7F4"></stop>
+        <stop offset="0.6" stop-color="#FEF2F2"></stop>
+        <stop offset="1" stop-color="#FBF7F4"></stop>
+      </linearGradient>
+      <pattern id="grid" width="42" height="42" patternUnits="userSpaceOnUse">
+        <path d="M 42 0 L 0 0 0 42" fill="none" stroke="rgba(26,15,16,.05)" stroke-width="1"></path>
+      </pattern>
+    </defs>
+    <rect width="1200" height="630" fill="url(#bg)"></rect>
+    <rect width="1200" height="630" fill="url(#grid)"></rect>
+    <g transform="translate(96, 200)">
+      <svg x="0" y="0" width="180" height="180" viewBox="0 0 120 120">
+  <rect width="120" height="120" rx="28" fill="#C41E3A"></rect>
+  <g fill="#FBF7F4">
+    <path d="M 39 72 L 39 44 Q 39 30 53 30 L 67 30 Q 81 30 81 44 L 81 72 L 83 72 L 83 76 L 37 76 L 37 72 Z"></path>
+    <rect x="42" y="76" width="4" height="16"></rect>
+    <rect x="74" y="76" width="4" height="16"></rect>
+    <rect x="56" y="38" width="8" height="22" rx="2" fill="#C41E3A"></rect>
+  </g></svg>
+    </g>
+    <text x="96" y="440" font-family="Fraunces, Georgia, serif" font-weight="600" font-size="84" fill="#1A0F10" letter-spacing="-2">Open your seat.</text>
+    <text x="96" y="500" font-family="Heebo, system-ui, sans-serif" font-weight="500" font-size="28" fill="#4B3A3C">AI booking &amp; guest management for restaurants</text>
+    <g transform="translate(96, 540)">
+      <rect width="170" height="40" rx="20" fill="#C41E3A"></rect>
+      <text x="85" y="27" text-anchor="middle" font-family="Heebo, system-ui, sans-serif" font-weight="700" font-size="15" fill="white">openseat.app</text>
+    </g>
+  </svg>

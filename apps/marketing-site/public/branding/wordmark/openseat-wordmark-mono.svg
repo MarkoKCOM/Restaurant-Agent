@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="156.86274509803923" viewBox="0 0 612 120"><g><svg x="0" y="0" width="120" height="120" viewBox="0 0 120 120">
+    <defs>
+      <mask id="slot">
+        <rect width="120" height="120" fill="white"></rect>
+        <rect x="56" y="38" width="8" height="22" rx="2" fill="black"></rect>
+      </mask>
+    </defs>
+    <g fill="#FBF7F4" mask="url(#slot)">
+      <path d="M 39 72 L 39 44 Q 39 30 53 30 L 67 30 Q 81 30 81 44 L 81 72 L 83 72 L 83 76 L 37 76 L 37 72 Z"></path>
+      <rect x="42" y="76" width="4" height="16"></rect>
+      <rect x="74" y="76" width="4" height="16"></rect>
+    </g></svg></g><text x="152" y="86.39999999999999" font-family="Fraunces, Georgia, serif" font-weight="700" font-size="96" fill="#1A0F10" letter-spacing="-3">OpenSeat</text></svg>

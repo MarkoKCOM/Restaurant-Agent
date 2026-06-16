@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>OpenSeat — Brand Guide</title>
+<link rel="icon" href="favicon/favicon.svg" type="image/svg+xml"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root{
+    --brand:#C41E3A; --brand-600:#A01830; --brand-700:#6B0F1F; --brand-50:#FEF2F2; --brand-100:#FEE2E2;
+    --ink:#1A0F10; --ink-70:#4B3A3C; --ink-50:#7A6C6E;
+    --paper:#FBF7F4; --paper-2:#F5EFEA; --line:#E9DFD9; --warm:#FFF7ED; --launch-border:#FDBA74;
+    --ok:#16A34A; --no:#DC2626;
+    --font-display:"Fraunces", Georgia, serif;
+    --font-sans:"Heebo", system-ui, sans-serif;
+    --font-mono:"IBM Plex Mono", monospace;
+  }
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{ margin:0; font-family:var(--font-sans); color:var(--ink); background:var(--paper); -webkit-font-smoothing:antialiased; line-height:1.55; }
+  .wrap{ max-width:1100px; margin:0 auto; padding:0 32px; }
+  h1,h2,h3{ font-family:var(--font-display); font-weight:600; letter-spacing:-0.02em; margin:0; }
+  .mono{ font-family:var(--font-mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-50); }
+  .eyebrow{ display:inline-flex; align-items:center; gap:10px; font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--brand); margin-bottom:18px; }
+  .eyebrow::before{ content:""; width:24px; height:1px; background:var(--brand); }
+
+  /* Hero */
+  .hero{ position:relative; overflow:hidden; border-bottom:1px solid var(--line); }
+  .hero-bg{ position:absolute; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(540px 380px at 82% -10%, rgba(196,30,58,.16), transparent 70%),
+      radial-gradient(420px 360px at 8% 120%, rgba(253,186,116,.30), transparent 70%),
+      linear-gradient(180deg, var(--paper), var(--brand-50) 70%, var(--paper));
+  }
+  .hero-grid{ position:absolute; inset:0; z-index:0;
+    background-image:linear-gradient(to right, rgba(26,15,16,.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(26,15,16,.05) 1px, transparent 1px);
+    background-size:44px 44px;
+    -webkit-mask-image:radial-gradient(ellipse at center, black 35%, transparent 75%);
+    mask-image:radial-gradient(ellipse at center, black 35%, transparent 75%);
+  }
+  .hero-inner{ position:relative; z-index:1; padding:90px 0 80px; display:grid; grid-template-columns:1.1fr .9fr; gap:48px; align-items:center; }
+  .hero h1{ font-size:clamp(46px,7vw,92px); line-height:.96; }
+  .hero h1 .it{ font-style:italic; color:var(--brand); font-weight:400; }
+  .hero p{ font-size:19px; color:var(--ink-70); max-width:460px; margin:22px 0 0; }
+  .hero-mark{ display:flex; justify-content:center; }
+  .hero-mark img{ width:300px; height:300px; filter:drop-shadow(0 40px 60px rgba(196,30,58,.3)); animation:floaty 6s ease-in-out infinite; }
+  @keyframes floaty{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-12px);} }
+
+  section{ padding:80px 0; border-bottom:1px solid var(--line); }
+  .sec-head{ margin-bottom:44px; }
+  .sec-head h2{ font-size:clamp(30px,4vw,46px); line-height:1.05; margin-bottom:10px; }
+  .sec-head p{ color:var(--ink-70); font-size:17px; max-width:600px; margin:0; }
+
+  .grid{ display:grid; gap:20px; }
+  .g2{ grid-template-columns:1fr 1fr; }
+  .g3{ grid-template-columns:repeat(3,1fr); }
+  .g4{ grid-template-columns:repeat(4,1fr); }
+
+  .card{ background:white; border:1px solid var(--line); border-radius:18px; padding:26px; }
+  .tile{ border-radius:18px; padding:34px; display:flex; align-items:center; justify-content:center; min-height:200px; position:relative; }
+  .tile img{ width:120px; height:120px; }
+  .tile .tag{ position:absolute; top:14px; left:16px; }
+  .tile.paper{ background:var(--paper-2); }
+  .tile.white{ background:#fff; border:1px solid var(--line); }
+  .tile.ink{ background:var(--ink); }
+  .tile.brand{ background:var(--brand); }
+  .tile.blush{ background:var(--brand-50); }
+  .cap{ font-size:12px; color:var(--ink-50); margin-top:10px; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.08em; }
+  .cap.lt{ color:rgba(255,255,255,.6); }
+
+  /* swatches */
+  .swatch{ border-radius:16px; overflow:hidden; border:1px solid var(--line); background:white; }
+  .swatch .chip{ height:96px; }
+  .swatch .meta{ padding:14px 16px; }
+  .swatch .name{ font-weight:700; font-size:14px; }
+  .swatch .hex{ font-family:var(--font-mono); font-size:12px; color:var(--ink-50); margin-top:2px; text-transform:uppercase; }
+
+  /* type specimen */
+  .specimen{ border:1px solid var(--line); border-radius:18px; overflow:hidden; }
+  .specimen .row{ padding:24px 28px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; justify-content:space-between; gap:20px; }
+  .specimen .row:last-child{ border-bottom:none; }
+  .specimen .lbl{ font-family:var(--font-mono); font-size:11px; color:var(--ink-50); text-transform:uppercase; letter-spacing:.1em; white-space:nowrap; }
+
+  .scale-row{ display:flex; gap:30px; align-items:flex-end; flex-wrap:wrap; }
+  .scale-item{ display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .scale-item img{ display:block; }
+
+  .do-dont{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .dd{ border-radius:16px; padding:22px; border:1px solid var(--line); }
+  .dd h4{ display:flex; align-items:center; gap:8px; margin:0 0 14px; font-family:var(--font-sans); font-weight:700; font-size:14px; }
+  .dd.do h4{ color:var(--ok); }
+  .dd.dont h4{ color:var(--no); }
+  .dd ul{ margin:0; padding-left:18px; color:var(--ink-70); font-size:14px; }
+  .dd li{ margin-bottom:8px; }
+
+  .pill{ display:inline-flex; align-items:center; gap:8px; padding:5px 12px; border-radius:999px; font-size:12px; font-weight:600; }
+
+  /* file table */
+  table.files{ width:100%; border-collapse:collapse; font-size:13px; }
+  table.files th, table.files td{ text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); }
+  table.files th{ font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-50); }
+  table.files td code{ font-family:var(--font-mono); font-size:12px; color:var(--brand-700); background:var(--brand-50); padding:2px 7px; border-radius:6px; }
+  table.files td.use{ color:var(--ink-70); }
+
+  pre{ background:var(--ink); color:#F4ECE8; padding:20px 22px; border-radius:14px; overflow:auto; font-family:var(--font-mono); font-size:12.5px; line-height:1.7; }
+  pre .c{ color:#C99; }
+  pre .t{ color:#E9A; }
+
+  footer{ padding:56px 0; text-align:center; color:var(--ink-50); font-size:13px; }
+
+  @media(max-width:860px){
+    .hero-inner{ grid-template-columns:1fr; gap:28px; }
+    .g3,.g4{ grid-template-columns:1fr 1fr; }
+    .g2,.do-dont{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="wrap hero-inner">
+    <div>
+      <div class="eyebrow">OpenSeat · Brand Guide · v1.0</div>
+      <h1>Open your <span class="it">seat</span>.</h1>
+      <p>The OpenSlot mark, the palette, the type, and every asset you need — finalized and ready to ship.</p>
+    </div>
+    <div class="hero-mark">
+      <img src="mark/openseat-mark.svg" alt="OpenSeat mark"/>
+    </div>
+  </div>
+</header>
+
+<!-- THE MARK -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="mono">01 — The mark</div>
+      <h2>OpenSlot</h2>
+      <p>A chair seen head-on, with a reserved vertical notch carved from the backrest — an "open seat" waiting for the next guest. It works as a silhouette, holds up at 16px, and reads in a single ink.</p>
+    </div>
+    <div class="grid g3">
+      <div>
+        <div class="tile paper"><img src="mark/openseat-mark.svg" alt="primary"/></div>
+        <div class="cap">Primary · on paper</div>
+      </div>
+      <div>
+        <div class="tile ink"><img src="mark/openseat-mark-dark.svg" alt="dark"/></div>
+        <div class="cap">On ink</div>
+      </div>
+      <div>
+        <div class="tile brand"><img src="mark/openseat-mark-reverse.svg" alt="reverse"/></div>
+        <div class="cap">Reverse · on brand</div>
+      </div>
+    </div>
+    <div class="grid g3" style="margin-top:20px;">
+      <div>
+        <div class="tile white"><img src="mark/openseat-mark-mono-ink.svg" alt="mono ink"/></div>
+        <div class="cap">Mono · ink</div>
+      </div>
+      <div>
+        <div class="tile ink"><img src="mark/openseat-mark-mono-white.svg" alt="mono white"/></div>
+        <div class="cap">Mono · white</div>
+      </div>
+      <div>
+        <div class="tile blush"><img src="mark/openseat-mark.svg" alt="on blush"/></div>
+        <div class="cap">On blush tint</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONSTRUCTION + CLEAR SPACE -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="mono">02 — Construction & clear space</div>
+      <h2>Give it room</h2>
+      <p>Maintain clear space equal to at least ¼ of the mark's height on every side. Never crowd the mark with text or graphics.</p>
+    </div>
+    <div class="grid g2">
+      <div class="card" style="display:flex; align-items:center; justify-content:center;">
+        <img src="mark/openseat-construction.svg" alt="clear space" style="width:280px;"/>
+      </div>
+      <div class="card">
+        <h3 style="font-size:22px; margin-bottom:16px;">Minimum sizes</h3>
+        <div style="display:flex; gap:30px; align-items:flex-end; margin-bottom:24px;">
+          <div class="scale-item"><img src="mark/openseat-mark.svg" width="16" height="16"/><span class="cap">16px</span></div>
+          <div class="scale-item"><img src="mark/openseat-mark.svg" width="24" height="24"/><span class="cap">24px</span></div>
+          <div class="scale-item"><img src="mark/openseat-mark.svg" width="32" height="32"/><span class="cap">32px</span></div>
+          <div class="scale-item"><img src="mark/openseat-mark.svg" width="48" height="48"/><span class="cap">48px</span></div>
+          <div class="scale-item"><img src="mark/openseat-mark.svg" width="64" height="64"/><span class="cap">64px</span></div>
+        </div>
+        <ul style="margin:0; padding-left:18px; color:var(--ink-70); font-size:14px; line-height:1.7;">
+          <li>Digital minimum: <strong>16px</strong> — use <code style="font-family:var(--font-mono);font-size:12px;">favicon.svg</code></li>
+          <li>Print minimum: <strong>10mm</strong></li>
+          <li>Wordmark minimum: <strong>88px</strong> wide</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WORDMARK -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="mono">03 — Wordmark & lockups</div>
+      <h2>Mark + name</h2>
+      <p>Pair the mark with "OpenSeat" set in Fraunces. Use the horizontal lockup in nav bars and headers; the stacked lockup for square placements.</p>
+    </div>
+    <div class="grid g2">
+      <div>
+        <div class="tile paper" style="min-height:160px;"><img src="wordmark/openseat-wordmark.svg" alt="wordmark" style="width:auto; height:60px;"/></div>
+        <div class="cap">Horizontal · light</div>
+      </div>
+      <div>
+        <div class="tile ink" style="min-height:160px;"><img src="wordmark/openseat-wordmark-dark.svg" alt="wordmark dark" style="width:auto; height:60px;"/></div>
+        <div class="cap">Horizontal · dark</div>
+      </div>
+      <div>
+        <div class="tile paper" style="min-height:220px;"><img src="wordmark/openseat-stacked.svg" alt="stacked" style="width:auto; height:150px;"/></div>
+        <div class="cap">Stacked · light</div>
+      </div>
+      <div>
+        <div class="tile ink" style="min-height:220px;"><img src="wordmark/openseat-stacked-dark.svg" alt="stacked dark" style="width:auto; height:150px;"/></div>
+        <div class="cap">Stacked · dark</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COLOR -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="mono">04 — Color</div>
+      <h2>Palette</h2>
+      <p>Brand red leads. Warm paper and near-black ink carry everything else. Tints and accents are used sparingly for state and emphasis.</p>
+    </div>
+    <div class="grid g4">
+      <div class="swatch"><div class="chip" style="background:#C41E3A;"></div><div class="meta"><div class="name">Brand Red</div><div class="hex">#C41E3A</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#A01830;"></div><div class="meta"><div class="name">Hover</div><div class="hex">#A01830</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#1A0F10;"></div><div class="meta"><div class="name">Ink</div><div class="hex">#1A0F10</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#FBF7F4; border-bottom:1px solid var(--line);"></div><div class="meta"><div class="name">Paper</div><div class="hex">#FBF7F4</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#FEF2F2;"></div><div class="meta"><div class="name">Tint 50</div><div class="hex">#FEF2F2</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#F5EFEA;"></div><div class="meta"><div class="name">Paper 2</div><div class="hex">#F5EFEA</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#FFF7ED;"></div><div class="meta"><div class="name">Warm</div><div class="hex">#FFF7ED</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#4B3A3C;"></div><div class="meta"><div class="name">Ink 70</div><div class="hex">#4B3A3C</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- TYPE -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="mono">05 — Typography</div>
+      <h2>Three voices</h2>
+      <p>Fraunces for display warmth, Heebo for clean multilingual UI (Hebrew, English, Arabic), IBM Plex Mono for labels and data.</p>
+    </div>
+    <div class="specimen">
+      <div class="row">
+        <div style="font-family:var(--font-display); font-weight:600; font-size:46px; letter-spacing:-0.02em;">Reserve a table tonight</div>
+        <div class="lbl">Fraunces · Display 600</div>
+      </div>
+      <div class="row">
+        <div style="font-family:var(--font-sans); font-weight:500; font-size:26px;">חבר הצוות הכי חכם של המסעדה</div>
+        <div class="lbl">Heebo · UI 500</div>
+      </div>
+      <div class="row">
+        <div style="font-family:var(--font-sans); font-weight:400; font-size:17px; color:var(--ink-70); max-width:560px;">OpenSeat centralises bookings, guest relationships and an owner dashboard in one system that runs on your site and any tablet.</div>
+        <div class="lbl">Heebo · Body 400</div>
+      </div>
+      <div class="row">
+        <div style="font-family:var(--font-mono); font-size:15px; letter-spacing:.08em; text-transform:uppercase; color:var(--brand);">POWERED BY AI · 24/7</div>
+        <div class="lbl">Plex Mono · Label</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- IN CONTEXT -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="mono">06 — In context</div>
+      <h2>Favicon, app & social</h2>
+      <p>The mark adapts from a 16px browser tab to an app icon, a social avatar, and a 1200×630 share card.</p>
+    </div>
+
+    <div class="grid g2">
+      <div class="card">
+        <div class="mono" style="margin-bottom:16px;">Browser tab · favicon</div>
+        <div style="background:var(--paper-2); border-radius:10px; padding:12px;">
+          <div style="display:flex; gap:6px; margin-bottom:8px;">
+            <span style="width:10px;height:10px;border-radius:999px;background:#FF5F57;"></span>
+            <span style="width:10px;height:10px;border-radius:999px;background:#FEBC2E;"></span>
+            <span style="width:10px;height:10px;border-radius:999px;background:#28C840;"></span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:white; border-radius:8px 8px 0 0; border:1px solid var(--line); border-bottom:none; font-size:12px; color:var(--ink-70); max-width:280px;">
+            <img src="favicon/favicon.svg" width="16" height="16"/>
+            <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">OpenSeat — Book a table</span>
+            <span style="color:var(--ink-50); margin-left:auto;">×</span>
+          </div>
+          <div style="height:6px; background:white; border-left:1px solid var(--line); border-right:1px solid var(--line);"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="mono" style="margin-bottom:16px;">Social avatar</div>
+        <div style="display:flex; gap:18px; align-items:center; justify-content:center; padding:8px 0;">
+          <img src="avatar/openseat-avatar.svg" style="width:72px; height:72px; border-radius:999px;"/>
+          <img src="avatar/openseat-avatar.svg" style="width:52px; height:52px; border-radius:999px;"/>
+          <img src="avatar/openseat-avatar.svg" style="width:36px; height:36px; border-radius:999px;"/>
+        </div>
+        <div class="cap" style="text-align:center;">Circular-safe · centred mark</div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;">
+      <div class="mono" style="margin-bottom:14px;">Open Graph · 1200×630</div>
+      <img src="social/og-image.png" alt="OG image" style="width:100%; border-radius:18px; border:1px solid var(--line);"/>
+    </div>
+  </div>
+</section>
+
+<!-- DO / DON'T -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="mono">07 — Usage</div>
+      <h2>Do & don't</h2>
+    </div>
+    <div class="do-dont">
+      <div class="dd do">
+        <h4>✓ Do</h4>
+        <ul>
+          <li>Use on paper, white, or ink backgrounds.</li>
+          <li>Use the reverse mark on red brand panels.</li>
+          <li>Use the mono variant for single-colour print.</li>
+          <li>Keep ¼-height clear space around the mark.</li>
+          <li>Use the SVG favicon for crisp rendering.</li>
+        </ul>
+      </div>
+      <div class="dd dont">
+        <h4>✕ Don't</h4>
+        <ul>
+          <li>Don't recolour the chair to non-brand colours.</li>
+          <li>Don't stretch, skew, or rotate the mark.</li>
+          <li>Don't add shadows, bevels, or gradients.</li>
+          <li>Don't place the primary mark on busy photos.</li>
+          <li>Don't shrink the wordmark below 88px wide.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FILES -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="mono">08 — Files & wiring</div>
+      <h2>What's in the bundle</h2>
+    </div>
+    <div class="card" style="padding:8px 8px;">
+      <table class="files">
+        <thead><tr><th>Path</th><th>Use</th></tr></thead>
+        <tbody>
+          <tr><td><code>mark/*.svg</code></td><td class="use">6 mark variants — primary, dark, white, reverse, mono ink/white</td></tr>
+          <tr><td><code>wordmark/*.svg</code></td><td class="use">Horizontal + stacked lockups, light & dark</td></tr>
+          <tr><td><code>favicon/favicon.ico</code></td><td class="use">Multi-res ICO (16/32/48) for legacy browsers</td></tr>
+          <tr><td><code>favicon/favicon.svg</code></td><td class="use">Modern SVG favicon (preferred)</td></tr>
+          <tr><td><code>favicon/apple-touch-icon-180.png</code></td><td class="use">iOS home screen</td></tr>
+          <tr><td><code>favicon/android-chrome-{192,512}.png</code></td><td class="use">PWA / Android</td></tr>
+          <tr><td><code>avatar/*.{svg,png}</code></td><td class="use">Circular-safe social profile images</td></tr>
+          <tr><td><code>png/openseat-mark-*.png</code></td><td class="use">Rasters 16 → 1024 (+ dark/white)</td></tr>
+          <tr><td><code>social/og-image.png</code></td><td class="use">1200×630 share card</td></tr>
+          <tr><td><code>tokens/tokens.{css,json}</code></td><td class="use">Color, type, radius, shadow tokens</td></tr>
+          <tr><td><code>email/signature.html</code></td><td class="use">HTML email signature block</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:24px;">
+      <div class="mono" style="margin-bottom:12px;">Paste into &lt;head&gt;</div>
+      <pre><span class="c">&lt;!-- Favicons --&gt;</span>
+&lt;<span class="t">link</span> rel="icon" href="/branding/favicon/favicon.svg" type="image/svg+xml"&gt;
+&lt;<span class="t">link</span> rel="icon" href="/branding/favicon/favicon.ico" sizes="any"&gt;
+&lt;<span class="t">link</span> rel="apple-touch-icon" href="/branding/favicon/apple-touch-icon-180.png"&gt;
+&lt;<span class="t">link</span> rel="manifest" href="/branding/site.webmanifest"&gt;
+
+<span class="c">&lt;!-- Social --&gt;</span>
+&lt;<span class="t">meta</span> property="og:image" content="/branding/social/og-image.png"&gt;
+&lt;<span class="t">meta</span> name="twitter:card" content="summary_large_image"&gt;
+&lt;<span class="t">meta</span> name="theme-color" content="#C41E3A"&gt;</pre>
+    </div>
+  </div>
+</section>
+
+<footer>
+  OpenSeat © 2026 · Brand Guide v1.0 · Built with love in Rosh HaAyin
+</footer>
+
+</body>
+</html>

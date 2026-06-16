@@ -1,5 +1,16 @@
 # Progress Log
 
+## 2026-06-16 (Marketing brand bundle applied)
+
+### Shipped
+- **PR #28** `feat(marketing): apply OpenSeat brand bundle (logo, favicon, OG, manifest)` — applied the new OpenSeat brand assets (delivered as `OpenSeat-1.zip`) to the marketing site.
+  - Full bundle committed under `apps/marketing-site/public/branding/` (mark, wordmark, favicons, avatars, social, tokens, brand guide, email signature). Served at `/branding/*` and preserved in git so nothing is lost.
+  - Wired favicons + `apple-touch-icon` + `mask-icon` + PWA `manifest` into `index.html` (the page previously had **no favicon**); added `site.webmanifest` at the public root.
+  - Refreshed `og-image.png` with the on-brand 1200x630 artwork.
+  - Replaced the placeholder header/footer mark with the real OpenSeat chair mark.
+  - Color tokens in `index.css` already matched the bundle (`#C41E3A` etc.), so no token changes were needed.
+  - Verified `pnpm build` / `type-check` / `lint` all pass; `dist/` emits the branding assets and favicon links.
+
 ## 2026-06-15 (Architecture review + safe infra wins)
 
 ### Architecture review

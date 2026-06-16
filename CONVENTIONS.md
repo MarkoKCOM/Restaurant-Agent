@@ -160,7 +160,20 @@ await db.transaction(async (tx) => {
 - Services contain business logic; routes handle HTTP concerns
 - Services receive plain objects, return plain objects (no Fastify types)
 - Services throw errors for business rule violations; routes catch and format
-- Import `db` from `../db/index.js`, not create new connections
+- Services reach the database through **repositories** (see 6a), not the `db` singleton directly. Mocking the repository is how services become unit-testable without PostgreSQL.
+
+---
+
+## 6a. Data Access (Repositories)
+
+The repository layer (`apps/api/src/repositories/`) is the seam between services and Drizzle. Migration is incremental, one service at a time; until a service is migrated it may still import `db` directly.
+
+- **One repository per table**: a plain exported object of async functions, e.g. `tableRepository` in `table.repository.ts`.
+- **Repositories hold data access only** — queries plus the tenant filter. Business logic stays in services.
+- **Tenant scoping lives here**: any method touching tenant-scoped rows takes a required `restaurantId` and applies `eq(table.restaurantId, ...)` internally. Services never hand-write that filter. Methods that intentionally span tenants (super-admin listings, id→restaurant bootstrap lookups) are marked `// Unscoped`.
+- **Transaction-aware**: every method takes a trailing `executor: Executor = db` (`Executor = DB | DbTransaction`). Pass a `tx` to compose calls inside `db.transaction(...)`; omit it to run against the pool.
+- **No Fastify/request coupling** in repositories — keep them reusable by workers/crons and unit-testable.
+- The route-level tenant guards (`enforceTenant`) stay; the repository filter is defense-in-depth, not a replacement.
 
 ---
 

@@ -1,15 +1,10 @@
-import { and, eq } from "drizzle-orm";
-import type { InferSelectModel } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { tables } from "../db/schema.js";
+import { tableRepository } from "../repositories/table.repository.js";
 
-export type TableRow = InferSelectModel<typeof tables>;
+export type { TableRow } from "../repositories/table.repository.js";
+import type { TableRow } from "../repositories/table.repository.js";
 
 export async function getActiveTablesForRestaurant(restaurantId: string): Promise<TableRow[]> {
-  return db
-    .select()
-    .from(tables)
-    .where(and(eq(tables.restaurantId, restaurantId), eq(tables.isActive, true)));
+  return tableRepository.findActiveByRestaurant(restaurantId);
 }
 
 export async function listTables(params: {
@@ -20,23 +15,12 @@ export async function listTables(params: {
   const includeInactiveBool = !!includeInactive;
 
   if (restaurantId) {
-    if (includeInactiveBool) {
-      return db.select().from(tables).where(eq(tables.restaurantId, restaurantId));
-    }
-
-    return db
-      .select()
-      .from(tables)
-      .where(
-        and(eq(tables.restaurantId, restaurantId), eq(tables.isActive, true)),
-      );
+    return tableRepository.findByRestaurant(restaurantId, {
+      includeInactive: includeInactiveBool,
+    });
   }
 
-  if (includeInactiveBool) {
-    return db.select().from(tables);
-  }
-
-  return db.select().from(tables).where(eq(tables.isActive, true));
+  return tableRepository.findAll({ includeInactive: includeInactiveBool });
 }
 
 export async function createTable(input: {
@@ -47,28 +31,20 @@ export async function createTable(input: {
   zone?: string;
   combinableWith?: string[];
 }): Promise<TableRow> {
-  const [created] = await db
-    .insert(tables)
-    .values({
-      restaurantId: input.restaurantId,
-      name: input.name,
-      minSeats: input.minSeats,
-      maxSeats: input.maxSeats,
-      zone: input.zone,
-      combinableWith: input.combinableWith,
-      isActive: true,
-    })
-    .returning();
-
-  if (!created) {
-    throw new Error("Failed to create table");
-  }
-
-  return created;
+  return tableRepository.insert({
+    restaurantId: input.restaurantId,
+    name: input.name,
+    minSeats: input.minSeats,
+    maxSeats: input.maxSeats,
+    zone: input.zone,
+    combinableWith: input.combinableWith,
+    isActive: true,
+  });
 }
 
 export async function updateTable(
   id: string,
+  restaurantId: string,
   updates: Partial<{
     name: string;
     minSeats: number;
@@ -79,24 +55,14 @@ export async function updateTable(
   }>,
 ): Promise<TableRow | null> {
   if (Object.keys(updates).length === 0) {
-    const [existing] = await db.select().from(tables).where(eq(tables.id, id)).limit(1);
-    return existing ?? null;
+    return tableRepository.findById(id, restaurantId);
   }
 
-  const [updated] = await db
-    .update(tables)
-    .set(updates as any)
-    .where(eq(tables.id, id))
-    .returning();
-
-  return updated ?? null;
+  return tableRepository.update(id, restaurantId, updates);
 }
 
-export async function deactivateTable(id: string): Promise<void> {
-  await db
-    .update(tables)
-    .set({ isActive: false })
-    .where(eq(tables.id, id));
+export async function deactivateTable(id: string, restaurantId: string): Promise<void> {
+  await tableRepository.deactivate(id, restaurantId);
 }
 
 export function pickBestTablesForParty(

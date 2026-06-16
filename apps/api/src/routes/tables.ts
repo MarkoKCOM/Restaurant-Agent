@@ -1,6 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
 import { selfServeSignupTableBaseSchema, selfServeSignupTableSchema } from "@openseat/domain";
 import {
   createTable,
@@ -8,8 +7,7 @@ import {
   listTables,
   updateTable,
 } from "../services/table.service.js";
-import { db } from "../db/index.js";
-import { tables } from "../db/schema.js";
+import { tableRepository } from "../repositories/table.repository.js";
 import { enforceTenant, requireOperationalRole, requireRestaurantAdmin, resolveRestaurantId } from "../middleware/auth.js";
 
 const createTableSchema = selfServeSignupTableBaseSchema.extend({
@@ -95,12 +93,7 @@ async function lookupTableRestaurantId(
   tableId: string,
 ): Promise<string | null | FastifyReply> {
   try {
-    const [tableRow] = await db
-      .select({ restaurantId: tables.restaurantId })
-      .from(tables)
-      .where(eq(tables.id, tableId))
-      .limit(1);
-    return tableRow?.restaurantId ?? null;
+    return await tableRepository.findRestaurantIdById(tableId);
   } catch (error: unknown) {
     return sendCaughtTableError(request, reply, error, "TABLE_LOOKUP_FAILED", { tableId });
   }
@@ -190,7 +183,7 @@ export async function tableRoutes(app: FastifyInstance) {
   // PATCH /:id — update table
   app.patch("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const body = updateTableSchema.parse(request.body ?? {}) as Parameters<typeof updateTable>[1];
+    const body = updateTableSchema.parse(request.body ?? {}) as Parameters<typeof updateTable>[2];
     const restaurantId = await lookupTableRestaurantId(request, reply, id);
     if (typeof restaurantId !== "string" && restaurantId !== null) return restaurantId;
 
@@ -211,7 +204,7 @@ export async function tableRoutes(app: FastifyInstance) {
     }
 
     try {
-      const updated = await updateTable(id, body);
+      const updated = await updateTable(id, restaurantId, body);
       if (!updated) {
         return sendTableError(request, reply, 404, "Table not found", "TABLE_NOT_FOUND", { tableId: id });
       }
@@ -248,7 +241,7 @@ export async function tableRoutes(app: FastifyInstance) {
     }
 
     try {
-      await deactivateTable(id);
+      await deactivateTable(id, restaurantId);
       reply.code(204);
       return null;
     } catch (error: unknown) {

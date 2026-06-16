@@ -1304,7 +1304,7 @@ for (const requiredBirthdayWeekDebugContent of [
   "targetGuestId",
   "createdChallengeSamples",
   "skippedExistingSamples",
-  "eq(guests.id, options.guestId)",
+  "guestRepository.findById(options.guestId)",
   "result.createdChallengeSamples.push({ guestId: guest.id, challengeId: created.id })",
   "result.skippedExistingSamples.push({ guestId: guest.id, challengeId: existing.id })",
 ]) {

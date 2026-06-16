@@ -1,6 +1,5 @@
-import { and, desc, eq, gte, sql } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { outboundMessages, restaurants } from "../db/schema.js";
+import { outboundMessageRepository } from "../repositories/outbound-message.repository.js";
+import { restaurantRepository } from "../repositories/restaurant.repository.js";
 
 const MAX_PREVIEW_LENGTH = 1200;
 
@@ -113,28 +112,23 @@ function toIsoString(value: unknown): string {
 }
 
 export async function logOutboundMessage(params: LogOutboundMessageParams) {
-  const [row] = await db
-    .insert(outboundMessages)
-    .values({
-      restaurantId: params.restaurantId,
-      guestId: params.guestId ?? null,
-      channel: params.channel ?? "whatsapp",
-      provider: params.provider ?? "debug_log",
-      recipientMasked: params.recipientMasked ?? maskRecipient(params.recipient),
-      messageType: params.messageType,
-      messageCategory: params.messageCategory ?? "transactional",
-      subjectType: params.subjectType ?? null,
-      subjectId: params.subjectId ?? null,
-      status: params.status ?? "logged",
-      textPreview: previewText(params.text),
-      payload: params.payload ?? {},
-      errorCode: params.errorCode ?? null,
-      errorMessage: params.errorMessage ?? null,
-      sentAt: params.sentAt ?? null,
-    })
-    .returning();
-
-  return row;
+  return outboundMessageRepository.insert({
+    restaurantId: params.restaurantId,
+    guestId: params.guestId ?? null,
+    channel: params.channel ?? "whatsapp",
+    provider: params.provider ?? "debug_log",
+    recipientMasked: params.recipientMasked ?? maskRecipient(params.recipient),
+    messageType: params.messageType,
+    messageCategory: params.messageCategory ?? "transactional",
+    subjectType: params.subjectType ?? null,
+    subjectId: params.subjectId ?? null,
+    status: params.status ?? "logged",
+    textPreview: previewText(params.text),
+    payload: params.payload ?? {},
+    errorCode: params.errorCode ?? null,
+    errorMessage: params.errorMessage ?? null,
+    sentAt: params.sentAt ?? null,
+  });
 }
 
 export async function recordOutboundDelivery(params: RecordOutboundDeliveryParams) {
@@ -156,16 +150,7 @@ export async function recordOutboundDelivery(params: RecordOutboundDeliveryParam
 }
 
 export async function listOutboundMessages(params: ListOutboundMessagesParams) {
-  const clauses = [eq(outboundMessages.restaurantId, params.restaurantId)];
-  if (params.status) clauses.push(eq(outboundMessages.status, params.status));
-  if (params.messageType) clauses.push(eq(outboundMessages.messageType, params.messageType));
-
-  return db
-    .select()
-    .from(outboundMessages)
-    .where(and(...clauses))
-    .orderBy(desc(outboundMessages.createdAt))
-    .limit(Math.min(Math.max(params.limit ?? 50, 1), 200));
+  return outboundMessageRepository.list(params);
 }
 
 export async function getOutboundMessageDiagnostics(params: {
@@ -175,74 +160,10 @@ export async function getOutboundMessageDiagnostics(params: {
   const since = params.since ?? new Date(Date.now() - 24 * 60 * 60 * 1000);
   const sampleLimit = Math.min(Math.max(params.sampleLimit ?? 5, 1), 20);
   const [summaryRows, errorRows, sampleRows, ownerWhatsappMissingRows] = await Promise.all([
-    db
-      .select({
-        status: outboundMessages.status,
-        messageType: outboundMessages.messageType,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(outboundMessages)
-      .where(gte(outboundMessages.createdAt, since))
-      .groupBy(outboundMessages.status, outboundMessages.messageType),
-    db
-      .select({
-        errorCode: outboundMessages.errorCode,
-        count: sql<number>`count(*)::int`,
-        firstSeenAt: sql<Date>`min(${outboundMessages.createdAt})`,
-        lastSeenAt: sql<Date>`max(${outboundMessages.createdAt})`,
-      })
-      .from(outboundMessages)
-      .where(and(gte(outboundMessages.createdAt, since), sql`${outboundMessages.errorCode} is not null`))
-      .groupBy(outboundMessages.errorCode),
-    db
-      .select({
-        id: outboundMessages.id,
-        restaurantId: outboundMessages.restaurantId,
-        guestId: outboundMessages.guestId,
-        channel: outboundMessages.channel,
-        provider: outboundMessages.provider,
-        recipientMasked: outboundMessages.recipientMasked,
-        messageType: outboundMessages.messageType,
-        messageCategory: outboundMessages.messageCategory,
-        subjectType: outboundMessages.subjectType,
-        subjectId: outboundMessages.subjectId,
-        status: outboundMessages.status,
-        textPreview: outboundMessages.textPreview,
-        errorCode: outboundMessages.errorCode,
-        errorMessage: outboundMessages.errorMessage,
-        createdAt: outboundMessages.createdAt,
-      })
-      .from(outboundMessages)
-      .where(gte(outboundMessages.createdAt, since))
-      .orderBy(
-        sql`case when ${outboundMessages.errorCode} is not null or ${outboundMessages.status} in ('failed', 'skipped') then 0 else 1 end`,
-        desc(outboundMessages.createdAt),
-      )
-      .limit(sampleLimit),
-    db
-      .select({
-        restaurantId: restaurants.id,
-        slug: restaurants.slug,
-        name: restaurants.name,
-        ownerPhone: restaurants.ownerPhone,
-        whatsappNumber: restaurants.whatsappNumber,
-        phone: restaurants.phone,
-        missingCount: sql<number>`count(*) over()::int`,
-        recipientMissingCount: sql<number>`count(*) filter (
-          where (${restaurants.ownerPhone} is null or trim(${restaurants.ownerPhone}) = '')
-            and (${restaurants.whatsappNumber} is null or trim(${restaurants.whatsappNumber}) = '')
-            and (${restaurants.phone} is null or trim(${restaurants.phone}) = '')
-        ) over()::int`,
-        fallbackAvailableCount: sql<number>`count(*) filter (
-          where (${restaurants.ownerPhone} is not null and trim(${restaurants.ownerPhone}) <> '')
-            or (${restaurants.whatsappNumber} is not null and trim(${restaurants.whatsappNumber}) <> '')
-            or (${restaurants.phone} is not null and trim(${restaurants.phone}) <> '')
-        ) over()::int`,
-      })
-      .from(restaurants)
-      .where(sql`${restaurants.ownerWhatsapp} is null or trim(${restaurants.ownerWhatsapp}) = ''`)
-      .orderBy(restaurants.name)
-      .limit(sampleLimit),
+    outboundMessageRepository.summarizeSince(since),
+    outboundMessageRepository.errorBreakdownSince(since),
+    outboundMessageRepository.sampleSince(since, sampleLimit),
+    restaurantRepository.findOwnerWhatsappMissing(sampleLimit),
   ]);
 
   const totals = {

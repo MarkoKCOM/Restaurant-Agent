@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 120 120" aria-label="OpenSeat">
+  <rect width="120" height="120" rx="28" fill="#1A0F10"></rect>
+  <g fill="#C41E3A">
+    <path d="M 39 72 L 39 44 Q 39 30 53 30 L 67 30 Q 81 30 81 44 L 81 72 L 83 72 L 83 76 L 37 76 L 37 72 Z"></path>
+    <rect x="42" y="76" width="4" height="16"></rect>
+    <rect x="74" y="76" width="4" height="16"></rect>
+    <rect x="56" y="38" width="8" height="22" rx="2" fill="#1A0F10"></rect>
+  </g></svg>

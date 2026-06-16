@@ -1,0 +1,38 @@
+/* OpenSeat — Design Tokens (CSS custom properties)
+   Drop into :root or import. All brand-critical values in one place. */
+:root {
+  /* Brand */
+  --os-brand:        #C41E3A;
+  --os-brand-600:    #A01830;
+  --os-brand-700:    #6B0F1F;
+  --os-brand-100:    #FEE2E2;
+  --os-brand-50:     #FEF2F2;
+
+  /* Neutrals */
+  --os-ink:          #1A0F10;
+  --os-ink-70:       #4B3A3C;
+  --os-ink-50:       #7A6C6E;
+  --os-paper:        #FBF7F4;
+  --os-paper-2:      #F5EFEA;
+  --os-line:         #E9DFD9;
+
+  /* Accent */
+  --os-warm:         #FFF7ED;
+  --os-launch-border:#FDBA74;
+  --os-ok:           #16A34A;
+  --os-no:           #DC2626;
+
+  /* Type */
+  --os-font-display: "Fraunces", Georgia, serif;
+  --os-font-sans:    "Heebo", system-ui, -apple-system, sans-serif;
+  --os-font-mono:    "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Radius */
+  --os-radius-sm:    12px;
+  --os-radius:       20px;
+  --os-radius-lg:    24px;
+
+  /* Shadow */
+  --os-shadow-brand: 0 18px 40px -18px rgba(196,30,58,.35);
+  --os-shadow-soft:  0 20px 50px -30px rgba(26,15,16,.14);
+}

@@ -504,10 +504,14 @@ function useReveal() {
 function Logo({ size = 26 }: { size?: number }) {
   return (
     <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-      <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-        <rect x="1" y="1" width="30" height="30" rx="9" fill="var(--brand)" />
-        <path d="M9 21c0-3.3 2.7-6 6-6h2c3.3 0 6 2.7 6 6v1H9v-1z" fill="white" />
-        <circle cx="16" cy="11" r="3.5" fill="white" />
+      <svg width={size} height={size} viewBox="0 0 120 120" aria-hidden="true">
+        <rect width="120" height="120" rx="28" fill="var(--brand)" />
+        <g fill="var(--paper)">
+          <path d="M 39 72 L 39 44 Q 39 30 53 30 L 67 30 Q 81 30 81 44 L 81 72 L 83 72 L 83 76 L 37 76 L 37 72 Z" />
+          <rect x="42" y="76" width="4" height="16" />
+          <rect x="74" y="76" width="4" height="16" />
+          <rect x="56" y="38" width="8" height="22" rx="2" fill="var(--brand)" />
+        </g>
       </svg>
       <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 20, letterSpacing: "-0.02em" }}>OpenSeat</span>
     </div>
@@ -1393,7 +1397,7 @@ function FooterSection({ L }: { L: I18NData }) {
         <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "1.3fr repeat(3, 1fr)", gap: 40 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <svg width={30} height={30} viewBox="0 0 32 32"><rect x="1" y="1" width="30" height="30" rx="9" fill="var(--brand)" /><path d="M9 21c0-3.3 2.7-6 6-6h2c3.3 0 6 2.7 6 6v1H9v-1z" fill="white" /><circle cx="16" cy="11" r="3.5" fill="white" /></svg>
+              <svg width={30} height={30} viewBox="0 0 120 120"><rect width="120" height="120" rx="28" fill="var(--brand)" /><g fill="var(--paper)"><path d="M 39 72 L 39 44 Q 39 30 53 30 L 67 30 Q 81 30 81 44 L 81 72 L 83 72 L 83 76 L 37 76 L 37 72 Z" /><rect x="42" y="76" width="4" height="16" /><rect x="74" y="76" width="4" height="16" /><rect x="56" y="38" width="8" height="22" rx="2" fill="var(--brand)" /></g></svg>
               <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, color: "white" }}>OpenSeat</span>
             </div>
             <p style={{ marginTop: 14, color: "rgba(255,255,255,.7)", fontSize: 14, maxWidth: 320 }}>{L.footer.tagline}</p>

@@ -111,7 +111,7 @@ jobs:
           done
 
           set +e
-          pnpm -F @openseat/e2e test
+          pnpm -F @openseat/e2e test:all
           STATUS=$?
           set -e
 

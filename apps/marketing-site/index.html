@@ -154,6 +154,69 @@
       ]
     }
     </script>
+
+    <!-- Structured Data: WebSite -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "@id": "https://marketing-site-nine-chi.vercel.app/#website",
+      "url": "https://marketing-site-nine-chi.vercel.app",
+      "name": "OpenSeat",
+      "inLanguage": ["he", "en", "ar"],
+      "publisher": { "@id": "https://marketing-site-nine-chi.vercel.app/#organization" }
+    }
+    </script>
+
+    <!-- Structured Data: WebPage (freshness signals for generative engines) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "@id": "https://marketing-site-nine-chi.vercel.app/#webpage",
+      "url": "https://marketing-site-nine-chi.vercel.app",
+      "name": "OpenSeat - restaurant reservations, guest book, and membership club",
+      "isPartOf": { "@id": "https://marketing-site-nine-chi.vercel.app/#website" },
+      "about": { "@id": "https://marketing-site-nine-chi.vercel.app/#organization" },
+      "primaryImageOfPage": "https://marketing-site-nine-chi.vercel.app/og-image.png",
+      "inLanguage": "he",
+      "datePublished": "2026-04-05",
+      "dateModified": "2026-06-16"
+    }
+    </script>
+
+    <!-- Structured Data: HowTo (how OpenSeat works, 4-step loop) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "How OpenSeat turns a reservation into a returning guest",
+      "description": "OpenSeat handles the full guest loop for a restaurant, from the first booking to bringing the guest back.",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Reservation comes in", "text": "A booking arrives from WhatsApp, your website, or the phone, and lands in one place." },
+        { "@type": "HowToStep", "position": 2, "name": "OpenSeat confirms", "text": "It assigns a table and sends the guest a confirmation automatically." },
+        { "@type": "HowToStep", "position": 3, "name": "Guest is recognized", "text": "Staff see member or VIP status and what matters about the guest before seating." },
+        { "@type": "HowToStep", "position": 4, "name": "You bring them back", "text": "Points, perks, or a comeback message keep the relationship going and turn first visits into regulars." }
+      ]
+    }
+    </script>
+
+    <!-- Structured Data: Product with concrete plan pricing -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": "OpenSeat",
+      "brand": { "@id": "https://marketing-site-nine-chi.vercel.app/#organization" },
+      "description": "Restaurant reservations, guest book, and a WhatsApp membership club, sold as monthly plans by restaurant size.",
+      "image": "https://marketing-site-nine-chi.vercel.app/og-image.png",
+      "offers": [
+        { "@type": "Offer", "name": "Pilot launch (first 5 restaurants)", "price": "299", "priceCurrency": "ILS", "description": "Full Loyalty package, monthly, cancel anytime." },
+        { "@type": "Offer", "name": "Starter", "price": "499", "priceCurrency": "ILS", "description": "Reservations, WhatsApp bot, website widget, and owner dashboard. From ₪499/mo." },
+        { "@type": "Offer", "name": "Loyalty", "price": "799", "priceCurrency": "ILS", "description": "Everything in Starter plus the retention engine: loyalty club, games, and automatic win-back. From ₪799/mo." }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

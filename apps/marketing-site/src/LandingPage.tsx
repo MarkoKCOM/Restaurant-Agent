@@ -1226,7 +1226,10 @@ function LiveDemo({ L }: { L: I18NData }) {
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Computed on the client only so the prerendered HTML stays deterministic
+  // (a build-time date would mismatch on hydration).
+  const [today, setToday] = useState("");
+  useEffect(() => { setToday(new Date().toISOString().slice(0, 10)); }, []);
   const times = ["18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30"];
   const reset = () => { setStep(0); setParty(2); setTime(""); setSeating("indoor"); setName(""); setPhone(""); };
   const submit = () => { setSubmitting(true); setTimeout(() => { setSubmitting(false); setStep(4); }, 1200); };
@@ -1254,7 +1257,7 @@ function LiveDemo({ L }: { L: I18NData }) {
                   {step === 0 && (
                     <div style={{ animation: "slide-in-up .3s both" }}>
                       <label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginBottom: 6 }}>{w.dateLabel}</label>
-                      <input type="date" defaultValue={today} min={today} style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--paper)", fontSize: 14, fontFamily: "var(--font-mono)" }} />
+                      <input type="date" value={today} min={today || undefined} onChange={(e) => setToday(e.target.value)} style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--paper)", fontSize: 14, fontFamily: "var(--font-mono)" }} />
                       <label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginTop: 14, marginBottom: 8 }}>{w.partyLabel}</label>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 6 }}>
                         {[1, 2, 3, 4, 5, 6].map(n => (
@@ -1426,12 +1429,15 @@ function FooterSection({ L }: { L: I18NData }) {
    Root
    ═══════════════════════════════════════════════════════════ */
 export function LandingPage() {
-  const [lang, setLang] = useState<Lang>(() => {
+  // Start as "he" so the first client render matches the prerendered HTML
+  // (clean hydration). The ?lang override is applied right after mount.
+  const [lang, setLang] = useState<Lang>("he");
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const p = params.get("lang");
-    if (p === "he" || p === "en" || p === "ar") return p;
-    return "he";
-  });
+    if (p === "he" || p === "en" || p === "ar") setLang(p);
+  }, []);
 
   const L = I18N[lang];
 

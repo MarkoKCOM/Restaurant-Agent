@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { guests } from "../db/schema.js";
@@ -69,5 +69,29 @@ export const guestRepository = {
       .where(eq(guests.id, id))
       .returning();
     return updated ?? null;
+  },
+
+  /** By global guest UUID: atomically increment the no-show counter. */
+  async incrementNoShowCount(id: string, executor: Executor = db): Promise<void> {
+    await executor
+      .update(guests)
+      .set({ noShowCount: sql`${guests.noShowCount} + 1`, updatedAt: new Date() })
+      .where(eq(guests.id, id));
+  },
+
+  /** By global guest UUID: atomically increment visit count and stamp last visit. */
+  async incrementVisitCount(
+    id: string,
+    lastVisitDate: string,
+    executor: Executor = db,
+  ): Promise<void> {
+    await executor
+      .update(guests)
+      .set({
+        visitCount: sql`${guests.visitCount} + 1`,
+        lastVisitDate,
+        updatedAt: new Date(),
+      })
+      .where(eq(guests.id, id));
   },
 };

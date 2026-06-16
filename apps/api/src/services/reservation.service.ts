@@ -1,8 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
-import type { InferSelectModel } from "drizzle-orm";
 import type { FastifyBaseLogger } from "fastify";
-import { db } from "../db/index.js";
-import { reservations, restaurants, guests as guestsTable } from "../db/schema.js";
 import { reminderQueue } from "../queue/index.js";
 import { scheduleThankYou, scheduleReviewRequest } from "./engagement.service.js";
 import type {
@@ -25,8 +21,12 @@ import {
   type MembershipProcessingStage,
 } from "./membership-processing.service.js";
 import { awardVisitAchievements } from "./achievement.service.js";
+import { reservationRepository } from "../repositories/reservation.repository.js";
+import { restaurantRepository, type RestaurantRow } from "../repositories/restaurant.repository.js";
+import { guestRepository } from "../repositories/guest.repository.js";
 
-export type ReservationRow = InferSelectModel<typeof reservations>;
+export type { ReservationRow } from "../repositories/reservation.repository.js";
+import type { ReservationRow } from "../repositories/reservation.repository.js";
 
 type ReservationHttpError = Error & { statusCode: number };
 
@@ -147,7 +147,6 @@ function getJerusalemTodayString(): string {
   return `${year}-${month}-${day}`;
 }
 
-type RestaurantRow = InferSelectModel<typeof restaurants>;
 type OperatingHoursWindow = {
   dayKey: string;
   open: string;
@@ -157,11 +156,7 @@ type OperatingHoursWindow = {
 };
 
 async function getRestaurantOrThrow(restaurantId: string): Promise<RestaurantRow> {
-  const [restaurant] = await db
-    .select()
-    .from(restaurants)
-    .where(eq(restaurants.id, restaurantId))
-    .limit(1);
+  const restaurant = await restaurantRepository.findById(restaurantId);
 
   if (!restaurant) {
     throw makeReservationError("Restaurant not found", 404);
@@ -247,11 +242,7 @@ async function getReservationsForDay(
   restaurantId: string,
   date: string,
 ): Promise<ReservationRow[]> {
-  return db
-    .select()
-    .from(reservations)
-    .where(and(eq(reservations.restaurantId, restaurantId), eq(reservations.date, date)))
-    .orderBy(reservations.timeStart);
+  return reservationRepository.findByDay(restaurantId, date);
 }
 
 function filterAvailableTablesForSlot(
@@ -309,11 +300,7 @@ function toDomainReservation(row: ReservationRow, guestRow?: GuestRow): DomainRe
 export async function checkAvailability(
   input: AvailabilityQuery,
 ): Promise<AvailabilitySlot[]> {
-  const [restaurant] = await db
-    .select()
-    .from(restaurants)
-    .where(eq(restaurants.id, input.restaurantId))
-    .limit(1);
+  const restaurant = await restaurantRepository.findById(input.restaurantId);
 
   if (!restaurant) {
     return [];
@@ -422,22 +409,19 @@ export async function createReservation(
   const timeEnd = computeReservationEnd(input.timeStart);
   const now = new Date();
 
-  const [inserted] = await db
-    .insert(reservations)
-    .values({
-      restaurantId: input.restaurantId,
-      guestId: guestRow.id,
-      date: input.date,
-      timeStart: input.timeStart,
-      timeEnd,
-      partySize: input.partySize,
-      tableIds,
-      status: "confirmed",
-      source: input.source ?? "web",
-      notes: input.notes,
-      confirmedAt: now,
-    })
-    .returning();
+  const inserted = await reservationRepository.insert({
+    restaurantId: input.restaurantId,
+    guestId: guestRow.id,
+    date: input.date,
+    timeStart: input.timeStart,
+    timeEnd,
+    partySize: input.partySize,
+    tableIds,
+    status: "confirmed",
+    source: input.source ?? "web",
+    notes: input.notes,
+    confirmedAt: now,
+  });
 
   if (!inserted) {
     throw new Error("Failed to create reservation");
@@ -512,23 +496,20 @@ export async function createWalkIn(
   const now = new Date();
   const status: ReservationRow["status"] = input.seatImmediately ? "seated" : "confirmed";
 
-  const [inserted] = await db
-    .insert(reservations)
-    .values({
-      restaurantId: input.restaurantId,
-      guestId: guestRow.id,
-      date: input.date,
-      timeStart: input.timeStart,
-      timeEnd,
-      partySize: input.partySize,
-      tableIds,
-      status,
-      source: "walk_in",
-      notes: input.notes,
-      confirmedAt: now,
-      seatedAt: input.seatImmediately ? now : undefined,
-    })
-    .returning();
+  const inserted = await reservationRepository.insert({
+    restaurantId: input.restaurantId,
+    guestId: guestRow.id,
+    date: input.date,
+    timeStart: input.timeStart,
+    timeEnd,
+    partySize: input.partySize,
+    tableIds,
+    status,
+    source: "walk_in",
+    notes: input.notes,
+    confirmedAt: now,
+    seatedAt: input.seatImmediately ? now : undefined,
+  });
 
   if (!inserted) {
     throw new Error("Failed to create walk-in reservation");
@@ -566,29 +547,10 @@ export async function listReservations(params: {
 }): Promise<DomainReservation[]> {
   const { restaurantId, date } = params;
 
-  const conditions: ReturnType<typeof eq>[] = [];
-
-  if (restaurantId) {
-    conditions.push(eq(reservations.restaurantId, restaurantId));
-  }
-
-  if (date) {
-    conditions.push(eq(reservations.date, date));
-  }
-
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-
-  const rows = await db
-    .select()
-    .from(reservations)
-    .where(whereClause)
-    .orderBy(reservations.date, reservations.timeStart);
+  const rows = await reservationRepository.list({ restaurantId, date });
 
   const guestRows = restaurantId
-    ? await db
-        .select()
-        .from(guestsTable)
-        .where(eq(guestsTable.restaurantId, restaurantId))
+    ? await guestRepository.listByRestaurant(restaurantId)
     : [];
   const guestMap = new Map(guestRows.map((guest) => [guest.id, guest]));
 
@@ -596,12 +558,7 @@ export async function listReservations(params: {
 }
 
 async function getReservationRowById(id: string): Promise<ReservationRow | undefined> {
-  const [row] = await db
-    .select()
-    .from(reservations)
-    .where(eq(reservations.id, id))
-    .limit(1);
-  return row;
+  return (await reservationRepository.findById(id)) ?? undefined;
 }
 
 export interface UpdateReservationInput {
@@ -661,48 +618,31 @@ export async function updateReservation(
   const now = new Date();
   const lifecycle = buildLifecycleTimestamps(existing, newStatus, now);
 
-  const [updated] = await db
-    .update(reservations)
-    .set({
-      date: newDate,
-      timeStart: newTimeStart,
-      timeEnd,
-      partySize: newPartySize,
-      tableIds: newTableIds,
-      ...lifecycle,
-      notes: input.notes ?? existing.notes,
-      cancellationReason:
-        input.cancellationReason !== undefined
-          ? input.cancellationReason
-          : existing.cancellationReason,
-      updatedAt: now,
-    })
-    .where(eq(reservations.id, id))
-    .returning();
+  const updated = await reservationRepository.updateById(id, {
+    date: newDate,
+    timeStart: newTimeStart,
+    timeEnd,
+    partySize: newPartySize,
+    tableIds: newTableIds,
+    ...lifecycle,
+    notes: input.notes ?? existing.notes,
+    cancellationReason:
+      input.cancellationReason !== undefined
+        ? input.cancellationReason
+        : existing.cancellationReason,
+    updatedAt: now,
+  });
 
   if (!updated) return null;
 
   if (newStatus === "no_show" && existing.status !== "no_show") {
-    await db
-      .update(guestsTable)
-      .set({
-        noShowCount: sql`${guestsTable.noShowCount} + 1`,
-        updatedAt: new Date(),
-      })
-      .where(eq(guestsTable.id, updated.guestId));
+    await guestRepository.incrementNoShowCount(updated.guestId);
   }
 
   // Increment visitCount/loyalty only on entry to completed
   if (newStatus === "completed" && existing.status !== "completed") {
     const today = new Date().toISOString().slice(0, 10);
-    await db
-      .update(guestsTable)
-      .set({
-        visitCount: sql`${guestsTable.visitCount} + 1`,
-        lastVisitDate: today,
-        updatedAt: new Date(),
-      })
-      .where(eq(guestsTable.id, updated.guestId));
+    await guestRepository.incrementVisitCount(updated.guestId, today);
 
     try {
       await refreshVisitAutoTags(updated.guestId);
@@ -789,11 +729,7 @@ export async function updateReservation(
     }
   }
 
-  const [guestRow] = await db
-    .select()
-    .from(guestsTable)
-    .where(eq(guestsTable.id, updated.guestId))
-    .limit(1);
+  const guestRow = (await guestRepository.findById(updated.guestId)) ?? undefined;
 
   return toDomainReservation(updated, guestRow);
 }
@@ -811,25 +747,17 @@ export async function cancelReservation(
   const now = new Date();
   const lifecycle = buildLifecycleTimestamps(existing, "cancelled", now);
 
-  const [updated] = await db
-    .update(reservations)
-    .set({
-      ...lifecycle,
-      cancellationReason: reason ?? null,
-      updatedAt: now,
-    })
-    .where(eq(reservations.id, id))
-    .returning();
+  const updated = await reservationRepository.updateById(id, {
+    ...lifecycle,
+    cancellationReason: reason ?? null,
+    updatedAt: now,
+  });
 
   if (!updated) return null;
 
   try { await reminderQueue.remove(`reminder-${id}`); } catch { /* ignore */ }
 
-  const [guestRow] = await db
-    .select()
-    .from(guestsTable)
-    .where(eq(guestsTable.id, updated.guestId))
-    .limit(1);
+  const guestRow = (await guestRepository.findById(updated.guestId)) ?? undefined;
 
   const reservation = toDomainReservation(updated, guestRow);
 
@@ -867,33 +795,19 @@ export async function markNoShow(id: string): Promise<DomainReservation | null> 
   const now = new Date();
   const lifecycle = buildLifecycleTimestamps(existing, "no_show", now);
 
-  const [updated] = await db
-    .update(reservations)
-    .set({
-      ...lifecycle,
-      updatedAt: now,
-    })
-    .where(eq(reservations.id, id))
-    .returning();
+  const updated = await reservationRepository.updateById(id, {
+    ...lifecycle,
+    updatedAt: now,
+  });
 
   if (!updated) return null;
 
   // Increment noShowCount only on entry to no_show
   if (existing.status !== "no_show") {
-    await db
-      .update(guestsTable)
-      .set({
-        noShowCount: sql`${guestsTable.noShowCount} + 1`,
-        updatedAt: new Date(),
-      })
-      .where(eq(guestsTable.id, updated.guestId));
+    await guestRepository.incrementNoShowCount(updated.guestId);
   }
 
-  const [guestRow] = await db
-    .select()
-    .from(guestsTable)
-    .where(eq(guestsTable.id, updated.guestId))
-    .limit(1);
+  const guestRow = (await guestRepository.findById(updated.guestId)) ?? undefined;
 
   return toDomainReservation(updated, guestRow);
 }

@@ -1,5 +1,16 @@
 # Progress Log
 
+## 2026-06-16 (Marketing per-language prerendering + GEO strategy audit)
+
+### Shipped
+- **PR #44** `feat(marketing): per-language prerendering (/, /en, /ar) + coherent hreflang` — stacked on #32. Implements caveat #1 (full multilingual static coverage) and fixes a real SEO bug found while pressure-testing the GEO strategy.
+
+### GEO strategy audit (asked to be "factually 100% confident")
+- Fact-checked the load-bearing assumptions: **AI crawlers do not execute JavaScript** (GPTBot, OAI-SearchBot, PerplexityBot, ClaudeBot; only Gemini renders via Googlebot) — so prerendering is required, not optional. **Google ignores hreflang when the canonical is not self-referencing** — so the old `?lang=` setup (canonical → `/`) had its hreflang silently discarded and served Hebrew at every URL to non-JS crawlers.
+- Fix: per-language prerendering. `scripts/prerender.mjs` emits `dist/index.html` (he), `dist/en/index.html` (en), `dist/ar/index.html` (ar), each with localized `<html lang/dir>`, title, description, OG, `WebPage` inLanguage, and a self-referencing canonical. hreflang path-based + reciprocal; sitemap lists all three. `LandingPage` takes `initialLang` from the path; switcher uses pushState; legacy `?lang=` redirects.
+- `vercel.json`: `cleanUrls` + `trailingSlash:false`. Verified the routing via a local `vercel build` (authoritative output: `en/index.html`,`ar/index.html` emitted; `/en`,`/ar` served; `/en/`→308). Playwright hydration on all 3 routes = zero errors.
+- Caught a React #418 that was a `vite preview` SPA-fallback artifact (serves root `index.html` for `/en`), not a real bug — Vercel's output doesn't do this. Residual caveat: live preview curl blocked by Vercel Deployment Protection (401); confirmed via build output + faithful local sim instead.
+
 ## 2026-06-16 (Marketing spacing + SEO/GEO polish)
 
 ### Shipped

@@ -30,7 +30,16 @@ const distDir = resolve(appRoot, "dist");
 const templatePath = resolve(distDir, "index.html");
 const serverEntry = resolve(appRoot, "dist-server/entry-server.js");
 
-const ORIGIN = "https://marketing-site-nine-chi.vercel.app";
+// Single source of truth for the production origin. It is hard-coded as
+// DEFAULT_ORIGIN throughout index.html / schema / sitemap / robots; this step
+// rewrites every occurrence to SITE_ORIGIN. To move to a real domain, set the
+// SITE_ORIGIN env var on the Vercel project and redeploy — no code change.
+const DEFAULT_ORIGIN = "https://marketing-site-nine-chi.vercel.app";
+const ORIGIN = (process.env.SITE_ORIGIN || DEFAULT_ORIGIN).replace(/\/+$/, "");
+
+// Freshness signal (WebPage.dateModified + sitemap lastmod), stamped at build time.
+const BUILD_DATE = new Date().toISOString().slice(0, 10);
+
 const ROOT_RE = /<div id="root">\s*<\/div>/;
 
 // Per-language head metadata. Keep these in sync with the in-app i18n copy.
@@ -79,8 +88,11 @@ function sub(html, re, replacement, label) {
 
 function buildPage(template, lang, appHtml) {
   const m = META[lang];
-  const url = ORIGIN + m.path;
-  let html = template;
+  const url = ORIGIN + (m.path === "/" ? "/" : m.path);
+  // Rewrite the hard-coded origin (canonical, hreflang, og:image, schema URLs)
+  // to the configured one, and refresh the WebPage dateModified.
+  let html = template.split(DEFAULT_ORIGIN).join(ORIGIN);
+  html = html.replace(/("dateModified":\s*")[^"]*(")/, `$1${BUILD_DATE}$2`);
 
   html = sub(html, /<html[^>]*>/, `<html lang="${lang}" dir="${m.dir}">`, "html tag");
   html = sub(html, /<title>[\s\S]*?<\/title>/, `<title>${esc(m.title)}</title>`, "title");
@@ -143,7 +155,18 @@ async function main() {
     console.log(`prerender: ${lang} -> ${META[lang].out} (${(page.length / 1024).toFixed(1)} kB)`);
   }
 
+  // Keep the static sitemap/robots in sync with the configured origin + date.
+  for (const name of ["sitemap.xml", "robots.txt"]) {
+    const f = resolve(distDir, name);
+    let txt = await readFile(f, "utf8").catch(() => null);
+    if (txt == null) continue;
+    txt = txt.split(DEFAULT_ORIGIN).join(ORIGIN);
+    if (name === "sitemap.xml") txt = txt.replace(/<lastmod>[^<]*<\/lastmod>/g, `<lastmod>${BUILD_DATE}</lastmod>`);
+    await writeFile(f, txt, "utf8");
+  }
+
   await rm(resolve(appRoot, "dist-server"), { recursive: true, force: true });
+  console.log(`prerender: origin=${ORIGIN}${ORIGIN === DEFAULT_ORIGIN ? " (default)" : " (from SITE_ORIGIN)"}, dateModified/lastmod=${BUILD_DATE}`);
 }
 
 main().catch((err) => {

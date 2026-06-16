@@ -21,11 +21,11 @@
 - [x] 3.4 Migrate the visit/loyalty cluster (split into two PRs):
   - [x] 3.4a `visit.service.ts` → `visit.repository.ts` (+ `reservationRepository.findByGuest`; reuses `guestRepository`; 4 unit tests)
   - [x] 3.4b `loyalty.service.ts` → `loyalty-transaction.repository.ts` + `reward.repository.ts` (+ `guestRepository.adjustPoints`, `reservationRepository.findVisitCompletionContext`; idempotency filters preserved exactly; 6 unit tests)
-- [~] 3.5 Migrate the engagement cluster (one PR per service):
+- [x] 3.5 Migrate the engagement cluster (one PR per service):
   - [x] `achievement.service.ts` (reuses `guestRepository`; 2 tests)
   - [x] `reward-claims.service.ts` → `reward-claim.repository.ts` (+ `rewardRepository.findById`/`findByIds`; 6 tests) — shares PR with achievement
-  - [ ] `engagement.service.ts` → `engagement-job.repository.ts`
-  - [ ] `campaign.service.ts` → `campaign.repository.ts`
+  - [x] `engagement.service.ts` → `engagement-job.repository.ts` (+ guest lapsed-window + visit positive-feedback finders; 4 tests; debug-tools source assertion relocated)
+  - [x] `campaign.service.ts` → `campaign.repository.ts` (3 tests)
   - [x] `challenge.service.ts` → extended `challenge.repository.ts` (challenges + challengeProgress; +`loyaltyTransactionRepository.findEarnByReasonForGuest`; 5 tests)
 - [ ] 3.6 Migrate referral/leaderboard/gamification-share/feedback/outbound-message services
 - [ ] 3.7 Migrate read-only/reporting services: `analytics.service.ts`, `summary.service.ts`, `diagnostics.service.ts`, `membership-intent-debug.service.ts`

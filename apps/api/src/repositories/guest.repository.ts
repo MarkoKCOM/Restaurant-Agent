@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, gt, lte, sql } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { guests } from "../db/schema.js";
@@ -50,6 +50,26 @@ export const guestRepository = {
   /** Unscoped: super-admin listing across every restaurant. */
   listAll(executor: Executor = db): Promise<GuestRow[]> {
     return executor.select().from(guests);
+  },
+
+  /**
+   * Tenant-scoped: guests whose last visit is on/before `notAfter`, and (when
+   * `after` is given) strictly after it — i.e. lapsed within a date window.
+   */
+  listLapsedInWindow(
+    restaurantId: string,
+    notAfter: string,
+    after: string | undefined,
+    executor: Executor = db,
+  ): Promise<GuestRow[]> {
+    const conditions = [
+      eq(guests.restaurantId, restaurantId),
+      lte(guests.lastVisitDate, notAfter),
+    ];
+    if (after) {
+      conditions.push(gt(guests.lastVisitDate, after));
+    }
+    return executor.select().from(guests).where(and(...conditions));
   },
 
   /** By global guest UUID. Caller already holds the specific id. */

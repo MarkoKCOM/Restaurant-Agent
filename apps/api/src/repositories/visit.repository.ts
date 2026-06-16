@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { visitLogs } from "../db/schema.js";
@@ -21,6 +21,28 @@ export const visitRepository = {
   /** Tenant-scoped: all visit logs for a restaurant (e.g. campaign spend aggregation). */
   findByRestaurant(restaurantId: string, executor: Executor = db): Promise<VisitLogRow[]> {
     return executor.select().from(visitLogs).where(eq(visitLogs.restaurantId, restaurantId));
+  },
+
+  /** A positive-sentiment visit log for a specific guest reservation, if one exists. */
+  async findPositiveForReservation(
+    guestId: string,
+    restaurantId: string,
+    reservationId: string,
+    executor: Executor = db,
+  ): Promise<VisitLogRow | null> {
+    const [row] = await executor
+      .select()
+      .from(visitLogs)
+      .where(
+        and(
+          eq(visitLogs.guestId, guestId),
+          eq(visitLogs.restaurantId, restaurantId),
+          eq(visitLogs.reservationId, reservationId),
+          eq(visitLogs.sentiment, "positive"),
+        ),
+      )
+      .limit(1);
+    return row ?? null;
   },
 
   /** By global guest UUID: visit logs newest-first, optionally limited. */

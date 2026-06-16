@@ -1,11 +1,12 @@
-import { and, eq, gte, inArray, lt, lte, gt, sql, ne } from "drizzle-orm";
 import type { FastifyBaseLogger } from "fastify";
-import { db } from "../db/index.js";
-import { engagementJobs, guests, restaurants, visitLogs } from "../db/schema.js";
 import { engagementQueue } from "../queue/index.js";
-import type { InferSelectModel } from "drizzle-orm";
+import { engagementJobRepository } from "../repositories/engagement-job.repository.js";
+import { guestRepository } from "../repositories/guest.repository.js";
+import { restaurantRepository } from "../repositories/restaurant.repository.js";
+import { visitRepository } from "../repositories/visit.repository.js";
 
-export type EngagementJobRow = InferSelectModel<typeof engagementJobs>;
+export type { EngagementJobRow } from "../repositories/engagement-job.repository.js";
+import type { EngagementJobRow } from "../repositories/engagement-job.repository.js";
 export type EngagementMessageCategory = "transactional" | "promotional";
 export type EngagementJobType =
   | "thank_you"
@@ -178,14 +179,7 @@ export async function getRestaurantEngagementQuietHours(restaurantId: string): P
   timeZone: string;
   quietHours: EngagementQuietHours;
 }> {
-  const [restaurant] = await db
-    .select({
-      timezone: restaurants.timezone,
-      dashboardConfig: restaurants.dashboardConfig,
-    })
-    .from(restaurants)
-    .where(eq(restaurants.id, restaurantId))
-    .limit(1);
+  const restaurant = await restaurantRepository.findById(restaurantId);
 
   return {
     timeZone: restaurant?.timezone ?? "Asia/Jerusalem",
@@ -203,20 +197,7 @@ async function findPendingEngagementJob(params: {
   restaurantId: string;
   type: string;
 }): Promise<EngagementJobRow | undefined> {
-  const [existingJob] = await db
-    .select()
-    .from(engagementJobs)
-    .where(
-      and(
-        eq(engagementJobs.guestId, params.guestId),
-        eq(engagementJobs.restaurantId, params.restaurantId),
-        eq(engagementJobs.type, params.type),
-        eq(engagementJobs.status, "pending"),
-      ),
-    )
-    .limit(1);
-
-  return existingJob;
+  return engagementJobRepository.findPending(params.guestId, params.restaurantId, params.type);
 }
 
 async function findAnyEngagementJob(params: {
@@ -224,19 +205,7 @@ async function findAnyEngagementJob(params: {
   restaurantId: string;
   type: string;
 }): Promise<EngagementJobRow | undefined> {
-  const [existingJob] = await db
-    .select()
-    .from(engagementJobs)
-    .where(
-      and(
-        eq(engagementJobs.guestId, params.guestId),
-        eq(engagementJobs.restaurantId, params.restaurantId),
-        eq(engagementJobs.type, params.type),
-      ),
-    )
-    .limit(1);
-
-  return existingJob;
+  return engagementJobRepository.findAny(params.guestId, params.restaurantId, params.type);
 }
 
 async function findEngagementJobInWindow(params: {
@@ -246,30 +215,11 @@ async function findEngagementJobInWindow(params: {
   windowStart: Date;
   windowEnd: Date;
 }): Promise<EngagementJobRow | undefined> {
-  const [existingJob] = await db
-    .select()
-    .from(engagementJobs)
-    .where(
-      and(
-        eq(engagementJobs.guestId, params.guestId),
-        eq(engagementJobs.restaurantId, params.restaurantId),
-        eq(engagementJobs.type, params.type),
-        gte(engagementJobs.triggerAt, params.windowStart),
-        lt(engagementJobs.triggerAt, params.windowEnd),
-      ),
-    )
-    .limit(1);
-
-  return existingJob;
+  return engagementJobRepository.findInWindow(params);
 }
 
 async function getGuestOptOutState(guestId: string): Promise<boolean | null> {
-  const [guest] = await db
-    .select({ optedOutCampaigns: guests.optedOutCampaigns })
-    .from(guests)
-    .where(eq(guests.id, guestId))
-    .limit(1);
-
+  const guest = await guestRepository.findById(guestId);
   return guest?.optedOutCampaigns ?? null;
 }
 
@@ -280,25 +230,7 @@ async function countPromotionalJobsInWindow(params: {
   windowEnd: Date;
   excludeJobId?: string;
 }): Promise<number> {
-  const conditions = [
-    eq(engagementJobs.guestId, params.guestId),
-    eq(engagementJobs.restaurantId, params.restaurantId),
-    eq(engagementJobs.messageCategory, "promotional"),
-    inArray(engagementJobs.status, ["pending", "sent"]),
-    gte(engagementJobs.triggerAt, params.windowStart),
-    lt(engagementJobs.triggerAt, params.windowEnd),
-  ];
-
-  if (params.excludeJobId) {
-    conditions.push(ne(engagementJobs.id, params.excludeJobId));
-  }
-
-  const [result] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(engagementJobs)
-    .where(and(...conditions));
-
-  return result?.count ?? 0;
+  return engagementJobRepository.countPromotionalInWindow(params);
 }
 
 async function evaluatePromotionalEligibility(params: {
@@ -337,21 +269,15 @@ async function createSkippedEngagementJob(params: {
   triggerAt: Date;
   skipReason: string;
 }): Promise<EngagementJobRow> {
-  const [job] = await db
-    .insert(engagementJobs)
-    .values({
-      restaurantId: params.restaurantId,
-      guestId: params.guestId,
-      type: params.type,
-      messageCategory: getEngagementMessageCategory(params.type),
-      triggerAt: params.triggerAt,
-      status: "skipped",
-      skipReason: params.skipReason,
-    })
-    .returning();
-
-  if (!job) throw new Error("Failed to create skipped engagement job");
-  return job;
+  return engagementJobRepository.insert({
+    restaurantId: params.restaurantId,
+    guestId: params.guestId,
+    type: params.type,
+    messageCategory: getEngagementMessageCategory(params.type),
+    triggerAt: params.triggerAt,
+    status: "skipped",
+    skipReason: params.skipReason,
+  });
 }
 
 async function skipPendingEngagementJobs(params: {
@@ -360,23 +286,12 @@ async function skipPendingEngagementJobs(params: {
   type: EngagementJobType;
   reason: string;
 }): Promise<number> {
-  const skipped = await db
-    .update(engagementJobs)
-    .set({
-      status: "skipped",
-      skipReason: params.reason,
-    })
-    .where(
-      and(
-        eq(engagementJobs.guestId, params.guestId),
-        eq(engagementJobs.restaurantId, params.restaurantId),
-        eq(engagementJobs.type, params.type),
-        eq(engagementJobs.status, "pending"),
-      ),
-    )
-    .returning({ id: engagementJobs.id });
-
-  return skipped.length;
+  return engagementJobRepository.skipPending(
+    params.guestId,
+    params.restaurantId,
+    params.type,
+    params.reason,
+  );
 }
 
 async function scheduleEngagementJob(params: {
@@ -429,19 +344,14 @@ async function scheduleEngagementJob(params: {
     }
   }
 
-  const [job] = await db
-    .insert(engagementJobs)
-    .values({
-      restaurantId: params.restaurantId,
-      guestId: params.guestId,
-      type: params.type,
-      messageCategory,
-      triggerAt: params.triggerAt,
-      status: "pending",
-    })
-    .returning();
-
-  if (!job) throw new Error("Failed to create engagement job");
+  const job = await engagementJobRepository.insert({
+    restaurantId: params.restaurantId,
+    guestId: params.guestId,
+    type: params.type,
+    messageCategory,
+    triggerAt: params.triggerAt,
+    status: "pending",
+  });
 
   const delay = params.triggerAt.getTime() - Date.now();
   const queueDelayMs = Math.max(0, delay);
@@ -452,10 +362,10 @@ async function scheduleEngagementJob(params: {
       { delay: queueDelayMs, jobId: `engagement-${job.id}` },
     );
   } catch (error) {
-    await db
-      .update(engagementJobs)
-      .set({ status: "failed", skipReason: "queue_enqueue_failed" })
-      .where(eq(engagementJobs.id, job.id));
+    await engagementJobRepository.updateById(job.id, {
+      status: "failed",
+      skipReason: "queue_enqueue_failed",
+    });
     options.logger?.error(
       {
         err: error,
@@ -526,11 +436,7 @@ export async function scheduleBirthdayGreeting(
   restaurantId: string,
   options: EngagementScheduleOptions = {},
 ): Promise<EngagementJobRow | null> {
-  const [guest] = await db
-    .select()
-    .from(guests)
-    .where(eq(guests.id, guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(guestId);
 
   if (!guest) return null;
 
@@ -632,10 +538,7 @@ export async function checkBirthdays(restaurantId: string, options: EngagementSc
   const windowEnd = new Date(windowStart);
   windowEnd.setUTCDate(windowEnd.getUTCDate() + 1);
 
-  const restaurantGuests = await db
-    .select()
-    .from(guests)
-    .where(eq(guests.restaurantId, restaurantId));
+  const restaurantGuests = await guestRepository.listByRestaurant(restaurantId);
 
   for (const guest of restaurantGuests) {
     const prefs = guest.preferences as Record<string, unknown> | null;
@@ -711,10 +614,7 @@ export async function checkAnniversaries(restaurantId: string, options: Engageme
   const windowEnd = new Date(windowStart);
   windowEnd.setUTCDate(windowEnd.getUTCDate() + 1);
 
-  const restaurantGuests = await db
-    .select()
-    .from(guests)
-    .where(eq(guests.restaurantId, restaurantId));
+  const restaurantGuests = await guestRepository.listByRestaurant(restaurantId);
 
   for (const guest of restaurantGuests) {
     if (!guest.firstVisitDate) continue;
@@ -767,18 +667,11 @@ export async function scheduleReviewRequest(
   reservationId: string,
   options: EngagementScheduleOptions = {},
 ): Promise<EngagementJobRow | null> {
-  const [positiveFeedback] = await db
-    .select({ id: visitLogs.id })
-    .from(visitLogs)
-    .where(
-      and(
-        eq(visitLogs.guestId, guestId),
-        eq(visitLogs.restaurantId, restaurantId),
-        eq(visitLogs.reservationId, reservationId),
-        eq(visitLogs.sentiment, "positive"),
-      ),
-    )
-    .limit(1);
+  const positiveFeedback = await visitRepository.findPositiveForReservation(
+    guestId,
+    restaurantId,
+    reservationId,
+  );
 
   if (!positiveFeedback) return null;
 
@@ -807,20 +700,8 @@ export async function scheduleReviewRequestForPositiveFeedback(params: {
   guestId: string;
   restaurantId: string;
 }, options: EngagementScheduleOptions = {}): Promise<{ job: EngagementJobRow; reviewUrl: string | null; delayHours: number } | null> {
-  const [guest] = await db
-    .select()
-    .from(guests)
-    .where(eq(guests.id, params.guestId))
-    .limit(1);
-
-  const [restaurant] = await db
-    .select({
-      name: restaurants.name,
-      googlePlaceId: restaurants.googlePlaceId,
-    })
-    .from(restaurants)
-    .where(eq(restaurants.id, params.restaurantId))
-    .limit(1);
+  const guest = await guestRepository.findById(params.guestId);
+  const restaurant = await restaurantRepository.findById(params.restaurantId);
 
   if (!guest || !restaurant) return null;
 
@@ -858,14 +739,7 @@ export async function routeNegativeFeedbackForRecovery(params: {
     reason: "negative_feedback_service_recovery",
   });
 
-  const [restaurant] = await db
-    .select({
-      ownerWhatsapp: restaurants.ownerWhatsapp,
-      ownerPhone: restaurants.ownerPhone,
-    })
-    .from(restaurants)
-    .where(eq(restaurants.id, params.restaurantId))
-    .limit(1);
+  const restaurant = await restaurantRepository.findById(params.restaurantId);
 
   return {
     skippedReviewRequests,
@@ -1000,20 +874,13 @@ export async function checkWinBack(restaurantId: string, options: EngagementSche
   ];
 
   for (const tier of tiers) {
-    const conditions = [
-      eq(guests.restaurantId, restaurantId),
-      lte(guests.lastVisitDate, tier.dateStr),
-    ];
-    if (tier.olderThanDateStr) {
-      conditions.push(gt(guests.lastVisitDate, tier.olderThanDateStr));
-    }
-
     // Find guests who are due or overdue for this tier. Windows prevent a 90-day lapsed
     // guest from also receiving the 30/60-day copy.
-    const matchedGuests = await db
-      .select()
-      .from(guests)
-      .where(and(...conditions));
+    const matchedGuests = await guestRepository.listLapsedInWindow(
+      restaurantId,
+      tier.dateStr,
+      tier.olderThanDateStr,
+    );
 
     for (const guest of matchedGuests) {
       const existingJob = await findAnyEngagementJob({
@@ -1055,27 +922,5 @@ export async function listEngagementJobs(params: {
   messageCategory?: EngagementMessageCategory;
   limit?: number;
 }): Promise<EngagementJobRow[]> {
-  const conditions = [eq(engagementJobs.restaurantId, params.restaurantId)];
-
-  if (params.guestId) {
-    conditions.push(eq(engagementJobs.guestId, params.guestId));
-  }
-  if (params.status) {
-    conditions.push(eq(engagementJobs.status, params.status));
-  }
-  if (params.messageCategory) {
-    conditions.push(eq(engagementJobs.messageCategory, params.messageCategory));
-  }
-
-  const query = db
-    .select()
-    .from(engagementJobs)
-    .where(and(...conditions))
-    .orderBy(engagementJobs.triggerAt);
-
-  if (params.limit === undefined) {
-    return query;
-  }
-
-  return query.limit(Math.min(Math.max(params.limit, 1), 200));
+  return engagementJobRepository.list(params);
 }

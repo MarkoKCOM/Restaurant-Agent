@@ -40,3 +40,54 @@ jobs:
       - name: Run unit tests
         # e2e is excluded: its `test` script is a live-API integration runner (see e2e.yml).
         run: pnpm turbo test --filter=!@openseat/e2e
+
+  # Executes every repository's real SQL against a throwaway Postgres. Unit tests
+  # mock the repositories, so without this a query that type-checks but is
+  # malformed at runtime (bad column, broken JSON/window-function SQL) would ship
+  # undetected. The smoke uses zero-UUID args, so it needs no seed data — it only
+  # proves the SQL parses and executes against the migrated schema.
+  repo-sql-smoke:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: openseat
+          POSTGRES_PASSWORD: openseat
+          POSTGRES_DB: openseat_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://openseat:openseat@localhost:5432/openseat_ci
+      JWT_SECRET: ci-repo-smoke-secret
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations to throwaway database
+        run: pnpm -F @openseat/api db:migrate
+
+      - name: Repository SQL smoke (real queries, real DB)
+        run: pnpm -F @openseat/api db:repo-smoke

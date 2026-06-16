@@ -1,8 +1,8 @@
-import { and, eq, sql } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { guests, loyaltyTransactions } from "../db/schema.js";
 import { awardPoints } from "./loyalty.service.js";
 import { scheduleLeaderboardSummary } from "./engagement.service.js";
+import { guestRepository } from "../repositories/guest.repository.js";
+import { loyaltyTransactionRepository } from "../repositories/loyalty-transaction.repository.js";
+import { leaderboardRepository } from "../repositories/leaderboard.repository.js";
 
 export interface LeaderboardEntry {
   guestId: string;
@@ -75,11 +75,7 @@ export async function setLeaderboardOptIn(
   guestId: string,
   optedIn: boolean,
 ): Promise<LeaderboardPreference | null> {
-  const [guest] = await db
-    .select()
-    .from(guests)
-    .where(eq(guests.id, guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(guestId);
 
   if (!guest) return null;
 
@@ -90,16 +86,13 @@ export async function setLeaderboardOptIn(
     ? { optedIn: true, optedInAt: existing.optedInAt ?? now }
     : { optedIn: false, optedInAt: existing.optedInAt, optedOutAt: now };
 
-  await db
-    .update(guests)
-    .set({
-      preferences: {
-        ...prefs,
-        leaderboard,
-      },
-      updatedAt: new Date(),
-    })
-    .where(eq(guests.id, guestId));
+  await guestRepository.updateById(guestId, {
+    preferences: {
+      ...prefs,
+      leaderboard,
+    },
+    updatedAt: new Date(),
+  });
 
   return leaderboard;
 }
@@ -112,61 +105,14 @@ export async function getLeaderboard(
   const { start, end } = periodBounds(period);
   const startIso = start.toISOString();
   const endIso = end.toISOString();
-  const rows = await db.execute(sql`
-    with opted_in as (
-      select
-        id,
-        name,
-        tier,
-        visit_count
-      from ${guests}
-      where restaurant_id = ${restaurantId}
-        and preferences->'leaderboard'->>'optedIn' = 'true'
-    ),
-    earned as (
-      select
-        oi.id,
-        oi.name,
-        coalesce(oi.tier::text, 'bronze') as tier,
-        oi.visit_count,
-        coalesce(sum(lt.points) filter (where lt.type = 'earn'), 0)::int as points_earned
-      from opted_in oi
-      left join ${loyaltyTransactions} lt on lt.guest_id = oi.id
-        and lt.restaurant_id = ${restaurantId}
-        and lt.created_at >= ${startIso}
-        and lt.created_at < ${endIso}
-      group by oi.id, oi.name, oi.tier, oi.visit_count
-    )
-    select
-      id as guest_id,
-      name as guest_name,
-      tier,
-      visit_count,
-      points_earned,
-      rank() over (order by points_earned desc, visit_count desc, name asc)::int as rank
-    from earned
-    order by points_earned desc, visit_count desc, name asc
-    limit ${Math.max(1, Math.min(limit, 100))}
-  `) as Array<{
-    guest_id: string;
-    guest_name: string;
-    tier: string;
-    visit_count: number;
-    points_earned: number;
-    rank: number;
-  }>;
+  const rows = await leaderboardRepository.fetchEntries(restaurantId, startIso, endIso, limit);
 
-  const participantRows = await db.execute(sql`
-    select count(*)::int as participant_count
-    from ${guests}
-    where restaurant_id = ${restaurantId}
-      and preferences->'leaderboard'->>'optedIn' = 'true'
-  `) as Array<{ participant_count: number }>;
+  const participantCount = await leaderboardRepository.countParticipants(restaurantId);
 
   return {
     restaurantId,
     period,
-    participantCount: Number(participantRows[0]?.participant_count ?? 0),
+    participantCount,
     entries: rows.map((row) => ({
       guestId: row.guest_id,
       guestName: row.guest_name,
@@ -203,18 +149,11 @@ export async function finalizeMonthlyLeaderboard(params: {
   for (const entry of leaderboard.entries.slice(0, rewards.length)) {
     const rewardPoints = rewards[entry.rank - 1] ?? 0;
     const reason = `leaderboard_monthly:${period}:rank:${entry.rank}`;
-    const [existingReward] = await db
-      .select({ id: loyaltyTransactions.id })
-      .from(loyaltyTransactions)
-      .where(
-        and(
-          eq(loyaltyTransactions.restaurantId, params.restaurantId),
-          eq(loyaltyTransactions.guestId, entry.guestId),
-          eq(loyaltyTransactions.type, "earn"),
-          eq(loyaltyTransactions.reason, reason),
-        ),
-      )
-      .limit(1);
+    const existingReward = await loyaltyTransactionRepository.findEarnByReasonForGuest(
+      entry.guestId,
+      params.restaurantId,
+      reason,
+    );
 
     if (!existingReward && rewardPoints > 0) {
       await awardPoints(entry.guestId, params.restaurantId, rewardPoints, reason);

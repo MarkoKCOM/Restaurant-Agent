@@ -78,6 +78,21 @@ export const guestRepository = {
     return row ?? null;
   },
 
+  /** By unique referral code (referrer lookup / uniqueness check). */
+  async findByReferralCode(code: string, executor: Executor = db): Promise<GuestRow | null> {
+    const [row] = await executor
+      .select()
+      .from(guests)
+      .where(eq(guests.referralCode, code))
+      .limit(1);
+    return row ?? null;
+  },
+
+  /** All guests referred by a given referrer guest. */
+  findByReferredBy(referrerId: string, executor: Executor = db): Promise<GuestRow[]> {
+    return executor.select().from(guests).where(eq(guests.referredBy, referrerId));
+  },
+
   async insert(values: GuestInsert, executor: Executor = db): Promise<GuestRow> {
     const [created] = await executor.insert(guests).values(values).returning();
     if (!created) {

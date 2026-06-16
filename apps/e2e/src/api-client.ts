@@ -561,6 +561,7 @@ export async function getVisitHistory(guestId: string) {
 export async function submitFeedback(data: {
   guestId: string;
   restaurantId: string;
+  reservationId?: string;
   rating: number;
   feedback?: string;
   channel: string;

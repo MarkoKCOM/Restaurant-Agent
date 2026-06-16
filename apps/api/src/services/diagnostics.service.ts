@@ -2193,21 +2193,28 @@ async function inspectDeployment(): Promise<DeploymentDiagnostic> {
     ? parseMigrationFileId(codeMigrations.latestFile)
     : undefined;
   const databaseLatestId = databaseMigrations.latestId;
+  // Drift is evaluated by applied-vs-code migration COUNT, not by latest id:
+  // drizzle's __drizzle_migrations uses a 1-based serial id while migration
+  // files are 0-based (0000..NNNN), so an id comparison is off-by-one on a
+  // freshly migrated database. Count comparison is numbering-independent.
+  const codeMigrationCount = codeMigrations.status === "ok" ? codeMigrations.count : undefined;
+  const databaseMigrationCount =
+    databaseMigrations.status === "ok" ? databaseMigrations.count : undefined;
   const migrationDrift: DeploymentDiagnostic["migrationDrift"] =
-    codeLatestId === undefined || databaseLatestId === undefined
+    codeMigrationCount === undefined || databaseMigrationCount === undefined
       ? {
           status: "unknown",
           codeLatestId,
           databaseLatestId,
           message: "Migration drift could not be evaluated",
         }
-      : codeLatestId === databaseLatestId
+      : codeMigrationCount === databaseMigrationCount
         ? { status: "ok", codeLatestId, databaseLatestId }
         : {
             status: "mismatch",
             codeLatestId,
             databaseLatestId,
-            message: "Latest code migration does not match latest applied database migration",
+            message: "Applied migration count does not match code migration count",
           };
 
   return {

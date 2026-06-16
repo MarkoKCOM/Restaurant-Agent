@@ -10,8 +10,10 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as api from "./api-client.js";
 
-// BFF Raanana restaurant ID (seeded)
-const RESTAURANT_ID = "c3c22e37-a309-4fde-aa6c-6e714212a3bc";
+// BFF Raanana restaurant ID (seeded). Overridable for ephemeral CI databases
+// where the seed assigns a fresh UUID.
+const RESTAURANT_ID =
+  process.env.OPENSEAT_E2E_RESTAURANT_ID || "c3c22e37-a309-4fde-aa6c-6e714212a3bc";
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const defaultArtifactDir = resolve(packageRoot, "artifacts");
 const apiUrl = process.env.OPENSEAT_API_URL || "http://localhost:3001";
@@ -556,6 +558,15 @@ export async function runAllTests(): Promise<TestRunReport> {
       });
       const reservation = (data as any).reservation;
       await api.updateReservation(reservation.id, { status: "seated" });
+      // Positive feedback linked to this reservation, so completing it schedules
+      // a review_request — which is then skipped because the guest is opted out.
+      await api.submitFeedback({
+        guestId: reservation.guestId ?? guestId,
+        restaurantId: RESTAURANT_ID,
+        reservationId: reservation.id,
+        rating: 5,
+        channel: "web",
+      });
       await api.updateReservation(reservation.id, { status: "completed" });
     }
 

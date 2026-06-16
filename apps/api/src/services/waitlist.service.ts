@@ -1,10 +1,9 @@
-import { and, eq, lte, sql } from "drizzle-orm";
-import type { InferSelectModel } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { waitlist, guests as guestsTable } from "../db/schema.js";
 import { findOrCreateGuest, type GuestRow } from "./guest.service.js";
+import { waitlistRepository } from "../repositories/waitlist.repository.js";
+import { guestRepository } from "../repositories/guest.repository.js";
 
-export type WaitlistRow = InferSelectModel<typeof waitlist>;
+export type { WaitlistRow } from "../repositories/waitlist.repository.js";
+import type { WaitlistRow } from "../repositories/waitlist.repository.js";
 
 export interface WaitlistEntry {
   id: string;
@@ -50,11 +49,7 @@ function rangesOverlap(startA: number, endA: number, startB: number, endB: numbe
 }
 
 async function getGuestMapForRestaurant(restaurantId: string): Promise<Map<string, GuestRow>> {
-  const guestRows = await db
-    .select()
-    .from(guestsTable)
-    .where(eq(guestsTable.restaurantId, restaurantId));
-
+  const guestRows = await guestRepository.listByRestaurant(restaurantId);
   return new Map(guestRows.map((guest) => [guest.id, guest]));
 }
 
@@ -76,18 +71,15 @@ export async function addToWaitlist(data: {
     source: "web",
   });
 
-  const [inserted] = await db
-    .insert(waitlist)
-    .values({
-      restaurantId: data.restaurantId,
-      guestId: guestRow.id,
-      date: data.date,
-      preferredTimeStart: data.preferredTimeStart,
-      preferredTimeEnd: data.preferredTimeEnd,
-      partySize: data.partySize,
-      status: "waiting",
-    })
-    .returning();
+  const inserted = await waitlistRepository.insert({
+    restaurantId: data.restaurantId,
+    guestId: guestRow.id,
+    date: data.date,
+    preferredTimeStart: data.preferredTimeStart,
+    preferredTimeEnd: data.preferredTimeEnd,
+    partySize: data.partySize,
+    status: "waiting",
+  });
 
   if (!inserted) {
     throw new Error("Failed to add to waitlist");
@@ -96,29 +88,11 @@ export async function addToWaitlist(data: {
   return toWaitlistEntry(inserted, guestRow);
 }
 
-async function resolveGuest(guestId: string): Promise<GuestRow> {
-  const [guest] = await db
-    .select()
-    .from(guestsTable)
-    .where(eq(guestsTable.id, guestId))
-    .limit(1);
-  return guest;
-}
-
 export async function listWaitlist(
   restaurantId: string,
   date?: string,
 ): Promise<WaitlistEntry[]> {
-  const conditions = [eq(waitlist.restaurantId, restaurantId)];
-  if (date) {
-    conditions.push(eq(waitlist.date, date));
-  }
-
-  const rows = await db
-    .select()
-    .from(waitlist)
-    .where(and(...conditions))
-    .orderBy(waitlist.createdAt);
+  const rows = await waitlistRepository.listByRestaurant(restaurantId, date);
 
   const guestMap = await getGuestMapForRestaurant(restaurantId);
 
@@ -141,17 +115,7 @@ export async function matchWaitlist(
   const freedEndMin = timeStringToMinutes(freedTimeEnd);
 
   // Get all waiting entries for this restaurant and date
-  const rows = await db
-    .select()
-    .from(waitlist)
-    .where(
-      and(
-        eq(waitlist.restaurantId, restaurantId),
-        eq(waitlist.date, date),
-        eq(waitlist.status, "waiting"),
-      ),
-    )
-    .orderBy(waitlist.createdAt);
+  const rows = await waitlistRepository.findWaitingForDay(restaurantId, date);
 
   const guestMap = await getGuestMapForRestaurant(restaurantId);
 
@@ -176,23 +140,15 @@ export async function offerSlot(waitlistId: string): Promise<WaitlistEntry | nul
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutes
 
-  const [updated] = await db
-    .update(waitlist)
-    .set({
-      status: "offered",
-      offeredAt: now,
-      expiresAt,
-    })
-    .where(eq(waitlist.id, waitlistId))
-    .returning();
+  const updated = await waitlistRepository.updateById(waitlistId, {
+    status: "offered",
+    offeredAt: now,
+    expiresAt,
+  });
 
   if (!updated) return null;
 
-  const [guest] = await db
-    .select()
-    .from(guestsTable)
-    .where(eq(guestsTable.id, updated.guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(updated.guestId);
 
   return guest ? toWaitlistEntry(updated, guest) : null;
 }
@@ -202,19 +158,11 @@ export async function acceptOffer(waitlistId: string): Promise<{
   reservationId: string;
 } | null> {
   // Get the waitlist entry
-  const [entry] = await db
-    .select()
-    .from(waitlist)
-    .where(eq(waitlist.id, waitlistId))
-    .limit(1);
+  const entry = await waitlistRepository.findById(waitlistId);
 
   if (!entry || entry.status !== "offered") return null;
 
-  const [guest] = await db
-    .select()
-    .from(guestsTable)
-    .where(eq(guestsTable.id, entry.guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(entry.guestId);
 
   if (!guest) return null;
 
@@ -232,11 +180,7 @@ export async function acceptOffer(waitlistId: string): Promise<{
   });
 
   // Update waitlist status
-  const [updated] = await db
-    .update(waitlist)
-    .set({ status: "accepted" })
-    .where(eq(waitlist.id, waitlistId))
-    .returning();
+  const updated = await waitlistRepository.updateById(waitlistId, { status: "accepted" });
 
   if (!updated) return null;
 
@@ -247,35 +191,15 @@ export async function acceptOffer(waitlistId: string): Promise<{
 }
 
 export async function expireStaleOffers(): Promise<number> {
-  const now = new Date();
-  const result = await db
-    .update(waitlist)
-    .set({ status: "expired" })
-    .where(
-      and(
-        eq(waitlist.status, "offered"),
-        lte(waitlist.expiresAt, now),
-      ),
-    )
-    .returning();
-
-  return result.length;
+  return waitlistRepository.expireOffersBefore(new Date());
 }
 
 export async function cancelWaitlistEntry(waitlistId: string): Promise<WaitlistEntry | null> {
-  const [updated] = await db
-    .update(waitlist)
-    .set({ status: "expired" })
-    .where(eq(waitlist.id, waitlistId))
-    .returning();
+  const updated = await waitlistRepository.updateById(waitlistId, { status: "expired" });
 
   if (!updated) return null;
 
-  const [guest] = await db
-    .select()
-    .from(guestsTable)
-    .where(eq(guestsTable.id, updated.guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(updated.guestId);
 
   return guest ? toWaitlistEntry(updated, guest) : null;
 }

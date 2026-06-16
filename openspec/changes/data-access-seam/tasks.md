@@ -35,7 +35,8 @@
   - [x] `summary.service.ts` + `analytics.service.ts` (reuse repos + date-range finders; 4 tests)
   - [x] `membership-summary.service.ts` + `membership-processing.service.ts` → `membership-processing-failure.repository.ts` (4 tests)
   - [n/a] `membership-intent-debug.service.ts` — has no DB access (nothing to migrate)
-  - [deferred] `diagnostics.service.ts` — 2294 lines of raw `db.execute(sql)` health/diagnostics probes; no tenant-scoped writes, so the seam adds no safety/testability value. Left importing `db` intentionally. Same for `agent-tools.ts` and the dead `agent.service.ts`.
+  - [x] `agent-tools.ts` + `agent.service.ts` migrated to `guestRepository`/`restaurantRepository` (entity lookups; now db-free)
+  - [exempt] `diagnostics.service.ts` — needs low-level db access (`pingDatabase` health probe + ~30 read-only raw analytical SQL aggregations). Wrapping those in pass-through repo methods gains nothing (no tenant-write safety, no testability) and it would STILL import db for pingDatabase, so it stays exempt by design.
 - [ ] 3.8 Decide + handle non-tenant lookups (`restaurants` by slug, `adminUsers` by email) per the design's open question
 - [ ] 3.9 Confirm worker/cron entry points route through services/repositories, not direct `db`
 
@@ -47,6 +48,6 @@
 ## 5. Guardrails + close-out
 
 - [x] 5.1 Verify ~zero remaining inline `eq(table.restaurantId, ...)` filters in migrated services (only diagnostics/agent-tools retain raw `db` intentionally)
-- [ ] 5.2 Add a CI/lint guard forbidding `import { db }` inside `apps/api/src/services/` — must EXEMPT `diagnostics.service.ts`, `agent-tools.ts`, `agent.service.ts` (they keep raw `db`). Opinionated/would block other devs → awaits direction.
+- [x] 5.2 Added eslint `no-restricted-imports` guard: API services may not import `../db/schema` (the raw-query signal; `db.transaction` via `../db/index` stays allowed). Exempts `diagnostics.service.ts`. Verified it catches violations and produces no false positives.
 - [x] 5.3 Update PROGRESS.md with the data-access seam outcome and note that #2 (transactions) and #5 (centralized scoping) are now unblocked
-- [ ] 5.4 Run `openspec archive data-access-seam` once the transaction phase (group 4) is decided and any remaining migrations are merged
+- [ ] 5.4 Run `openspec archive data-access-seam` after this final PR merges

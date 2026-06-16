@@ -8,9 +8,8 @@ import { findOrCreateGuest, toDomainGuest } from "./guest.service.js";
 import { addToWaitlist } from "./waitlist.service.js";
 import { getReferralShare } from "./referral.service.js";
 import { getMembershipSummary } from "./membership-summary.service.js";
-import { db } from "../db/index.js";
-import { guests, restaurants } from "../db/schema.js";
-import { and, eq } from "drizzle-orm";
+import { guestRepository } from "../repositories/guest.repository.js";
+import { restaurantRepository } from "../repositories/restaurant.repository.js";
 
 interface ConversationContext {
   restaurantId: string;
@@ -216,11 +215,7 @@ const executors: Record<string, ToolExecutor> = {
   },
 
   async get_restaurant_info(_args, ctx) {
-    const [restaurant] = await db
-      .select()
-      .from(restaurants)
-      .where(eq(restaurants.id, ctx.restaurantId))
-      .limit(1);
+    const restaurant = await restaurantRepository.findById(ctx.restaurantId);
 
     if (!restaurant) return { error: "Restaurant not found" };
 
@@ -236,11 +231,7 @@ const executors: Record<string, ToolExecutor> = {
 
   async get_guest_profile(args, ctx) {
     const { phone } = args as { phone: string };
-    const [existing] = await db
-      .select()
-      .from(guests)
-      .where(and(eq(guests.restaurantId, ctx.restaurantId), eq(guests.phone, phone)))
-      .limit(1);
+    const existing = await guestRepository.findByPhone(ctx.restaurantId, phone);
 
     if (existing) return toDomainGuest(existing);
 
@@ -249,11 +240,7 @@ const executors: Record<string, ToolExecutor> = {
 
   async get_membership_summary(args, ctx) {
     const { phone } = args as { phone: string };
-    const [existing] = await db
-      .select()
-      .from(guests)
-      .where(and(eq(guests.restaurantId, ctx.restaurantId), eq(guests.phone, phone)))
-      .limit(1);
+    const existing = await guestRepository.findByPhone(ctx.restaurantId, phone);
 
     if (!existing) {
       return {
@@ -268,11 +255,7 @@ const executors: Record<string, ToolExecutor> = {
 
   async get_referral_share(args, ctx) {
     const { phone } = args as { phone: string };
-    const [existing] = await db
-      .select()
-      .from(guests)
-      .where(and(eq(guests.restaurantId, ctx.restaurantId), eq(guests.phone, phone)))
-      .limit(1);
+    const existing = await guestRepository.findByPhone(ctx.restaurantId, phone);
 
     if (!existing) {
       return {
@@ -287,11 +270,7 @@ const executors: Record<string, ToolExecutor> = {
 
   async set_membership_messaging_opt_out(args, ctx) {
     const { phone, optedOutCampaigns } = args as { phone: string; optedOutCampaigns: boolean };
-    const [existing] = await db
-      .select()
-      .from(guests)
-      .where(and(eq(guests.restaurantId, ctx.restaurantId), eq(guests.phone, phone)))
-      .limit(1);
+    const existing = await guestRepository.findByPhone(ctx.restaurantId, phone);
 
     if (!existing) {
       return {
@@ -301,11 +280,7 @@ const executors: Record<string, ToolExecutor> = {
       };
     }
 
-    const [updated] = await db
-      .update(guests)
-      .set({ optedOutCampaigns, updatedAt: new Date() })
-      .where(eq(guests.id, existing.id))
-      .returning();
+    const updated = await guestRepository.updateById(existing.id, { optedOutCampaigns, updatedAt: new Date() });
 
     return {
       success: true,

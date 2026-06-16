@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { rewards } from "../db/schema.js";
@@ -44,6 +44,22 @@ export const rewardRepository = {
       .where(and(eq(rewards.id, id), eq(rewards.restaurantId, restaurantId)))
       .limit(1);
     return row ?? null;
+  },
+
+  /** A reward by global UUID (ownership verified by the caller). */
+  async findById(id: string, executor: Executor = db): Promise<RewardRow | null> {
+    const [row] = await executor
+      .select()
+      .from(rewards)
+      .where(eq(rewards.id, id))
+      .limit(1);
+    return row ?? null;
+  },
+
+  /** Rewards by a set of global UUIDs (e.g. resolving names for a claim list). */
+  findByIds(ids: string[], executor: Executor = db): Promise<RewardRow[]> {
+    if (ids.length === 0) return Promise.resolve([]);
+    return executor.select().from(rewards).where(inArray(rewards.id, ids));
   },
 
   /** An active reward by id (ownership verified by the caller). */

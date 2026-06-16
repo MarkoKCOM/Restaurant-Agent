@@ -21,7 +21,12 @@
 - [x] 3.4 Migrate the visit/loyalty cluster (split into two PRs):
   - [x] 3.4a `visit.service.ts` → `visit.repository.ts` (+ `reservationRepository.findByGuest`; reuses `guestRepository`; 4 unit tests)
   - [x] 3.4b `loyalty.service.ts` → `loyalty-transaction.repository.ts` + `reward.repository.ts` (+ `guestRepository.adjustPoints`, `reservationRepository.findVisitCompletionContext`; idempotency filters preserved exactly; 6 unit tests)
-- [ ] 3.5 Migrate the engagement cluster: `engagement.service.ts`, `campaign.service.ts`, `challenge.service.ts`, `achievement.service.ts`, `reward-claims.service.ts`
+- [~] 3.5 Migrate the engagement cluster (one PR per service):
+  - [x] `achievement.service.ts` (reuses `guestRepository`; 2 tests)
+  - [x] `reward-claims.service.ts` → `reward-claim.repository.ts` (+ `rewardRepository.findById`/`findByIds`; 6 tests) — shares PR with achievement
+  - [ ] `engagement.service.ts` → `engagement-job.repository.ts`
+  - [ ] `campaign.service.ts` → `campaign.repository.ts`
+  - [ ] `challenge.service.ts` → extend `challenge.repository.ts`
 - [ ] 3.6 Migrate referral/leaderboard/gamification-share/feedback/outbound-message services
 - [ ] 3.7 Migrate read-only/reporting services: `analytics.service.ts`, `summary.service.ts`, `diagnostics.service.ts`, `membership-intent-debug.service.ts`
 - [ ] 3.8 Decide + handle non-tenant lookups (`restaurants` by slug, `adminUsers` by email) per the design's open question

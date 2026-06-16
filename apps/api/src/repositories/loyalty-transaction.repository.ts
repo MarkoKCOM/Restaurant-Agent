@@ -62,6 +62,31 @@ export const loyaltyTransactionRepository = {
     return row ?? null;
   },
 
+  /**
+   * Idempotency (reservation-independent): an existing "earn" transaction for a
+   * guest with a specific reason, across all reservations (e.g. streak milestones).
+   */
+  async findEarnByReasonForGuest(
+    guestId: string,
+    restaurantId: string,
+    reason: string,
+    executor: Executor = db,
+  ): Promise<LoyaltyTransactionRow | null> {
+    const [row] = await executor
+      .select()
+      .from(loyaltyTransactions)
+      .where(
+        and(
+          eq(loyaltyTransactions.guestId, guestId),
+          eq(loyaltyTransactions.restaurantId, restaurantId),
+          eq(loyaltyTransactions.type, "earn"),
+          eq(loyaltyTransactions.reason, reason),
+        ),
+      )
+      .limit(1);
+    return row ?? null;
+  },
+
   /** Idempotency: an existing lucky-spin award (reason prefixed `lucky_spin:`) for this reservation. */
   async findLuckySpinForVisit(
     guestId: string,

@@ -26,7 +26,7 @@
   - [x] `reward-claims.service.ts` → `reward-claim.repository.ts` (+ `rewardRepository.findById`/`findByIds`; 6 tests) — shares PR with achievement
   - [ ] `engagement.service.ts` → `engagement-job.repository.ts`
   - [ ] `campaign.service.ts` → `campaign.repository.ts`
-  - [ ] `challenge.service.ts` → extend `challenge.repository.ts`
+  - [x] `challenge.service.ts` → extended `challenge.repository.ts` (challenges + challengeProgress; +`loyaltyTransactionRepository.findEarnByReasonForGuest`; 5 tests)
 - [ ] 3.6 Migrate referral/leaderboard/gamification-share/feedback/outbound-message services
 - [ ] 3.7 Migrate read-only/reporting services: `analytics.service.ts`, `summary.service.ts`, `diagnostics.service.ts`, `membership-intent-debug.service.ts`
 - [ ] 3.8 Decide + handle non-tenant lookups (`restaurants` by slug, `adminUsers` by email) per the design's open question

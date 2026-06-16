@@ -1,5 +1,15 @@
 # Progress Log
 
+## 2026-06-16 (Marketing spacing + SEO/GEO polish)
+
+### Shipped
+- **PR #32** `feat(marketing): tighten section spacing + SEO/GEO improvements` — follow-up to the brand bundle (#28).
+  - **Spacing:** replaced fixed `120px`/`80px` section padding with responsive `clamp()` (max ~92px desktop, ~56px mobile); scaled hero padding, stats gap, and header margins too.
+  - **Mobile:** verified every grid already collapses via per-section `!important` media queries; checked visually with Playwright at 390px/1280px in RTL (he) and LTR (en).
+  - **Functional:** Playwright load = zero console errors; HE→EN language switch flips `dir`/`lang` and copy; all assets serve 200; build/type-check/lint pass.
+  - **SEO/GEO:** the site is a client-rendered SPA (JS-less crawlers/AI saw an empty body). Added a `<noscript>` content fallback, an Organization entity, enriched SoftwareApplication schema (`featureList`/`image`/`offerCount`), "What is OpenSeat?"/"How much does it cost?" FAQ entries, and explicit robots.txt allows for GPTBot/PerplexityBot/ClaudeBot/Google-Extended/etc.
+  - **Next (flagged, not done):** prerender to static HTML (SSG) so full copy — not just the noscript summary — is in the initial response.
+
 ## 2026-06-16 (Marketing brand bundle applied)
 
 ### Shipped

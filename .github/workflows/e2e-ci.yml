@@ -66,8 +66,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build API
-        run: pnpm -F @openseat/api build
+      - name: Build API (and its @openseat/domain dependency, in order)
+        run: pnpm turbo build --filter=@openseat/api
 
       - name: Apply migrations
         run: pnpm -F @openseat/api db:migrate

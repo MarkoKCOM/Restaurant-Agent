@@ -1,12 +1,11 @@
-import { and, eq, desc } from "drizzle-orm";
-import type { InferSelectModel } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { guests, visitLogs, reservations, challengeProgress, challenges } from "../db/schema.js";
 import type { CreateGuestInput, Guest as DomainGuest } from "@openseat/domain";
+import { guestRepository } from "../repositories/guest.repository.js";
+import { challengeRepository } from "../repositories/challenge.repository.js";
 import { getVisitHistory, getGuestInsights, getGuestDietaryProfile } from "./visit.service.js";
 import { getGuestSentimentHistory } from "./feedback.service.js";
 
-export type GuestRow = InferSelectModel<typeof guests>;
+export type { GuestRow } from "../repositories/guest.repository.js";
+import type { GuestRow } from "../repositories/guest.repository.js";
 
 export function toDomainGuest(row: GuestRow): DomainGuest {
   return {
@@ -30,11 +29,7 @@ export function toDomainGuest(row: GuestRow): DomainGuest {
 }
 
 export async function findOrCreateGuest(input: CreateGuestInput): Promise<GuestRow> {
-  const [existing] = await db
-    .select()
-    .from(guests)
-    .where(and(eq(guests.restaurantId, input.restaurantId), eq(guests.phone, input.phone)))
-    .limit(1);
+  const existing = await guestRepository.findByPhone(input.restaurantId, input.phone);
 
   if (existing) {
     const shouldUpdate =
@@ -43,16 +38,12 @@ export async function findOrCreateGuest(input: CreateGuestInput): Promise<GuestR
       (input.source && input.source !== existing.source);
 
     if (shouldUpdate) {
-      const [updated] = await db
-        .update(guests)
-        .set({
-          name: input.name || existing.name,
-          email: input.email ?? existing.email,
-          source: input.source ?? existing.source,
-          updatedAt: new Date(),
-        })
-        .where(eq(guests.id, existing.id))
-        .returning();
+      const updated = await guestRepository.updateById(existing.id, {
+        name: input.name || existing.name,
+        email: input.email ?? existing.email,
+        source: input.source ?? existing.source,
+        updatedAt: new Date(),
+      });
 
       return updated ?? existing;
     }
@@ -60,38 +51,28 @@ export async function findOrCreateGuest(input: CreateGuestInput): Promise<GuestR
     return existing;
   }
 
-  const [created] = await db
-    .insert(guests)
-    .values({
-      restaurantId: input.restaurantId,
-      name: input.name,
-      phone: input.phone,
-      email: input.email,
-      language: input.language ?? "he",
-      source: input.source ?? "web",
-    })
-    .returning();
-
-  if (!created) {
-    throw new Error("Failed to create guest");
-  }
-
-  return created;
+  return guestRepository.insert({
+    restaurantId: input.restaurantId,
+    name: input.name,
+    phone: input.phone,
+    email: input.email,
+    language: input.language ?? "he",
+    source: input.source ?? "web",
+  });
 }
 
 export async function listGuests(params: { restaurantId?: string }): Promise<GuestRow[]> {
   const { restaurantId } = params;
 
   if (restaurantId) {
-    return db.select().from(guests).where(eq(guests.restaurantId, restaurantId));
+    return guestRepository.listByRestaurant(restaurantId);
   }
 
-  return db.select().from(guests);
+  return guestRepository.listAll();
 }
 
 export async function getGuestById(id: string): Promise<GuestRow | undefined> {
-  const [row] = await db.select().from(guests).where(eq(guests.id, id)).limit(1);
-  return row;
+  return (await guestRepository.findById(id)) ?? undefined;
 }
 
 export async function updateGuestPreferences(
@@ -128,8 +109,7 @@ export async function updateGuestPreferences(
 
   update.updatedAt = new Date();
 
-  const [updated] = await db.update(guests).set(update).where(eq(guests.id, id)).returning();
-  return updated ?? null;
+  return guestRepository.updateById(id, update);
 }
 
 // ── Full Guest Profile (for WhatsApp bot context) ─────
@@ -146,15 +126,9 @@ export async function getFullGuestProfile(guestId: string) {
   ]);
 
   // Get active challenges progress
-  const guestChallengeProgress = await db
-    .select()
-    .from(challengeProgress)
-    .where(eq(challengeProgress.guestId, guestId));
+  const guestChallengeProgress = await challengeRepository.findProgressByGuest(guestId);
 
-  const restaurantChallenges = await db
-    .select()
-    .from(challenges)
-    .where(eq(challenges.restaurantId, guest.restaurantId));
+  const restaurantChallenges = await challengeRepository.findByRestaurant(guest.restaurantId);
   const challengeById = new Map(restaurantChallenges.map((challenge) => [challenge.id, challenge]));
 
   const guestChallenges = guestChallengeProgress
@@ -297,10 +271,7 @@ export async function autoTagGuest(guestId: string) {
 
   const tagsArray = Array.from(newTags);
 
-  await db
-    .update(guests)
-    .set({ tags: tagsArray, updatedAt: new Date() })
-    .where(eq(guests.id, guestId));
+  await guestRepository.updateById(guestId, { tags: tagsArray, updatedAt: new Date() });
 
   return tagsArray;
 }
@@ -324,10 +295,7 @@ export async function refreshVisitAutoTags(guestId: string): Promise<string[] | 
     updatedTags.some((t, i) => t !== currentTags[i]);
 
   if (changed) {
-    await db
-      .update(guests)
-      .set({ tags: updatedTags, updatedAt: new Date() })
-      .where(eq(guests.id, guestId));
+    await guestRepository.updateById(guestId, { tags: updatedTags, updatedAt: new Date() });
   }
 
   return updatedTags;

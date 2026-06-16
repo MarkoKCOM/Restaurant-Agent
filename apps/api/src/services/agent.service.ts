@@ -6,11 +6,9 @@
  */
 
 import { Redis } from "ioredis";
-import { and, eq } from "drizzle-orm";
 import { env } from "../env.js";
 import { agentTools, executeTool } from "./agent-tools.js";
-import { db } from "../db/index.js";
-import { guests } from "../db/schema.js";
+import { guestRepository } from "../repositories/guest.repository.js";
 import { debugMembershipIntent } from "./membership-intent-debug.service.js";
 
 const redis = new Redis(env.REDIS_URL);
@@ -198,11 +196,7 @@ async function applyDeterministicCampaignOptOut(params: {
   restaurantId: string;
   phone: string;
 }): Promise<NonNullable<AgentResponse["diagnostics"]["deterministicAction"]>> {
-  const [existing] = await db
-    .select()
-    .from(guests)
-    .where(and(eq(guests.restaurantId, params.restaurantId), eq(guests.phone, params.phone)))
-    .limit(1);
+  const existing = await guestRepository.findByPhone(params.restaurantId, params.phone);
 
   if (!existing) {
     return {
@@ -213,10 +207,7 @@ async function applyDeterministicCampaignOptOut(params: {
     };
   }
 
-  await db
-    .update(guests)
-    .set({ optedOutCampaigns: true, updatedAt: new Date() })
-    .where(eq(guests.id, existing.id));
+  await guestRepository.updateById(existing.id, { optedOutCampaigns: true, updatedAt: new Date() });
 
   return {
     type: "campaign_opt_out",

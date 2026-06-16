@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel, SQL } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { reservations } from "../db/schema.js";
+import { reservations, restaurants } from "../db/schema.js";
 import type { Executor } from "./types.js";
 
 export type ReservationRow = InferSelectModel<typeof reservations>;
@@ -50,6 +50,36 @@ export const reservationRepository = {
       .from(reservations)
       .where(where)
       .orderBy(reservations.date, reservations.timeStart);
+  },
+
+  /**
+   * Loyalty visit-completion context: a reservation's date/time/party plus its
+   * restaurant's dashboard config, scoped to the matching restaurant + guest.
+   */
+  async findVisitCompletionContext(
+    reservationId: string,
+    restaurantId: string,
+    guestId: string,
+    executor: Executor = db,
+  ) {
+    const [row] = await executor
+      .select({
+        date: reservations.date,
+        timeStart: reservations.timeStart,
+        partySize: reservations.partySize,
+        dashboardConfig: restaurants.dashboardConfig,
+      })
+      .from(reservations)
+      .innerJoin(restaurants, eq(reservations.restaurantId, restaurants.id))
+      .where(
+        and(
+          eq(reservations.id, reservationId),
+          eq(reservations.restaurantId, restaurantId),
+          eq(reservations.guestId, guestId),
+        ),
+      )
+      .limit(1);
+    return row ?? null;
   },
 
   /** By global guest UUID: a guest's reservations, newest-first. */

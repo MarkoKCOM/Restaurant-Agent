@@ -94,4 +94,15 @@ export const guestRepository = {
       })
       .where(eq(guests.id, id));
   },
+
+  /**
+   * By global guest UUID: atomically adjust the points balance by `delta`
+   * (negative to deduct). Caller is responsible for balance checks.
+   */
+  async adjustPoints(id: string, delta: number, executor: Executor = db): Promise<void> {
+    await executor
+      .update(guests)
+      .set({ pointsBalance: sql`${guests.pointsBalance} + ${delta}`, updatedAt: new Date() })
+      .where(eq(guests.id, id));
+  },
 };

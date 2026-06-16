@@ -18,9 +18,9 @@
 - [x] 3.1 Migrate `guest.service.ts` → `guest.repository.ts` (+ mocked-repo unit test); seeded `challenge.repository.ts` for the profile read; added a Vitest env-setup so unit tests stay DB-free
 - [x] 3.2 Migrate `reservation.service.ts` → `reservation.repository.ts` (+ `restaurant.repository.ts`, guest increment helpers; 6 unit tests). Done in an isolated git worktree to avoid a concurrent agent's branch switching.
 - [x] 3.3 Migrate `waitlist.service.ts` → `waitlist.repository.ts` (reuses `guestRepository`; dropped dead `resolveGuest`/`sql`; 5 unit tests)
-- [~] 3.4 Migrate the visit/loyalty cluster (split into two PRs):
+- [x] 3.4 Migrate the visit/loyalty cluster (split into two PRs):
   - [x] 3.4a `visit.service.ts` → `visit.repository.ts` (+ `reservationRepository.findByGuest`; reuses `guestRepository`; 4 unit tests)
-  - [ ] 3.4b `loyalty.service.ts` → `loyalty.repository.ts` (+ membership-summary/membership-processing reads)
+  - [x] 3.4b `loyalty.service.ts` → `loyalty-transaction.repository.ts` + `reward.repository.ts` (+ `guestRepository.adjustPoints`, `reservationRepository.findVisitCompletionContext`; idempotency filters preserved exactly; 6 unit tests)
 - [ ] 3.5 Migrate the engagement cluster: `engagement.service.ts`, `campaign.service.ts`, `challenge.service.ts`, `achievement.service.ts`, `reward-claims.service.ts`
 - [ ] 3.6 Migrate referral/leaderboard/gamification-share/feedback/outbound-message services
 - [ ] 3.7 Migrate read-only/reporting services: `analytics.service.ts`, `summary.service.ts`, `diagnostics.service.ts`, `membership-intent-debug.service.ts`

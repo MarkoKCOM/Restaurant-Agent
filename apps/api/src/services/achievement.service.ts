@@ -1,6 +1,4 @@
-import { eq } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { guests } from "../db/schema.js";
+import { guestRepository } from "../repositories/guest.repository.js";
 
 export interface AchievementBadge {
   key: string;
@@ -156,11 +154,7 @@ export async function awardVisitAchievements(
   guestId: string,
   input: { visitCount?: number; items?: VisitItem[] } = {},
 ): Promise<AchievementSummary | null> {
-  const [guest] = await db
-    .select()
-    .from(guests)
-    .where(eq(guests.id, guestId))
-    .limit(1);
+  const guest = await guestRepository.findById(guestId);
 
   if (!guest) return null;
 
@@ -170,10 +164,10 @@ export async function awardVisitAchievements(
   });
 
   if (result.changed) {
-    await db
-      .update(guests)
-      .set({ preferences: result.preferences, updatedAt: new Date() })
-      .where(eq(guests.id, guestId));
+    await guestRepository.updateById(guestId, {
+      preferences: result.preferences,
+      updatedAt: new Date(),
+    });
   }
 
   return result.achievements;

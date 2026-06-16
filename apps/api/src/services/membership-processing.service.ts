@@ -1,7 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
-import type { InferSelectModel } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { membershipProcessingFailures } from "../db/schema.js";
+import { membershipProcessingFailureRepository } from "../repositories/membership-processing-failure.repository.js";
 import { refreshVisitAutoTags } from "./guest.service.js";
 import { onVisitCompleted } from "./loyalty.service.js";
 import { updateStreak } from "./challenge.service.js";
@@ -16,7 +13,8 @@ export type MembershipProcessingStage =
   | "challenge_progress"
   | "engagement_scheduling";
 
-export type MembershipProcessingFailureRow = InferSelectModel<typeof membershipProcessingFailures>;
+export type { MembershipProcessingFailureRow } from "../repositories/membership-processing-failure.repository.js";
+import type { MembershipProcessingFailureRow } from "../repositories/membership-processing-failure.repository.js";
 
 function errorDetails(error: unknown): {
   errorName: string;
@@ -46,26 +44,17 @@ export async function recordMembershipProcessingFailure(input: {
   stage: MembershipProcessingStage;
   error: unknown;
 }): Promise<MembershipProcessingFailureRow> {
-  const [created] = await db
-    .insert(membershipProcessingFailures)
-    .values({
-      restaurantId: input.restaurantId,
-      guestId: input.guestId,
-      reservationId: input.reservationId,
-      stage: input.stage,
-      status: "open",
-      ...errorDetails(input.error),
-      attempts: 1,
-      lastAttemptAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .returning();
-
-  if (!created) {
-    throw new Error("Failed to record membership processing failure");
-  }
-
-  return created;
+  return membershipProcessingFailureRepository.insert({
+    restaurantId: input.restaurantId,
+    guestId: input.guestId,
+    reservationId: input.reservationId,
+    stage: input.stage,
+    status: "open",
+    ...errorDetails(input.error),
+    attempts: 1,
+    lastAttemptAt: new Date(),
+    updatedAt: new Date(),
+  });
 }
 
 export async function listMembershipProcessingFailures(params: {
@@ -73,18 +62,7 @@ export async function listMembershipProcessingFailures(params: {
   status?: "open" | "resolved";
   limit?: number;
 }): Promise<MembershipProcessingFailureRow[]> {
-  const conditions = [eq(membershipProcessingFailures.restaurantId, params.restaurantId)];
-
-  if (params.status) {
-    conditions.push(eq(membershipProcessingFailures.status, params.status));
-  }
-
-  return db
-    .select()
-    .from(membershipProcessingFailures)
-    .where(and(...conditions))
-    .orderBy(desc(membershipProcessingFailures.createdAt))
-    .limit(params.limit ?? 50);
+  return membershipProcessingFailureRepository.list(params);
 }
 
 async function runStage(failure: MembershipProcessingFailureRow): Promise<void> {
@@ -135,44 +113,22 @@ export async function retryMembershipProcessingFailure(params: {
   failureId: string;
   restaurantId: string;
 }): Promise<MembershipProcessingFailureRow | null> {
-  const [failure] = await db
-    .select()
-    .from(membershipProcessingFailures)
-    .where(
-      and(
-        eq(membershipProcessingFailures.id, params.failureId),
-        eq(membershipProcessingFailures.restaurantId, params.restaurantId),
-      ),
-    )
-    .limit(1);
+  const failure = await membershipProcessingFailureRepository.findByIdInRestaurant(
+    params.failureId,
+    params.restaurantId,
+  );
 
   if (!failure) return null;
   if (failure.status === "resolved") return failure;
 
   try {
     await runStage(failure);
-    const [updated] = await db
-      .update(membershipProcessingFailures)
-      .set({
-        status: "resolved",
-        resolvedAt: new Date(),
-        lastAttemptAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(membershipProcessingFailures.id, failure.id))
-      .returning();
-    return updated ?? null;
+    return await membershipProcessingFailureRepository.markResolved(failure.id);
   } catch (error: unknown) {
-    const [updated] = await db
-      .update(membershipProcessingFailures)
-      .set({
-        ...errorDetails(error),
-        attempts: sql`${membershipProcessingFailures.attempts} + 1`,
-        lastAttemptAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(membershipProcessingFailures.id, failure.id))
-      .returning();
+    const updated = await membershipProcessingFailureRepository.markRetryFailed(
+      failure.id,
+      errorDetails(error),
+    );
 
     throw Object.assign(error instanceof Error ? error : new Error(String(error)), {
       failure: updated,

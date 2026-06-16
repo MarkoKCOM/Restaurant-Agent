@@ -1,7 +1,7 @@
-import { and, desc, eq, ne } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { campaigns, guests, visitLogs } from "../db/schema.js";
 import { campaignQueue } from "../queue/index.js";
+import { campaignRepository } from "../repositories/campaign.repository.js";
+import { guestRepository } from "../repositories/guest.repository.js";
+import { visitRepository } from "../repositories/visit.repository.js";
 import {
   applyEngagementQuietHours,
   getRestaurantEngagementQuietHours,
@@ -307,18 +307,8 @@ async function selectCampaignAudience(params: {
   matched: CampaignAudienceGuest[];
 }> {
   const [guestRows, visitRows] = await Promise.all([
-    db
-      .select()
-      .from(guests)
-      .where(eq(guests.restaurantId, params.restaurantId))
-      .orderBy(desc(guests.lastVisitDate), desc(guests.createdAt)),
-    db
-      .select({
-        guestId: visitLogs.guestId,
-        totalSpend: visitLogs.totalSpend,
-      })
-      .from(visitLogs)
-      .where(eq(visitLogs.restaurantId, params.restaurantId)),
+    guestRepository.listByRestaurantRecentFirst(params.restaurantId),
+    visitRepository.findByRestaurant(params.restaurantId),
   ]);
 
   const spendByGuest = new Map<string, number>();
@@ -468,32 +458,27 @@ export async function createCampaign(params: {
     throw error;
   }
 
-  const [campaign] = await db
-    .insert(campaigns)
-    .values({
-      restaurantId: params.restaurantId,
-      name: params.name,
-      templateText: params.templateText,
-      audienceFilter: {
-        ...params.audienceFilter,
-        ...(params.templateId ? { templateId: params.templateId } : {}),
-        variables: templateValidation.variables,
+  const campaign = await campaignRepository.insert({
+    restaurantId: params.restaurantId,
+    name: params.name,
+    templateText: params.templateText,
+    audienceFilter: {
+      ...params.audienceFilter,
+      ...(params.templateId ? { templateId: params.templateId } : {}),
+      variables: templateValidation.variables,
+    },
+    status: schedule.status,
+    scheduledAt: schedule.effectiveScheduledAt ? new Date(schedule.effectiveScheduledAt) : null,
+    stats: {
+      delivery: {
+        sent: 0,
+        delivered: 0,
+        read: 0,
+        replied: 0,
       },
-      status: schedule.status,
-      scheduledAt: schedule.effectiveScheduledAt ? new Date(schedule.effectiveScheduledAt) : null,
-      stats: {
-        delivery: {
-          sent: 0,
-          delivered: 0,
-          read: 0,
-          replied: 0,
-        },
-        schedule,
-      },
-    })
-    .returning();
-
-  if (!campaign) throw new Error("Failed to create campaign");
+      schedule,
+    },
+  });
 
   if (schedule.effectiveScheduledAt) {
     const delay = new Date(schedule.effectiveScheduledAt).getTime() - Date.now();
@@ -547,11 +532,10 @@ export async function deliverCampaign(params: {
   now?: Date;
 }) {
   const now = params.now ?? new Date();
-  const [campaign] = await db
-    .select()
-    .from(campaigns)
-    .where(and(eq(campaigns.id, params.campaignId), eq(campaigns.restaurantId, params.restaurantId)))
-    .limit(1);
+  const campaign = await campaignRepository.findByIdInRestaurant(
+    params.campaignId,
+    params.restaurantId,
+  );
 
   if (!campaign) throw new Error("Campaign not found");
   if (!["draft", "scheduled"].includes(campaign.status)) {
@@ -566,10 +550,10 @@ export async function deliverCampaign(params: {
       includeOptedOut: true,
     },
   });
-  const priorCampaigns = await db
-    .select({ stats: campaigns.stats })
-    .from(campaigns)
-    .where(and(eq(campaigns.restaurantId, params.restaurantId), ne(campaigns.id, params.campaignId)));
+  const priorCampaigns = await campaignRepository.listByRestaurantExcluding(
+    params.restaurantId,
+    params.campaignId,
+  );
 
   const recipients: CampaignDeliveryRecipient[] = [];
   let sent = 0;
@@ -645,24 +629,20 @@ export async function deliverCampaign(params: {
     lastSentAt: now.toISOString(),
   };
 
-  const [updatedCampaign] = await db
-    .update(campaigns)
-    .set({
-      status: "sent",
-      sentAt: now,
-      stats: {
-        ...existingStats,
-        delivery,
-        deliveryRecipients: recipients,
-        audience: {
-          totalGuests: audience.totalGuests,
-          matchedCount: audience.matched.length,
-          filtersApplied: appliedFilters(audienceFilter),
-        },
+  const updatedCampaign = await campaignRepository.updateById(params.campaignId, {
+    status: "sent",
+    sentAt: now,
+    stats: {
+      ...existingStats,
+      delivery,
+      deliveryRecipients: recipients,
+      audience: {
+        totalGuests: audience.totalGuests,
+        matchedCount: audience.matched.length,
+        filtersApplied: appliedFilters(audienceFilter),
       },
-    })
-    .where(eq(campaigns.id, params.campaignId))
-    .returning();
+    },
+  });
 
   if (!updatedCampaign) throw new Error("Failed to update campaign delivery stats");
 
@@ -682,11 +662,10 @@ export async function recordCampaignDeliveryEvent(params: {
 }) {
   const now = params.now ?? new Date();
   const timestamp = now.toISOString();
-  const [campaign] = await db
-    .select()
-    .from(campaigns)
-    .where(and(eq(campaigns.id, params.campaignId), eq(campaigns.restaurantId, params.restaurantId)))
-    .limit(1);
+  const campaign = await campaignRepository.findByIdInRestaurant(
+    params.campaignId,
+    params.restaurantId,
+  );
 
   if (!campaign) throw new Error("Campaign not found");
 
@@ -722,17 +701,13 @@ export async function recordCampaignDeliveryEvent(params: {
     ...(params.event === "replied" ? { lastRepliedAt: timestamp } : {}),
   };
 
-  const [updatedCampaign] = await db
-    .update(campaigns)
-    .set({
-      stats: {
-        ...existingStats,
-        delivery,
-        deliveryRecipients: recipients,
-      },
-    })
-    .where(eq(campaigns.id, params.campaignId))
-    .returning();
+  const updatedCampaign = await campaignRepository.updateById(params.campaignId, {
+    stats: {
+      ...existingStats,
+      delivery,
+      deliveryRecipients: recipients,
+    },
+  });
 
   if (!updatedCampaign) throw new Error("Failed to update campaign delivery event");
 

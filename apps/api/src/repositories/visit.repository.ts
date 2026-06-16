@@ -18,6 +18,11 @@ export const visitRepository = {
     return created ?? null;
   },
 
+  /** Tenant-scoped: all visit logs for a restaurant (e.g. campaign spend aggregation). */
+  findByRestaurant(restaurantId: string, executor: Executor = db): Promise<VisitLogRow[]> {
+    return executor.select().from(visitLogs).where(eq(visitLogs.restaurantId, restaurantId));
+  },
+
   /** By global guest UUID: visit logs newest-first, optionally limited. */
   findByGuest(
     guestId: string,

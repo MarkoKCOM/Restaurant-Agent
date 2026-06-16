@@ -1077,6 +1077,7 @@ const apiReliabilitySmoke = await readFile("scripts/api-reliability-smoke.mjs", 
 const outboundMessageService = await readFile("apps/api/src/services/outbound-message.service.ts", "utf8");
 const summaryService = await readFile("apps/api/src/services/summary.service.ts", "utf8");
 const engagementJobRepository = await readFile("apps/api/src/repositories/engagement-job.repository.ts", "utf8");
+const outboundMessageRepository = await readFile("apps/api/src/repositories/outbound-message.repository.ts", "utf8");
 const debugTokenHelpers = await readFile("scripts/lib/debug-token.mjs", "utf8");
 const debugErrorHelpers = await readFile("scripts/lib/debug-errors.mjs", "utf8");
 const rootPackageJson = await readFile("package.json", "utf8");
@@ -1202,9 +1203,14 @@ for (const requiredOutboundServiceContent of [
   "deliveryMode",
   "deliverySkipped",
   "status: missingRequiredRecipient ? \"skipped\" : \"logged\"",
-  "case when ${outboundMessages.errorCode} is not null or ${outboundMessages.status} in ('failed', 'skipped') then 0 else 1 end",
 ]) {
   assertIncludes(outboundMessageService, requiredOutboundServiceContent);
+}
+
+for (const requiredOutboundRepositoryContent of [
+  "case when ${outboundMessages.errorCode} is not null or ${outboundMessages.status} in ('failed', 'skipped') then 0 else 1 end",
+]) {
+  assertIncludes(outboundMessageRepository, requiredOutboundRepositoryContent);
 }
 
 for (const requiredSummaryServiceContent of [

@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { guests } from "../db/schema.js";
@@ -36,6 +36,15 @@ export const guestRepository = {
   /** Tenant-scoped: all guests for a restaurant. */
   listByRestaurant(restaurantId: string, executor: Executor = db): Promise<GuestRow[]> {
     return executor.select().from(guests).where(eq(guests.restaurantId, restaurantId));
+  },
+
+  /** Tenant-scoped: guests for a restaurant ordered by most recent visit first. */
+  listByRestaurantRecentFirst(restaurantId: string, executor: Executor = db): Promise<GuestRow[]> {
+    return executor
+      .select()
+      .from(guests)
+      .where(eq(guests.restaurantId, restaurantId))
+      .orderBy(desc(guests.lastVisitDate), desc(guests.createdAt));
   },
 
   /** Unscoped: super-admin listing across every restaurant. */

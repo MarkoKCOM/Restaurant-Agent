@@ -1,0 +1,120 @@
+name: E2E (semantic gate)
+
+# Runs the comprehensive e2e suite (real route → service → repository → DB →
+# response flows) against a freshly-built API on an ephemeral Postgres + Redis.
+# Unit tests mock the repositories and the repo-sql-smoke only proves queries
+# execute; this gate proves they return the RIGHT data end-to-end.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: openseat
+          POSTGRES_PASSWORD: openseat
+          POSTGRES_DB: openseat_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://openseat:openseat@localhost:5432/openseat_e2e
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: e2e-ci-jwt-secret
+      ADMIN_SEED_PASSWORD: E2eAdminPass123
+      SUPER_ADMIN_SEED_EMAIL: super@e2e.test
+      SUPER_ADMIN_SEED_PASSWORD: E2eSuperPass123
+      SUPER_ADMIN_SEED_NAME: E2E Super
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build API
+        run: pnpm -F @openseat/api build
+
+      - name: Apply migrations
+        run: pnpm -F @openseat/api db:migrate
+
+      - name: Seed database
+        run: pnpm -F @openseat/api db:seed
+
+      - name: Set growth package + resolve seeded restaurant id
+        run: |
+          PGPASSWORD=openseat psql -h localhost -U openseat -d openseat_e2e \
+            -c "UPDATE restaurants SET package='growth';"
+          RID=$(PGPASSWORD=openseat psql -h localhost -U openseat -d openseat_e2e \
+            -tAc "SELECT id FROM restaurants ORDER BY created_at LIMIT 1;")
+          echo "OPENSEAT_E2E_RESTAURANT_ID=$RID" >> "$GITHUB_ENV"
+          echo "Resolved restaurant id: $RID"
+
+      - name: Start API and run e2e suite
+        env:
+          OPENSEAT_API_URL: http://127.0.0.1:3099
+          OPENSEAT_ADMIN_EMAIL: admin@bff.co.il
+          OPENSEAT_ADMIN_PASSWORD: E2eAdminPass123
+          OPENSEAT_SUPER_ADMIN_EMAIL: super@e2e.test
+          OPENSEAT_SUPER_ADMIN_PASSWORD: E2eSuperPass123
+        run: |
+          # Start the freshly-built API. CWD must be apps/api so the deployment
+          # diagnostics can read ./drizzle for the migration-drift check.
+          ( cd apps/api && API_PORT=3099 API_HOST=127.0.0.1 LOG_LEVEL=warn \
+              node dist/index.js > /tmp/api.log 2>&1 ) &
+          API_PID=$!
+
+          # Wait for health.
+          for i in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:3099/health >/dev/null 2>&1; then
+              echo "API healthy after ${i}s"
+              break
+            fi
+            if [ "$i" -eq 40 ]; then
+              echo "::error::API failed to become healthy"; tail -50 /tmp/api.log; exit 1
+            fi
+            sleep 1
+          done
+
+          set +e
+          pnpm -F @openseat/e2e test
+          STATUS=$?
+          set -e
+
+          kill "$API_PID" 2>/dev/null || true
+          echo "----- API log tail -----"; tail -30 /tmp/api.log || true
+          exit $STATUS

@@ -16,7 +16,8 @@
 
 import * as api from "./api-client.js";
 
-const RESTAURANT_ID = "c3c22e37-a309-4fde-aa6c-6e714212a3bc";
+const RESTAURANT_ID =
+  process.env.OPENSEAT_E2E_RESTAURANT_ID || "c3c22e37-a309-4fde-aa6c-6e714212a3bc";
 
 interface TestResult {
   name: string;

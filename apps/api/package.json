@@ -12,6 +12,7 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:repo-smoke": "tsx scripts/repo-runtime-smoke.ts",
     "db:seed": "tsx src/db/seed.ts",
     "queue:debug": "node scripts/queue-debug-summary.mjs",
     "provision:sandbox": "node scripts/provision-pilot-sandbox.mjs"

@@ -1,10 +1,7 @@
-import { and, eq } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { reservations, guests as guestsTable, restaurants, waitlist } from "../db/schema.js";
-import type { InferSelectModel } from "drizzle-orm";
-
-type ReservationRow = InferSelectModel<typeof reservations>;
-type GuestRow = InferSelectModel<typeof guestsTable>;
+import { reservationRepository, type ReservationRow } from "../repositories/reservation.repository.js";
+import { guestRepository, type GuestRow } from "../repositories/guest.repository.js";
+import { restaurantRepository, type RestaurantRow } from "../repositories/restaurant.repository.js";
+import { waitlistRepository } from "../repositories/waitlist.repository.js";
 
 const ACTIVE_RESERVATION_STATUSES = ["pending", "confirmed", "seated", "completed"];
 
@@ -96,7 +93,7 @@ export interface OwnerDeliveryContact {
 }
 
 function resolveOwnerDeliveryContactFromRestaurant(
-  restaurant: InferSelectModel<typeof restaurants>,
+  restaurant: RestaurantRow,
 ): OwnerDeliveryContact {
   const candidates = [
     { source: "ownerWhatsapp" as const, value: restaurant.ownerWhatsapp },
@@ -115,9 +112,7 @@ function resolveOwnerDeliveryContactFromRestaurant(
 }
 
 export async function getOwnerDeliveryContact(restaurantId: string): Promise<OwnerDeliveryContact> {
-  const restaurant = await db.query.restaurants.findFirst({
-    where: eq(restaurants.id, restaurantId),
-  });
+  const restaurant = await restaurantRepository.findById(restaurantId);
   if (!restaurant) {
     throw new Error("Restaurant not found");
   }
@@ -129,21 +124,9 @@ export async function getDailySummary(
   restaurantId: string,
   date: string,
 ): Promise<DailySummary> {
-  const reservationRows = await db
-    .select()
-    .from(reservations)
-    .where(
-      and(
-        eq(reservations.restaurantId, restaurantId),
-        eq(reservations.date, date),
-      ),
-    )
-    .orderBy(reservations.timeStart);
+  const reservationRows = await reservationRepository.findByDay(restaurantId, date);
 
-  const guestRows = await db
-    .select()
-    .from(guestsTable)
-    .where(eq(guestsTable.restaurantId, restaurantId));
+  const guestRows = await guestRepository.listByRestaurant(restaurantId);
   const guestMap = new Map(guestRows.map((guest) => [guest.id, guest]));
 
   const dayReservations = reservationRows.map((reservation) => ({
@@ -269,9 +252,7 @@ export async function getMorningSummary(params: {
   date?: string;
   now?: Date;
 }): Promise<MorningSummary> {
-  const restaurant = await db.query.restaurants.findFirst({
-    where: eq(restaurants.id, params.restaurantId),
-  });
+  const restaurant = await restaurantRepository.findById(params.restaurantId);
   if (!restaurant) {
     throw new Error("Restaurant not found");
   }
@@ -282,16 +263,9 @@ export async function getMorningSummary(params: {
   const [yesterday, today, todayReservations, guestRows, waitlistRows] = await Promise.all([
     getDailySummary(params.restaurantId, yesterdayDate),
     getDailySummary(params.restaurantId, summaryDate),
-    db.select().from(reservations).where(and(
-      eq(reservations.restaurantId, params.restaurantId),
-      eq(reservations.date, summaryDate),
-    )),
-    db.select().from(guestsTable).where(eq(guestsTable.restaurantId, params.restaurantId)),
-    db.select().from(waitlist).where(and(
-      eq(waitlist.restaurantId, params.restaurantId),
-      eq(waitlist.date, summaryDate),
-      eq(waitlist.status, "waiting"),
-    )),
+    reservationRepository.findByDay(params.restaurantId, summaryDate),
+    guestRepository.listByRestaurant(params.restaurantId),
+    waitlistRepository.findWaitingForDay(params.restaurantId, summaryDate),
   ]);
   const guestsById = new Map(guestRows.map((guest) => [guest.id, guest]));
   const activeToday = todayReservations

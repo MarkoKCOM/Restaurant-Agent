@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, lte } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { rewardClaims } from "../db/schema.js";
@@ -62,5 +62,24 @@ export const rewardClaimRepository = {
       .from(rewardClaims)
       .where(eq(rewardClaims.guestId, guestId))
       .orderBy(desc(rewardClaims.claimedAt));
+  },
+
+  /** Tenant-scoped: claims claimed within a date range (analytics). */
+  listByRestaurantInRange(
+    restaurantId: string,
+    from: Date,
+    to: Date,
+    executor: Executor = db,
+  ): Promise<RewardClaimRow[]> {
+    return executor
+      .select()
+      .from(rewardClaims)
+      .where(
+        and(
+          eq(rewardClaims.restaurantId, restaurantId),
+          gte(rewardClaims.claimedAt, from),
+          lte(rewardClaims.claimedAt, to),
+        ),
+      );
   },
 };

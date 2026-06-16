@@ -1,6 +1,20 @@
 import { useState, useEffect, useRef, type FormEvent } from "react";
 
-type Lang = "he" | "en" | "ar";
+export type Lang = "he" | "en" | "ar";
+
+/* Language <-> URL path mapping. Each language is a distinct, prerendered page
+   ("/", "/en", "/ar") with a self-referencing canonical and reciprocal hreflang.
+   Shared by the client entry, the server entry, and scripts/prerender.mjs
+   (which hard-codes the same mapping). */
+export const LANGS: Lang[] = ["he", "en", "ar"];
+export function langToPath(l: Lang): string {
+  return l === "he" ? "/" : `/${l}`;
+}
+export function pathToLang(pathname: string): Lang {
+  if (pathname === "/en" || pathname.startsWith("/en/")) return "en";
+  if (pathname === "/ar" || pathname.startsWith("/ar/")) return "ar";
+  return "he";
+}
 
 /* ═══════════════════════════════════════════════════════════
    I18N -trilingual copy (HE primary, EN, AR)
@@ -1428,18 +1442,28 @@ function FooterSection({ L }: { L: I18NData }) {
 /* ═══════════════════════════════════════════════════════════
    Root
    ═══════════════════════════════════════════════════════════ */
-export function LandingPage() {
-  // Start as "he" so the first client render matches the prerendered HTML
-  // (clean hydration). The ?lang override is applied right after mount.
-  const [lang, setLang] = useState<Lang>("he");
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const p = params.get("lang");
-    if (p === "he" || p === "en" || p === "ar") setLang(p);
-  }, []);
+export function LandingPage({ initialLang = "he" }: { initialLang?: Lang }) {
+  // initialLang is derived from the URL path by the client/server entry, so the
+  // first client render matches the prerendered HTML for that path (clean hydration).
+  const [lang, setLangState] = useState<Lang>(initialLang);
 
   const L = I18N[lang];
+
+  // Switching language navigates between the prerendered pages ("/", "/en", "/ar")
+  // via pushState so the URL stays shareable and SEO-correct, without a reload.
+  const setLang = (next: Lang) => {
+    setLangState(next);
+    if (typeof window !== "undefined") {
+      window.history.pushState(null, "", langToPath(next) + window.location.hash);
+    }
+  };
+
+  // Keep language in sync with browser back/forward navigation.
+  useEffect(() => {
+    const onPop = () => setLangState(pathToLang(window.location.pathname));
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute("dir", L.dir);

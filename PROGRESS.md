@@ -1,5 +1,15 @@
 # Progress Log
 
+## 2026-06-16 (Marketing spacing + SEO/GEO polish)
+
+### Shipped
+- **PR #32** `feat(marketing): tighten section spacing + SEO/GEO improvements` — follow-up to the brand bundle (#28).
+  - **Spacing:** replaced fixed `120px`/`80px` section padding with responsive `clamp()` (max ~92px desktop, ~56px mobile); scaled hero padding, stats gap, and header margins too.
+  - **Mobile:** verified every grid already collapses via per-section `!important` media queries; checked visually with Playwright at 390px/1280px in RTL (he) and LTR (en).
+  - **Functional:** Playwright load = zero console errors; HE→EN language switch flips `dir`/`lang` and copy; all assets serve 200; build/type-check/lint pass.
+  - **SEO/GEO (round 1):** the site is a client-rendered SPA (JS-less crawlers/AI saw an empty body). Added a `<noscript>` content fallback, an Organization entity, enriched SoftwareApplication schema (`featureList`/`image`/`offerCount`), "What is OpenSeat?"/"How much does it cost?" FAQ entries, and explicit robots.txt allows for GPTBot/PerplexityBot/ClaudeBot/Google-Extended/etc.
+  - **SEO/GEO (round 2 — prerendering):** added build-time static prerendering (SSG). `entry-server.tsx` renders the app via `renderToString`; build runs `vite build` + `vite build --ssr` + `scripts/prerender.mjs`, which injects the rendered HTML into `dist/index.html`'s `#root`. `main.tsx` hydrates when markup is present, else client-renders (dev). Made the app hydration-safe (read `?lang` in an effect; compute the demo `today` date client-side). The full Hebrew (canonical) page is now in the raw HTML; English `<noscript>` + English schema cover English AI queries. Added WebSite, WebPage (datePublished/dateModified), HowTo (4-step loop), and Product (₪299/₪499/₪799) schema. Verified zero hydration console errors via Playwright; Vercel runs the app build script directly so the prerender runs on deploy.
+
 ## 2026-06-16 (Data-access seam — repository layer, Phase 3 complete)
 
 Implemented the **data-access seam** from the `data-access-seam` OpenSpec change: a repository layer between API services and Drizzle that centralizes tenant scoping, makes services unit-testable, and is the prerequisite for transactions (#2) and centralized scoping (#5).

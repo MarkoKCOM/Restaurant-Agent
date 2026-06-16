@@ -846,7 +846,7 @@ function Hero({ L }: { L: I18NData }) {
         <div style={{ position: "absolute", width: 360, height: 360, borderRadius: "50%", background: "radial-gradient(circle at center, rgba(253,186,116,.35), transparent 70%)", bottom: -120, insetInlineStart: -60, animation: "mesh-drift 18s ease-in-out infinite reverse" }} />
         <div className="hero-grid-bg" style={{ position: "absolute", inset: 0 }} />
       </div>
-      <div className="container-x" style={{ position: "relative", zIndex: 1, paddingBlock: "72px 96px" }}>
+      <div className="container-x" style={{ position: "relative", zIndex: 1, paddingBlock: "clamp(36px, 5vw, 60px) clamp(56px, 8vw, 88px)" }}>
         <div className="hero-cols" style={{ display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: 48, alignItems: "center" }}>
           <div ref={ref} className="reveal-stagger">
             <div className="chip" style={{ marginBottom: 20, background: "white" }}>
@@ -885,7 +885,7 @@ function Hero({ L }: { L: I18NData }) {
           </div>
         </div>
         {/* Stats */}
-        <div className="stats-grid" style={{ marginTop: 80, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)" }}>
+        <div className="stats-grid" style={{ marginTop: "clamp(44px, 6vw, 68px)", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)" }}>
           {L.stats.map((s, i) => (
             <div key={i} style={{ padding: "28px 20px", borderInlineEnd: i < 3 ? "1px solid var(--line)" : "none", animation: "count-up .7s both", animationDelay: `${i * 0.08}s` }}>
               <div className="font-display" style={{ fontSize: "clamp(28px,3.5vw,44px)", lineHeight: 1, fontWeight: 700, color: "var(--brand)" }}>{s.k}</div>
@@ -924,9 +924,9 @@ function Modules({ L }: { L: I18NData }) {
   const ref = useReveal();
   const [active, setActive] = useState(0);
   return (
-    <section id="modules" style={{ padding: "120px 0" }}>
+    <section id="modules" style={{ padding: "clamp(56px, 8vw, 92px) 0" }}>
       <div className="container-x">
-        <div ref={ref} className="reveal" style={{ marginBottom: 56, maxWidth: 760 }}>
+        <div ref={ref} className="reveal" style={{ marginBottom: "clamp(36px, 5vw, 52px)", maxWidth: 760 }}>
           <div className="eyebrow" style={{ marginBottom: 16 }}>01 · {L.eyebrows.system}</div>
           <h2 className="font-display" style={{ fontSize: "clamp(36px,4.5vw,60px)", lineHeight: 1.05, margin: 0, fontWeight: 600, letterSpacing: "-0.03em" }}>
             {L.modulesTitle}<br /><span style={{ color: "var(--brand)" }}>{L.modulesTitle2}</span>
@@ -977,9 +977,9 @@ function Modules({ L }: { L: I18NData }) {
 function How({ L }: { L: I18NData }) {
   const ref = useReveal();
   return (
-    <section id="how" style={{ padding: "120px 0", background: "var(--paper-2)", position: "relative", overflow: "hidden" }}>
+    <section id="how" style={{ padding: "clamp(56px, 8vw, 92px) 0", background: "var(--paper-2)", position: "relative", overflow: "hidden" }}>
       <div className="container-x">
-        <div ref={ref} className="reveal" style={{ marginBottom: 56, textAlign: "center" }}>
+        <div ref={ref} className="reveal" style={{ marginBottom: "clamp(36px, 5vw, 52px)", textAlign: "center" }}>
           <div className="eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}>04 · {L.eyebrows.loop}</div>
           <h2 className="font-display" style={{ fontSize: "clamp(36px,4.5vw,60px)", lineHeight: 1.05, margin: 0, fontWeight: 600, letterSpacing: "-0.03em" }}>{L.howTitle}</h2>
           <p style={{ color: "var(--ink-70)", fontSize: 17, marginTop: 14, maxWidth: 620, marginInline: "auto" }}>{L.howSub}</p>
@@ -1011,9 +1011,9 @@ function How({ L }: { L: I18NData }) {
 function Why({ L }: { L: I18NData }) {
   const ref = useReveal();
   return (
-    <section style={{ padding: "120px 0" }}>
+    <section style={{ padding: "clamp(56px, 8vw, 92px) 0" }}>
       <div className="container-x">
-        <div ref={ref} className="reveal" style={{ marginBottom: 56, maxWidth: 720 }}>
+        <div ref={ref} className="reveal" style={{ marginBottom: "clamp(36px, 5vw, 52px)", maxWidth: 720 }}>
           <div className="eyebrow" style={{ marginBottom: 16 }}>03 · {L.eyebrows.value}</div>
           <h2 className="font-display" style={{ fontSize: "clamp(36px,4.5vw,60px)", lineHeight: 1.05, margin: 0, fontWeight: 600, letterSpacing: "-0.03em" }}>{L.whyTitle}</h2>
         </div>
@@ -1041,7 +1041,7 @@ function Launch({ L }: { L: I18NData }) {
   const ref = useReveal();
   const featuredPlan = L.plans.find((plan) => plan.popular) ?? L.plans[0];
   return (
-    <section ref={ref} className="reveal" style={{ padding: "80px 0" }}>
+    <section ref={ref} className="reveal" style={{ padding: "clamp(40px, 6vw, 64px) 0" }}>
       <div className="container-x">
         <div style={{ position: "relative", overflow: "hidden", borderRadius: 24, padding: "48px 40px", background: "linear-gradient(135deg, var(--accent-warm) 0%, #FEE2E2 100%)", border: "1px solid var(--launch-border)" }}>
           <div style={{ position: "absolute", inset: 0, opacity: .5, backgroundImage: "repeating-linear-gradient(45deg, rgba(253,186,116,.2) 0 2px, transparent 2px 12px)", pointerEvents: "none" }} />
@@ -1083,7 +1083,7 @@ function Pricing({ L }: { L: I18NData }) {
   const [annual, setAnnual] = useState(false);
   const mult = annual ? 10 / 12 : 1;
   return (
-    <section id="pricing" style={{ padding: "120px 0" }}>
+    <section id="pricing" style={{ padding: "clamp(56px, 8vw, 92px) 0" }}>
       <div className="container-x">
         <div ref={ref} className="reveal" style={{ marginBottom: 40, textAlign: "center" }}>
           <div className="eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}>02 · {L.eyebrows.pricing}</div>
@@ -1140,7 +1140,7 @@ function Pricing({ L }: { L: I18NData }) {
 function Addons({ L }: { L: I18NData }) {
   const ref = useReveal();
   return (
-    <section style={{ padding: "40px 0 120px" }}>
+    <section style={{ padding: "clamp(24px, 4vw, 40px) 0 clamp(56px, 8vw, 92px)" }}>
       <div className="container-x">
         <div ref={ref} className="reveal" style={{ marginBottom: 32, textAlign: "center" }}>
           <h3 className="font-display" style={{ fontSize: "clamp(26px,3vw,36px)", margin: "0 0 10px", fontWeight: 600 }}>{L.addonsTitle}</h3>
@@ -1176,7 +1176,7 @@ function Addons({ L }: { L: I18NData }) {
 function FAQ({ L }: { L: I18NData }) {
   const ref = useReveal();
   return (
-    <section style={{ padding: "120px 0", background: "var(--paper-2)" }}>
+    <section style={{ padding: "clamp(56px, 8vw, 92px) 0", background: "var(--paper-2)" }}>
       <div className="container-x" style={{ maxWidth: 860 }}>
         <div ref={ref} className="reveal" style={{ marginBottom: 40, textAlign: "center" }}>
           <div className="eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}>06 · FAQ</div>
@@ -1226,13 +1226,16 @@ function LiveDemo({ L }: { L: I18NData }) {
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Computed on the client only so the prerendered HTML stays deterministic
+  // (a build-time date would mismatch on hydration).
+  const [today, setToday] = useState("");
+  useEffect(() => { setToday(new Date().toISOString().slice(0, 10)); }, []);
   const times = ["18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30"];
   const reset = () => { setStep(0); setParty(2); setTime(""); setSeating("indoor"); setName(""); setPhone(""); };
   const submit = () => { setSubmitting(true); setTimeout(() => { setSubmitting(false); setStep(4); }, 1200); };
 
   return (
-    <section id="demo" style={{ padding: "120px 0" }}>
+    <section id="demo" style={{ padding: "clamp(56px, 8vw, 92px) 0" }}>
       <div className="container-x">
         <div ref={ref} className="reveal" style={{ marginBottom: 40, textAlign: "center" }}>
           <div className="eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}>05 · {L.eyebrows.demo}</div>
@@ -1254,7 +1257,7 @@ function LiveDemo({ L }: { L: I18NData }) {
                   {step === 0 && (
                     <div style={{ animation: "slide-in-up .3s both" }}>
                       <label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginBottom: 6 }}>{w.dateLabel}</label>
-                      <input type="date" defaultValue={today} min={today} style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--paper)", fontSize: 14, fontFamily: "var(--font-mono)" }} />
+                      <input type="date" value={today} min={today || undefined} onChange={(e) => setToday(e.target.value)} style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--paper)", fontSize: 14, fontFamily: "var(--font-mono)" }} />
                       <label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginTop: 14, marginBottom: 8 }}>{w.partyLabel}</label>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 6 }}>
                         {[1, 2, 3, 4, 5, 6].map(n => (
@@ -1347,7 +1350,7 @@ function Contact({ L }: { L: I18NData }) {
   };
   const icons = ["\u23F1", "\u2705", "\uD83D\uDCAC"];
   return (
-    <section id="contact" style={{ padding: "120px 0", background: "var(--paper-2)" }}>
+    <section id="contact" style={{ padding: "clamp(56px, 8vw, 92px) 0", background: "var(--paper-2)" }}>
       <div className="container-x">
         <div ref={ref} className="reveal" style={{ marginBottom: 40, textAlign: "center" }}>
           <div className="eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}>07 · {L.eyebrows.talk}</div>
@@ -1426,12 +1429,15 @@ function FooterSection({ L }: { L: I18NData }) {
    Root
    ═══════════════════════════════════════════════════════════ */
 export function LandingPage() {
-  const [lang, setLang] = useState<Lang>(() => {
+  // Start as "he" so the first client render matches the prerendered HTML
+  // (clean hydration). The ?lang override is applied right after mount.
+  const [lang, setLang] = useState<Lang>("he");
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const p = params.get("lang");
-    if (p === "he" || p === "en" || p === "ar") return p;
-    return "he";
-  });
+    if (p === "he" || p === "en" || p === "ar") setLang(p);
+  }, []);
 
   const L = I18N[lang];
 

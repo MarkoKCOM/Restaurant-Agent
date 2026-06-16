@@ -49,28 +49,59 @@
     <link rel="alternate" hreflang="ar" href="https://marketing-site-nine-chi.vercel.app/?lang=ar" />
     <link rel="alternate" hreflang="x-default" href="https://marketing-site-nine-chi.vercel.app/" />
 
-    <!-- Structured Data -->
+    <!-- Structured Data: Organization (brand entity for AI citation) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "@id": "https://marketing-site-nine-chi.vercel.app/#organization",
+      "name": "OpenSeat",
+      "alternateName": "OpenSeat Restaurant Platform",
+      "url": "https://marketing-site-nine-chi.vercel.app",
+      "logo": "https://marketing-site-nine-chi.vercel.app/branding/png/openseat-mark-512.png",
+      "image": "https://marketing-site-nine-chi.vercel.app/og-image.png",
+      "description": "OpenSeat is a guest-retention platform for restaurants that combines online reservations, a digital guest book, and a WhatsApp-based membership club in one system. It runs on WhatsApp, an embeddable website widget, and a white-label dashboard on any tablet, in Hebrew, English, and Arabic.",
+      "slogan": "Your restaurant's smartest team member",
+      "knowsAbout": [
+        "restaurant reservations",
+        "restaurant membership clubs",
+        "guest retention",
+        "WhatsApp booking automation",
+        "digital guest book"
+      ],
+      "areaServed": "IL"
+    }
+    </script>
+
+    <!-- Structured Data: SoftwareApplication -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "OpenSeat",
       "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web",
+      "applicationSubCategory": "Restaurant reservation and membership software",
+      "operatingSystem": "Web, iOS, Android (browser-based)",
+      "image": "https://marketing-site-nine-chi.vercel.app/branding/png/openseat-mark-512.png",
       "description": "Restaurant reservations, guest book, and a membership club on WhatsApp, your website, and any tablet. Pilot launch price starts at ₪299/mo for the first 5 restaurants; standard plans start at ₪499/mo.",
       "url": "https://marketing-site-nine-chi.vercel.app",
       "inLanguage": ["he", "en", "ar"],
+      "featureList": [
+        "Online reservations with an embeddable one-line website widget",
+        "WhatsApp booking, confirmations, and reminders",
+        "Digital guest book that remembers every guest and visit",
+        "Membership club with points, tiers, and rewards",
+        "White-label dashboard you own, on any tablet or computer",
+        "Hebrew, English, and Arabic with automatic guest language detection"
+      ],
       "offers": {
         "@type": "AggregateOffer",
         "priceCurrency": "ILS",
         "lowPrice": "299",
-        "highPrice": "1999"
+        "highPrice": "1999",
+        "offerCount": "3"
       },
-      "provider": {
-        "@type": "Organization",
-        "name": "OpenSeat",
-        "url": "https://marketing-site-nine-chi.vercel.app"
-      }
+      "provider": { "@id": "https://marketing-site-nine-chi.vercel.app/#organization" }
     }
     </script>
 
@@ -80,6 +111,16 @@
       "@context": "https://schema.org",
       "@type": "FAQPage",
       "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is OpenSeat?",
+          "acceptedAnswer": { "@type": "Answer", "text": "OpenSeat is a guest-retention platform for restaurants. It combines online reservations, a digital guest book, and a WhatsApp membership club in one system, working through WhatsApp, a one-line website widget, and a white-label dashboard on any tablet." }
+        },
+        {
+          "@type": "Question",
+          "name": "How much does OpenSeat cost?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Pilot pricing starts at ₪299/month for the first 5 restaurants. Standard plans start at ₪499/month, and annual plans give 12 months for the price of 10. Monthly plans can be cancelled anytime." }
+        },
         {
           "@type": "Question",
           "name": "Do I need technical knowledge to use OpenSeat?",
@@ -113,9 +154,120 @@
       ]
     }
     </script>
+
+    <!-- Structured Data: WebSite -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "@id": "https://marketing-site-nine-chi.vercel.app/#website",
+      "url": "https://marketing-site-nine-chi.vercel.app",
+      "name": "OpenSeat",
+      "inLanguage": ["he", "en", "ar"],
+      "publisher": { "@id": "https://marketing-site-nine-chi.vercel.app/#organization" }
+    }
+    </script>
+
+    <!-- Structured Data: WebPage (freshness signals for generative engines) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "@id": "https://marketing-site-nine-chi.vercel.app/#webpage",
+      "url": "https://marketing-site-nine-chi.vercel.app",
+      "name": "OpenSeat - restaurant reservations, guest book, and membership club",
+      "isPartOf": { "@id": "https://marketing-site-nine-chi.vercel.app/#website" },
+      "about": { "@id": "https://marketing-site-nine-chi.vercel.app/#organization" },
+      "primaryImageOfPage": "https://marketing-site-nine-chi.vercel.app/og-image.png",
+      "inLanguage": "he",
+      "datePublished": "2026-04-05",
+      "dateModified": "2026-06-16"
+    }
+    </script>
+
+    <!-- Structured Data: HowTo (how OpenSeat works, 4-step loop) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "How OpenSeat turns a reservation into a returning guest",
+      "description": "OpenSeat handles the full guest loop for a restaurant, from the first booking to bringing the guest back.",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Reservation comes in", "text": "A booking arrives from WhatsApp, your website, or the phone, and lands in one place." },
+        { "@type": "HowToStep", "position": 2, "name": "OpenSeat confirms", "text": "It assigns a table and sends the guest a confirmation automatically." },
+        { "@type": "HowToStep", "position": 3, "name": "Guest is recognized", "text": "Staff see member or VIP status and what matters about the guest before seating." },
+        { "@type": "HowToStep", "position": 4, "name": "You bring them back", "text": "Points, perks, or a comeback message keep the relationship going and turn first visits into regulars." }
+      ]
+    }
+    </script>
+
+    <!-- Structured Data: Product with concrete plan pricing -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": "OpenSeat",
+      "brand": { "@id": "https://marketing-site-nine-chi.vercel.app/#organization" },
+      "description": "Restaurant reservations, guest book, and a WhatsApp membership club, sold as monthly plans by restaurant size.",
+      "image": "https://marketing-site-nine-chi.vercel.app/og-image.png",
+      "offers": [
+        { "@type": "Offer", "name": "Pilot launch (first 5 restaurants)", "price": "299", "priceCurrency": "ILS", "description": "Full Loyalty package, monthly, cancel anytime." },
+        { "@type": "Offer", "name": "Starter", "price": "499", "priceCurrency": "ILS", "description": "Reservations, WhatsApp bot, website widget, and owner dashboard. From ₪499/mo." },
+        { "@type": "Offer", "name": "Loyalty", "price": "799", "priceCurrency": "ILS", "description": "Everything in Starter plus the retention engine: loyalty club, games, and automatic win-back. From ₪799/mo." }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <!-- Crawlable content fallback for JS-less crawlers and AI answer engines (GEO).
+         Mirrors the key facts rendered by the React app so OpenSeat is citable
+         even when JavaScript is not executed. -->
+    <noscript>
+      <main style="max-width:720px;margin:0 auto;padding:32px;font-family:system-ui,sans-serif;line-height:1.6;text-align:start" dir="auto">
+        <h1>OpenSeat — restaurant reservations, guest book, and a membership club</h1>
+        <p>
+          OpenSeat (אופן-סיט) is a guest-retention platform for restaurants. It brings
+          online reservations, a digital guest book, and a WhatsApp-based membership club
+          together in one system. OpenSeat works through WhatsApp, a one-line website
+          widget, and a white-label dashboard that runs on any tablet or computer, in
+          Hebrew, English, and Arabic.
+        </p>
+
+        <h2>What OpenSeat does</h2>
+        <ul>
+          <li>Takes online reservations through an embeddable one-line website widget.</li>
+          <li>Handles bookings, confirmations, and reminders over WhatsApp automatically.</li>
+          <li>Keeps a digital guest book that remembers every guest and every visit.</li>
+          <li>Runs a membership club with points, tiers, and rewards to bring guests back.</li>
+          <li>Gives owners a white-label dashboard they fully own and brand.</li>
+          <li>Speaks Hebrew, English, and Arabic, auto-detecting each guest's language.</li>
+        </ul>
+
+        <h2>Pricing</h2>
+        <p>
+          Pilot pricing starts at ₪299/month for the first 5 restaurants. Standard plans
+          start at ₪499/month. Annual plans give 12 months for the price of 10, and monthly
+          plans can be cancelled anytime.
+        </p>
+
+        <h2>Frequently asked questions</h2>
+        <dl>
+          <dt>What is OpenSeat?</dt>
+          <dd>A guest-retention platform for restaurants combining reservations, a guest book, and a WhatsApp membership club.</dd>
+          <dt>Do I need technical knowledge to use OpenSeat?</dt>
+          <dd>No. The widget embeds in one line, the dashboard runs in the browser, and WhatsApp works on its own.</dd>
+          <dt>Will OpenSeat run on my existing tablet?</dt>
+          <dd>Yes. It is browser-based, so any normal tablet or computer works.</dd>
+          <dt>Which languages does OpenSeat support?</dt>
+          <dd>Hebrew, English, and Arabic, with automatic detection for guests.</dd>
+          <dt>Do I really own my data?</dt>
+          <dd>Yes. You fully own your guest data and history.</dd>
+        </dl>
+
+        <p>Contact OpenSeat to start a pilot for your restaurant.</p>
+      </main>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

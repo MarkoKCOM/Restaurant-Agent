@@ -4,6 +4,7 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { env } from "../env.js";
 import { db } from "./index.js";
+import { runWithTenant } from "../context/tenant-context.js";
 import { adminUsers, guests, reservations, restaurants, tables } from "./schema.js";
 
 async function seedBffRaanana() {
@@ -371,7 +372,14 @@ async function seedBffRaanana() {
 }
 
 async function main() {
-  const restaurantId = await seedBffRaanana();
+  // The seed is a system bootstrap: it creates the restaurant and inserts
+  // every row with an explicit restaurantId, so it runs as a cross-tenant
+  // system bypass (set-but-unused in Phase 1a; the RLS bypass it implies lands
+  // in Phase 2).
+  const restaurantId = await runWithTenant(
+    { restaurantId: null, role: "system", bypass: true },
+    () => seedBffRaanana(),
+  );
   console.log("Seeded BFF Ra'anana data for restaurant", restaurantId);
 }
 

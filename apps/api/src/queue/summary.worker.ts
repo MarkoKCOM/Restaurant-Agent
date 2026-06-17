@@ -3,6 +3,7 @@ import type { Job } from "bullmq";
 import type { FastifyBaseLogger } from "fastify";
 import { redisConnection } from "./index.js";
 import { buildWorkerJobLogContext } from "./logging.js";
+import { runJobWithTenant } from "./tenant-job.js";
 import {
   formatMorningSummaryMessage,
   getDailySummary,
@@ -125,7 +126,7 @@ async function processSummary(job: Job<SummaryJobData>, logger: FastifyBaseLogge
 }
 
 export function createSummaryWorker(logger: FastifyBaseLogger): Worker<SummaryJobData> {
-  const worker = new Worker<SummaryJobData>("daily-summary", (job) => processSummary(job, logger), {
+  const worker = new Worker<SummaryJobData>("daily-summary", (job) => runJobWithTenant(job, (j) => processSummary(j, logger)), {
     connection: redisConnection,
     concurrency: 1,
   });

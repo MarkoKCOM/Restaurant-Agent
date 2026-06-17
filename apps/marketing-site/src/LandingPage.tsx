@@ -2,6 +2,11 @@ import { useState, useEffect, useRef, type FormEvent } from "react";
 
 export type Lang = "he" | "en" | "ar";
 
+/* Direct WhatsApp chat. International format, no "+" or spaces for wa.me. */
+const WHATSAPP_NUMBER = "972529551428";
+const WHATSAPP_DISPLAY = "+972 52-955-1428";
+const waLink = (message: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+
 /* Language <-> URL path mapping. Each language is a distinct, prerendered page
    ("/", "/en", "/ar") with a self-referencing canonical and reciprocal hreflang.
    Shared by the client entry, the server entry, and scripts/prerender.mjs
@@ -22,12 +27,12 @@ export function pathToLang(pathname: string): Lang {
 const I18N = {
   he: {
     dir: "rtl" as const, code: "HE",
-    nav: { modules: "מודולים", how: "איך זה עובד", pricing: "מחירון", demo: "דמו חי", contact: "צור קשר", cta: "דברו איתנו" },
+    nav: { modules: "רכיבים", how: "איך זה עובד", pricing: "מחירון", demo: "דמו חי", contact: "צור קשר", cta: "דברו איתנו" },
     hero: {
       badge: "פיילוט · 5 מסעדות ראשונות · ₪299/חודש",
       title1: "הופכים סועדים", title2: "ללקוחות קבועים", title3: "לתמיד.",
       desc: "OpenSeat היא פלטפורמת ה-AI שמחזירה אורחים. כל הזמנה מהאתר שלך, מוואטסאפ או מהטלפון נכנסת למערכת אחת שזוכרת את האורחים ומתגמלת אותם עם מועדון נאמנות, משחקים ומעקב אוטומטי. הזמנות, ספר אורחים ודשבורד בעלים כלולים.",
-      cta1: "ראה דמו חי", cta2: "ראה מחירים",
+      cta1: "דברו איתנו", cta2: "ראה מחירים",
       trust: "עובד 24/7 · מופעל ע״י AI · עברית, אנגלית, ערבית",
     },
     tape: ["הזמנות אונליין", "בוט וואטסאפ", "מועדון נאמנות", "ספר אורחים", "ווידג׳ט לאתר", "דשבורד בעלים"],
@@ -37,19 +42,19 @@ const I18N = {
       { k: "תיבה אחת", v: "וואטסאפ, אתר וטלפון" },
       { k: "100%", v: "המותג שלך, הנתונים שלך" },
     ],
-    modulesTitle: "שלושה חלקים.", modulesTitle2: "מכונת שימור אחת.",
+    modulesTitle: "שלושה רכיבים.", modulesTitle2: "מכונת שימור אחת.",
     modulesSub: "ההזמנות מכניסות אורחים. ספר האורחים זוכר אותם. מועדון הנאמנות מחזיר אותם, רובו דרך וואטסאפ שם הם כבר נמצאים. בלי עוד אפליקציה לצוות, בלי חיבורים שבירים.",
     moduleGoalLabel: "המטרה",
     modules: [
-      { id: "live", tag: "קונסיירז'", name: "קונסיירז' הוואטסאפ שלך", color: "#16A34A", icon: "📅",
+      { id: "live", tag: "קונסיירז'", brand: "Concierge", name: "קונסיירז' הוואטסאפ שלך", color: "#16A34A", icon: "📅",
         goal: "להוריד את העומס מהצוות ולתת לאורחים מענה ותשובות מיידיות, מסביב לשעון.",
-        desc: "קונסיירז' בוואטסאפ שמנהל הזמנות שולחן והזמנות אוכל, עונה על שאלות אורחים ושולח תפריט ותמונות, בנוסף לווידג׳ט הזמנה לאתר בשורת קוד אחת.",
-        features: ["הזמנות שולחן ואוכל בוואטסאפ", "עונה על שאלות, שולח תפריט ותמונות", "ווידג׳ט הזמנה לאתר בשורת קוד", "אישורים ותזכורות, אוטומטית"] },
-      { id: "connect", tag: "ספר אורחים", name: "כל אורח, זכור", color: "#2563EB", icon: "💬",
+        desc: "קונסיירז' בוואטסאפ שמנהל הזמנות שולחן, עונה על שאלות אורחים ושולח תפריט ותמונות, בנוסף לווידג׳ט הזמנה לאתר בשורת קוד אחת.",
+        features: ["הזמנות שולחן בוואטסאפ", "עונה על שאלות, שולח תפריט ותמונות", "ווידג׳ט הזמנה לאתר בשורת קוד", "אישורים ותזכורות, אוטומטית"] },
+      { id: "connect", tag: "ספר אורחים", brand: "Guest book", name: "כל אורח, זכור", color: "#2563EB", icon: "💬",
         goal: "להכיר כל אורח עוד לפני שהוא יושב, כדי שהשירות תמיד ירגיש אישי.",
         desc: "פרופיל שנבנה מההזמנה הראשונה, כך שהצוות והבעלים יודעים מי נכנס.",
         features: ["ספר אורחים שנבנה מההזמנה הראשונה", "תיוג אוטומטי: VIP, חוזר, יום הולדת ומארח גדול", "היסטוריה והעדפות לפני שיושבים", "סיכום יומי לבעלים בוואטסאפ"] },
-      { id: "club", tag: "מועדון חברים", name: "מועדון חברים שמחזיר אותם", color: "#9333EA", icon: "🎟️",
+      { id: "club", tag: "מועדון חברים", brand: "Membership club", name: "מועדון חברים שמחזיר אותם", color: "#9333EA", icon: "🎟️",
         goal: "להפוך אורחים חד-פעמיים ללקוחות קבועים שחוזרים שוב ושוב.",
         desc: "מנוע השימור: מועדון חברים שמדבר עם האורחים בוואטסאפ, לומד מכל ביקור, ומשתמש בנקודות, משחקים והטבות כדי להחזיר אותם.",
         features: ["נקודות, דרגות והטבות על כל ביקור", "משחקים, רצפים ואתגרים", "אוסף משוב אחרי כל ביקור", "חבר מביא חבר, בוואטסאפ"] },
@@ -84,7 +89,7 @@ const I18N = {
     plans: [
       { name: "Starter", desc: "קונסיירז' הוואטסאפ, דשבורד בעלים, ווידג׳ט הזמנה וספר אורחים.", module: "מנהלים את ההזמנות במקום אחד",
         prices: { "80": 499, "150": 699, "200": 999, "200+": 1399 } as Record<string, number>,
-        includes: ["קונסיירז': הזמנות שולחן ואוכל, תפריט, מידע ותמיכה", "דשבורד בעלים", "ווידג׳ט הזמנה לאתר", "ספר אורחים"] },
+        includes: ["קונסיירז': הזמנות שולחן, תפריט, מידע ותמיכה", "דשבורד בעלים", "ווידג׳ט הזמנה לאתר", "ספר אורחים"] },
       { name: "Loyalty", desc: "כל מה שב-Starter, בתוספת מועדון החברים שמחזיר אורחים.", module: "הופכים אורחים ללקוחות קבועים", popular: true,
         prices: { "80": 799, "150": 1099, "200": 1499, "200+": 1999 } as Record<string, number>,
         includes: ["הכל ב-Starter", "מועדון חברים ושימור", "ימי הולדת ומשוב מביקורים", "גיימיפיקציה לספר האורחים"] },
@@ -123,6 +128,7 @@ const I18N = {
     ],
     contactTitle: "דברו איתנו",
     contactSub: "שיחה של 15 דקות. מקבלים דמו חי על המסעדה שלך בוואטסאפ.",
+    waCta: "דברו איתי ישירות בוואטסאפ", waMessage: "היי, אני מעוניין ב-OpenSeat",
     contactLeft: [
       { t: "שיחה ממוקדת של 15 דקות", d: "תשובות ברורות על מה שמתאים למסעדה שלך." },
       { t: "התסריטים שלך, לא שלנו", d: "ספר על המסעדה ונראה לך תוצאות רלוונטיות." },
@@ -186,7 +192,7 @@ const I18N = {
       badge: "Pilot \u00B7 first 5 restaurants \u00B7 \u20AA299/mo",
       title1: "Turn diners", title2: "into regulars", title3: "for life.",
       desc: "OpenSeat is the AI platform that brings guests back. Every booking from your site, WhatsApp or phone lands in one system that remembers your guests and rewards them with a loyalty club, games and automatic follow-up. Reservations, guest book and owner dashboard included.",
-      cta1: "See live demo", cta2: "See pricing",
+      cta1: "Contact us", cta2: "See pricing",
       trust: "Works 24/7 \u00B7 AI powered \u00B7 Hebrew, English, Arabic",
     },
     tape: ["Online reservations", "WhatsApp bot", "Loyalty club", "Guest book", "Website widget", "Owner dashboard"],
@@ -200,15 +206,15 @@ const I18N = {
     modulesSub: "Bookings get guests in the door. The guest book remembers them. The loyalty club brings them back, mostly over WhatsApp where they already are. No second app for staff, no brittle integrations.",
     moduleGoalLabel: "The goal",
     modules: [
-      { id: "live", tag: "Concierge", name: "Your WhatsApp concierge", color: "#16A34A", icon: "📅",
+      { id: "live", tag: "Concierge", brand: "Concierge", name: "Your WhatsApp concierge", color: "#16A34A", icon: "📅",
         goal: "Take the load off your staff and give guests instant answers, around the clock.",
-        desc: "A WhatsApp concierge that takes reservations and orders, answers guest questions, and shares your menu and photos, plus a one-line booking widget for your website.",
-        features: ["Reservations & orders on WhatsApp", "Answers questions, sends menu & photos", "One-line website booking widget", "Confirmations & reminders, automatic"] },
-      { id: "connect", tag: "Guest book", name: "Every guest, remembered", color: "#2563EB", icon: "💬",
+        desc: "A WhatsApp concierge that takes reservations, answers guest questions, and shares your menu and photos, plus a one-line booking widget for your website.",
+        features: ["Reservations on WhatsApp", "Answers questions, sends menu & photos", "One-line website booking widget", "Confirmations & reminders, automatic"] },
+      { id: "connect", tag: "Guest book", brand: "Guest book", name: "Every guest, remembered", color: "#2563EB", icon: "💬",
         goal: "Know every guest before they sit, so the service always feels personal.",
         desc: "A profile built from the first booking, so staff and owner always know who is walking in.",
         features: ["Guest book built from the first booking", "Auto tags: VIP, returning, birthday, big host", "History and preferences before they sit", "Daily owner summary on WhatsApp"] },
-      { id: "club", tag: "Membership club", name: "A membership club that brings them back", color: "#9333EA", icon: "🎟️",
+      { id: "club", tag: "Membership club", brand: "Membership club", name: "A membership club that brings them back", color: "#9333EA", icon: "🎟️",
         goal: "Turn one-time guests into regulars who keep coming back.",
         desc: "The retention engine: a membership club that talks to guests on WhatsApp, learns from every visit, and uses points, games and perks to bring them back.",
         features: ["Points, tiers & perks on every visit", "Games, streaks & challenges", "Collects feedback after each visit", "Member-get-member referrals, on WhatsApp"] },
@@ -243,7 +249,7 @@ const I18N = {
     plans: [
       { name: "Starter", desc: "Your WhatsApp concierge, owner dashboard, booking widget and guest book.", module: "Run your bookings in one place",
         prices: { "80": 499, "150": 699, "200": 999, "200+": 1399 } as Record<string, number>,
-        includes: ["Concierge: reservations, orders, menu, info & support", "Owner dashboard", "Website booking widget", "Guest book"] },
+        includes: ["Concierge: reservations, menu, info & support", "Owner dashboard", "Website booking widget", "Guest book"] },
       { name: "Loyalty", desc: "Everything in Starter, plus the membership club that brings guests back.", module: "Turn guests into regulars", popular: true,
         prices: { "80": 799, "150": 1099, "200": 1499, "200+": 1999 } as Record<string, number>,
         includes: ["Everything in Starter", "Membership club & retention", "Birthdays & visit feedback", "Guest-book gamification"] },
@@ -282,6 +288,7 @@ const I18N = {
     ],
     contactTitle: "Talk to us",
     contactSub: "A 15-minute call. Get a live WhatsApp demo for your own restaurant.",
+    waCta: "Chat with me directly on WhatsApp", waMessage: "Hi, I'm interested in OpenSeat",
     contactLeft: [
       { t: "A focused 15-minute call", d: "Straight answers about what fits your restaurant." },
       { t: "Your scenarios, not ours", d: "Tell us about your restaurant, we'll show relevant results." },
@@ -345,7 +352,7 @@ const I18N = {
       badge: "بايلوت · أول 5 مطاعم · ₪299/شهر",
       title1: "حوّل الزبائن", title2: "إلى زبائن دائمين", title3: "للأبد.",
       desc: "OpenSeat هي منصة الذكاء الاصطناعي التي تعيد الضيوف. كل حجز من موقعك أو واتساب أو الهاتف يدخل إلى نظام واحد يتذكّر ضيوفك ويكافئهم بنادي ولاء وألعاب ومتابعة تلقائية. الحجوزات وسجل الضيوف ولوحة المالك مشمولة.",
-      cta1: "شاهد العرض الحي", cta2: "شاهد الأسعار",
+      cta1: "تواصل معنا", cta2: "شاهد الأسعار",
       trust: "يعمل 24/7 · مدعوم بالذكاء الاصطناعي · عربي، عبري، إنجليزي",
     },
     tape: ["حجوزات أونلاين", "بوت واتساب", "نادي ولاء", "سجل الضيوف", "ودجة للموقع", "لوحة مالك"],
@@ -359,15 +366,15 @@ const I18N = {
     modulesSub: "الحجوزات تُدخل الضيوف. سجل الضيوف يتذكّرهم. نادي الولاء يعيدهم، معظمه عبر واتساب حيث هم أصلًا. بدون تطبيق إضافي للطاقم، بدون تكاملات هشّة.",
     moduleGoalLabel: "الهدف",
     modules: [
-      { id: "live", tag: "الكونسيرج", name: "كونسيرج الواتساب لمطعمك", color: "#16A34A", icon: "📅",
+      { id: "live", tag: "الكونسيرج", brand: "Concierge", name: "كونسيرج الواتساب لمطعمك", color: "#16A34A", icon: "📅",
         goal: "رفع العبء عن طاقمك ومنح الضيوف ردودًا وإجابات فورية، على مدار الساعة.",
-        desc: "كونسيرج على واتساب يستقبل الحجوزات والطلبات، يجيب على أسئلة الضيوف، ويرسل قائمتك وصورك، بالإضافة إلى ودجة حجز بسطر واحد لموقعك.",
-        features: ["حجوزات وطلبات على واتساب", "يجيب على الأسئلة ويرسل القائمة والصور", "ودجة حجز للموقع بسطر واحد", "تأكيدات وتذكيرات تلقائية"] },
-      { id: "connect", tag: "سجل الضيوف", name: "كل ضيف، محفوظ", color: "#2563EB", icon: "💬",
+        desc: "كونسيرج على واتساب يستقبل الحجوزات، يجيب على أسئلة الضيوف، ويرسل قائمتك وصورك، بالإضافة إلى ودجة حجز بسطر واحد لموقعك.",
+        features: ["حجوزات على واتساب", "يجيب على الأسئلة ويرسل القائمة والصور", "ودجة حجز للموقع بسطر واحد", "تأكيدات وتذكيرات تلقائية"] },
+      { id: "connect", tag: "سجل الضيوف", brand: "Guest book", name: "كل ضيف، محفوظ", color: "#2563EB", icon: "💬",
         goal: "اعرف كل ضيف قبل أن يجلس، ليبقى الاهتمام شخصيًا دائمًا.",
         desc: "ملف يُبنى من أول حجز، ليعرف الطاقم والمالك من يدخل.",
         features: ["سجل ضيوف يُبنى من أول حجز", "وسوم تلقائية: VIP، عائد، عيد ميلاد، مضيف كبير", "التاريخ والتفضيلات قبل الجلوس", "ملخص يومي للمالك على واتساب"] },
-      { id: "club", tag: "نادي العضوية", name: "نادي عضوية يعيدهم", color: "#9333EA", icon: "🎟️",
+      { id: "club", tag: "نادي العضوية", brand: "Membership club", name: "نادي عضوية يعيدهم", color: "#9333EA", icon: "🎟️",
         goal: "تحويل الضيوف لمرة واحدة إلى زبائن دائمين يعودون مرارًا.",
         desc: "محرك الاحتفاظ: نادي عضوية يتحدث مع الضيوف على واتساب، يتعلّم من كل زيارة، ويستخدم النقاط والألعاب والامتيازات لإعادتهم.",
         features: ["نقاط ومستويات وامتيازات على كل زيارة", "ألعاب وسلاسل وتحديات", "يجمع الملاحظات بعد كل زيارة", "عضو يجلب عضو، عبر واتساب"] },
@@ -402,7 +409,7 @@ const I18N = {
     plans: [
       { name: "Starter", desc: "كونسيرج واتساب، لوحة المالك، ودجة الحجز وسجل الضيوف.", module: "أدر حجوزاتك في مكان واحد",
         prices: { "80": 499, "150": 699, "200": 999, "200+": 1399 } as Record<string, number>,
-        includes: ["الكونسيرج: حجوزات وطلبات، قائمة، معلومات ودعم", "لوحة المالك", "ودجة حجز للموقع", "سجل الضيوف"] },
+        includes: ["الكونسيرج: حجوزات، قائمة، معلومات ودعم", "لوحة المالك", "ودجة حجز للموقع", "سجل الضيوف"] },
       { name: "Loyalty", desc: "كل ما في Starter، بالإضافة إلى نادي العضوية الذي يعيد الضيوف.", module: "حوّل الضيوف إلى زبائن دائمين", popular: true,
         prices: { "80": 799, "150": 1099, "200": 1499, "200+": 1999 } as Record<string, number>,
         includes: ["كل ما في Starter", "نادي العضوية والاحتفاظ", "أعياد ميلاد وملاحظات الزيارات", "تلعيب سجل الضيوف"] },
@@ -441,6 +448,7 @@ const I18N = {
     ],
     contactTitle: "تحدث معنا",
     contactSub: "مكالمة 15 دقيقة. واحصل على عرض حي على واتساب لمطعمك.",
+    waCta: "تحدّث معي مباشرة على واتساب", waMessage: "مرحبًا، أنا مهتم بـ OpenSeat",
     contactLeft: [
       { t: "مكالمة مركّزة لمدة 15 دقيقة", d: "إجابات واضحة حول ما يناسب مطعمك." },
       { t: "سيناريوهاتك، ليس سيناريوهاتنا", d: "أخبرنا عن مطعمك وسنعرض لك نتائج." },
@@ -879,7 +887,7 @@ function Hero({ L }: { L: I18NData }) {
             </h1>
             <p style={{ fontSize: 18, color: "var(--ink-70)", maxWidth: 560, margin: "0 0 28px", lineHeight: 1.6 }}>{L.hero.desc}</p>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
-              <a href="#demo" className="btn btn-primary">{L.hero.cta1} <span className="arrow">{"\u2192"}</span></a>
+              <a href="#contact" className="btn btn-primary">{L.hero.cta1} <span className="arrow">{"\u2192"}</span></a>
               <a href="#pricing" className="btn btn-secondary">{L.hero.cta2}</a>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--ink-50)" }}>
@@ -968,7 +976,7 @@ function Modules({ L }: { L: I18NData }) {
                   <div style={{ width: 44, height: 44, borderRadius: 12, background: `${m.color}15`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>{m.icon}</div>
                   <div>
                     <div className="mono-sm" style={{ color: m.color }}>{m.tag.toUpperCase()}</div>
-                    <div style={{ fontWeight: 700, fontSize: 16 }}>OpenSeat {m.tag}</div>
+                    <div style={{ fontWeight: 700, fontSize: 16 }}>OpenSeat {m.brand}</div>
                   </div>
                 </div>
                 <h3 className="font-display" style={{ margin: "0 0 12px", fontSize: 22, fontWeight: 600, lineHeight: 1.2, letterSpacing: "-0.01em" }}>{m.name}</h3>
@@ -1389,10 +1397,11 @@ function Contact({ L }: { L: I18NData }) {
                 <div><div style={{ fontWeight: 700, fontSize: 16, marginBottom: 2 }}>{c.t}</div><div style={{ fontSize: 14, color: "var(--ink-70)" }}>{c.d}</div></div>
               </div>
             ))}
-            <a href={`mailto:${L.footer.contact}`} style={{ marginTop: 8, padding: "18px 20px", borderRadius: 14, background: "white", border: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: "#25D366", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>💬</div>
-              <div><div style={{ fontWeight: 700, fontSize: 15 }}>WhatsApp / Email</div><div style={{ fontSize: 13, color: "var(--ink-70)", fontFamily: "var(--font-mono)" }}>{L.footer.contact}</div></div>
+            <a href={waLink(L.waMessage)} target="_blank" rel="noopener noreferrer" style={{ marginTop: 8, padding: "18px 20px", borderRadius: 14, background: "#25D366", border: "1px solid #1FB855", display: "flex", alignItems: "center", gap: 14, boxShadow: "0 16px 40px -22px #25D366" }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(255,255,255,.18)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>💬</div>
+              <div><div style={{ fontWeight: 700, fontSize: 15, color: "white" }}>{L.waCta}</div><div style={{ fontSize: 13, color: "rgba(255,255,255,.9)", fontFamily: "var(--font-mono)", direction: "ltr", unicodeBidi: "plaintext" }}>{WHATSAPP_DISPLAY}</div></div>
             </a>
+            <a href={`mailto:${L.footer.contact}`} style={{ fontSize: 13, color: "var(--ink-50)", fontFamily: "var(--font-mono)", textAlign: "center" }}>{L.footer.contact}</a>
           </div>
           <form onSubmit={handleSubmit} style={{ background: "white", border: "1px solid var(--line)", borderRadius: 22, padding: 28, display: "flex", flexDirection: "column", gap: 14, boxShadow: "0 20px 50px -30px rgba(0,0,0,.1)" }}>
             {([["name", L.formName, "text"], ["email", L.formEmail, "email"], ["restaurant", L.formRestaurant, "text"]] as const).map(([k, lbl, tp]) => (

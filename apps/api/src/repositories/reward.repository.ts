@@ -3,6 +3,7 @@ import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { rewards } from "../db/schema.js";
 import type { Executor } from "./types.js";
+import { tenantScope } from "./tenant-scope.js";
 
 export type RewardRow = InferSelectModel<typeof rewards>;
 export type RewardInsert = InferInsertModel<typeof rewards>;
@@ -46,20 +47,23 @@ export const rewardRepository = {
     return row ?? null;
   },
 
-  /** A reward by global UUID (ownership verified by the caller). */
+  /** Tenant-scoped by reward UUID: returns null for another tenant's id. */
   async findById(id: string, executor: Executor = db): Promise<RewardRow | null> {
     const [row] = await executor
       .select()
       .from(rewards)
-      .where(eq(rewards.id, id))
+      .where(and(eq(rewards.id, id), tenantScope(rewards.restaurantId)))
       .limit(1);
     return row ?? null;
   },
 
-  /** Rewards by a set of global UUIDs (e.g. resolving names for a claim list). */
+  /** Tenant-scoped: rewards by a set of UUIDs (e.g. resolving names for a claim list). */
   findByIds(ids: string[], executor: Executor = db): Promise<RewardRow[]> {
     if (ids.length === 0) return Promise.resolve([]);
-    return executor.select().from(rewards).where(inArray(rewards.id, ids));
+    return executor
+      .select()
+      .from(rewards)
+      .where(and(inArray(rewards.id, ids), tenantScope(rewards.restaurantId)));
   },
 
   /** An active reward by id (ownership verified by the caller). */

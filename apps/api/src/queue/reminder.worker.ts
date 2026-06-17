@@ -3,6 +3,7 @@ import type { Job } from "bullmq";
 import type { FastifyBaseLogger } from "fastify";
 import { redisConnection } from "./index.js";
 import { buildWorkerJobLogContext } from "./logging.js";
+import { runJobWithTenant } from "./tenant-job.js";
 import { recordOutboundDelivery } from "../services/outbound-message.service.js";
 
 export interface ReminderJobData {
@@ -59,7 +60,7 @@ async function processReminder(job: Job<ReminderJobData>, logger: FastifyBaseLog
 }
 
 export function createReminderWorker(logger: FastifyBaseLogger): Worker<ReminderJobData> {
-  const worker = new Worker<ReminderJobData>("reservation-reminders", (job) => processReminder(job, logger), {
+  const worker = new Worker<ReminderJobData>("reservation-reminders", (job) => runJobWithTenant(job, (j) => processReminder(j, logger)), {
     connection: redisConnection,
     concurrency: 5,
   });

@@ -4,6 +4,7 @@ import type { FastifyBaseLogger } from "fastify";
 import { eq } from "drizzle-orm";
 import { redisConnection } from "./index.js";
 import { buildWorkerJobLogContext } from "./logging.js";
+import { runJobWithTenant } from "./tenant-job.js";
 import { db } from "../db/index.js";
 import { engagementJobs, guests, restaurants } from "../db/schema.js";
 import { checkAnniversaries, checkBirthdays, checkWinBack, shouldSendEngagementJob } from "../services/engagement.service.js";
@@ -261,7 +262,7 @@ async function processEngagement(job: Job<EngagementJobData>, logger: FastifyBas
 }
 
 export function createEngagementWorker(logger: FastifyBaseLogger): Worker<EngagementJobData> {
-  const worker = new Worker<EngagementJobData>("engagement", (job) => processEngagement(job, logger), {
+  const worker = new Worker<EngagementJobData>("engagement", (job) => runJobWithTenant(job, (j) => processEngagement(j, logger)), {
     connection: redisConnection,
     concurrency: 5,
   });

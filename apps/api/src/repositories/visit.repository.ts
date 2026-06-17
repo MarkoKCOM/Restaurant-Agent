@@ -3,6 +3,7 @@ import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { visitLogs } from "../db/schema.js";
 import type { Executor } from "./types.js";
+import { tenantScope } from "./tenant-scope.js";
 
 export type VisitLogRow = InferSelectModel<typeof visitLogs>;
 export type VisitLogInsert = InferInsertModel<typeof visitLogs>;
@@ -42,7 +43,7 @@ export const visitRepository = {
     return row ?? null;
   },
 
-  /** By global visit-log UUID. Returns the updated row, or null when none matched. */
+  /** Tenant-scoped by visit-log UUID. Returns the updated row, or null when none matched (incl. another tenant's id). */
   async updateById(
     id: string,
     updates: VisitLogUpdate,
@@ -51,7 +52,7 @@ export const visitRepository = {
     const [updated] = await executor
       .update(visitLogs)
       .set(updates)
-      .where(eq(visitLogs.id, id))
+      .where(and(eq(visitLogs.id, id), tenantScope(visitLogs.restaurantId)))
       .returning();
     return updated ?? null;
   },

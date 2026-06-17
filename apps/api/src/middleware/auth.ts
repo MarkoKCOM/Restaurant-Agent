@@ -5,6 +5,7 @@ import { env } from "../env.js";
 import { db } from "../db/index.js";
 import { restaurants } from "../db/schema.js";
 import { eq } from "drizzle-orm";
+import { enterTenant } from "../context/tenant-context.js";
 
 export type AdminRole = "admin" | "employee" | "super_admin";
 
@@ -120,6 +121,16 @@ async function authMiddlewarePlugin(app: FastifyInstance) {
         restaurantId: activeRestaurantId,
         role,
       };
+
+      // Establish the request-scoped tenant context. super_admin without a
+      // selected restaurant acts cross-tenant (bypass); everyone else is
+      // pinned to their active restaurant. The context propagates through the
+      // route handler via AsyncLocalStorage (set-but-unused until Phase 1b).
+      enterTenant({
+        restaurantId: activeRestaurantId,
+        role,
+        bypass: role === "super_admin" && activeRestaurantId === null,
+      });
     } catch {
       return sendAuthMiddlewareError(
         request,

@@ -3,6 +3,7 @@ import type { Job } from "bullmq";
 import type { FastifyBaseLogger } from "fastify";
 import { redisConnection } from "./index.js";
 import { buildWorkerJobLogContext } from "./logging.js";
+import { runJobWithTenant } from "./tenant-job.js";
 import { deliverCampaign } from "../services/campaign.service.js";
 
 export interface CampaignDeliveryJobData {
@@ -37,7 +38,7 @@ async function processCampaignDelivery(job: Job<CampaignDeliveryJobData>, logger
 }
 
 export function createCampaignWorker(logger: FastifyBaseLogger): Worker<CampaignDeliveryJobData> {
-  const worker = new Worker<CampaignDeliveryJobData>("campaign-delivery", (job) => processCampaignDelivery(job, logger), {
+  const worker = new Worker<CampaignDeliveryJobData>("campaign-delivery", (job) => runJobWithTenant(job, (j) => processCampaignDelivery(j, logger)), {
     connection: redisConnection,
     concurrency: 2,
   });

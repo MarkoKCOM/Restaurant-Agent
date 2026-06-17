@@ -1,5 +1,18 @@
 # Progress Log
 
+## 2026-06-17 (Centralized tenant scoping — Phases 1a/1b/2a)
+
+OpenSpec change `centralized-tenant-scoping`: make cross-tenant access impossible by construction (app layer) then by the DB (RLS). Shipped as three stacked PRs.
+
+### Shipped
+- **PR #57 — Phase 1a (tenant context)**: `apps/api/src/context/tenant-context.ts` (`AsyncLocalStorage`: `runWithTenant`/`enterTenant`/`getTenantRestaurantId`, explicit super_admin/system `bypass`). Entered in the auth `onRequest` hook, all 4 BullMQ workers (`runJobWithTenant`), and the seed. Pure addition (set-but-unused).
+- **PR #58 — Phase 1b (scoped by-PK repos)**: `repositories/tenant-scope.ts` `tenantScope(column)`; `findById` scoped on guest/reservation/reward(+`findByIds`)/reward-claim/waitlist/challenge and `updateById` on campaign/guest/engagement-job/reservation/reward-claim/visit/waitlist — a by-id read/write for another tenant returns null/no-match. Sanctioned cross-tenant paths stay distinctly named; super_admin crosses via bypass. +5 unit tests. Route `enforceTenant` retained as defense-in-depth (raw-fetch cleanup deferred).
+- **PR #59 — Phase 2a (RLS, verify mode)**: `drizzle/0014_tenant_rls.sql` enables RLS + `tenant_isolation` policy (USING+WITH CHECK) on the 14 tenant tables + `challenge_progress` (subquery via `challenges`); `restaurants`/`admin_users` exempt. **Verify mode**: not FORCEd, so the owner connection is unaffected (zero behavior change). Bypass = nil-UUID sentinel (`BYPASS_RESTAURANT_ID`). Seam helpers in `src/db/tenant-rls.ts` (`setTenantGuc`/`runInTenantTransaction`). New `pnpm db:rls-proof` transactionally FORCEs RLS and proves isolation (0 leak, bypass/deny/WITH-CHECK), 6/6.
+
+### Next
+- **Phase 2b (fail-closed)**: `FORCE ROW LEVEL SECURITY` on the 14 tables; wire `runInTenantTransaction` into every request/job DB entry point (incl. public routes via slug-resolved restaurant, or they break under fail-closed); cross-tenant-denied e2e + pool-isolation test; measure transaction-per-request latency on the VPS.
+- **Phase 1b follow-up**: incrementally drop the now-redundant route raw fetch-then-check per-table.
+
 ## 2026-06-16 (Marketing: configurable origin + auto freshness)
 
 ### Shipped

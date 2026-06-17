@@ -3,6 +3,7 @@ import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { guests } from "../db/schema.js";
 import type { Executor } from "./types.js";
+import { tenantScope } from "./tenant-scope.js";
 
 export type GuestRow = InferSelectModel<typeof guests>;
 export type GuestInsert = InferInsertModel<typeof guests>;
@@ -72,9 +73,13 @@ export const guestRepository = {
     return executor.select().from(guests).where(and(...conditions));
   },
 
-  /** By global guest UUID. Caller already holds the specific id. */
+  /** Tenant-scoped by guest UUID: returns null for another tenant's id. */
   async findById(id: string, executor: Executor = db): Promise<GuestRow | null> {
-    const [row] = await executor.select().from(guests).where(eq(guests.id, id)).limit(1);
+    const [row] = await executor
+      .select()
+      .from(guests)
+      .where(and(eq(guests.id, id), tenantScope(guests.restaurantId)))
+      .limit(1);
     return row ?? null;
   },
 
@@ -101,7 +106,7 @@ export const guestRepository = {
     return created;
   },
 
-  /** By global guest UUID. Returns the updated row, or null when none matched. */
+  /** Tenant-scoped by guest UUID. Returns the updated row, or null when none matched (incl. another tenant's id). */
   async updateById(
     id: string,
     updates: GuestUpdate,
@@ -110,7 +115,7 @@ export const guestRepository = {
     const [updated] = await executor
       .update(guests)
       .set(updates)
-      .where(eq(guests.id, id))
+      .where(and(eq(guests.id, id), tenantScope(guests.restaurantId)))
       .returning();
     return updated ?? null;
   },

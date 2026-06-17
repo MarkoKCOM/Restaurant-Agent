@@ -3,6 +3,7 @@ import type { InferInsertModel, InferSelectModel, SQL } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { reservations, restaurants } from "../db/schema.js";
 import type { Executor } from "./types.js";
+import { tenantScope } from "./tenant-scope.js";
 
 export type ReservationRow = InferSelectModel<typeof reservations>;
 export type ReservationInsert = InferInsertModel<typeof reservations>;
@@ -91,12 +92,12 @@ export const reservationRepository = {
       .orderBy(desc(reservations.date));
   },
 
-  /** By global reservation UUID. */
+  /** Tenant-scoped by reservation UUID: returns null for another tenant's id. */
   async findById(id: string, executor: Executor = db): Promise<ReservationRow | null> {
     const [row] = await executor
       .select()
       .from(reservations)
-      .where(eq(reservations.id, id))
+      .where(and(eq(reservations.id, id), tenantScope(reservations.restaurantId)))
       .limit(1);
     return row ?? null;
   },
@@ -110,7 +111,7 @@ export const reservationRepository = {
     return created ?? null;
   },
 
-  /** By global reservation UUID. Returns the updated row, or null when none matched. */
+  /** Tenant-scoped by reservation UUID. Returns the updated row, or null when none matched (incl. another tenant's id). */
   async updateById(
     id: string,
     updates: ReservationUpdate,
@@ -119,7 +120,7 @@ export const reservationRepository = {
     const [updated] = await executor
       .update(reservations)
       .set(updates)
-      .where(eq(reservations.id, id))
+      .where(and(eq(reservations.id, id), tenantScope(reservations.restaurantId)))
       .returning();
     return updated ?? null;
   },

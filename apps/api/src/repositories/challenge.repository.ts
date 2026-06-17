@@ -3,6 +3,7 @@ import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { challengeProgress, challenges } from "../db/schema.js";
 import type { Executor } from "./types.js";
+import { tenantScope } from "./tenant-scope.js";
 
 export type ChallengeRow = InferSelectModel<typeof challenges>;
 export type ChallengeInsert = InferInsertModel<typeof challenges>;
@@ -29,12 +30,12 @@ export const challengeRepository = {
     return created;
   },
 
-  /** By global challenge UUID. */
+  /** Tenant-scoped by challenge UUID: returns null for another tenant's id. */
   async findById(id: string, executor: Executor = db): Promise<ChallengeRow | null> {
     const [row] = await executor
       .select()
       .from(challenges)
-      .where(eq(challenges.id, id))
+      .where(and(eq(challenges.id, id), tenantScope(challenges.restaurantId)))
       .limit(1);
     return row ?? null;
   },

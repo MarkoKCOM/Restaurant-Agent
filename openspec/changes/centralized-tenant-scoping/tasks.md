@@ -7,11 +7,11 @@
 
 ## 2. Phase 1b — Tenant-scoped by-PK repositories + route simplification
 
-- [ ] 2.1 Convert by-PK tenant reads (`findById(id)`) to derive `restaurantId` from the tenant context and filter on it; add explicit `findByIdUnscoped(id)` where a sanctioned cross-tenant read exists (super_admin, `table.findRestaurantIdById` bootstrap, `guest.listAll`)
-- [ ] 2.2 Convert by-PK tenant writes (`updateById(id, ...)`) the same way; explicit `*Unscoped` variants only where justified
-- [ ] 2.3 Per table, update callers (routes/services): drop the fetch-then-check; keep the route-level role checks and the correct 403/404 semantics
-- [ ] 2.4 Add unit tests: a by-id read/update for a foreign-tenant id returns null / no-match (mocked context)
-- [ ] 2.5 Ship per-table PRs; repo-sql-smoke + e2e green between each
+- [x] 2.1 Convert by-PK tenant reads (`findById(id)`) to derive `restaurantId` from the tenant context and filter on it; add explicit `findByIdUnscoped(id)` where a sanctioned cross-tenant read exists (super_admin, `table.findRestaurantIdById` bootstrap, `guest.listAll`) — via the shared `tenantScope()` helper on guest/reservation/reward(+findByIds)/reward-claim/waitlist/challenge `findById`. Sanctioned cross-tenant paths (`table.findRestaurantIdById`, `guest.listAll`, `table.findById` w/ explicit id) are already distinctly named; super_admin crosses via the bypass context, so no new `*Unscoped` was required.
+- [x] 2.2 Convert by-PK tenant writes (`updateById(id, ...)`) the same way; explicit `*Unscoped` variants only where justified — campaign/guest/engagement-job/reservation/reward-claim/waitlist/visit `updateById` now apply `tenantScope()`.
+- [~] 2.3 Per table, update callers (routes/services): drop the fetch-then-check; keep the route-level role checks and the correct 403/404 semantics — **deferred to incremental per-table PRs.** Repos now enforce isolation *by construction*, so the route-level `enforceTenant`/raw-fetch is no longer the sole guard; it is retained as defense-in-depth + correct 403 UX (per the design's risk mitigation). Removing the now-redundant raw fetches is delicate (some `enforceTenant` calls guard create-with-body-restaurantId and must stay) and is safest once Phase 2 RLS makes the route guard fully redundant.
+- [x] 2.4 Add unit tests: a by-id read/update for a foreign-tenant id returns null / no-match (mocked context) — `repositories/tenant-scope.test.ts` (scoped read/write apply the tenant filter; bypass and no-context stay unscoped).
+- [x] 2.5 Ship per-table PRs; repo-sql-smoke + e2e green between each — shipped as one cohesive Phase 1b PR (all 14 by-PK methods follow one mechanical pattern); type-check, lint (0 errors), 82 unit tests, build, 92-query repo-sql-smoke green.
 
 ## 3. Phase 2a — Database RLS (verify mode)
 

@@ -3,6 +3,7 @@ import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { rewardClaims } from "../db/schema.js";
 import type { Executor } from "./types.js";
+import { tenantScope } from "./tenant-scope.js";
 
 export type RewardClaimRow = InferSelectModel<typeof rewardClaims>;
 export type RewardClaimInsert = InferInsertModel<typeof rewardClaims>;
@@ -31,17 +32,17 @@ export const rewardClaimRepository = {
     return row ?? null;
   },
 
-  /** By global claim UUID. */
+  /** Tenant-scoped by claim UUID: returns null for another tenant's id. */
   async findById(id: string, executor: Executor = db): Promise<RewardClaimRow | null> {
     const [row] = await executor
       .select()
       .from(rewardClaims)
-      .where(eq(rewardClaims.id, id))
+      .where(and(eq(rewardClaims.id, id), tenantScope(rewardClaims.restaurantId)))
       .limit(1);
     return row ?? null;
   },
 
-  /** By global claim UUID. Returns the updated row, or null when none matched. */
+  /** Tenant-scoped by claim UUID. Returns the updated row, or null when none matched (incl. another tenant's id). */
   async updateById(
     id: string,
     updates: RewardClaimUpdate,
@@ -50,7 +51,7 @@ export const rewardClaimRepository = {
     const [updated] = await executor
       .update(rewardClaims)
       .set(updates)
-      .where(eq(rewardClaims.id, id))
+      .where(and(eq(rewardClaims.id, id), tenantScope(rewardClaims.restaurantId)))
       .returning();
     return updated ?? null;
   },

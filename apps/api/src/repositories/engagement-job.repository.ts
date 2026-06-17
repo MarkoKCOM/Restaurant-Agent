@@ -3,6 +3,7 @@ import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { engagementJobs } from "../db/schema.js";
 import type { Executor } from "./types.js";
+import { tenantScope } from "./tenant-scope.js";
 
 export type EngagementJobRow = InferSelectModel<typeof engagementJobs>;
 export type EngagementJobInsert = InferInsertModel<typeof engagementJobs>;
@@ -146,7 +147,7 @@ export const engagementJobRepository = {
     return skipped.length;
   },
 
-  /** By global job UUID. Returns the updated row, or null when none matched. */
+  /** Tenant-scoped by job UUID. Returns the updated row, or null when none matched (incl. another tenant's id). */
   async updateById(
     id: string,
     updates: EngagementJobUpdate,
@@ -155,7 +156,7 @@ export const engagementJobRepository = {
     const [updated] = await executor
       .update(engagementJobs)
       .set(updates)
-      .where(eq(engagementJobs.id, id))
+      .where(and(eq(engagementJobs.id, id), tenantScope(engagementJobs.restaurantId)))
       .returning();
     return updated ?? null;
   },

@@ -3,6 +3,7 @@ import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { waitlist } from "../db/schema.js";
 import type { Executor } from "./types.js";
+import { tenantScope } from "./tenant-scope.js";
 
 export type WaitlistRow = InferSelectModel<typeof waitlist>;
 export type WaitlistInsert = InferInsertModel<typeof waitlist>;
@@ -58,17 +59,17 @@ export const waitlistRepository = {
       .orderBy(waitlist.createdAt);
   },
 
-  /** By global waitlist UUID. */
+  /** Tenant-scoped by waitlist UUID: returns null for another tenant's id. */
   async findById(id: string, executor: Executor = db): Promise<WaitlistRow | null> {
     const [row] = await executor
       .select()
       .from(waitlist)
-      .where(eq(waitlist.id, id))
+      .where(and(eq(waitlist.id, id), tenantScope(waitlist.restaurantId)))
       .limit(1);
     return row ?? null;
   },
 
-  /** By global waitlist UUID. Returns the updated row, or null when none matched. */
+  /** Tenant-scoped by waitlist UUID. Returns the updated row, or null when none matched (incl. another tenant's id). */
   async updateById(
     id: string,
     updates: WaitlistUpdate,
@@ -77,7 +78,7 @@ export const waitlistRepository = {
     const [updated] = await executor
       .update(waitlist)
       .set(updates)
-      .where(eq(waitlist.id, id))
+      .where(and(eq(waitlist.id, id), tenantScope(waitlist.restaurantId)))
       .returning();
     return updated ?? null;
   },

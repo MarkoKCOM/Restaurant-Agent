@@ -66,12 +66,12 @@ export const rewardRepository = {
       .where(and(inArray(rewards.id, ids), tenantScope(rewards.restaurantId)));
   },
 
-  /** An active reward by id (ownership verified by the caller). */
+  /** Tenant-scoped: an active reward by id (returns null for another tenant's id). */
   async findActiveById(id: string, executor: Executor = db): Promise<RewardRow | null> {
     const [row] = await executor
       .select()
       .from(rewards)
-      .where(and(eq(rewards.id, id), eq(rewards.isActive, true)))
+      .where(and(eq(rewards.id, id), eq(rewards.isActive, true), tenantScope(rewards.restaurantId)))
       .limit(1);
     return row ?? null;
   },

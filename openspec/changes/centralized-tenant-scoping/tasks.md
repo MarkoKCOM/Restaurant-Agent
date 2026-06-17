@@ -21,15 +21,25 @@
 - [x] 3.4 Confirm `restaurants`/`adminUsers` remain accessible (exempt from RLS) and auth/login still works — both tables verified RLS-disabled (0 policies); app connects as table owner (bypasses RLS in verify mode); unit tests + repo-sql-smoke green.
 - [x] 3.5 Run RLS in permissive/verify mode first; full build + repo-sql-smoke + e2e green (the repo-sql-smoke job must set the tenant setting or the bypass) — verify mode (enabled, not forced) ⇒ owner connection unaffected. Build, 82 unit tests, 92-query repo-sql-smoke all green. New reproducible **`db:rls-proof`** (`scripts/rls-isolation-proof.ts`) transactionally FORCEs RLS and asserts isolation: scoped sees only its tenant (0 leak), bypass sees all, non-match/unset deny (fail-closed), WITH CHECK blocks `restaurant_id` escape — 6/6 pass.
 
-## 4. Phase 2b — Fail-closed + isolation tests
+## 4. Phase 2b — Fail-closed + isolation tests — DEFERRED (descoped 2026-06-17)
 
-- [ ] 4.1 Flip RLS to restrictive/fail-closed (no setting ⇒ deny)
-- [ ] 4.2 Add an e2e cross-tenant-denied test: admin of A cannot read or modify a B-owned resource (by id, query param, header); super_admin of B can; assert denial
-- [ ] 4.3 Add a pool-isolation test: two interleaved tenants on the shared pool stay isolated (proves `SET LOCAL` doesn't leak)
-- [ ] 4.4 Verify all CI gates green; measure request latency impact on the VPS (transaction-per-request)
+**Decision:** not flipping RLS fail-closed now. Phase 1 already makes cross-tenant
+access impossible by construction for admin/employee (scoped repositories), and
+RLS is in place as a verified-but-dormant backstop (verify mode). Forcing RLS
+requires re-plumbing every request into a per-request transaction (`SET LOCAL`),
+giving public routes a tenant context (or they fail-closed), and accepting a
+transaction-per-request latency cost on the single-pilot VPS — a second lock on
+an already-locked door. Revisit when raw-SQL data paths or many tenants make the
+DB-level guarantee worth the plumbing. The `pnpm db:rls-proof` script already
+proves the policies isolate correctly once FORCEd, so the flip is low-surprise.
+
+- [ ] 4.1 Flip RLS to restrictive/fail-closed (no setting ⇒ deny) — deferred
+- [ ] 4.2 Add an e2e cross-tenant-denied test: admin of A cannot read or modify a B-owned resource (by id, query param, header); super_admin of B can; assert denial — deferred
+- [ ] 4.3 Add a pool-isolation test: two interleaved tenants on the shared pool stay isolated (proves `SET LOCAL` doesn't leak) — deferred
+- [ ] 4.4 Verify all CI gates green; measure request latency impact on the VPS (transaction-per-request) — deferred
 
 ## 5. Close-out
 
-- [ ] 5.1 Grep audit: the only cross-tenant repository methods are the explicitly named `*Unscoped` ones, and they are called only from super_admin/system paths
-- [ ] 5.2 Update PROGRESS.md + ROADMAP.md (Phase 3 "Row-level security for tenant isolation" → done); note remaining open questions resolved
-- [ ] 5.3 `openspec archive centralized-tenant-scoping`
+- [x] 5.1 Grep audit: cross-tenant repository methods are limited to explicitly named/documented ones, called only from super_admin/system or already-scoped paths — `guest.listAll` (super-admin listing), `table.findRestaurantIdById` (bootstrap), and the `findByIdInRestaurant` family (take an explicit `restaurantId`). `reward.findActiveById` is now context-scoped too. Residual by-key helpers (`guest.adjustPoints`/`incrementVisitCount`/`incrementNoShowCount`, `*.findByGuest`, `findByCode`, `findByReferralCode`) operate on ids the caller already obtained through a scoped lookup; RLS (verify mode) would cover them at the DB if ever FORCEd.
+- [x] 5.2 Update PROGRESS.md + ROADMAP.md ("Row-level security for tenant isolation" → in place, verify mode; fail-closed deferred); open questions resolved by descoping Phase 2b.
+- [~] 5.3 `openspec archive centralized-tenant-scoping` — hold until Phases 1a/1b/2a (#57/#58/#59) merge; archive then (Phase 2b intentionally left as a documented future option, not a blocker).

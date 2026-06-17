@@ -61,7 +61,7 @@ Core reservation product — API, dashboard, booking widget, marketing site.
 
 ## Phase 3: Scale + Monetize
 
-- Row-level security for tenant isolation
+- Tenant isolation — **app-layer done** (scoped repositories make cross-tenant impossible by construction); Postgres RLS in place as a verified, dormant verify-mode backstop. Fail-closed flip (`FORCE` + transaction-per-request) **deferred** until raw-SQL paths or many tenants justify the plumbing (see OpenSpec `centralized-tenant-scoping`).
 - Package enforcement middleware (Starter vs Growth)
 - Restaurant onboarding wizard
 - Billing — PayPlus (Israel) + Stripe (international)

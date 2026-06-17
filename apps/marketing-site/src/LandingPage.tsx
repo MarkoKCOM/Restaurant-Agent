@@ -39,14 +39,18 @@ const I18N = {
     ],
     modulesTitle: "שלושה חלקים.", modulesTitle2: "מכונת שימור אחת.",
     modulesSub: "ההזמנות מכניסות אורחים. ספר האורחים זוכר אותם. מועדון הנאמנות מחזיר אותם, רובו דרך וואטסאפ שם הם כבר נמצאים. בלי עוד אפליקציה לצוות, בלי חיבורים שבירים.",
+    moduleGoalLabel: "המטרה",
     modules: [
       { id: "live", tag: "קונסיירז'", name: "קונסיירז' הוואטסאפ שלך", color: "#16A34A", icon: "📅",
+        goal: "להוריד את העומס מהצוות ולתת לאורחים מענה ותשובות מיידיות, מסביב לשעון.",
         desc: "קונסיירז' בוואטסאפ שמנהל הזמנות שולחן והזמנות אוכל, עונה על שאלות אורחים ושולח תפריט ותמונות, בנוסף לווידג׳ט הזמנה לאתר בשורת קוד אחת.",
         features: ["הזמנות שולחן ואוכל בוואטסאפ", "עונה על שאלות, שולח תפריט ותמונות", "ווידג׳ט הזמנה לאתר בשורת קוד", "אישורים ותזכורות, אוטומטית"] },
       { id: "connect", tag: "ספר אורחים", name: "כל אורח, זכור", color: "#2563EB", icon: "💬",
+        goal: "להכיר כל אורח עוד לפני שהוא יושב, כדי שהשירות תמיד ירגיש אישי.",
         desc: "פרופיל שנבנה מההזמנה הראשונה, כך שהצוות והבעלים יודעים מי נכנס.",
         features: ["ספר אורחים שנבנה מההזמנה הראשונה", "תיוג אוטומטי: VIP, חוזר, יום הולדת ומארח גדול", "היסטוריה והעדפות לפני שיושבים", "סיכום יומי לבעלים בוואטסאפ"] },
       { id: "club", tag: "מועדון חברים", name: "מועדון חברים שמחזיר אותם", color: "#9333EA", icon: "🎟️",
+        goal: "להפוך אורחים חד-פעמיים ללקוחות קבועים שחוזרים שוב ושוב.",
         desc: "מנוע השימור: מועדון חברים שמדבר עם האורחים בוואטסאפ, לומד מכל ביקור, ומשתמש בנקודות, משחקים והטבות כדי להחזיר אותם.",
         features: ["נקודות, דרגות והטבות על כל ביקור", "משחקים, רצפים ואתגרים", "אוסף משוב אחרי כל ביקור", "חבר מביא חבר, בוואטסאפ"] },
     ],
@@ -194,14 +198,18 @@ const I18N = {
     ],
     modulesTitle: "Three parts.", modulesTitle2: "One retention machine.",
     modulesSub: "Bookings get guests in the door. The guest book remembers them. The loyalty club brings them back, mostly over WhatsApp where they already are. No second app for staff, no brittle integrations.",
+    moduleGoalLabel: "The goal",
     modules: [
       { id: "live", tag: "Concierge", name: "Your WhatsApp concierge", color: "#16A34A", icon: "📅",
+        goal: "Take the load off your staff and give guests instant answers, around the clock.",
         desc: "A WhatsApp concierge that takes reservations and orders, answers guest questions, and shares your menu and photos, plus a one-line booking widget for your website.",
         features: ["Reservations & orders on WhatsApp", "Answers questions, sends menu & photos", "One-line website booking widget", "Confirmations & reminders, automatic"] },
       { id: "connect", tag: "Guest book", name: "Every guest, remembered", color: "#2563EB", icon: "💬",
+        goal: "Know every guest before they sit, so the service always feels personal.",
         desc: "A profile built from the first booking, so staff and owner always know who is walking in.",
         features: ["Guest book built from the first booking", "Auto tags: VIP, returning, birthday, big host", "History and preferences before they sit", "Daily owner summary on WhatsApp"] },
       { id: "club", tag: "Membership club", name: "A membership club that brings them back", color: "#9333EA", icon: "🎟️",
+        goal: "Turn one-time guests into regulars who keep coming back.",
         desc: "The retention engine: a membership club that talks to guests on WhatsApp, learns from every visit, and uses points, games and perks to bring them back.",
         features: ["Points, tiers & perks on every visit", "Games, streaks & challenges", "Collects feedback after each visit", "Member-get-member referrals, on WhatsApp"] },
     ],
@@ -349,14 +357,18 @@ const I18N = {
     ],
     modulesTitle: "ثلاثة أجزاء.", modulesTitle2: "آلة احتفاظ واحدة.",
     modulesSub: "الحجوزات تُدخل الضيوف. سجل الضيوف يتذكّرهم. نادي الولاء يعيدهم، معظمه عبر واتساب حيث هم أصلًا. بدون تطبيق إضافي للطاقم، بدون تكاملات هشّة.",
+    moduleGoalLabel: "الهدف",
     modules: [
       { id: "live", tag: "الكونسيرج", name: "كونسيرج الواتساب لمطعمك", color: "#16A34A", icon: "📅",
+        goal: "رفع العبء عن طاقمك ومنح الضيوف ردودًا وإجابات فورية، على مدار الساعة.",
         desc: "كونسيرج على واتساب يستقبل الحجوزات والطلبات، يجيب على أسئلة الضيوف، ويرسل قائمتك وصورك، بالإضافة إلى ودجة حجز بسطر واحد لموقعك.",
         features: ["حجوزات وطلبات على واتساب", "يجيب على الأسئلة ويرسل القائمة والصور", "ودجة حجز للموقع بسطر واحد", "تأكيدات وتذكيرات تلقائية"] },
       { id: "connect", tag: "سجل الضيوف", name: "كل ضيف، محفوظ", color: "#2563EB", icon: "💬",
+        goal: "اعرف كل ضيف قبل أن يجلس، ليبقى الاهتمام شخصيًا دائمًا.",
         desc: "ملف يُبنى من أول حجز، ليعرف الطاقم والمالك من يدخل.",
         features: ["سجل ضيوف يُبنى من أول حجز", "وسوم تلقائية: VIP، عائد، عيد ميلاد، مضيف كبير", "التاريخ والتفضيلات قبل الجلوس", "ملخص يومي للمالك على واتساب"] },
       { id: "club", tag: "نادي العضوية", name: "نادي عضوية يعيدهم", color: "#9333EA", icon: "🎟️",
+        goal: "تحويل الضيوف لمرة واحدة إلى زبائن دائمين يعودون مرارًا.",
         desc: "محرك الاحتفاظ: نادي عضوية يتحدث مع الضيوف على واتساب، يتعلّم من كل زيارة، ويستخدم النقاط والألعاب والامتيازات لإعادتهم.",
         features: ["نقاط ومستويات وامتيازات على كل زيارة", "ألعاب وسلاسل وتحديات", "يجمع الملاحظات بعد كل زيارة", "عضو يجلب عضو، عبر واتساب"] },
     ],
@@ -959,7 +971,11 @@ function Modules({ L }: { L: I18NData }) {
                     <div style={{ fontWeight: 700, fontSize: 16 }}>OpenSeat {m.tag}</div>
                   </div>
                 </div>
-                <h3 className="font-display" style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 600, lineHeight: 1.2, letterSpacing: "-0.01em" }}>{m.name}</h3>
+                <h3 className="font-display" style={{ margin: "0 0 12px", fontSize: 22, fontWeight: 600, lineHeight: 1.2, letterSpacing: "-0.01em" }}>{m.name}</h3>
+                <div style={{ marginBottom: 14, padding: "10px 12px", borderRadius: 10, background: `${m.color}12`, borderInlineStart: `2px solid ${m.color}` }}>
+                  <div className="mono-sm" style={{ color: m.color, marginBottom: 4 }}>{L.moduleGoalLabel}</div>
+                  <div style={{ fontSize: 13.5, color: "var(--ink)", fontWeight: 600, lineHeight: 1.4 }}>{m.goal}</div>
+                </div>
                 <p style={{ color: "var(--ink-70)", fontSize: 14, marginTop: 0, marginBottom: 18 }}>{m.desc}</p>
                 <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
                   {m.features.map((f, k) => (

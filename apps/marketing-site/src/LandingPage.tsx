@@ -40,15 +40,15 @@ const I18N = {
     modulesTitle: "שלושה חלקים.", modulesTitle2: "מכונת שימור אחת.",
     modulesSub: "ההזמנות מכניסות אורחים. ספר האורחים זוכר אותם. מועדון הנאמנות מחזיר אותם, רובו דרך וואטסאפ שם הם כבר נמצאים. בלי עוד אפליקציה לצוות, בלי חיבורים שבירים.",
     modules: [
-      { id: "live", tag: "הזמנות", name: "הזמנות על טייס אוטומטי", color: "#16A34A", icon: "📅",
-        desc: "הזמנות, רשימת המתנה, ווידג׳ט לאתר ובוט וואטסאפ שממלא שולחנות ומאשר לבד.",
-        features: ["שיבוץ אוטומטי לפי גודל קבוצה", "רשימת המתנה עם התאמה חכמה", "ווידג׳ט לאתר בשורת קוד אחת", "אישור ותזכורת בוואטסאפ"] },
+      { id: "live", tag: "קונסיירז'", name: "קונסיירז' הוואטסאפ שלך", color: "#16A34A", icon: "📅",
+        desc: "קונסיירז' בוואטסאפ שמנהל הזמנות שולחן והזמנות אוכל, עונה על שאלות אורחים ושולח תפריט ותמונות, בנוסף לווידג׳ט הזמנה לאתר בשורת קוד אחת.",
+        features: ["הזמנות שולחן ואוכל בוואטסאפ", "עונה על שאלות, שולח תפריט ותמונות", "ווידג׳ט הזמנה לאתר בשורת קוד", "אישורים ותזכורות, אוטומטית"] },
       { id: "connect", tag: "ספר אורחים", name: "כל אורח, זכור", color: "#2563EB", icon: "💬",
         desc: "פרופיל שנבנה מההזמנה הראשונה, כך שהצוות והבעלים יודעים מי נכנס.",
         features: ["ספר אורחים שנבנה מההזמנה הראשונה", "תיוג אוטומטי: VIP, חוזר, יום הולדת ומארח גדול", "היסטוריה והעדפות לפני שיושבים", "סיכום יומי לבעלים בוואטסאפ"] },
-      { id: "club", tag: "נאמנות", name: "הסיבה שהם חוזרים", color: "#9333EA", icon: "🎟️",
-        desc: "נקודות, הטבות, משחקים והפניות שרובם רצים דרך וואטסאפ. כאן OpenSeat מצדיק את עצמו.",
-        features: ["נקודות ודרגות על ביקורים לפי הכללים שלך", "משחקים, רצפים ואתגרים", "חבר מביא חבר עם תגמול לשניהם", "יתרה, הטבות והחזרת אורחים בוואטסאפ"] },
+      { id: "club", tag: "מועדון חברים", name: "מועדון חברים שמחזיר אותם", color: "#9333EA", icon: "🎟️",
+        desc: "מנוע השימור: מועדון חברים שמדבר עם האורחים בוואטסאפ, לומד מכל ביקור, ומשתמש בנקודות, משחקים והטבות כדי להחזיר אותם.",
+        features: ["נקודות, דרגות והטבות על כל ביקור", "משחקים, רצפים ואתגרים", "אוסף משוב אחרי כל ביקור", "חבר מביא חבר, בוואטסאפ"] },
     ],
     howTitle: "איך זה עובד",
     howSub: "ארבעה צעדים. אותו לולאה שמייצרת קשר ארוך טווח עם האורח.",
@@ -74,16 +74,16 @@ const I18N = {
     pricingSub: "חבילות חודשיות לפי גודל המסעדה. הנחה שנתית (10 חודשים במחיר של 12). ביטול מתי שרוצים.",
     pricingTierLabel: "בחר גודל מסעדה",
     tiers: [
-      { id: "80", label: "עד 80 מושבים" }, { id: "150", label: "עד 150" },
-      { id: "200", label: "עד 200" }, { id: "200+", label: "200+" },
+      { id: "80", label: "עד 120 מושבים" }, { id: "150", label: "עד 200" },
+      { id: "200", label: "עד 400" }, { id: "200+", label: "400+" },
     ],
     plans: [
-      { name: "Starter", desc: "הזמנות, בוט וואטסאפ, ווידג׳ט לאתר ודשבורד בעלים.", module: "מנהלים את ההזמנות במקום אחד",
+      { name: "Starter", desc: "קונסיירז' הוואטסאפ, דשבורד בעלים, ווידג׳ט הזמנה וספר אורחים.", module: "מנהלים את ההזמנות במקום אחד",
         prices: { "80": 499, "150": 699, "200": 999, "200+": 1399 } as Record<string, number>,
-        includes: ["מנוע הזמנות חכם", "בוט וואטסאפ להזמנות", "ווידג׳ט לאתר", "דשבורד בעלים"] },
-      { name: "Loyalty", desc: "כל מה שב-Starter ובנוסף מנוע השימור: מועדון נאמנות, משחקים והחזרת אורחים אוטומטית.", module: "הופכים אורחים ללקוחות קבועים", popular: true,
+        includes: ["קונסיירז': הזמנות שולחן ואוכל, תפריט, מידע ותמיכה", "דשבורד בעלים", "ווידג׳ט הזמנה לאתר", "ספר אורחים"] },
+      { name: "Loyalty", desc: "כל מה שב-Starter, בתוספת מועדון החברים שמחזיר אורחים.", module: "הופכים אורחים ללקוחות קבועים", popular: true,
         prices: { "80": 799, "150": 1099, "200": 1499, "200+": 1999 } as Record<string, number>,
-        includes: ["הכל ב-Starter", "מועדון נאמנות עם נקודות ודרגות", "משחקים, רצפים והפניות", "יום הולדת והחזרת אורחים אוטומטית"] },
+        includes: ["הכל ב-Starter", "מועדון חברים ושימור", "ימי הולדת ומשוב מביקורים", "גיימיפיקציה לספר האורחים"] },
     ],
     addonsTitle: "תוספות אופציונליות", addonsSub: "הוסיפו רק מה שצריך. אפשר לבנות חדשות לכל מסעדה לפי בקשה.",
     addonGroups: [
@@ -94,9 +94,8 @@ const I18N = {
         { t: "מוניטין", p: "₪49/חודש", d: "בקשת ביקורת גוגל אוטומטית אחרי ביקור טוב." },
       ] },
       { title: "תפעול", items: [
+        { t: "אינטגרציה מלאה למסעדה", p: "₪499/חודש", d: "מלאי, ספקים ורכש, עם גישה ואינטגרציה מלאה למסעדה." },
         { t: "הדרכות עובדים", p: "₪49/חודש", d: "הדרכות צוות ונהלי שירות." },
-        { t: "ניהול ספקים", p: "₪49/חודש", d: "ספקים, הזמנות רכש ותיאום." },
-        { t: "ניהול מלאי", p: "₪49/חודש", d: "מלאי, חוסרים ותזכורות מטבח." },
         { t: "ניהול תפריט", p: "₪29/חודש", d: "עדכון מנות, מחירים וזמינות." },
       ] },
     ],
@@ -110,18 +109,18 @@ const I18N = {
       { q: "הנתונים שלי באמת שלי?", a: "כן. אתה הבעלים של כל נתוני האורחים וספר האורחים." },
     ],
     demoTitle: "כך זה נראה אצל האורח",
-    demoSub: "מסך אחד ברור בנייד. אותו תהליך עובד גם באתר שלך, בוואטסאפ ועל כל טאבלט.",
+    demoSub: "זהו ווידג׳ט ההזמנה: חלון קופץ באתר שלך, כאן בתצוגת נייד. בוואטסאפ אותה הזמנה מתבצעת כצ׳אט, לא במסך השלבים הזה.",
     demoCardLabel: "פשוט וברור",
-    demoCardTitle: "מסך אחד לאורח. כל השאר קורה מאחורי הקלעים.",
+    demoCardTitle: "ווידג׳ט הזמנה שקופץ באתר שלך. כל השאר קורה מאחורי הקלעים.",
     demoCardPoints: [
-      "נראה טוב בנייד בלי להעמיס על האורח",
-      "אותו תהליך יושב באתר שלך ובוואטסאפ",
+      "חלון קופץ באתר, לא השתלטות על כל המסך",
+      "בוואטסאפ אותה הזמנה מתבצעת כצ׳אט",
       "הצוות והבעלים רואים הכל בדשבורד אחד",
     ],
     contactTitle: "דברו איתנו",
     contactSub: "שיחה של 15 דקות. מקבלים דמו חי על המסעדה שלך בוואטסאפ.",
     contactLeft: [
-      { t: "15 דקות, בלי בלבולים", d: "שיחה קצרה, תשובות אמיתיות." },
+      { t: "שיחה ממוקדת של 15 דקות", d: "תשובות ברורות על מה שמתאים למסעדה שלך." },
       { t: "התסריטים שלך, לא שלנו", d: "ספר על המסעדה ונראה לך תוצאות רלוונטיות." },
       { t: "הדגמה חיה בוואטסאפ", d: "ראה בדיוק מה האורחים שלך יחוו." },
     ],
@@ -132,7 +131,6 @@ const I18N = {
           { label: "מודולים", href: "#modules" },
           { label: "מחירון", href: "#pricing" },
           { label: "תוספות", href: "#pricing" },
-          { label: "דמו חי", href: "#demo" },
         ] },
         { t: "חברה", items: [
           { label: "מבצע פיילוט", href: "#pricing" },
@@ -197,15 +195,15 @@ const I18N = {
     modulesTitle: "Three parts.", modulesTitle2: "One retention machine.",
     modulesSub: "Bookings get guests in the door. The guest book remembers them. The loyalty club brings them back, mostly over WhatsApp where they already are. No second app for staff, no brittle integrations.",
     modules: [
-      { id: "live", tag: "Bookings", name: "Bookings on autopilot", color: "#16A34A", icon: "📅",
-        desc: "Reservations, waitlist, a website widget and a WhatsApp bot that fills tables and confirms on its own.",
-        features: ["Auto table assignment by party size", "Waitlist with smart matching", "One-line website widget", "WhatsApp confirmations and reminders"] },
+      { id: "live", tag: "Concierge", name: "Your WhatsApp concierge", color: "#16A34A", icon: "📅",
+        desc: "A WhatsApp concierge that takes reservations and orders, answers guest questions, and shares your menu and photos, plus a one-line booking widget for your website.",
+        features: ["Reservations & orders on WhatsApp", "Answers questions, sends menu & photos", "One-line website booking widget", "Confirmations & reminders, automatic"] },
       { id: "connect", tag: "Guest book", name: "Every guest, remembered", color: "#2563EB", icon: "💬",
         desc: "A profile built from the first booking, so staff and owner always know who is walking in.",
         features: ["Guest book built from the first booking", "Auto tags: VIP, returning, birthday, big host", "History and preferences before they sit", "Daily owner summary on WhatsApp"] },
-      { id: "club", tag: "Loyalty", name: "The reason they come back", color: "#9333EA", icon: "🎟️",
-        desc: "Points, perks, games and referrals that run mostly through WhatsApp. This is where OpenSeat earns its keep.",
-        features: ["Points and tiers on visits by your rules", "Games, streaks and challenges", "Member-get-member referrals", "Balance, perks and win-back over WhatsApp"] },
+      { id: "club", tag: "Membership club", name: "A membership club that brings them back", color: "#9333EA", icon: "🎟️",
+        desc: "The retention engine: a membership club that talks to guests on WhatsApp, learns from every visit, and uses points, games and perks to bring them back.",
+        features: ["Points, tiers & perks on every visit", "Games, streaks & challenges", "Collects feedback after each visit", "Member-get-member referrals, on WhatsApp"] },
     ],
     howTitle: "How it works",
     howSub: "Four steps. One loop that builds a long-term relationship with every guest.",
@@ -231,16 +229,16 @@ const I18N = {
     pricingSub: "Monthly plans by restaurant size. Annual discount (10 months for 12). Cancel anytime.",
     pricingTierLabel: "Pick your size",
     tiers: [
-      { id: "80", label: "Up to 80 seats" }, { id: "150", label: "Up to 150" },
-      { id: "200", label: "Up to 200" }, { id: "200+", label: "200+" },
+      { id: "80", label: "Up to 120 seats" }, { id: "150", label: "Up to 200" },
+      { id: "200", label: "Up to 400" }, { id: "200+", label: "400+" },
     ],
     plans: [
-      { name: "Starter", desc: "Reservations, WhatsApp bot, website widget and owner dashboard.", module: "Run your bookings in one place",
+      { name: "Starter", desc: "Your WhatsApp concierge, owner dashboard, booking widget and guest book.", module: "Run your bookings in one place",
         prices: { "80": 499, "150": 699, "200": 999, "200+": 1399 } as Record<string, number>,
-        includes: ["Smart reservations engine", "WhatsApp booking bot", "Website widget", "Owner dashboard"] },
-      { name: "Loyalty", desc: "Everything in Starter plus the retention engine: loyalty club, games and automatic win-back.", module: "Turn guests into regulars", popular: true,
+        includes: ["Concierge: reservations, orders, menu, info & support", "Owner dashboard", "Website booking widget", "Guest book"] },
+      { name: "Loyalty", desc: "Everything in Starter, plus the membership club that brings guests back.", module: "Turn guests into regulars", popular: true,
         prices: { "80": 799, "150": 1099, "200": 1499, "200+": 1999 } as Record<string, number>,
-        includes: ["Everything in Starter", "Loyalty club with points and tiers", "Games, streaks and referrals", "Automatic birthday and win-back"] },
+        includes: ["Everything in Starter", "Membership club & retention", "Birthdays & visit feedback", "Guest-book gamification"] },
     ],
     addonsTitle: "Optional add-ons", addonsSub: "Add only what you need. We can build new ones per restaurant on request.",
     addonGroups: [
@@ -251,9 +249,8 @@ const I18N = {
         { t: "Reputation", p: "\u20AA49/mo", d: "Automatic Google review requests after a good visit." },
       ] },
       { title: "Operations", items: [
+        { t: "Full restaurant integration", p: "\u20AA499/mo", d: "Inventory, suppliers and purchasing, with full access and integration into your restaurant." },
         { t: "Employee training", p: "\u20AA49/mo", d: "Staff training and service standards." },
-        { t: "Supplier management", p: "\u20AA49/mo", d: "Suppliers, purchase orders and coordination." },
-        { t: "Inventory management", p: "\u20AA49/mo", d: "Stock, shortages and kitchen reminders." },
         { t: "Menu management", p: "\u20AA29/mo", d: "Update dishes, prices and availability." },
       ] },
     ],
@@ -267,18 +264,18 @@ const I18N = {
       { q: "Do I really own my data?", a: "Yes. You fully own your guest data and history." },
     ],
     demoTitle: "What guests actually see",
-    demoSub: "One clear mobile screen. The same flow also works on your site, on WhatsApp and on any tablet.",
+    demoSub: "This is the booking widget: a pop-up on your website, shown here on mobile. On WhatsApp the same booking happens as a chat, not this step-by-step screen.",
     demoCardLabel: "Simple by design",
-    demoCardTitle: "One guest-facing screen. Everything else happens behind the scenes.",
+    demoCardTitle: "A booking widget that pops up on your site. Everything else happens behind the scenes.",
     demoCardPoints: [
-      "Looks clean on mobile without overwhelming the guest",
-      "The same flow fits your site and WhatsApp",
+      "A pop-up on your site, not a full-screen takeover",
+      "On WhatsApp the same booking happens as a chat",
       "Staff and owners see everything in one dashboard",
     ],
     contactTitle: "Talk to us",
     contactSub: "A 15-minute call. Get a live WhatsApp demo for your own restaurant.",
     contactLeft: [
-      { t: "15 minutes, no fluff", d: "Quick call, real answers." },
+      { t: "A focused 15-minute call", d: "Straight answers about what fits your restaurant." },
       { t: "Your scenarios, not ours", d: "Tell us about your restaurant, we'll show relevant results." },
       { t: "Live WhatsApp walkthrough", d: "See exactly what your guests will experience." },
     ],
@@ -289,7 +286,6 @@ const I18N = {
           { label: "Modules", href: "#modules" },
           { label: "Pricing", href: "#pricing" },
           { label: "Add-ons", href: "#pricing" },
-          { label: "Live demo", href: "#demo" },
         ] },
         { t: "Company", items: [
           { label: "Pilot offer", href: "#pricing" },
@@ -354,15 +350,15 @@ const I18N = {
     modulesTitle: "ثلاثة أجزاء.", modulesTitle2: "آلة احتفاظ واحدة.",
     modulesSub: "الحجوزات تُدخل الضيوف. سجل الضيوف يتذكّرهم. نادي الولاء يعيدهم، معظمه عبر واتساب حيث هم أصلًا. بدون تطبيق إضافي للطاقم، بدون تكاملات هشّة.",
     modules: [
-      { id: "live", tag: "الحجوزات", name: "حجوزات على الطيار الآلي", color: "#16A34A", icon: "📅",
-        desc: "حجوزات، قائمة انتظار، ودجة للموقع وبوت واتساب يملأ الطاولات ويؤكّد لوحده.",
-        features: ["تعيين تلقائي حسب حجم المجموعة", "قائمة انتظار بمطابقة ذكية", "ودجة للموقع بسطر واحد", "تأكيدات وتذكيرات على واتساب"] },
+      { id: "live", tag: "الكونسيرج", name: "كونسيرج الواتساب لمطعمك", color: "#16A34A", icon: "📅",
+        desc: "كونسيرج على واتساب يستقبل الحجوزات والطلبات، يجيب على أسئلة الضيوف، ويرسل قائمتك وصورك، بالإضافة إلى ودجة حجز بسطر واحد لموقعك.",
+        features: ["حجوزات وطلبات على واتساب", "يجيب على الأسئلة ويرسل القائمة والصور", "ودجة حجز للموقع بسطر واحد", "تأكيدات وتذكيرات تلقائية"] },
       { id: "connect", tag: "سجل الضيوف", name: "كل ضيف، محفوظ", color: "#2563EB", icon: "💬",
         desc: "ملف يُبنى من أول حجز، ليعرف الطاقم والمالك من يدخل.",
         features: ["سجل ضيوف يُبنى من أول حجز", "وسوم تلقائية: VIP، عائد، عيد ميلاد، مضيف كبير", "التاريخ والتفضيلات قبل الجلوس", "ملخص يومي للمالك على واتساب"] },
-      { id: "club", tag: "الولاء", name: "السبب الذي يعيدهم", color: "#9333EA", icon: "🎟️",
-        desc: "نقاط وامتيازات وألعاب وإحالات تعمل معظمها عبر واتساب. هنا يثبت OpenSeat قيمته.",
-        features: ["نقاط ومستويات على الزيارات حسب قواعدك", "ألعاب وسلاسل وتحديات", "عضو يجلب عضو", "الرصيد والامتيازات وإعادة الضيوف عبر واتساب"] },
+      { id: "club", tag: "نادي العضوية", name: "نادي عضوية يعيدهم", color: "#9333EA", icon: "🎟️",
+        desc: "محرك الاحتفاظ: نادي عضوية يتحدث مع الضيوف على واتساب، يتعلّم من كل زيارة، ويستخدم النقاط والألعاب والامتيازات لإعادتهم.",
+        features: ["نقاط ومستويات وامتيازات على كل زيارة", "ألعاب وسلاسل وتحديات", "يجمع الملاحظات بعد كل زيارة", "عضو يجلب عضو، عبر واتساب"] },
     ],
     howTitle: "كيف يعمل",
     howSub: "أربع خطوات. حلقة واحدة تبني علاقة طويلة مع كل ضيف.",
@@ -388,16 +384,16 @@ const I18N = {
     pricingSub: "خطط شهرية حسب حجم المطعم. خصم سنوي (10 بسعر 12). إلغاء في أي وقت.",
     pricingTierLabel: "اختر الحجم",
     tiers: [
-      { id: "80", label: "حتى 80 مقعد" }, { id: "150", label: "حتى 150" },
-      { id: "200", label: "حتى 200" }, { id: "200+", label: "200+" },
+      { id: "80", label: "حتى 120 مقعد" }, { id: "150", label: "حتى 200" },
+      { id: "200", label: "حتى 400" }, { id: "200+", label: "400+" },
     ],
     plans: [
-      { name: "Starter", desc: "حجوزات، بوت واتساب، ودجة للموقع ولوحة مالك.", module: "أدر حجوزاتك في مكان واحد",
+      { name: "Starter", desc: "كونسيرج واتساب، لوحة المالك، ودجة الحجز وسجل الضيوف.", module: "أدر حجوزاتك في مكان واحد",
         prices: { "80": 499, "150": 699, "200": 999, "200+": 1399 } as Record<string, number>,
-        includes: ["محرك حجوزات ذكي", "بوت واتساب للحجوزات", "ودجة للموقع", "لوحة مالك"] },
-      { name: "Loyalty", desc: "كل ما في Starter بالإضافة إلى محرك الاحتفاظ: نادي ولاء وألعاب وإعادة ضيوف تلقائية.", module: "حوّل الضيوف إلى زبائن دائمين", popular: true,
+        includes: ["الكونسيرج: حجوزات وطلبات، قائمة، معلومات ودعم", "لوحة المالك", "ودجة حجز للموقع", "سجل الضيوف"] },
+      { name: "Loyalty", desc: "كل ما في Starter، بالإضافة إلى نادي العضوية الذي يعيد الضيوف.", module: "حوّل الضيوف إلى زبائن دائمين", popular: true,
         prices: { "80": 799, "150": 1099, "200": 1499, "200+": 1999 } as Record<string, number>,
-        includes: ["كل ما في Starter", "نادي ولاء بنقاط ومستويات", "ألعاب وسلاسل وإحالات", "عيد ميلاد وإعادة ضيوف تلقائية"] },
+        includes: ["كل ما في Starter", "نادي العضوية والاحتفاظ", "أعياد ميلاد وملاحظات الزيارات", "تلعيب سجل الضيوف"] },
     ],
     addonsTitle: "إضافات اختيارية", addonsSub: "أضف فقط ما تحتاج. يمكننا بناء إضافات جديدة لكل مطعم عند الطلب.",
     addonGroups: [
@@ -408,9 +404,8 @@ const I18N = {
         { t: "السمعة", p: "₪49/شهر", d: "طلب تقييم جوجل تلقائيًا بعد زيارة جيدة." },
       ] },
       { title: "العمليات", items: [
+        { t: "تكامل كامل مع المطعم", p: "₪499/شهر", d: "المخزون والموردون والمشتريات، مع وصول وتكامل كامل مع مطعمك." },
         { t: "تدريب الموظفين", p: "₪49/شهر", d: "تدريب الطاقم ومعايير الخدمة." },
-        { t: "إدارة الموردين", p: "₪49/شهر", d: "موردون وطلبات شراء وتنسيق." },
-        { t: "إدارة المخزون", p: "₪49/شهر", d: "مخزون ونواقص وتذكيرات المطبخ." },
         { t: "إدارة القائمة", p: "₪29/شهر", d: "تحديث الأطباق والأسعار والتوفر." },
       ] },
     ],
@@ -424,18 +419,18 @@ const I18N = {
       { q: "هل بياناتي ملكي فعلًا؟", a: "نعم، أنت تملك بيانات الضيوف وسجل الضيوف بالكامل." },
     ],
     demoTitle: "هكذا يراه الضيف",
-    demoSub: "شاشة جوال واحدة وواضحة. نفس المسار يعمل أيضًا على موقعك، على واتساب وعلى أي تابلت.",
+    demoSub: "هذه ودجة الحجز: نافذة منبثقة على موقعك، معروضة هنا على الجوال. على واتساب يتم الحجز نفسه كمحادثة، وليس بهذه الشاشة المتدرجة.",
     demoCardLabel: "بسيط وواضح",
-    demoCardTitle: "شاشة واحدة للضيف. وكل شيء آخر يحدث خلف الكواليس.",
+    demoCardTitle: "ودجة حجز تنبثق على موقعك. وكل شيء آخر يحدث خلف الكواليس.",
     demoCardPoints: [
-      "يبدو جيدًا على الجوال بدون إرباك الضيف",
-      "نفس المسار يعمل على موقعك وعلى واتساب",
+      "نافذة منبثقة على موقعك، وليست استحواذًا على الشاشة كاملة",
+      "على واتساب يتم الحجز نفسه كمحادثة",
       "الطاقم والمالك يرون كل شيء في لوحة واحدة",
     ],
     contactTitle: "تحدث معنا",
     contactSub: "مكالمة 15 دقيقة. واحصل على عرض حي على واتساب لمطعمك.",
     contactLeft: [
-      { t: "15 دقيقة بدون تعقيد", d: "مكالمة قصيرة، إجابات حقيقية." },
+      { t: "مكالمة مركّزة لمدة 15 دقيقة", d: "إجابات واضحة حول ما يناسب مطعمك." },
       { t: "سيناريوهاتك، ليس سيناريوهاتنا", d: "أخبرنا عن مطعمك وسنعرض لك نتائج." },
       { t: "عرض حي على واتساب", d: "شاهد بالضبط ما سيختبره ضيوفك." },
     ],
@@ -446,7 +441,6 @@ const I18N = {
           { label: "الوحدات", href: "#modules" },
           { label: "الأسعار", href: "#pricing" },
           { label: "إضافات", href: "#pricing" },
-          { label: "عرض حي", href: "#demo" },
         ] },
         { t: "الشركة", items: [
           { label: "عرض البايلوت", href: "#pricing" },
@@ -646,7 +640,7 @@ function Nav({ L, lang, setLang }: { L: I18NData; lang: Lang; setLang: (l: Lang)
   }, [mobileOpen]);
   const navLinks = [
     { href: "#modules", label: L.nav.modules }, { href: "#how", label: L.nav.how },
-    { href: "#pricing", label: L.nav.pricing }, { href: "#demo", label: L.nav.demo },
+    { href: "#pricing", label: L.nav.pricing },
     { href: "#contact", label: L.nav.contact },
   ];
   return (
@@ -860,7 +854,7 @@ function Hero({ L }: { L: I18NData }) {
         <div style={{ position: "absolute", width: 360, height: 360, borderRadius: "50%", background: "radial-gradient(circle at center, rgba(253,186,116,.35), transparent 70%)", bottom: -120, insetInlineStart: -60, animation: "mesh-drift 18s ease-in-out infinite reverse" }} />
         <div className="hero-grid-bg" style={{ position: "absolute", inset: 0 }} />
       </div>
-      <div className="container-x" style={{ position: "relative", zIndex: 1, paddingBlock: "clamp(36px, 5vw, 60px) clamp(56px, 8vw, 88px)" }}>
+      <div className="container-x" style={{ position: "relative", zIndex: 1, paddingBlock: "clamp(14px, 2.5vw, 28px) clamp(44px, 7vw, 76px)" }}>
         <div className="hero-cols" style={{ display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: 48, alignItems: "center" }}>
           <div ref={ref} className="reveal-stagger">
             <div className="chip" style={{ marginBottom: 20, background: "white" }}>
@@ -938,7 +932,7 @@ function Modules({ L }: { L: I18NData }) {
   const ref = useReveal();
   const [active, setActive] = useState(0);
   return (
-    <section id="modules" style={{ padding: "clamp(56px, 8vw, 92px) 0" }}>
+    <section id="modules" style={{ padding: "clamp(40px, 6vw, 72px) 0" }}>
       <div className="container-x">
         <div ref={ref} className="reveal" style={{ marginBottom: "clamp(36px, 5vw, 52px)", maxWidth: 760 }}>
           <div className="eyebrow" style={{ marginBottom: 16 }}>01 · {L.eyebrows.system}</div>
@@ -991,7 +985,7 @@ function Modules({ L }: { L: I18NData }) {
 function How({ L }: { L: I18NData }) {
   const ref = useReveal();
   return (
-    <section id="how" style={{ padding: "clamp(56px, 8vw, 92px) 0", background: "var(--paper-2)", position: "relative", overflow: "hidden" }}>
+    <section id="how" style={{ padding: "clamp(40px, 6vw, 72px) 0", background: "var(--paper-2)", position: "relative", overflow: "hidden" }}>
       <div className="container-x">
         <div ref={ref} className="reveal" style={{ marginBottom: "clamp(36px, 5vw, 52px)", textAlign: "center" }}>
           <div className="eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}>04 · {L.eyebrows.loop}</div>
@@ -1025,7 +1019,7 @@ function How({ L }: { L: I18NData }) {
 function Why({ L }: { L: I18NData }) {
   const ref = useReveal();
   return (
-    <section style={{ padding: "clamp(56px, 8vw, 92px) 0" }}>
+    <section style={{ padding: "clamp(40px, 6vw, 72px) 0" }}>
       <div className="container-x">
         <div ref={ref} className="reveal" style={{ marginBottom: "clamp(36px, 5vw, 52px)", maxWidth: 720 }}>
           <div className="eyebrow" style={{ marginBottom: 16 }}>03 · {L.eyebrows.value}</div>
@@ -1097,7 +1091,7 @@ function Pricing({ L }: { L: I18NData }) {
   const [annual, setAnnual] = useState(false);
   const mult = annual ? 10 / 12 : 1;
   return (
-    <section id="pricing" style={{ padding: "clamp(56px, 8vw, 92px) 0" }}>
+    <section id="pricing" style={{ padding: "clamp(40px, 6vw, 72px) 0" }}>
       <div className="container-x">
         <div ref={ref} className="reveal" style={{ marginBottom: 40, textAlign: "center" }}>
           <div className="eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}>02 · {L.eyebrows.pricing}</div>
@@ -1154,7 +1148,7 @@ function Pricing({ L }: { L: I18NData }) {
 function Addons({ L }: { L: I18NData }) {
   const ref = useReveal();
   return (
-    <section style={{ padding: "clamp(24px, 4vw, 40px) 0 clamp(56px, 8vw, 92px)" }}>
+    <section style={{ padding: "clamp(24px, 4vw, 40px) 0 clamp(40px, 6vw, 72px)" }}>
       <div className="container-x">
         <div ref={ref} className="reveal" style={{ marginBottom: 32, textAlign: "center" }}>
           <h3 className="font-display" style={{ fontSize: "clamp(26px,3vw,36px)", margin: "0 0 10px", fontWeight: 600 }}>{L.addonsTitle}</h3>
@@ -1190,7 +1184,7 @@ function Addons({ L }: { L: I18NData }) {
 function FAQ({ L }: { L: I18NData }) {
   const ref = useReveal();
   return (
-    <section style={{ padding: "clamp(56px, 8vw, 92px) 0", background: "var(--paper-2)" }}>
+    <section style={{ padding: "clamp(40px, 6vw, 72px) 0", background: "var(--paper-2)" }}>
       <div className="container-x" style={{ maxWidth: 860 }}>
         <div ref={ref} className="reveal" style={{ marginBottom: 40, textAlign: "center" }}>
           <div className="eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}>06 · FAQ</div>
@@ -1249,7 +1243,7 @@ function LiveDemo({ L }: { L: I18NData }) {
   const submit = () => { setSubmitting(true); setTimeout(() => { setSubmitting(false); setStep(4); }, 1200); };
 
   return (
-    <section id="demo" style={{ padding: "clamp(56px, 8vw, 92px) 0" }}>
+    <section id="demo" style={{ padding: "clamp(40px, 6vw, 72px) 0" }}>
       <div className="container-x">
         <div ref={ref} className="reveal" style={{ marginBottom: 40, textAlign: "center" }}>
           <div className="eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}>05 · {L.eyebrows.demo}</div>
@@ -1364,7 +1358,7 @@ function Contact({ L }: { L: I18NData }) {
   };
   const icons = ["\u23F1", "\u2705", "\uD83D\uDCAC"];
   return (
-    <section id="contact" style={{ padding: "clamp(56px, 8vw, 92px) 0", background: "var(--paper-2)" }}>
+    <section id="contact" style={{ padding: "clamp(40px, 6vw, 72px) 0", background: "var(--paper-2)" }}>
       <div className="container-x">
         <div ref={ref} className="reveal" style={{ marginBottom: 40, textAlign: "center" }}>
           <div className="eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}>07 · {L.eyebrows.talk}</div>
@@ -1390,7 +1384,7 @@ function Contact({ L }: { L: I18NData }) {
             ))}
             <div className="phone-seats-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div><label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginBottom: 6 }}>{L.formPhone}</label><input type="tel" name="phone" style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 14, background: "var(--paper)" }} /></div>
-              <div><label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginBottom: 6 }}>{L.formSeats}</label><select name="seats" style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 14, background: "var(--paper)" }}><option>1-30</option><option>31-80</option><option>81-150</option><option>151-200</option><option>200+</option></select></div>
+              <div><label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginBottom: 6 }}>{L.formSeats}</label><select name="seats" style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 14, background: "var(--paper)" }}>{L.tiers.map((t) => <option key={t.id}>{t.label}</option>)}</select></div>
             </div>
             <button type="submit" className="btn btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: 6 }}>
               {status === "sending" ? L.formSending : status === "sent" ? L.formSent : L.formSend}

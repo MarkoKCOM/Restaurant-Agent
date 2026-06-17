@@ -1,5 +1,8 @@
-## ADDED Requirements
+# tenant-isolation Specification
 
+## Purpose
+TBD - created by archiving change centralized-tenant-scoping. Update Purpose after archive.
+## Requirements
 ### Requirement: A request or job carries an active tenant context
 
 The system SHALL maintain a request/job-scoped tenant context holding the active `restaurantId` and role, established at the entry points: the HTTP auth hook (from `request.user`) and every BullMQ worker/cron processor and the seed (from job data). Repository tenant scoping SHALL derive the active `restaurantId` from this context rather than from an argument threaded through every call.
@@ -33,9 +36,11 @@ The by-primary-key repository methods on the 14 tenant-scoped tables SHALL filte
 - **WHEN** code needs to operate across tenants (super_admin or a system bootstrap)
 - **THEN** it must call an explicitly named `*Unscoped` repository method; the default by-id methods cannot cross tenants
 
-### Requirement: The database enforces tenant isolation via Row-Level Security
+### Requirement: The database provisions tenant-isolation Row-Level Security
 
-PostgreSQL Row-Level Security SHALL be enabled on the 14 tenant-scoped tables, with policies keyed off a per-transaction setting (`app.current_restaurant_id`) applied via `SET LOCAL`. A query that runs without the setting, or with another tenant's value, SHALL NOT return or modify rows of a different restaurant — independent of any application-layer check.
+PostgreSQL Row-Level Security SHALL be enabled on the 14 tenant-scoped tables (plus `challengeProgress` via a `challenges` subquery), with policies keyed off a per-transaction setting (`app.current_restaurant_id`) applied via `SET LOCAL` and a nil-UUID bypass sentinel for `super_admin`/system. The policies are validated to isolate by `pnpm db:rls-proof` (which transactionally `FORCE`s RLS and asserts the scenarios below).
+
+These policies ship in **verify mode**: RLS is enabled but not `FORCE`d, so the application — which connects as the table owner — bypasses RLS, and the **application layer (tenant-scoped repositories) is the active enforcement**. The scenarios below describe the guarantee once RLS is `FORCE`d (the fail-closed flip + transaction-per-request wiring), which is intentionally deferred (see the change's deferred Phase 2b); the proof script demonstrates they already hold under `FORCE`.
 
 #### Scenario: Hand-written query cannot bypass isolation
 
@@ -61,14 +66,19 @@ PostgreSQL Row-Level Security SHALL be enabled on the 14 tenant-scoped tables, w
 - **WHEN** an `admin` of restaurant A sends a request targeting restaurant B (by id, query param, or header)
 - **THEN** the request is denied or returns no cross-tenant data
 
-### Requirement: Isolation is proven by an automated cross-tenant test
+### Requirement: Isolation is proven by automated tests
 
-The test suite SHALL include a deliberate cross-tenant access attempt that must fail, exercised end-to-end through the API, and run as part of CI.
+The test suite SHALL include deliberate cross-tenant access attempts that must fail. Two layers cover this: repository unit tests assert a by-id read/write for a foreign-tenant id returns null/no-match under a mocked context, and `pnpm db:rls-proof` transactionally `FORCE`s RLS against the real DB and asserts the database denies cross-tenant access. A full end-to-end cross-tenant API test is deferred together with the fail-closed flip (Phase 2b).
 
-#### Scenario: Cross-tenant attempt fails in CI
+#### Scenario: Cross-tenant read/write is denied at the repository
 
-- **WHEN** the e2e/integration gate runs a scenario where restaurant A's admin attempts to read and to modify a resource owned by restaurant B
-- **THEN** both attempts fail (404/403 / no rows affected), and the test passes only because the access was denied
+- **WHEN** a repository by-id read or update is issued under a tenant context for restaurant A against an id owned by restaurant B
+- **THEN** it returns null / matches no row (covered by `repositories/tenant-scope.test.ts`)
+
+#### Scenario: The database denies cross-tenant access under FORCEd RLS
+
+- **WHEN** `pnpm db:rls-proof` sets `app.current_restaurant_id` to restaurant A and queries a FORCEd tenant table
+- **THEN** only A's rows are visible (0 leak), the bypass sentinel sees all, a non-matching/unset setting denies everything, and a WITH CHECK violation blocks rewriting `restaurant_id` to escape
 
 ### Requirement: No behavior change for legitimate same-tenant traffic
 
@@ -78,3 +88,4 @@ Correct same-tenant requests SHALL return the same responses (status codes and s
 
 - **WHEN** an `admin` of restaurant A performs any in-tenant operation that worked before
 - **THEN** it returns the same status code and response shape as before
+

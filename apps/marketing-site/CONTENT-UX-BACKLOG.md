@@ -11,8 +11,7 @@ Created: 2026-06-16 · **Implemented in PR #55** (2026-06-16) — all items belo
 2. **Loyalty:** one-liners set — "A membership club that brings them back"; features: points/tiers/perks, games/streaks/challenges, collects feedback after each visit, member-get-member referrals.
 3. **Pricing:** prices kept identical, only the tier labels changed to 120 / 200 / 400 / 400+.
 
-## Possible follow-up (not in scope)
-- The contact form's "Seats" dropdown still uses old seat ranges — align to 120/200/400/400+ if desired.
+4. **Contact form:** the "Seats" dropdown now renders from the localized pricing tiers (120 / 200 / 400 / 400+), so it stays in sync across HE/EN/AR.
 
 ---
 

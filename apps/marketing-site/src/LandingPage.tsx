@@ -1384,7 +1384,7 @@ function Contact({ L }: { L: I18NData }) {
             ))}
             <div className="phone-seats-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div><label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginBottom: 6 }}>{L.formPhone}</label><input type="tel" name="phone" style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 14, background: "var(--paper)" }} /></div>
-              <div><label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginBottom: 6 }}>{L.formSeats}</label><select name="seats" style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 14, background: "var(--paper)" }}><option>1-30</option><option>31-80</option><option>81-150</option><option>151-200</option><option>200+</option></select></div>
+              <div><label style={{ fontSize: 12, color: "var(--ink-50)", display: "block", marginBottom: 6 }}>{L.formSeats}</label><select name="seats" style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 14, background: "var(--paper)" }}>{L.tiers.map((t) => <option key={t.id}>{t.label}</option>)}</select></div>
             </div>
             <button type="submit" className="btn btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: 6 }}>
               {status === "sending" ? L.formSending : status === "sent" ? L.formSent : L.formSend}

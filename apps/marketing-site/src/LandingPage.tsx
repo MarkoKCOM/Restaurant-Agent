@@ -77,8 +77,9 @@ const I18N = {
       { t: "מחיר חודשי ברור", d: "בנוי למסעדות עצמאיות. בלי חומרה יקרה ובלי עמלה לכל סועד.", accent: "coin" },
     ],
     launchTitle: "מחיר השקה לפיילוט", launchKicker: "5 מסעדות ראשונות",
-    launchDesc: "חבילת Loyalty המלאה ב-₪299/חודש ל-5 המסעדות הראשונות. מחיר חודשי להשקה שאפשר לבטל מתי שרוצים, לא תשלום חד-פעמי.",
+    launchDesc: "חבילת Loyalty המלאה ב-₪299/חודש ל-5 המסעדות הראשונות. זה מחיר הפיילוט למסעדות עד 120 מושבים. מחיר חודשי להשקה שאפשר לבטל מתי שרוצים, לא תשלום חד-פעמי.",
     launchCta: "הבטיחו את המקום שלכם", launchNote: "אחרי 5 המקומות, מחירון Loyalty הרגיל",
+    pilotSizeTitle: "מחיר פיילוט לפי גודל", pilotSizeNote: "מסעדה גדולה יותר? מחיר הפיילוט עולה רק בהפרש שבין מדרגות ה-Loyalty.",
     pricingTitle: "מחירון שקוף",
     pricingSub: "חבילות חודשיות לפי גודל המסעדה. הנחה שנתית (10 חודשים במחיר של 12). ביטול מתי שרוצים.",
     pricingTierLabel: "בחר גודל מסעדה",
@@ -237,8 +238,9 @@ const I18N = {
       { t: "Clear monthly pricing", d: "Built for independents. No expensive hardware, no per-cover fees.", accent: "coin" },
     ],
     launchTitle: "Pilot launch price", launchKicker: "First 5 restaurants",
-    launchDesc: "The full Loyalty package at \u20AA299/mo for the first 5 restaurants. A monthly launch price you can cancel anytime, not a one-time fee.",
+    launchDesc: "The full Loyalty package at \u20AA299/mo for the first 5 restaurants. That's the pilot price for restaurants up to 120 seats. A monthly launch price you can cancel anytime, not a one-time fee.",
     launchCta: "Reserve your slot", launchNote: "After the first 5, standard Loyalty pricing",
+    pilotSizeTitle: "Pilot price by size", pilotSizeNote: "Bigger room? The pilot price rises only by the gap between Loyalty tiers.",
     pricingTitle: "Transparent pricing",
     pricingSub: "Monthly plans by restaurant size. Annual discount (10 months for 12). Cancel anytime.",
     pricingTierLabel: "Pick your size",
@@ -397,8 +399,9 @@ const I18N = {
       { t: "تسعير شهري واضح", d: "مبني للمستقلين. بدون أجهزة باهظة وبدون عمولة لكل ضيف.", accent: "coin" },
     ],
     launchTitle: "سعر إطلاق البايلوت", launchKicker: "أول 5 مطاعم",
-    launchDesc: "حزمة Loyalty الكاملة بـ ₪299/شهر لأول 5 مطاعم. سعر شهري للإطلاق يمكن إلغاؤه متى شئت، وليس دفعة لمرة واحدة.",
+    launchDesc: "حزمة Loyalty الكاملة بـ ₪299/شهر لأول 5 مطاعم. هذا سعر البايلوت للمطاعم حتى 120 مقعدًا. سعر شهري للإطلاق يمكن إلغاؤه متى شئت، وليس دفعة لمرة واحدة.",
     launchCta: "احجز مكانك", launchNote: "بعد أول 5، يعود سعر Loyalty الاعتيادي",
+    pilotSizeTitle: "سعر البايلوت حسب الحجم", pilotSizeNote: "مطعم أكبر؟ يرتفع سعر البايلوت بمقدار الفرق بين مستويات Loyalty فقط.",
     pricingTitle: "تسعير شفاف",
     pricingSub: "خطط شهرية حسب حجم المطعم. خصم سنوي (10 بسعر 12). إلغاء في أي وقت.",
     pricingTierLabel: "اختر الحجم",
@@ -1072,6 +1075,9 @@ function Why({ L }: { L: I18NData }) {
 function Launch({ L }: { L: I18NData }) {
   const ref = useReveal();
   const featuredPlan = L.plans.find((plan) => plan.popular) ?? L.plans[0];
+  const baseTierId = L.tiers[0].id;
+  const baseLoyalty = featuredPlan.prices[baseTierId];
+  const pilotFor = (tierId: string) => 299 + (featuredPlan.prices[tierId] - baseLoyalty);
   return (
     <section ref={ref} className="reveal" style={{ padding: "clamp(40px, 6vw, 64px) 0" }}>
       <div className="container-x">
@@ -1088,6 +1094,18 @@ function Launch({ L }: { L: I18NData }) {
                 <a href="#contact" className="btn btn-primary">{L.launchCta} <span className="arrow">{"\u2192"}</span></a>
                 <span style={{ fontSize: 12, color: "var(--ink-70)", fontFamily: "var(--font-mono)" }}>{L.launchNote}</span>
               </div>
+              <div style={{ marginTop: 24, padding: "16px 18px", borderRadius: 14, background: "white", border: "1px solid var(--launch-border)", maxWidth: 360 }}>
+                <div className="mono-sm" style={{ color: "var(--brand)", marginBottom: 10 }}>{L.pilotSizeTitle}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {L.tiers.map((t) => (
+                    <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, fontSize: 13.5 }}>
+                      <span style={{ color: "var(--ink-70)" }}>{t.label}</span>
+                      <span style={{ fontWeight: 700, color: "var(--ink)" }}>{"\u20aa"}{pilotFor(t.id).toLocaleString()}<span style={{ fontWeight: 400, color: "var(--ink-50)", fontSize: 12 }}>/{L.perMonth}</span></span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--line)", fontSize: 12, color: "var(--ink-50)", lineHeight: 1.5 }}>{L.pilotSizeNote}</div>
+              </div>
             </div>
             <div style={{ display: "flex", justifyContent: "center" }}>
               <div style={{ background: "white", borderRadius: 20, padding: 28, textAlign: "center", border: "1px solid var(--launch-border)", boxShadow: "0 30px 60px -30px rgba(196,30,58,.3)", minWidth: 240 }}>
@@ -1095,6 +1113,7 @@ function Launch({ L }: { L: I18NData }) {
                 <div style={{ fontSize: 18, color: "var(--ink-50)", textDecoration: "line-through", marginBottom: 6 }}>{"\u20AA"}799</div>
                 <div className="font-display" style={{ fontSize: 56, lineHeight: 1, fontWeight: 700, color: "var(--brand)" }}>{"\u20AA"}299</div>
                 <div style={{ fontSize: 13, color: "var(--ink-70)", marginTop: 6 }}>{L.pilotPrice}</div>
+                <div style={{ fontSize: 12, color: "var(--ink-50)", marginTop: 4 }}>{L.tiers[0].label}</div>
                 <div style={{ marginTop: 18, padding: "10px 0 0", borderTop: "1px solid var(--line)", fontSize: 12, color: "var(--ink-50)" }}>{"\u2713"} {L.everythingIncluded}</div>
               </div>
             </div>

@@ -79,7 +79,6 @@ const I18N = {
     launchTitle: "מחיר השקה לפיילוט", launchKicker: "5 מסעדות ראשונות",
     launchDesc: "חבילת Loyalty המלאה ב-₪299/חודש ל-5 המסעדות הראשונות. זה מחיר הפיילוט למסעדות עד 120 מושבים. מחיר חודשי להשקה שאפשר לבטל מתי שרוצים, לא תשלום חד-פעמי.",
     launchCta: "הבטיחו את המקום שלכם", launchNote: "אחרי 5 המקומות, מחירון Loyalty הרגיל",
-    pilotSizeTitle: "מחיר פיילוט לפי גודל", pilotSizeNote: "מסעדה גדולה יותר? מחיר הפיילוט עולה רק בהפרש שבין מדרגות ה-Loyalty.",
     pricingTitle: "מחירון שקוף",
     pricingSub: "חבילות חודשיות לפי גודל המסעדה. הנחה שנתית (10 חודשים במחיר של 12). ביטול מתי שרוצים.",
     pricingTierLabel: "בחר גודל מסעדה",
@@ -240,7 +239,6 @@ const I18N = {
     launchTitle: "Pilot launch price", launchKicker: "First 5 restaurants",
     launchDesc: "The full Loyalty package at \u20AA299/mo for the first 5 restaurants. That's the pilot price for restaurants up to 120 seats. A monthly launch price you can cancel anytime, not a one-time fee.",
     launchCta: "Reserve your slot", launchNote: "After the first 5, standard Loyalty pricing",
-    pilotSizeTitle: "Pilot price by size", pilotSizeNote: "Bigger room? The pilot price rises only by the gap between Loyalty tiers.",
     pricingTitle: "Transparent pricing",
     pricingSub: "Monthly plans by restaurant size. Annual discount (10 months for 12). Cancel anytime.",
     pricingTierLabel: "Pick your size",
@@ -401,7 +399,6 @@ const I18N = {
     launchTitle: "سعر إطلاق البايلوت", launchKicker: "أول 5 مطاعم",
     launchDesc: "حزمة Loyalty الكاملة بـ ₪299/شهر لأول 5 مطاعم. هذا سعر البايلوت للمطاعم حتى 120 مقعدًا. سعر شهري للإطلاق يمكن إلغاؤه متى شئت، وليس دفعة لمرة واحدة.",
     launchCta: "احجز مكانك", launchNote: "بعد أول 5، يعود سعر Loyalty الاعتيادي",
-    pilotSizeTitle: "سعر البايلوت حسب الحجم", pilotSizeNote: "مطعم أكبر؟ يرتفع سعر البايلوت بمقدار الفرق بين مستويات Loyalty فقط.",
     pricingTitle: "تسعير شفاف",
     pricingSub: "خطط شهرية حسب حجم المطعم. خصم سنوي (10 بسعر 12). إلغاء في أي وقت.",
     pricingTierLabel: "اختر الحجم",
@@ -1075,9 +1072,6 @@ function Why({ L }: { L: I18NData }) {
 function Launch({ L }: { L: I18NData }) {
   const ref = useReveal();
   const featuredPlan = L.plans.find((plan) => plan.popular) ?? L.plans[0];
-  const baseTierId = L.tiers[0].id;
-  const baseLoyalty = featuredPlan.prices[baseTierId];
-  const pilotFor = (tierId: string) => 299 + (featuredPlan.prices[tierId] - baseLoyalty);
   return (
     <section ref={ref} className="reveal" style={{ padding: "clamp(40px, 6vw, 64px) 0" }}>
       <div className="container-x">
@@ -1093,18 +1087,6 @@ function Launch({ L }: { L: I18NData }) {
               <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
                 <a href="#contact" className="btn btn-primary">{L.launchCta} <span className="arrow">{"\u2192"}</span></a>
                 <span style={{ fontSize: 12, color: "var(--ink-70)", fontFamily: "var(--font-mono)" }}>{L.launchNote}</span>
-              </div>
-              <div style={{ marginTop: 24, padding: "16px 18px", borderRadius: 14, background: "white", border: "1px solid var(--launch-border)", maxWidth: 360 }}>
-                <div className="mono-sm" style={{ color: "var(--brand)", marginBottom: 10 }}>{L.pilotSizeTitle}</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {L.tiers.map((t) => (
-                    <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, fontSize: 13.5 }}>
-                      <span style={{ color: "var(--ink-70)" }}>{t.label}</span>
-                      <span style={{ fontWeight: 700, color: "var(--ink)" }}>{"\u20aa"}{pilotFor(t.id).toLocaleString()}<span style={{ fontWeight: 400, color: "var(--ink-50)", fontSize: 12 }}>/{L.perMonth}</span></span>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--line)", fontSize: 12, color: "var(--ink-50)", lineHeight: 1.5 }}>{L.pilotSizeNote}</div>
               </div>
             </div>
             <div style={{ display: "flex", justifyContent: "center" }}>
